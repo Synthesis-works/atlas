@@ -1,0 +1,7 @@
+__pycache__/
+.env
+.venv/
+node_modules/
+.next/
+pnpm-lock.yaml
+poetry.lock
