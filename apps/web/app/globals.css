@@ -13,31 +13,66 @@
   --color-border: var(--border);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
 }
 
 @layer base {
   :root {
-    --background: #fafafa;
-    --foreground: #111827;
-    --primary: #4f46e5;
+    --background: #fbfbfc;
+    --foreground: #0f1115;
+    
+    --primary: #000000;
     --primary-foreground: #ffffff;
+    
     --card: #ffffff;
-    --card-foreground: #111827;
-    --border: #e5e7eb;
-    --muted: #f3f4f6;
+    --card-foreground: #0f1115;
+    
+    --border: #e2e4e9;
+    --muted: #f4f5f8;
     --muted-foreground: #6b7280;
+    
+    --accent: #f4f5f8;
+    --accent-foreground: #0f1115;
+    
+    --success: #10b981;
+    --success-foreground: #ffffff;
+    --warning: #f59e0b;
+    --warning-foreground: #ffffff;
+    --danger: #ef4444;
+    --danger-foreground: #ffffff;
   }
 
   .dark {
-    --background: #0a0a0a;
-    --foreground: #f9fafb;
-    --primary: #6366f1;
-    --primary-foreground: #ffffff;
-    --card: #111111;
-    --card-foreground: #f9fafb;
-    --border: #333333;
-    --muted: #1f2937;
-    --muted-foreground: #9ca3af;
+    --background: #000000;
+    --foreground: #ededed;
+    
+    --primary: #ffffff;
+    --primary-foreground: #000000;
+    
+    --card: #0a0a0a;
+    --card-foreground: #ededed;
+    
+    --border: #222222;
+    --muted: #111111;
+    --muted-foreground: #888888;
+    
+    --accent: #111111;
+    --accent-foreground: #ededed;
+    
+    --success: #059669;
+    --warning: #d97706;
+    --danger: #dc2626;
   }
 }
 
@@ -48,5 +83,7 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
