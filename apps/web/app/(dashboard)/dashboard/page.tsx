@@ -2,52 +2,68 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../components/ui/card";
 import { Badge } from "../../../components/ui/badge";
+import { Button } from "../../../components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "../../../components/ui/dialog";
+import { Input } from "../../../components/ui/input";
 import { Play, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { cn } from "../../../lib/utils";
-
-const chartData = [
-  { name: 'Mon', coding: 84, reasoning: 72 },
-  { name: 'Tue', coding: 85, reasoning: 74 },
-  { name: 'Wed', coding: 87, reasoning: 75 },
-  { name: 'Thu', coding: 89, reasoning: 79 },
-  { name: 'Fri', coding: 92, reasoning: 84 },
-  { name: 'Sat', coding: 91, reasoning: 85 },
-  { name: 'Sun', coding: 94, reasoning: 88 },
-];
-
-const recentExecutions = [
-  { id: "run-0921", model: "gpt-4o", benchmark: "HumanEval v1.2", status: "Running", time: "2m 14s", progress: 68 },
-  { id: "run-0920", model: "claude-3.5-sonnet", benchmark: "SWE-bench", status: "Completed", time: "45m 12s", progress: 100 },
-  { id: "run-0919", model: "llama-3-70b", benchmark: "MMLU", status: "Failed", time: "1m 02s", progress: 12 },
-  { id: "run-0918", model: "gpt-4o", benchmark: "RepoBench", status: "Completed", time: "12m 40s", progress: 100 },
-  { id: "run-0917", model: "claude-3.5-sonnet", benchmark: "GPQA", status: "Completed", time: "5m 22s", progress: 100 },
-];
+import { MOCK_CHART_DATA, MOCK_EXECUTIONS } from "../../../lib/mock-data";
+import Link from "next/link";
+import { useState } from "react";
 
 export default function DashboardPage() {
+  const [isRunDialogOpen, setIsRunDialogOpen] = useState(false);
+
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
           <p className="text-muted-foreground mt-2 text-sm">Monitor your evaluation pipelines and model capabilities.</p>
         </div>
         <div className="flex gap-3">
-          <button className="bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-lg font-medium text-sm transition-all shadow-sm active:scale-95">
-            New Evaluation
-          </button>
+          <Dialog open={isRunDialogOpen} onOpenChange={setIsRunDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="shadow-sm">
+                <Play className="w-4 h-4 mr-2" /> New Evaluation
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Start New Evaluation Run</DialogTitle>
+                <DialogDescription>
+                  Select a model and benchmark to begin evaluation.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Model</label>
+                  <Input placeholder="e.g. gpt-4o, llama-3-70b" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Benchmark</label>
+                  <Input placeholder="e.g. HumanEval, SWE-bench" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsRunDialogOpen(false)}>Cancel</Button>
+                <Button onClick={() => setIsRunDialogOpen(false)}>Start Run</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card className="group hover:-translate-y-1 transition-transform">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Active Runs</p>
                 <p className="text-3xl font-bold">12</p>
               </div>
-              <div className="p-2 bg-primary/10 text-primary rounded-lg">
+              <div className="p-2 bg-primary/10 text-primary rounded-lg group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                 <Play className="w-5 h-5" />
               </div>
             </div>
@@ -57,14 +73,14 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="group hover:-translate-y-1 transition-transform">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Total Reports</p>
                 <p className="text-3xl font-bold">1,204</p>
               </div>
-              <div className="p-2 bg-success/10 text-success rounded-lg">
+              <div className="p-2 bg-success/10 text-success rounded-lg group-hover:bg-success group-hover:text-success-foreground transition-colors">
                 <CheckCircle2 className="w-5 h-5" />
               </div>
             </div>
@@ -74,14 +90,14 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="group hover:-translate-y-1 transition-transform">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Avg. Latency</p>
                 <p className="text-3xl font-bold">1.4s</p>
               </div>
-              <div className="p-2 bg-warning/10 text-warning rounded-lg">
+              <div className="p-2 bg-warning/10 text-warning rounded-lg group-hover:bg-warning group-hover:text-warning-foreground transition-colors">
                 <Clock className="w-5 h-5" />
               </div>
             </div>
@@ -91,14 +107,14 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="group hover:-translate-y-1 transition-transform">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-2">
                 <p className="text-sm font-medium text-muted-foreground">Failure Rate</p>
                 <p className="text-3xl font-bold">2.1%</p>
               </div>
-              <div className="p-2 bg-danger/10 text-danger rounded-lg">
+              <div className="p-2 bg-danger/10 text-danger rounded-lg group-hover:bg-danger group-hover:text-danger-foreground transition-colors">
                 <AlertCircle className="w-5 h-5" />
               </div>
             </div>
@@ -118,7 +134,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="h-[350px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart data={MOCK_CHART_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorCoding" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.3}/>
@@ -146,13 +162,20 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent Executions</CardTitle>
-            <CardDescription>Live evaluation pipeline status.</CardDescription>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>Recent Executions</CardTitle>
+                <CardDescription>Live evaluation pipeline status.</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/evaluations">View All</Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {recentExecutions.map((run) => (
-                <div key={run.id} className="flex items-start justify-between group">
+              {MOCK_EXECUTIONS.slice(0, 5).map((run) => (
+                <div key={run.id} className="flex items-start justify-between group cursor-pointer hover:bg-muted/30 p-2 -mx-2 rounded-lg transition-colors">
                   <div className="space-y-1">
                     <p className="text-sm font-semibold leading-none text-foreground">{run.model}</p>
                     <p className="text-xs text-muted-foreground font-medium">{run.benchmark}</p>
@@ -160,17 +183,19 @@ export default function DashboardPage() {
                       <div className="w-28 h-1.5 bg-muted rounded-full overflow-hidden">
                         <div 
                           className={cn("h-full rounded-full transition-all duration-1000", run.status === "Failed" ? "bg-danger" : "bg-primary")} 
-                          style={{ width: `${run.progress}%` }} 
+                          style={{ width: run.status === 'Completed' ? '100%' : run.status === 'Failed' ? '20%' : '60%' }} 
                         />
                       </div>
-                      <span className="text-[10px] text-muted-foreground font-medium">{run.progress}%</span>
+                      <span className="text-[10px] text-muted-foreground font-medium">
+                        {run.status === 'Completed' ? '100%' : run.status === 'Failed' ? 'Error' : '60%'}
+                      </span>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
-                    <Badge variant={run.status === "Running" ? "default" : run.status === "Completed" ? "success" : "danger"}>
+                    <Badge variant={run.status === "Running" ? "default" : run.status === "Completed" ? "success" : run.status === "Failed" ? "danger" : "secondary"}>
                       {run.status}
                     </Badge>
-                    <span className="text-[10px] text-muted-foreground font-mono">{run.time}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{run.time || run.duration || run.start}</span>
                   </div>
                 </div>
               ))}
