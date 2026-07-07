@@ -9,8 +9,8 @@ Project Atlas is an AI Evaluation Operating System built from scratch as a modul
 
 The monorepo follows the Atlas V1 Repository Architecture:
 
-- `apps/` - Main frontend applications (e.g., `web/`)
-- `services/` - Backend microservices (e.g., `auth-service/`, `execution-service/`, `evaluation-service/`)
+- `apps/` - Main frontend applications (e.g., `web/`, `landing/`, `docs-site/`)
+- `services/` - Backend microservices (e.g., `auth/`, `execution/`, `evaluation/`)
 - `packages/` - Reusable internal code and libraries (e.g., `database/`)
 - `benchmarks/` - AI evaluation benchmarks
 - `datasets/` - Raw and processed data
