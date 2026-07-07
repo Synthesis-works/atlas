@@ -1,0 +1,76 @@
+import uuid
+import enum
+from datetime import datetime
+from sqlalchemy import String, ForeignKey, DateTime, Float, Boolean
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import JSONB, ENUM
+from atlas_db.core.base import Base, BaseMixin, utcnow
+
+class StrategyType(str, enum.Enum):
+    EXACT_MATCH = "exact_match"
+    LLM_JUDGE = "llm_judge"
+    SCRIPT = "script"
+
+class EvaluationStrategy(Base, BaseMixin):
+    __tablename__ = "evaluation_strategies"
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    type: Mapped[StrategyType] = mapped_column(
+        ENUM(StrategyType, name="strategy_type", create_type=False),
+        nullable=False
+    )
+
+    versions: Mapped[list["EvaluationStrategyVersion"]] = relationship("EvaluationStrategyVersion", back_populates="strategy")
+
+class EvaluationStrategyVersion(Base):
+    __tablename__ = "evaluation_strategy_versions"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    strategy_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("evaluation_strategies.id"), nullable=False)
+    version_string: Mapped[str] = mapped_column(String(50), nullable=False)
+    parameters: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+
+    strategy: Mapped["EvaluationStrategy"] = relationship("EvaluationStrategy", back_populates="versions")
+
+class Judge(Base, BaseMixin):
+    __tablename__ = "judges"
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    model_identifier: Mapped[str] = mapped_column(String(255), nullable=False)
+    prompt_template: Mapped[str] = mapped_column(String, nullable=False)
+
+class EvaluationResult(Base, BaseMixin):
+    __tablename__ = "evaluation_results"
+
+    model_output_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("model_outputs.id"), nullable=False, unique=True)
+    strategy_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("evaluation_strategy_versions.id"), nullable=False)
+    judge_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("judges.id"), nullable=True)
+    
+    passed: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    raw_measurements: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
+    judge_outputs: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
+    reasoning: Mapped[str | None] = mapped_column(String, nullable=True)
+    warnings: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
+    failure_reasons: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
+    evaluation_logs: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
+
+class CapabilityProfile(Base, BaseMixin):
+    __tablename__ = "capability_profiles"
+
+    atlas_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("atlas_runs.id"), nullable=False, unique=True)
+    overall_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    profile_metadata: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
+
+    scores: Mapped[list["CapabilityScore"]] = relationship("CapabilityScore", back_populates="profile")
+
+class CapabilityScore(Base, BaseMixin):
+    __tablename__ = "capability_scores"
+
+    capability_profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("capability_profiles.id"), nullable=False)
+    capability_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("capabilities.id"), nullable=False)
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+
+    profile: Mapped["CapabilityProfile"] = relationship("CapabilityProfile", back_populates="scores")
