@@ -2,12 +2,13 @@ import uuid
 from datetime import datetime
 from sqlalchemy import String, Boolean, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import JSONB
 from atlas_db.core.base import Base, BaseMixin
 
 class Task(Base, BaseMixin):
     __tablename__ = "tasks"
 
-    benchmark_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("benchmark_versions.id"), nullable=False)
+    benchmark_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("benchmark_versions.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -20,7 +21,7 @@ class Task(Base, BaseMixin):
 class Prompt(Base, BaseMixin):
     __tablename__ = "prompts"
 
-    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tasks.id"), nullable=False)
+    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tasks.id"), nullable=False, index=True)
     template: Mapped[str] = mapped_column(String, nullable=False)
     system_instruction: Mapped[str | None] = mapped_column(String, nullable=True)
 
@@ -29,9 +30,9 @@ class Prompt(Base, BaseMixin):
 class TestCase(Base, BaseMixin):
     __tablename__ = "test_cases"
 
-    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tasks.id"), nullable=False)
-    input_data: Mapped[str] = mapped_column(String, nullable=False)
-    expected_output: Mapped[str] = mapped_column(String, nullable=False)
+    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tasks.id"), nullable=False, index=True)
+    input_data: Mapped[dict | list] = mapped_column(JSONB, nullable=False)
+    expected_output: Mapped[dict | list] = mapped_column(JSONB, nullable=False)
     is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     task: Mapped["Task"] = relationship("Task", back_populates="test_cases")
@@ -39,7 +40,7 @@ class TestCase(Base, BaseMixin):
 class Constraint(Base, BaseMixin):
     __tablename__ = "constraints"
 
-    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tasks.id"), nullable=False)
+    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tasks.id"), nullable=False, index=True)
     type: Mapped[str] = mapped_column(String(100), nullable=False)
     value: Mapped[str] = mapped_column(String, nullable=False)
 
@@ -48,7 +49,7 @@ class Constraint(Base, BaseMixin):
 class EvaluationRule(Base, BaseMixin):
     __tablename__ = "evaluation_rules"
 
-    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tasks.id"), nullable=False)
+    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tasks.id"), nullable=False, index=True)
     rule_definition: Mapped[str] = mapped_column(String, nullable=False)
 
     task: Mapped["Task"] = relationship("Task", back_populates="evaluation_rules")

@@ -1,7 +1,7 @@
 import uuid
 import enum
 from datetime import datetime
-from sqlalchemy import String, ForeignKey, DateTime, Integer
+from sqlalchemy import String, ForeignKey, DateTime, Integer, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB, ENUM
 from atlas_db.core.base import Base, BaseMixin, utcnow
@@ -28,7 +28,7 @@ class ExecutionAdapter(Base, BaseMixin):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     type: Mapped[AdapterType] = mapped_column(
-        ENUM(AdapterType, name="adapter_type", create_type=False),
+        ENUM(AdapterType, name="adapter_type"),
         nullable=False
     )
 
@@ -38,11 +38,11 @@ class ExecutionAdapterVersion(Base):
     __tablename__ = "execution_adapter_versions"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    adapter_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("execution_adapters.id"), nullable=False)
+    adapter_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("execution_adapters.id"), nullable=False, index=True)
     version_string: Mapped[str] = mapped_column(String(50), nullable=False)
     config: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
-    created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
 
     adapter: Mapped["ExecutionAdapter"] = relationship("ExecutionAdapter", back_populates="versions")
 
@@ -60,11 +60,11 @@ class AtlasRun(Base, BaseMixin):
     __tablename__ = "atlas_runs"
 
     session_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("evaluation_sessions.id"), nullable=False, index=True)
-    benchmark_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("benchmark_versions.id"), nullable=False)
-    adapter_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("execution_adapter_versions.id"), nullable=False)
+    benchmark_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("benchmark_versions.id"), nullable=False, index=True)
+    adapter_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("execution_adapter_versions.id"), nullable=False, index=True)
     target_model: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[RunStatus] = mapped_column(
-        ENUM(RunStatus, name="run_status", create_type=False),
+        ENUM(RunStatus, name="run_status"),
         nullable=False,
         default=RunStatus.PENDING
     )
@@ -85,16 +85,17 @@ class ModelOutput(Base, BaseMixin):
     tokens_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     atlas_run: Mapped["AtlasRun"] = relationship("AtlasRun", back_populates="model_outputs")
+    evaluation_result: Mapped["EvaluationResult"] = relationship("EvaluationResult", back_populates="model_output", uselist=False)
 
 class Artifact(Base, BaseMixin):
     __tablename__ = "artifacts"
 
-    atlas_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("atlas_runs.id"), nullable=False)
+    atlas_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("atlas_runs.id"), nullable=False, index=True)
     type: Mapped[ArtifactType] = mapped_column(
-        ENUM(ArtifactType, name="artifact_type", create_type=False),
+        ENUM(ArtifactType, name="artifact_type"),
         nullable=False
     )
     uri: Mapped[str] = mapped_column(String, nullable=False)
-    size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
     atlas_run: Mapped["AtlasRun"] = relationship("AtlasRun", back_populates="artifacts")

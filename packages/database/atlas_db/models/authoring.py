@@ -59,7 +59,7 @@ class Benchmark(Base, BaseMixin):
     domain: Mapped[str | None] = mapped_column(String(100), nullable=True)
     type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     visibility: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    author_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    author_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     status: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     categories: Mapped[list["BenchmarkCategory"]] = relationship(
@@ -77,11 +77,11 @@ class BenchmarkLifecycle(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     benchmark_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("benchmarks.id"), nullable=False)
     state: Mapped[BenchmarkState] = mapped_column(
-        ENUM(BenchmarkState, name="benchmark_state", create_type=False),
+        ENUM(BenchmarkState, name="benchmark_state"),
         nullable=False
     )
     changed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
-    changed_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    changed_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
 
     benchmark: Mapped["Benchmark"] = relationship("Benchmark", back_populates="lifecycles")
 
@@ -92,6 +92,6 @@ class BenchmarkVersion(Base):
     benchmark_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("benchmarks.id"), nullable=False)
     version_string: Mapped[str] = mapped_column(String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
-    created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
 
     benchmark: Mapped["Benchmark"] = relationship("Benchmark", back_populates="versions")

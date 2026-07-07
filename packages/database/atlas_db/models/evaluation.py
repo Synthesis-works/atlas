@@ -16,7 +16,7 @@ class EvaluationStrategy(Base, BaseMixin):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     type: Mapped[StrategyType] = mapped_column(
-        ENUM(StrategyType, name="strategy_type", create_type=False),
+        ENUM(StrategyType, name="strategy_type"),
         nullable=False
     )
 
@@ -26,11 +26,11 @@ class EvaluationStrategyVersion(Base):
     __tablename__ = "evaluation_strategy_versions"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    strategy_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("evaluation_strategies.id"), nullable=False)
+    strategy_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("evaluation_strategies.id"), nullable=False, index=True)
     version_string: Mapped[str] = mapped_column(String(50), nullable=False)
     parameters: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
-    created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
 
     strategy: Mapped["EvaluationStrategy"] = relationship("EvaluationStrategy", back_populates="versions")
 
@@ -38,15 +38,18 @@ class Judge(Base, BaseMixin):
     __tablename__ = "judges"
 
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True, index=True)
     model_identifier: Mapped[str] = mapped_column(String(255), nullable=False)
     prompt_template: Mapped[str] = mapped_column(String, nullable=False)
+
+    organization: Mapped["Organization | None"] = relationship("Organization")
 
 class EvaluationResult(Base, BaseMixin):
     __tablename__ = "evaluation_results"
 
     model_output_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("model_outputs.id"), nullable=False, unique=True)
-    strategy_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("evaluation_strategy_versions.id"), nullable=False)
-    judge_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("judges.id"), nullable=True)
+    strategy_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("evaluation_strategy_versions.id"), nullable=False, index=True)
+    judge_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("judges.id"), nullable=True, index=True)
     
     passed: Mapped[bool] = mapped_column(Boolean, nullable=False)
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -56,6 +59,10 @@ class EvaluationResult(Base, BaseMixin):
     warnings: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
     failure_reasons: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
     evaluation_logs: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
+
+    model_output: Mapped["ModelOutput"] = relationship("ModelOutput", back_populates="evaluation_result")
+    strategy_version: Mapped["EvaluationStrategyVersion"] = relationship("EvaluationStrategyVersion")
+    judge: Mapped["Judge | None"] = relationship("Judge")
 
 class CapabilityProfile(Base, BaseMixin):
     __tablename__ = "capability_profiles"
@@ -69,8 +76,8 @@ class CapabilityProfile(Base, BaseMixin):
 class CapabilityScore(Base, BaseMixin):
     __tablename__ = "capability_scores"
 
-    capability_profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("capability_profiles.id"), nullable=False)
-    capability_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("capabilities.id"), nullable=False)
+    capability_profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("capability_profiles.id"), nullable=False, index=True)
+    capability_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("capabilities.id"), nullable=False, index=True)
     score: Mapped[float] = mapped_column(Float, nullable=False)
 
     profile: Mapped["CapabilityProfile"] = relationship("CapabilityProfile", back_populates="scores")

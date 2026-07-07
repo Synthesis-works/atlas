@@ -1,11 +1,12 @@
 import uuid
-from sqlalchemy import String, ForeignKey, Boolean, DateTime
+from sqlalchemy import String, ForeignKey, Boolean, DateTime, Index
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import JSONB
 from atlas_db.core.base import Base, BaseMixin
 
 class AuditLog(Base, BaseMixin):
     __tablename__ = "audit_logs"
+    __table_args__ = (Index('ix_audit_logs_entity', 'entity_type', 'entity_id'),)
 
     entity_type: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     entity_id: Mapped[uuid.UUID] = mapped_column(nullable=False, index=True)

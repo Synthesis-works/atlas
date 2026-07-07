@@ -1,6 +1,6 @@
 import uuid
 import enum
-from sqlalchemy import String, Boolean, ForeignKey, DateTime
+from sqlalchemy import String, Boolean, ForeignKey, DateTime, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB, ENUM
 from atlas_db.core.base import Base, BaseMixin, utcnow
@@ -44,8 +44,19 @@ class Configuration(Base, BaseMixin):
     key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     scope: Mapped[ConfigurationScope] = mapped_column(
-        ENUM(ConfigurationScope, name="configuration_scope", create_type=False),
+        ENUM(ConfigurationScope, name="configuration_scope"),
         nullable=False
+    )
+    project_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=True, index=True)
+    benchmark_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("benchmarks.id", ondelete="CASCADE"), nullable=True, index=True)
+    
+    __table_args__ = (
+        CheckConstraint(
+            "(scope = 'project' AND project_id IS NOT NULL AND benchmark_id IS NULL) OR "
+            "(scope = 'benchmark' AND benchmark_id IS NOT NULL AND project_id IS NULL) OR "
+            "(scope = 'env' AND project_id IS NULL AND benchmark_id IS NULL)",
+            name="chk_configuration_scope"
+        ),
     )
     
     versions: Mapped[list["ConfigurationVersion"]] = relationship("ConfigurationVersion", back_populates="configuration")
@@ -54,12 +65,12 @@ class ConfigurationVersion(Base):
     __tablename__ = "configuration_versions"
     
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    configuration_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("configurations.id"), nullable=False)
+    configuration_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("configurations.id"), nullable=False, index=True)
     version_string: Mapped[str] = mapped_column(String(50), nullable=False)
     value: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
     
     # Simple mixin-like fields for versions that don't need full BaseMixin
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
-    created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     
     configuration: Mapped["Configuration"] = relationship("Configuration", back_populates="versions")

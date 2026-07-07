@@ -1,7 +1,7 @@
 from typing import Any
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, DateTime, Integer, event
+from sqlalchemy import Column, DateTime, Integer, event, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, declared_attr
 
@@ -38,11 +38,11 @@ class BaseMixin:
     )
     
     created_by_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     
     updated_by_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     
     archived_at: Mapped[datetime | None] = mapped_column(
