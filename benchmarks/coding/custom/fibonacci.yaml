@@ -1,0 +1,27 @@
+metadata:
+  benchmark_id: "coding-fibonacci-001"
+  name: "Fibonacci Sequence"
+  description: "Calculate the nth Fibonacci number."
+  author: "Atlas Foundation Team"
+  version: "1.0.0"
+  license: "MIT"
+  difficulty: "medium"
+  category: "coding"
+  tags:
+    - "math"
+    - "recursion"
+config:
+  timeout: 5
+tasks:
+  - task_id: "task-fibonacci-1"
+    title: "5th Fibonacci"
+    description: "Return the 5th Fibonacci number."
+    input: 5
+    expected_output: 5
+    hidden_tests:
+      - input: 10
+        expected_output: 55
+    constraints:
+      time_limit: 2
+      memory_limit: 256
+    visibility: "public"

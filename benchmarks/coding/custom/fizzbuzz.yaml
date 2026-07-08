@@ -1,0 +1,27 @@
+metadata:
+  benchmark_id: "coding-fizzbuzz-001"
+  name: "FizzBuzz"
+  description: "The classic FizzBuzz problem."
+  author: "Atlas Foundation Team"
+  version: "1.0.0"
+  license: "MIT"
+  difficulty: "easy"
+  category: "coding"
+  tags:
+    - "math"
+    - "basics"
+config:
+  timeout: 5
+tasks:
+  - task_id: "task-fizzbuzz-1"
+    title: "FizzBuzz up to 15"
+    description: "Return a list of strings for FizzBuzz."
+    input: 15
+    expected_output: ["1", "2", "Fizz", "4", "Buzz", "Fizz", "7", "8", "Fizz", "Buzz", "11", "Fizz", "13", "14", "FizzBuzz"]
+    hidden_tests:
+      - input: 5
+        expected_output: ["1", "2", "Fizz", "4", "Buzz"]
+    constraints:
+      time_limit: 1
+      memory_limit: 128
+    visibility: "public"
