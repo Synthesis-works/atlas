@@ -1,27 +1,48 @@
 metadata:
-  benchmark_id: "coding-binary-search-001"
-  name: "Binary Search"
-  description: "Find an element in a sorted array using binary search."
-  author: "Atlas Foundation Team"
-  version: "1.0.0"
-  license: "MIT"
-  difficulty: "medium"
-  category: "coding"
+  benchmark_id: coding-binary-search-001
+  name: Binary Search
+  description: Find an element in a sorted array using binary search.
+  author: Atlas Foundation Team
+  version: 1.0.0
+  license: MIT
+  difficulty: medium
+  category: coding
   tags:
-    - "algorithms"
-    - "search"
+  - algorithms
+  - search
 config:
   timeout: 10
 tasks:
-  - task_id: "task-binary-search-1"
-    title: "Find 3"
-    description: "Return the index of 3 in the array."
-    input: {"array": [1, 2, 3, 4, 5], "target": 3}
-    expected_output: 2
-    hidden_tests:
-      - input: {"array": [1, 2, 3, 4, 5], "target": 6}
-        expected_output: -1
-    constraints:
-      time_limit: 2
-      memory_limit: 256
-    visibility: "public"
+- task_id: task-binary-search-1
+  title: Find 3
+  description: Return the index of 3 in the array.
+  input:
+    array:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    target: 3
+  expected_output: 2
+  hidden_tests:
+  - input:
+      array:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      target: 6
+    expected_output: -1
+  constraints:
+    time_limit: 2
+    memory_limit: 256
+  visibility: public
+  evaluation:
+    extractor: noop
+    normalizer: noop
+    judge: numeric_match
+    metrics:
+    - accuracy
+    - latency

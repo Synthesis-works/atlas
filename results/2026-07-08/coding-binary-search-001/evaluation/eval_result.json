@@ -1,0 +1,16 @@
+{
+  "id": "316333ce-4c03-44ca-8321-ca4399680073",
+  "benchmark_id": "coding-binary-search-001",
+  "task_id": "task-binary-search-1",
+  "provider": "ollama",
+  "model": "qwen2.5-coder:1.5b",
+  "judge": "numeric_match",
+  "status": "FAIL",
+  "expected": "2",
+  "actual": "1",
+  "normalized_output": "1",
+  "latency_ms": 14374,
+  "score": 0.0,
+  "confidence": 1.0,
+  "timestamp": "2026-07-08T20:33:27.312488"
+}
