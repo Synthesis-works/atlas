@@ -1,27 +1,34 @@
 metadata:
-  benchmark_id: "coding-palindrome-001"
-  name: "Palindrome Checker"
-  description: "A benchmark to test palindrome detection."
-  author: "Atlas Foundation Team"
-  version: "1.0.0"
-  license: "MIT"
-  difficulty: "easy"
-  category: "coding"
+  benchmark_id: coding-palindrome-001
+  name: Palindrome Checker
+  description: A benchmark to test palindrome detection.
+  author: Atlas Foundation Team
+  version: 1.0.0
+  license: MIT
+  difficulty: easy
+  category: coding
   tags:
-    - "string"
-    - "logic"
+  - string
+  - logic
 config:
   timeout: 5
 tasks:
-  - task_id: "task-palindrome-1"
-    title: "Check palindrome"
-    description: "Return true if the string is a palindrome."
-    input: "racecar"
-    expected_output: true
-    hidden_tests:
-      - input: "hello"
-        expected_output: false
-    constraints:
-      time_limit: 1
-      memory_limit: 128
-    visibility: "public"
+- task_id: task-palindrome-1
+  title: Check palindrome
+  description: Return true if the string is a palindrome.
+  input: racecar
+  expected_output: true
+  hidden_tests:
+  - input: hello
+    expected_output: false
+  constraints:
+    time_limit: 1
+    memory_limit: 128
+  visibility: public
+  evaluation:
+    extractor: noop
+    normalizer: lowercase
+    judge: exact_match
+    metrics:
+    - accuracy
+    - latency

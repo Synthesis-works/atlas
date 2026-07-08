@@ -1,0 +1,16 @@
+{
+  "id": "ac3eb3ac-f4b0-4fdd-82ed-d36656f113f4",
+  "benchmark_id": "coding-fizzbuzz-001",
+  "task_id": "task-fizzbuzz-1",
+  "provider": "ollama",
+  "model": "qwen2.5-coder:1.5b",
+  "judge": "exact_match",
+  "status": "PASS",
+  "expected": "['1', '2', 'Fizz', '4', 'Buzz', 'Fizz', '7', '8', 'Fizz', 'Buzz', '11', 'Fizz', '13', '14', 'FizzBuzz']",
+  "actual": "['1', '2', 'Fizz', '4', 'Buzz', 'Fizz', '7', '8', 'Fizz', 'Buzz', '11', 'Fizz', '13', '14', 'FizzBuzz']",
+  "normalized_output": "['1', '2', 'Fizz', '4', 'Buzz', 'Fizz', '7', '8', 'Fizz', 'Buzz', '11', 'Fizz', '13', '14', 'FizzBuzz']",
+  "latency_ms": 5513,
+  "score": 1.0,
+  "confidence": 1.0,
+  "timestamp": "2026-07-08T20:33:36.108174"
+}
