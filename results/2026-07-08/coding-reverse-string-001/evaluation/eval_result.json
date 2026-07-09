@@ -1,0 +1,16 @@
+{
+  "id": "ab78d74b-84ff-42b8-8967-ad47d997c127",
+  "benchmark_id": "coding-reverse-string-001",
+  "task_id": "task-reverse-1",
+  "provider": "ollama",
+  "model": "qwen2.5-coder:1.5b",
+  "judge": "exact_match",
+  "status": "FAIL",
+  "expected": "olleh",
+  "actual": "```python\ndef reverse_string(s):\n    return s[::-1]\n```",
+  "normalized_output": "```python\ndef reverse_string(s):\n    return s[::-1]\n```",
+  "latency_ms": 2824,
+  "score": 0.0,
+  "confidence": 1.0,
+  "timestamp": "2026-07-08T20:33:42.164461"
+}
