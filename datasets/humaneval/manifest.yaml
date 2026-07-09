@@ -1,0 +1,14 @@
+id: humaneval
+name: HumanEval
+version: "1.0"
+source: OpenAI
+license: MIT
+citation: "Evaluating Large Language Models Trained on Code (Chen et al. 2021)"
+language: python
+evaluation: execution
+metric: pass@1
+tasks: 164
+tags:
+  - coding
+  - python
+  - generation
