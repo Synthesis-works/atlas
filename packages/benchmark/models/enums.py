@@ -1,5 +1,17 @@
 from enum import Enum
 
+class TaskState(str, Enum):
+    IMPORTED = "imported"
+    VALIDATED = "validated"
+    READY = "ready"
+    PROMPTED = "prompted"
+    GENERATED = "generated"
+    EXECUTING = "executing"
+    EXECUTED = "executed"
+    EVALUATED = "evaluated"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
 class TaskStatus(str, Enum):
     DRAFT = "draft"
     VALIDATED = "validated"
