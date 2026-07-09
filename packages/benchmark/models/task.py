@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional
-from .enums import Visibility
+from .enums import Visibility, TaskState
 
 class TaskConstraints(BaseModel):
     time_limit: Optional[int] = Field(None, description="Time limit in seconds")
@@ -14,6 +14,7 @@ class EvaluationConfig(BaseModel):
     kwargs: Dict[str, Any] = Field(default_factory=dict, description="Additional args for plugins")
 
 class Task(BaseModel):
+    state: TaskState = Field(default=TaskState.IMPORTED, description="Current state of the task")
     task_id: str = Field(..., description="Unique identifier for the task")
     title: str = Field(..., description="Title of the task")
     description: str = Field(..., description="Description of the task")
