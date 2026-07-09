@@ -1,7 +1,6 @@
 import gzip
 import json
-import httpx
-import tempfile
+import os
 import os
 from typing import Any, List
 from .base import BaseImporter
@@ -49,21 +48,10 @@ class HumanEvalImporter(BaseImporter):
         )
         
     def fetch_dataset(self) -> List[Any]:
-        with httpx.Client(follow_redirects=True) as client:
-            response = client.get(self.DATASET_URL)
-            response.raise_for_status()
-            
-            with tempfile.NamedTemporaryFile(delete=False) as tmp:
-                tmp.write(response.content)
-                tmp_path = tmp.name
-                
+        file_path = os.path.join("datasets", "humaneval", "HumanEval.jsonl")
         records = []
-        try:
-            with gzip.open(tmp_path, 'rt', encoding='utf-8') as f:
-                for line in f:
-                    if line.strip():
-                        records.append(json.loads(line))
-        finally:
-            os.remove(tmp_path)
-            
+        with open(file_path, 'rt', encoding='utf-8') as f:
+            for line in f:
+                if line.strip():
+                    records.append(json.loads(line))
         return records

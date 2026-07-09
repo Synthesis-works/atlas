@@ -1,5 +1,5 @@
+import os
 import json
-import httpx
 from typing import Any, List
 from .base import BaseImporter
 from ..mapper import BaseMapper
@@ -46,12 +46,10 @@ class MBPPImporter(BaseImporter):
         )
         
     def fetch_dataset(self) -> List[Any]:
-        with httpx.Client(follow_redirects=True) as client:
-            response = client.get(self.DATASET_URL)
-            response.raise_for_status()
-            
+        file_path = os.path.join("datasets", "mbpp", "mbpp.jsonl")
         records = []
-        for line in response.text.splitlines():
-            if line.strip():
-                records.append(json.loads(line))
+        with open(file_path, 'rt', encoding='utf-8') as f:
+            for line in f:
+                if line.strip():
+                    records.append(json.loads(line))
         return records
