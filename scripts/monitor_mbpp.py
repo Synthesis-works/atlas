@@ -18,7 +18,9 @@ def get_metrics(exp_id):
             data = json.load(fp)
             if data.get("passed", False):
                 passed += 1
-            total_gen_time += data.get("generation_latency_ms", 0)
+            latency = data.get("generation_latency_ms", 0)
+            if latency is not None:
+                total_gen_time += latency
             
     pass_at_1 = (passed / completed * 100) if completed > 0 else 0
     avg_gen_time = (total_gen_time / completed) if completed > 0 else 0
