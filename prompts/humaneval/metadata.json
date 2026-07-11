@@ -7,7 +7,7 @@
         "baseline prompt",
         "requests code only without explanation"
       ],
-      "date": "2026-07-08"
+      "status": "LOCKED"
     },
     {
       "version": "v2",
@@ -17,7 +17,7 @@
         "do not rename parameters instruction",
         "explicit import request"
       ],
-      "date": "2026-07-09"
+      "status": "LOCKED"
     },
     {
       "version": "v3",
@@ -27,7 +27,6 @@
         "treat examples as executable specifications",
         "verify implementation satisfies examples"
       ],
-      "date": "2026-07-10",
       "status": "LOCKED"
     }
   ]

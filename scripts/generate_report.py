@@ -1,7 +1,10 @@
 import argparse
-import json
+import sys
 import os
 import datetime
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from packages.experiments.registry import ExperimentRegistry
 from packages.research.insights.generator import InsightGenerator
 
