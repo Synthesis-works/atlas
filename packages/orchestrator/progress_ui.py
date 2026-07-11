@@ -60,7 +60,7 @@ class ProgressUI:
         # Progress bar
         bar_length = 30
         filled_length = int(bar_length * self.completed // self.total_tasks) if self.total_tasks > 0 else bar_length
-        bar = "█" * filled_length + "░" * (bar_length - filled_length)
+        bar = "#" * filled_length + "-" * (bar_length - filled_length)
         
         output = f"""=====================================================
 Atlas Experiment

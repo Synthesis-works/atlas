@@ -13,6 +13,9 @@ class ExecutionStage(PipelineStage):
         runtime_mgr = context["runtime_manager"]
         
         tests_str = ""
+        setup_code = task.metadata.get("test_setup_code")
+        if setup_code:
+            tests_str += f"{setup_code}\n\n"
         if isinstance(task.hidden_tests, list):
             for ht in task.hidden_tests:
                 if isinstance(ht, dict):
