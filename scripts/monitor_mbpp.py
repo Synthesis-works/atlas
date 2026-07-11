@@ -16,7 +16,7 @@ def get_metrics(exp_id):
     for f in files:
         with open(os.path.join(tasks_dir, f), "r") as fp:
             data = json.load(fp)
-            if data.get("passed", False):
+            if data.get("evaluation_status") == "pass" or data.get("status") == "PASS" or data.get("tests_passed") is True:
                 passed += 1
             latency = data.get("generation_latency_ms", 0)
             if latency is not None:
