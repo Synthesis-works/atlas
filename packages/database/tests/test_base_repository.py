@@ -3,14 +3,13 @@ from atlas_db.models.core import User
 from atlas_db.repositories.base import BaseRepository
 
 class UserRepository(BaseRepository[User]):
-    def __init__(self):
-        super().__init__(User)
+    model = User
 
 def test_base_repository_crud(session):
-    repo = UserRepository()
+    repo = UserRepository(session)
     
     # Test Create
-    user = repo.create(session, obj_in={
+    user = repo.create(obj_in={
         "email": "test@example.com",
         "full_name": "Test User",
         "is_active": True
@@ -19,17 +18,24 @@ def test_base_repository_crud(session):
     assert user.email == "test@example.com"
     
     # Test Get
-    fetched = repo.get(session, user.id)
+    fetched = repo.get(user.id)
     assert fetched is not None
     assert fetched.id == user.id
     
     # Test Update
-    updated = repo.update(session, db_obj=fetched, obj_in={"full_name": "Updated User"})
+    updated = repo.update(db_obj=fetched, obj_in={"full_name": "Updated User"})
     assert updated.full_name == "Updated User"
     
-    # Test Delete
-    deleted = repo.delete(session, id=user.id)
+    # Test Delete (Soft Delete)
+    deleted = repo.delete(id=user.id)
     assert deleted is not None
     assert deleted.id == user.id
+    assert deleted.archived_at is not None
     
-    assert repo.get(session, user.id) is None
+    # Ensure get() excludes archived by default
+    assert repo.get(user.id) is None
+    
+    # Ensure get(include_archived=True) works
+    archived = repo.get(user.id, include_archived=True)
+    assert archived is not None
+    assert archived.archived_at is not None

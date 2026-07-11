@@ -52,9 +52,9 @@ class Configuration(Base, BaseMixin):
     
     __table_args__ = (
         CheckConstraint(
-            "(scope = 'project' AND project_id IS NOT NULL AND benchmark_id IS NULL) OR "
-            "(scope = 'benchmark' AND benchmark_id IS NOT NULL AND project_id IS NULL) OR "
-            "(scope = 'env' AND project_id IS NULL AND benchmark_id IS NULL)",
+            "(scope = 'PROJECT' AND project_id IS NOT NULL AND benchmark_id IS NULL) OR "
+            "(scope = 'BENCHMARK' AND benchmark_id IS NOT NULL AND project_id IS NULL) OR "
+            "(scope = 'ENV' AND project_id IS NULL AND benchmark_id IS NULL)",
             name="chk_configuration_scope"
         ),
     )

@@ -1,13 +1,21 @@
 from typing import Any
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, DateTime, Integer, event, ForeignKey
+from sqlalchemy import Column, DateTime, Integer, event, ForeignKey, MetaData
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, declared_attr
 
+convention = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "uq_%(table_name)s_%(column_0_name)s",
+    "ck": "chk_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s"
+}
+
 class Base(DeclarativeBase):
     """Base for all SQLAlchemy models."""
-    pass
+    metadata = MetaData(naming_convention=convention)
 
 def utcnow() -> datetime:
     """Return current UTC time."""

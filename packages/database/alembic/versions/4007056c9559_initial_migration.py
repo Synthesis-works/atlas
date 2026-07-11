@@ -31,8 +31,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('name')
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_benchmark_categories')),
+    sa.UniqueConstraint('name', name=op.f('uq_benchmark_categories_name'))
     )
     op.create_table('capabilities',
     sa.Column('name', sa.String(length=100), nullable=False),
@@ -43,8 +43,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('name')
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_capabilities')),
+    sa.UniqueConstraint('name', name=op.f('uq_capabilities_name'))
     )
     op.create_table('configurations',
     sa.Column('key', sa.String(length=255), nullable=False),
@@ -57,7 +57,7 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_configurations'))
     )
     op.create_index(op.f('ix_configurations_key'), 'configurations', ['key'], unique=True)
     op.create_table('dataset_licenses',
@@ -70,7 +70,7 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_dataset_licenses'))
     )
     op.create_table('dataset_registries',
     sa.Column('name', sa.String(length=255), nullable=False),
@@ -82,7 +82,7 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_dataset_registries'))
     )
     op.create_table('dataset_sources',
     sa.Column('name', sa.String(length=255), nullable=False),
@@ -95,7 +95,7 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_dataset_sources'))
     )
     op.create_table('evaluation_strategies',
     sa.Column('name', sa.String(length=255), nullable=False),
@@ -107,8 +107,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('name')
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_evaluation_strategies')),
+    sa.UniqueConstraint('name', name=op.f('uq_evaluation_strategies_name'))
     )
     op.create_table('execution_adapters',
     sa.Column('name', sa.String(length=255), nullable=False),
@@ -120,8 +120,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('name')
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_execution_adapters')),
+    sa.UniqueConstraint('name', name=op.f('uq_execution_adapters_name'))
     )
     op.create_table('judges',
     sa.Column('name', sa.String(length=255), nullable=False),
@@ -134,8 +134,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('name')
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_judges')),
+    sa.UniqueConstraint('name', name=op.f('uq_judges_name'))
     )
     op.create_table('organizations',
     sa.Column('name', sa.String(length=255), nullable=False),
@@ -146,7 +146,7 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.PrimaryKeyConstraint('id')
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_organizations'))
     )
     op.create_table('datasets',
     sa.Column('registry_id', sa.UUID(), nullable=False),
@@ -161,10 +161,10 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['license_id'], ['dataset_licenses.id'], ),
-    sa.ForeignKeyConstraint(['registry_id'], ['dataset_registries.id'], ),
-    sa.ForeignKeyConstraint(['source_id'], ['dataset_sources.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['license_id'], ['dataset_licenses.id'], name=op.f('fk_datasets_license_id_dataset_licenses')),
+    sa.ForeignKeyConstraint(['registry_id'], ['dataset_registries.id'], name=op.f('fk_datasets_registry_id_dataset_registries')),
+    sa.ForeignKeyConstraint(['source_id'], ['dataset_sources.id'], name=op.f('fk_datasets_source_id_dataset_sources')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_datasets'))
     )
     op.create_table('projects',
     sa.Column('name', sa.String(length=255), nullable=False),
@@ -177,8 +177,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], name=op.f('fk_projects_org_id_organizations')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_projects'))
     )
     op.create_table('users',
     sa.Column('email', sa.String(length=255), nullable=False),
@@ -192,8 +192,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['org_id'], ['organizations.id'], name=op.f('fk_users_org_id_organizations')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_users'))
     )
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
     op.create_table('audit_logs',
@@ -209,8 +209,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_audit_logs_user_id_users')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_audit_logs'))
     )
     op.create_index(op.f('ix_audit_logs_entity_id'), 'audit_logs', ['entity_id'], unique=False)
     op.create_index(op.f('ix_audit_logs_entity_type'), 'audit_logs', ['entity_type'], unique=False)
@@ -232,9 +232,9 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['author_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['author_id'], ['users.id'], name=op.f('fk_benchmarks_author_id_users')),
+    sa.ForeignKeyConstraint(['project_id'], ['projects.id'], name=op.f('fk_benchmarks_project_id_projects')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_benchmarks'))
     )
     op.create_index(op.f('ix_benchmarks_project_id'), 'benchmarks', ['project_id'], unique=False)
     op.create_table('configuration_versions',
@@ -244,9 +244,9 @@ def upgrade() -> None:
     sa.Column('value', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('created_by_id', sa.UUID(), nullable=True),
-    sa.ForeignKeyConstraint(['configuration_id'], ['configurations.id'], ),
-    sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['configuration_id'], ['configurations.id'], name=op.f('fk_configuration_versions_configuration_id_configurations')),
+    sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], name=op.f('fk_configuration_versions_created_by_id_users')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_configuration_versions'))
     )
     op.create_table('dataset_versions',
     sa.Column('id', sa.Uuid(), nullable=False),
@@ -258,9 +258,9 @@ def upgrade() -> None:
     sa.Column('schema_def', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('created_by_id', sa.UUID(), nullable=True),
-    sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['dataset_id'], ['datasets.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], name=op.f('fk_dataset_versions_created_by_id_users')),
+    sa.ForeignKeyConstraint(['dataset_id'], ['datasets.id'], name=op.f('fk_dataset_versions_dataset_id_datasets')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_dataset_versions'))
     )
     op.create_table('evaluation_sessions',
     sa.Column('project_id', sa.UUID(), nullable=False),
@@ -274,8 +274,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['project_id'], ['projects.id'], name=op.f('fk_evaluation_sessions_project_id_projects')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_evaluation_sessions'))
     )
     op.create_index(op.f('ix_evaluation_sessions_project_id'), 'evaluation_sessions', ['project_id'], unique=False)
     op.create_table('evaluation_strategy_versions',
@@ -285,9 +285,9 @@ def upgrade() -> None:
     sa.Column('parameters', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('created_by_id', sa.UUID(), nullable=True),
-    sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['strategy_id'], ['evaluation_strategies.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], name=op.f('fk_evaluation_strategy_versions_created_by_id_users')),
+    sa.ForeignKeyConstraint(['strategy_id'], ['evaluation_strategies.id'], name=op.f('fk_evaluation_strategy_versions_strategy_id_evaluation_strategies')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_evaluation_strategy_versions'))
     )
     op.create_table('execution_adapter_versions',
     sa.Column('id', sa.Uuid(), nullable=False),
@@ -296,9 +296,9 @@ def upgrade() -> None:
     sa.Column('config', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('created_by_id', sa.UUID(), nullable=True),
-    sa.ForeignKeyConstraint(['adapter_id'], ['execution_adapters.id'], ),
-    sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['adapter_id'], ['execution_adapters.id'], name=op.f('fk_execution_adapter_versions_adapter_id_execution_adapters')),
+    sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], name=op.f('fk_execution_adapter_versions_created_by_id_users')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_execution_adapter_versions'))
     )
     op.create_table('notifications',
     sa.Column('user_id', sa.UUID(), nullable=False),
@@ -312,8 +312,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_notifications_user_id_users')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_notifications'))
     )
     op.create_index(op.f('ix_notifications_user_id'), 'notifications', ['user_id'], unique=False)
     op.create_table('reports',
@@ -326,23 +326,23 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['project_id'], ['projects.id'], name=op.f('fk_reports_project_id_projects')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_reports'))
     )
     op.create_index(op.f('ix_reports_project_id'), 'reports', ['project_id'], unique=False)
     op.create_table('benchmark_capability_link',
     sa.Column('benchmark_id', sa.UUID(), nullable=False),
     sa.Column('capability_id', sa.UUID(), nullable=False),
-    sa.ForeignKeyConstraint(['benchmark_id'], ['benchmarks.id'], ),
-    sa.ForeignKeyConstraint(['capability_id'], ['capabilities.id'], ),
-    sa.PrimaryKeyConstraint('benchmark_id', 'capability_id')
+    sa.ForeignKeyConstraint(['benchmark_id'], ['benchmarks.id'], name=op.f('fk_benchmark_capability_link_benchmark_id_benchmarks')),
+    sa.ForeignKeyConstraint(['capability_id'], ['capabilities.id'], name=op.f('fk_benchmark_capability_link_capability_id_capabilities')),
+    sa.PrimaryKeyConstraint('benchmark_id', 'capability_id', name=op.f('pk_benchmark_capability_link'))
     )
     op.create_table('benchmark_category_link',
     sa.Column('benchmark_id', sa.UUID(), nullable=False),
     sa.Column('category_id', sa.UUID(), nullable=False),
-    sa.ForeignKeyConstraint(['benchmark_id'], ['benchmarks.id'], ),
-    sa.ForeignKeyConstraint(['category_id'], ['benchmark_categories.id'], ),
-    sa.PrimaryKeyConstraint('benchmark_id', 'category_id')
+    sa.ForeignKeyConstraint(['benchmark_id'], ['benchmarks.id'], name=op.f('fk_benchmark_category_link_benchmark_id_benchmarks')),
+    sa.ForeignKeyConstraint(['category_id'], ['benchmark_categories.id'], name=op.f('fk_benchmark_category_link_category_id_benchmark_categories')),
+    sa.PrimaryKeyConstraint('benchmark_id', 'category_id', name=op.f('pk_benchmark_category_link'))
     )
     op.create_table('benchmark_lifecycles',
     sa.Column('id', sa.Uuid(), nullable=False),
@@ -350,9 +350,9 @@ def upgrade() -> None:
     sa.Column('state', postgresql.ENUM('PROPOSAL', 'DESIGN', 'DRAFT', 'VALIDATION', 'REVIEW', 'PUBLISHED', 'ARCHIVE', name='benchmark_state'), nullable=False),
     sa.Column('changed_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('changed_by_id', sa.UUID(), nullable=True),
-    sa.ForeignKeyConstraint(['benchmark_id'], ['benchmarks.id'], ),
-    sa.ForeignKeyConstraint(['changed_by_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['benchmark_id'], ['benchmarks.id'], name=op.f('fk_benchmark_lifecycles_benchmark_id_benchmarks')),
+    sa.ForeignKeyConstraint(['changed_by_id'], ['users.id'], name=op.f('fk_benchmark_lifecycles_changed_by_id_users')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_benchmark_lifecycles'))
     )
     op.create_table('benchmark_versions',
     sa.Column('id', sa.Uuid(), nullable=False),
@@ -360,9 +360,9 @@ def upgrade() -> None:
     sa.Column('version_string', sa.String(length=50), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('created_by_id', sa.UUID(), nullable=True),
-    sa.ForeignKeyConstraint(['benchmark_id'], ['benchmarks.id'], ),
-    sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['benchmark_id'], ['benchmarks.id'], name=op.f('fk_benchmark_versions_benchmark_id_benchmarks')),
+    sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], name=op.f('fk_benchmark_versions_created_by_id_users')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_benchmark_versions'))
     )
     op.create_table('report_versions',
     sa.Column('id', sa.Uuid(), nullable=False),
@@ -372,10 +372,10 @@ def upgrade() -> None:
     sa.Column('evaluation_session_id', sa.UUID(), nullable=True),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.Column('created_by_id', sa.UUID(), nullable=True),
-    sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['evaluation_session_id'], ['evaluation_sessions.id'], ),
-    sa.ForeignKeyConstraint(['report_id'], ['reports.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['created_by_id'], ['users.id'], name=op.f('fk_report_versions_created_by_id_users')),
+    sa.ForeignKeyConstraint(['evaluation_session_id'], ['evaluation_sessions.id'], name=op.f('fk_report_versions_evaluation_session_id_evaluation_sessions')),
+    sa.ForeignKeyConstraint(['report_id'], ['reports.id'], name=op.f('fk_report_versions_report_id_reports')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_report_versions'))
     )
     op.create_table('atlas_runs',
     sa.Column('session_id', sa.UUID(), nullable=False),
@@ -392,10 +392,10 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['adapter_version_id'], ['execution_adapter_versions.id'], ),
-    sa.ForeignKeyConstraint(['benchmark_version_id'], ['benchmark_versions.id'], ),
-    sa.ForeignKeyConstraint(['session_id'], ['evaluation_sessions.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['adapter_version_id'], ['execution_adapter_versions.id'], name=op.f('fk_atlas_runs_adapter_version_id_execution_adapter_versions')),
+    sa.ForeignKeyConstraint(['benchmark_version_id'], ['benchmark_versions.id'], name=op.f('fk_atlas_runs_benchmark_version_id_benchmark_versions')),
+    sa.ForeignKeyConstraint(['session_id'], ['evaluation_sessions.id'], name=op.f('fk_atlas_runs_session_id_evaluation_sessions')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_atlas_runs'))
     )
     op.create_index(op.f('ix_atlas_runs_session_id'), 'atlas_runs', ['session_id'], unique=False)
     op.create_table('report_metrics',
@@ -409,8 +409,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['report_version_id'], ['report_versions.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['report_version_id'], ['report_versions.id'], name=op.f('fk_report_metrics_report_version_id_report_versions')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_report_metrics'))
     )
     op.create_table('tasks',
     sa.Column('benchmark_version_id', sa.Uuid(), nullable=False),
@@ -424,8 +424,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['benchmark_version_id'], ['benchmark_versions.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['benchmark_version_id'], ['benchmark_versions.id'], name=op.f('fk_tasks_benchmark_version_id_benchmark_versions')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_tasks'))
     )
     op.create_table('artifacts',
     sa.Column('atlas_run_id', sa.UUID(), nullable=False),
@@ -439,8 +439,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['atlas_run_id'], ['atlas_runs.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['atlas_run_id'], ['atlas_runs.id'], name=op.f('fk_artifacts_atlas_run_id_atlas_runs')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_artifacts'))
     )
     op.create_table('capability_profiles',
     sa.Column('atlas_run_id', sa.UUID(), nullable=False),
@@ -453,9 +453,9 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['atlas_run_id'], ['atlas_runs.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('atlas_run_id')
+    sa.ForeignKeyConstraint(['atlas_run_id'], ['atlas_runs.id'], name=op.f('fk_capability_profiles_atlas_run_id_atlas_runs')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_capability_profiles')),
+    sa.UniqueConstraint('atlas_run_id', name=op.f('uq_capability_profiles_atlas_run_id'))
     )
     op.create_table('constraints',
     sa.Column('task_id', sa.UUID(), nullable=False),
@@ -468,8 +468,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['task_id'], ['tasks.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['task_id'], ['tasks.id'], name=op.f('fk_constraints_task_id_tasks')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_constraints'))
     )
     op.create_table('evaluation_rules',
     sa.Column('task_id', sa.UUID(), nullable=False),
@@ -481,8 +481,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['task_id'], ['tasks.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['task_id'], ['tasks.id'], name=op.f('fk_evaluation_rules_task_id_tasks')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_evaluation_rules'))
     )
     op.create_table('prompts',
     sa.Column('task_id', sa.UUID(), nullable=False),
@@ -495,8 +495,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['task_id'], ['tasks.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['task_id'], ['tasks.id'], name=op.f('fk_prompts_task_id_tasks')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_prompts'))
     )
     op.create_table('test_cases',
     sa.Column('task_id', sa.UUID(), nullable=False),
@@ -510,8 +510,8 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['task_id'], ['tasks.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['task_id'], ['tasks.id'], name=op.f('fk_test_cases_task_id_tasks')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_test_cases'))
     )
     op.create_table('capability_scores',
     sa.Column('capability_profile_id', sa.UUID(), nullable=False),
@@ -524,9 +524,9 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['capability_id'], ['capabilities.id'], ),
-    sa.ForeignKeyConstraint(['capability_profile_id'], ['capability_profiles.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['capability_id'], ['capabilities.id'], name=op.f('fk_capability_scores_capability_id_capabilities')),
+    sa.ForeignKeyConstraint(['capability_profile_id'], ['capability_profiles.id'], name=op.f('fk_capability_scores_capability_profile_id_capability_profiles')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_capability_scores'))
     )
     op.create_table('model_outputs',
     sa.Column('atlas_run_id', sa.UUID(), nullable=False),
@@ -541,9 +541,9 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['atlas_run_id'], ['atlas_runs.id'], ),
-    sa.ForeignKeyConstraint(['test_case_id'], ['test_cases.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['atlas_run_id'], ['atlas_runs.id'], name=op.f('fk_model_outputs_atlas_run_id_atlas_runs')),
+    sa.ForeignKeyConstraint(['test_case_id'], ['test_cases.id'], name=op.f('fk_model_outputs_test_case_id_test_cases')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_model_outputs'))
     )
     op.create_index(op.f('ix_model_outputs_atlas_run_id'), 'model_outputs', ['atlas_run_id'], unique=False)
     op.create_index(op.f('ix_model_outputs_test_case_id'), 'model_outputs', ['test_case_id'], unique=False)
@@ -566,11 +566,11 @@ def upgrade() -> None:
     sa.Column('updated_by_id', sa.UUID(), nullable=True),
     sa.Column('archived_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('version_number', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['judge_id'], ['judges.id'], ),
-    sa.ForeignKeyConstraint(['model_output_id'], ['model_outputs.id'], ),
-    sa.ForeignKeyConstraint(['strategy_version_id'], ['evaluation_strategy_versions.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('model_output_id')
+    sa.ForeignKeyConstraint(['judge_id'], ['judges.id'], name=op.f('fk_evaluation_results_judge_id_judges')),
+    sa.ForeignKeyConstraint(['model_output_id'], ['model_outputs.id'], name=op.f('fk_evaluation_results_model_output_id_model_outputs')),
+    sa.ForeignKeyConstraint(['strategy_version_id'], ['evaluation_strategy_versions.id'], name=op.f('fk_evaluation_results_strategy_version_id_evaluation_strategy_versions')),
+    sa.PrimaryKeyConstraint('id', name=op.f('pk_evaluation_results')),
+    sa.UniqueConstraint('model_output_id', name=op.f('uq_evaluation_results_model_output_id'))
     )
     # ### end Alembic commands ###
 
