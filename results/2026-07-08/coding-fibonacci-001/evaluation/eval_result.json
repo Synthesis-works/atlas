@@ -1,0 +1,16 @@
+{
+  "id": "27fc963f-f41c-4b28-9ad7-236fca5904b9",
+  "benchmark_id": "coding-fibonacci-001",
+  "task_id": "task-fibonacci-1",
+  "provider": "ollama",
+  "model": "qwen2.5-coder:1.5b",
+  "judge": "numeric_match",
+  "status": "FAIL",
+  "expected": "5",
+  "actual": "8",
+  "normalized_output": "8",
+  "latency_ms": 2090,
+  "score": 0.0,
+  "confidence": 1.0,
+  "timestamp": "2026-07-08T20:33:30.019430"
+}

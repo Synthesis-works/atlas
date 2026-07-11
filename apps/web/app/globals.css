@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+}
+
+@layer base {
+  :root {
+    --background: #fbfbfc;
+    --foreground: #0f1115;
+    
+    --primary: #000000;
+    --primary-foreground: #ffffff;
+    
+    --card: #ffffff;
+    --card-foreground: #0f1115;
+    
+    --border: #e2e4e9;
+    --muted: #f4f5f8;
+    --muted-foreground: #6b7280;
+    
+    --accent: #f4f5f8;
+    --accent-foreground: #0f1115;
+    
+    --success: #10b981;
+    --success-foreground: #ffffff;
+    --warning: #f59e0b;
+    --warning-foreground: #ffffff;
+    --danger: #ef4444;
+    --danger-foreground: #ffffff;
+  }
+
+  .dark {
+    --background: #000000;
+    --foreground: #ededed;
+    
+    --primary: #ffffff;
+    --primary-foreground: #000000;
+    
+    --card: #0a0a0a;
+    --card-foreground: #ededed;
+    
+    --border: #222222;
+    --muted: #111111;
+    --muted-foreground: #888888;
+    
+    --accent: #111111;
+    --accent-foreground: #ededed;
+    
+    --success: #059669;
+    --warning: #d97706;
+    --danger: #dc2626;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
