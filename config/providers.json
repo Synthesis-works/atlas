@@ -12,5 +12,10 @@
         "model": "grok-2-1212",
         "api_key_env": "XAI_API_KEY",
         "base_url": "https://api.x.ai/v1"
+    },
+    "mistral": {
+        "model": "mistral-small-latest",
+        "api_key_env": "MISTRAL_API_KEY",
+        "base_url": "https://api.mistral.ai/v1"
     }
 }
