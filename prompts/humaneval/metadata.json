@@ -1,0 +1,34 @@
+{
+  "prompts": [
+    {
+      "version": "v1",
+      "file": "v1.md",
+      "changes": [
+        "baseline prompt",
+        "requests code only without explanation"
+      ],
+      "date": "2026-07-08"
+    },
+    {
+      "version": "v2",
+      "file": "v2.md",
+      "changes": [
+        "signature preservation instruction",
+        "do not rename parameters instruction",
+        "explicit import request"
+      ],
+      "date": "2026-07-09"
+    },
+    {
+      "version": "v3",
+      "file": "v3.md",
+      "changes": [
+        "docstring reasoning",
+        "treat examples as executable specifications",
+        "verify implementation satisfies examples"
+      ],
+      "date": "2026-07-10",
+      "status": "LOCKED"
+    }
+  ]
+}
