@@ -1,0 +1,16 @@
+{
+    "ollama": {
+        "model": "qwen2.5-coder:1.5b",
+        "base_url": "http://127.0.0.1:11434"
+    },
+    "gemini": {
+        "model": "gemini-2.5-flash",
+        "api_key_env": "GEMINI_API_KEY",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/models"
+    },
+    "grok": {
+        "model": "grok-2-1212",
+        "api_key_env": "XAI_API_KEY",
+        "base_url": "https://api.x.ai/v1"
+    }
+}

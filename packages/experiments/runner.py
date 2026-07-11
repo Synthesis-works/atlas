@@ -25,13 +25,17 @@ class ExperimentRunner:
         # Load tasks
         tasks = []
         pack_name = exp_config.dataset.lower()
-        if pack_name == "humaneval":
+        if exp_config.dataset.lower() == "humaneval":
             from packages.datasets.importers.humaneval import HumanEvalImporter
             pack = HumanEvalImporter().import_pack()
             tasks = pack.tasks
-        elif pack_name == "mbpp":
+        elif exp_config.dataset.lower() == "mbpp":
             from packages.datasets.importers.mbpp import MBPPImporter
             pack = MBPPImporter().import_pack()
+            tasks = pack.tasks
+        elif exp_config.dataset.lower() == "validation":
+            from packages.datasets.importers.validation import ValidationImporter
+            pack = ValidationImporter().import_pack()
             tasks = pack.tasks
         else:
             raise ValueError(f"Unknown dataset: {exp_config.dataset}")
@@ -137,6 +141,10 @@ class ExperimentRunner:
             from packages.datasets.importers.mbpp import MBPPImporter
             pack = MBPPImporter().import_pack()
             self.orchestrator.pack_tasks = {t.task_id: t for t in pack.tasks}
+        elif pack_name == "validation":
+            from packages.datasets.importers.validation import ValidationImporter
+            pack = ValidationImporter().import_pack()
+            self.orchestrator.pack_tasks = {t.task_id: t for t in pack.tasks}
             
         total_tasks = len(self.orchestrator.pack_tasks)
         if exp_config.max_tasks is not None:
@@ -165,9 +173,9 @@ class ExperimentRunner:
                 # Fetch result and update UI
                 res_path = os.path.join(self.base_dir, exp_id, "tasks", f"{task_id}.json")
                 if os.path.exists(res_path):
-                    from packages.orchestrator.models import TaskResult
+                    from packages.orchestrator.models import TaskRunResult
                     with open(res_path, "r") as f:
-                        res_obj = TaskResult(**json.load(f))
+                        res_obj = TaskRunResult(**json.load(f))
                         ui.update(res_obj)
                         ui.render()
                 

@@ -1,8 +1,33 @@
 {
-  "mbpp_baseline": {
-    "v1": {
-      "changes": "Baseline prompt for MBPP, adapted from HumanEval v3. Focuses on programming problem logic instead of just function completion.",
-      "previous_variant": null
+  "prompts": [
+    {
+      "version": "v1",
+      "file": "v1.md",
+      "changes": [
+        "baseline prompt",
+        "requests code only without explanation"
+      ],
+      "status": "LOCKED"
+    },
+    {
+      "version": "v2",
+      "file": "v2.md",
+      "changes": [
+        "signature preservation instruction",
+        "do not rename parameters instruction",
+        "explicit import request"
+      ],
+      "status": "LOCKED"
+    },
+    {
+      "version": "v3",
+      "file": "v3.md",
+      "changes": [
+        "docstring reasoning",
+        "treat examples as executable specifications",
+        "verify implementation satisfies examples"
+      ],
+      "status": "LOCKED"
     }
-  }
+  ]
 }

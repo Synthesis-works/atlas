@@ -52,6 +52,31 @@ class ProviderAdapter:
             "ollama": OllamaClient(),
             "mock": MockClient()
         }
+        self._load_providers()
+
+    def _load_providers(self):
+        import os
+        import json
+        config_path = os.path.join("config", "providers.json")
+        if os.path.exists(config_path):
+            with open(config_path, "r") as f:
+                providers = json.load(f)
+                
+            if "gemini" in providers:
+                from .gemini import GeminiClient
+                conf = providers["gemini"]
+                self.clients["gemini"] = GeminiClient(
+                    base_url=conf.get("base_url", "https://generativelanguage.googleapis.com/v1beta/models"),
+                    api_key_env=conf.get("api_key_env", "GEMINI_API_KEY")
+                )
+                
+            if "grok" in providers:
+                from .grok import GrokClient
+                conf = providers["grok"]
+                self.clients["grok"] = GrokClient(
+                    base_url=conf.get("base_url", "https://api.x.ai/v1"),
+                    api_key_env=conf.get("api_key_env", "XAI_API_KEY")
+                )
 
     def register_client(self, provider: str, client: BaseLLMClient):
         """Register a new provider client."""
