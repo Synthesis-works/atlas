@@ -41,6 +41,8 @@ def main():
                 os.environ["GEMINI_API_KEY"] = keys["gemini"]
             if args.provider == "grok" and "xai" in keys:
                 os.environ["XAI_API_KEY"] = keys["xai"]
+            if args.provider == "mistral" and "mistral" in keys:
+                os.environ["MISTRAL_API_KEY"] = keys["mistral"]
     except Exception as e:
         print(f"Failed to load api_keys_db: {e}")
         

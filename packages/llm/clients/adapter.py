@@ -77,6 +77,14 @@ class ProviderAdapter:
                     base_url=conf.get("base_url", "https://api.x.ai/v1"),
                     api_key_env=conf.get("api_key_env", "XAI_API_KEY")
                 )
+                
+            if "mistral" in providers:
+                from .mistral import MistralClient
+                conf = providers["mistral"]
+                self.clients["mistral"] = MistralClient(
+                    base_url=conf.get("base_url", "https://api.mistral.ai/v1"),
+                    api_key_env=conf.get("api_key_env", "MISTRAL_API_KEY")
+                )
 
     def register_client(self, provider: str, client: BaseLLMClient):
         """Register a new provider client."""
