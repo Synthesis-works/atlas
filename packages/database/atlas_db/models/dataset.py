@@ -1,7 +1,7 @@
 import uuid
 import enum
 from datetime import datetime
-from sqlalchemy import String, ForeignKey, DateTime, Integer
+from sqlalchemy import String, ForeignKey, DateTime, Integer, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB, ENUM
 from atlas_db.core.base import Base, BaseMixin, utcnow
@@ -14,7 +14,7 @@ class ValidationStatus(str, enum.Enum):
 class DatasetRegistry(Base, BaseMixin):
     __tablename__ = "dataset_registries"
 
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
 
     datasets: Mapped[list["Dataset"]] = relationship("Dataset", back_populates="registry")
@@ -22,7 +22,7 @@ class DatasetRegistry(Base, BaseMixin):
 class DatasetSource(Base, BaseMixin):
     __tablename__ = "dataset_sources"
 
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     url: Mapped[str | None] = mapped_column(String, nullable=True)
     type: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
@@ -31,7 +31,7 @@ class DatasetSource(Base, BaseMixin):
 class DatasetLicense(Base, BaseMixin):
     __tablename__ = "dataset_licenses"
 
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     url: Mapped[str | None] = mapped_column(String, nullable=True)
 
     datasets: Mapped[list["Dataset"]] = relationship("Dataset", back_populates="license")
@@ -42,7 +42,7 @@ class Dataset(Base, BaseMixin):
     registry_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("dataset_registries.id"), nullable=False, index=True)
     source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("dataset_sources.id"), nullable=False, index=True)
     license_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("dataset_licenses.id"), nullable=False, index=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
 
     registry: Mapped["DatasetRegistry"] = relationship("DatasetRegistry", back_populates="datasets")
@@ -72,3 +72,7 @@ class DatasetVersion(Base):
     dataset: Mapped["Dataset"] = relationship("Dataset", back_populates="versions")
 
     __mapper_args__ = {"version_id_col": version_number}
+
+    __table_args__ = (
+        UniqueConstraint("dataset_id", "version_string", name="uq_dataset_version"),
+    )

@@ -4,6 +4,6 @@ from .dataset import DatasetRepository, DatasetVersionRepository, DatasetRegistr
 from .authoring import BenchmarkRepository, BenchmarkVersionRepository, BenchmarkLifecycleRepository, BenchmarkCategoryRepository, CapabilityRepository
 from .tasks import TaskRepository, PromptRepository, TestCaseRepository, ConstraintRepository, EvaluationRuleRepository
 from .execution import ExecutionAdapterRepository, ExecutionAdapterVersionRepository, EvaluationSessionRepository, AtlasRunRepository, ModelOutputRepository, ArtifactRepository
-from .evaluation import EvaluationStrategyRepository, EvaluationStrategyVersionRepository, JudgeRepository, EvaluationResultRepository, CapabilityProfileRepository, CapabilityScoreRepository
+from .evaluation import EvaluationStrategyRepository, EvaluationStrategyVersionRepository, JudgeRepository, EvaluationResultRepository, EvaluationResultDetailRepository, CapabilityProfileRepository, CapabilityScoreRepository
 from .reporting import ReportRepository, ReportVersionRepository, ReportMetricRepository
 from .system import AuditLogRepository, NotificationRepository

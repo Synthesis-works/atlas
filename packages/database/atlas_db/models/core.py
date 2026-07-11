@@ -1,6 +1,6 @@
 import uuid
 import enum
-from sqlalchemy import String, Boolean, ForeignKey, DateTime, CheckConstraint
+from sqlalchemy import String, Boolean, ForeignKey, DateTime, CheckConstraint, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB, ENUM
 from atlas_db.core.base import Base, BaseMixin, utcnow
@@ -74,3 +74,7 @@ class ConfigurationVersion(Base):
     created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     
     configuration: Mapped["Configuration"] = relationship("Configuration", back_populates="versions")
+
+    __table_args__ = (
+        UniqueConstraint("configuration_id", "version_string", name="uq_configuration_version"),
+    )

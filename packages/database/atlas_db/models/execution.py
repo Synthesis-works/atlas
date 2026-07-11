@@ -1,7 +1,7 @@
 import uuid
 import enum
 from datetime import datetime
-from sqlalchemy import String, ForeignKey, DateTime, Integer, BigInteger
+from sqlalchemy import String, ForeignKey, DateTime, Integer, BigInteger, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB, ENUM
 from atlas_db.core.base import Base, BaseMixin, utcnow
@@ -46,6 +46,10 @@ class ExecutionAdapterVersion(Base):
 
     adapter: Mapped["ExecutionAdapter"] = relationship("ExecutionAdapter", back_populates="versions")
 
+    __table_args__ = (
+        UniqueConstraint("adapter_id", "version_string", name="uq_adapter_version"),
+    )
+
 class EvaluationSession(Base, BaseMixin):
     __tablename__ = "evaluation_sessions"
 
@@ -62,7 +66,7 @@ class AtlasRun(Base, BaseMixin):
     session_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("evaluation_sessions.id"), nullable=False, index=True)
     benchmark_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("benchmark_versions.id"), nullable=False, index=True)
     adapter_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("execution_adapter_versions.id"), nullable=False, index=True)
-    target_model: Mapped[str] = mapped_column(String(255), nullable=False)
+    target_model: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     status: Mapped[RunStatus] = mapped_column(
         ENUM(RunStatus, name="run_status"),
         nullable=False,
@@ -75,10 +79,14 @@ class AtlasRun(Base, BaseMixin):
     model_outputs: Mapped[list["ModelOutput"]] = relationship("ModelOutput", back_populates="atlas_run")
     artifacts: Mapped[list["Artifact"]] = relationship("Artifact", back_populates="atlas_run")
 
+    __table_args__ = (
+        Index("ix_atlas_runs_status_created_at", "status", "created_at"),
+    )
+
 class ModelOutput(Base, BaseMixin):
     __tablename__ = "model_outputs"
 
-    atlas_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("atlas_runs.id"), nullable=False, index=True)
+    atlas_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("atlas_runs.id", ondelete="CASCADE"), nullable=False, index=True)
     test_case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("test_cases.id"), nullable=False, index=True)
     raw_output: Mapped[str] = mapped_column(String, nullable=False)
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -90,7 +98,7 @@ class ModelOutput(Base, BaseMixin):
 class Artifact(Base, BaseMixin):
     __tablename__ = "artifacts"
 
-    atlas_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("atlas_runs.id"), nullable=False, index=True)
+    atlas_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("atlas_runs.id", ondelete="CASCADE"), nullable=False, index=True)
     type: Mapped[ArtifactType] = mapped_column(
         ENUM(ArtifactType, name="artifact_type"),
         nullable=False

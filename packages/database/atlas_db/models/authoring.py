@@ -1,7 +1,7 @@
 import uuid
 import enum
 from datetime import datetime
-from sqlalchemy import String, ForeignKey, DateTime, Table, Column
+from sqlalchemy import String, ForeignKey, DateTime, Table, Column, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import ENUM
 from atlas_db.core.base import Base, BaseMixin, utcnow
@@ -53,14 +53,14 @@ class Benchmark(Base, BaseMixin):
     __tablename__ = "benchmarks"
 
     project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     objective: Mapped[str | None] = mapped_column(String, nullable=True)
     difficulty: Mapped[str | None] = mapped_column(String(50), nullable=True)
     domain: Mapped[str | None] = mapped_column(String(100), nullable=True)
     type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     visibility: Mapped[str | None] = mapped_column(String(50), nullable=True)
     author_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
-    status: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    status: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
 
     categories: Mapped[list["BenchmarkCategory"]] = relationship(
         "BenchmarkCategory", secondary=benchmark_category_link, back_populates="benchmarks"
@@ -75,7 +75,7 @@ class BenchmarkLifecycle(Base):
     __tablename__ = "benchmark_lifecycles"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    benchmark_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("benchmarks.id"), nullable=False)
+    benchmark_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("benchmarks.id", ondelete="CASCADE"), nullable=False)
     state: Mapped[BenchmarkState] = mapped_column(
         ENUM(BenchmarkState, name="benchmark_state"),
         nullable=False
@@ -89,9 +89,13 @@ class BenchmarkVersion(Base):
     __tablename__ = "benchmark_versions"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    benchmark_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("benchmarks.id"), nullable=False)
+    benchmark_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("benchmarks.id", ondelete="CASCADE"), nullable=False)
     version_string: Mapped[str] = mapped_column(String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
 
     benchmark: Mapped["Benchmark"] = relationship("Benchmark", back_populates="versions")
+
+    __table_args__ = (
+        UniqueConstraint("benchmark_id", "version_string", name="uq_benchmark_version"),
+    )
