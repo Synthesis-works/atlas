@@ -1,0 +1,20 @@
+from typing import Dict, Any
+from packages.orchestrator.pipeline.base import PipelineStage
+from packages.orchestrator.models import TaskRunResult, TaskRunState
+from packages.llm.prompt_builder import PromptBuilder
+
+class PromptStage(PipelineStage):
+    def execute(self, context: Dict[str, Any], result: TaskRunResult) -> None:
+        if result.state == TaskRunState.FAILED:
+            return
+            
+        task = context["task"]
+        prompt_version = getattr(context.get("job_config"), "prompt_version", "v1")
+        pack_name = context.get("pack_name")
+        try:
+            prompt = PromptBuilder.build_from_task(task, version=prompt_version, benchmark_pack=pack_name)
+            context["prompt"] = prompt
+            result.prompt = prompt.user
+        except Exception as e:
+            result.state = TaskRunState.FAILED
+            result.error_message = f"Failed to build prompt: {str(e)}"

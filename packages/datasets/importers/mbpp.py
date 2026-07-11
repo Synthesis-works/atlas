@@ -8,11 +8,18 @@ from packages.benchmark.models.task import Task, EvaluationConfig
 
 class MBPPMapper(BaseMapper):
     def map(self, raw_record: Any) -> Task:
+        text = raw_record["text"]
+        tests = raw_record.get("test_list", [])
+        
+        example_str = ""
+        if tests:
+            example_str = f"\n\nExample:\n{tests[0]}"
+            
         return Task(
             task_id=f"mbpp-{raw_record['task_id']}",
             title=f"MBPP {raw_record['task_id']}",
-            description=raw_record["text"],
-            input=raw_record["text"],
+            description=text,
+            input=text + example_str,
             expected_output=raw_record["code"],
             hidden_tests=raw_record.get("test_list", []),
             evaluation=EvaluationConfig(

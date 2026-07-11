@@ -16,7 +16,7 @@ class HumanEvalMapper(BaseMapper):
             description=f"Complete the Python function `{raw_record['entry_point']}`.",
             input=raw_record["prompt"],
             expected_output=raw_record["canonical_solution"],
-            hidden_tests=raw_record["test"],
+            hidden_tests=raw_record["test"] + f"\ncheck({raw_record['entry_point']})\n",
             evaluation=EvaluationConfig(
                 extractor="code_block",
                 normalizer="noop",

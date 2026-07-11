@@ -57,6 +57,8 @@ class PythonRuntime(BaseRuntime):
                 
                 if exit_code != 0 and "ImportError" in stderr:
                     status = ExecutionStatus.IMPORT_ERROR
+                elif exit_code != 0 and "AssertionError" in stderr:
+                    status = ExecutionStatus.SUCCESS # Execution succeeded but logic failed
                 elif exit_code != 0:
                     status = ExecutionStatus.RUNTIME_ERROR
 

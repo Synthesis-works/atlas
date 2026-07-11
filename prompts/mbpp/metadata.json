@@ -1,0 +1,8 @@
+{
+  "mbpp_baseline": {
+    "v1": {
+      "changes": "Baseline prompt for MBPP, adapted from HumanEval v3. Focuses on programming problem logic instead of just function completion.",
+      "previous_variant": null
+    }
+  }
+}
