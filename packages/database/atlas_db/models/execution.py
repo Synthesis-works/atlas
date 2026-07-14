@@ -30,6 +30,7 @@ class WorkerStatus(PyEnum):
     REGISTERED = "REGISTERED"
     READY = "READY"
     BUSY = "BUSY"
+    UNHEALTHY = "UNHEALTHY"
     OFFLINE = "OFFLINE"
 
 class EventType(PyEnum):
@@ -50,6 +51,16 @@ class EventType(PyEnum):
     WORKER_HEARTBEAT = "WORKER_HEARTBEAT"
     WORKER_REGISTERED = "WORKER_REGISTERED"
     WORKER_OFFLINE = "WORKER_OFFLINE"
+    WORKER_LOST = "WORKER_LOST"
+    TASK_SCHEDULED = "TASK_SCHEDULED"
+    TASK_DEFERRED = "TASK_DEFERRED"
+    TASK_REJECTED_BY_POLICY = "TASK_REJECTED_BY_POLICY"
+    LEASE_EXPIRED = "LEASE_EXPIRED"
+    TASK_REQUEUED = "TASK_REQUEUED"
+    RUN_TIMEOUT = "RUN_TIMEOUT"
+    RECOVERY_STARTED = "RECOVERY_STARTED"
+    RECOVERY_COMPLETED = "RECOVERY_COMPLETED"
+    RECOVERY_SKIPPED = "RECOVERY_SKIPPED"
 
 class ArtifactType(PyEnum):
     LOG = "LOG"
@@ -158,6 +169,7 @@ class AtlasTask(Base, BaseMixin):
     
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     attempt_number: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0, index=True)
     
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -185,7 +197,6 @@ class ModelOutput(Base, BaseMixin):
 
     atlas_run: Mapped["AtlasRun"] = relationship("AtlasRun", back_populates="model_outputs")
     task: Mapped["AtlasTask"] = relationship("AtlasTask", back_populates="model_output")
-    evaluation_result: Mapped["EvaluationResult"] = relationship("EvaluationResult", back_populates="model_output", uselist=False)
 
 class Artifact(Base, BaseMixin):
     __tablename__ = "artifacts"
@@ -203,7 +214,7 @@ class Artifact(Base, BaseMixin):
 class RunEvent(Base, BaseMixin):
     __tablename__ = "run_events"
     
-    atlas_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("atlas_runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    atlas_run_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("atlas_runs.id", ondelete="CASCADE"), nullable=True, index=True)
     atlas_task_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("atlas_tasks.id", ondelete="CASCADE"), nullable=True, index=True)
     execution_worker_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("execution_workers.id", ondelete="SET NULL"), nullable=True, index=True)
     

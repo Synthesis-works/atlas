@@ -1,6 +1,15 @@
 # Changelog
 
 All notable changes to Project Atlas will be documented in this file.
+## [v0.6-evaluation-core] - 2026-07-14
+### Added
+- **Evaluation Service Core**: Fully integrated evaluation system independent of execution.
+- **Judge Pipeline**: Mocked LLM Judge Provider and `JudgePipeline` for standardizing evaluation logic.
+- **Metric Engine**: Implemented `MetricEngine` for validation, normalization (0-1), and aggregation of evaluation metrics.
+- **Capability Engine**: Designed deterministic `CapabilityEngine` mapping metric categories to benchmark-agnostic capabilities (e.g., Coding, Reasoning).
+- **Execution Orchestration**: `EvaluationOrchestrator` securely bridges Execution and Evaluation without violating unidirectional flow.
+- **Reporting APIs**: Read-only FastAPI endpoints for evaluations, capability profiles, leaderboards, and metric definitions.
+
 
 ## [v0.4-execution-core] - 2026-07-12
 ### Added

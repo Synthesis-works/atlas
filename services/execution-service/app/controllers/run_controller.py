@@ -1,10 +1,11 @@
 from uuid import UUID
 from sqlalchemy.orm import Session
 from atlas_db.models.execution import AtlasRun, RunStatus, EventType
-from app.commands.run import CreateRunCommand, ValidateRunCommand
+from app.commands.run import CreateRunCommand, ValidateRunCommand, CancelRunCommand, ResumeRunCommand
 from app.events.publisher import EventPublisher
+from datetime import datetime, timezone
 
-class ExecutionController:
+class RunController:
     """
     Orchestrates the lifecycle of Execution Runs.
     Strictly owns: state transitions, validation, retry decisions, transactions, and event creation.
@@ -79,4 +80,52 @@ class ExecutionController:
                 message=run.error_message
             )
             
+        self.db.commit()
+
+    def execute_cancel_run(self, cmd: CancelRunCommand) -> None:
+        run = self.db.query(AtlasRun).filter_by(id=cmd.run_id).with_for_update().one_or_none()
+        if not run:
+            raise ValueError(f"Run {cmd.run_id} not found.")
+            
+        if run.status in [RunStatus.COMPLETED, RunStatus.FAILED, RunStatus.CANCELLED]:
+            raise ValueError(f"Run {cmd.run_id} is already in a terminal state.")
+            
+        # If QUEUED or RUNNING or PAUSED, transition to ABORTING
+        # Workers will naturally drain or fail tasks, and when pending_tasks reaches 0, the task controller
+        # will normally set to COMPLETED. However, we need logic to detect ABORTING and set CANCELLED.
+        # For this slice, we will mark ABORTING, and if running_tasks == 0 right now, we can mark CANCELLED immediately.
+        run.status = RunStatus.ABORTING
+        
+        self.event_publisher.publish_event(
+            run_id=str(run.id),
+            event_type=EventType.RUN_CANCELLED, # Or add RUN_ABORTING, but RUN_CANCELLED covers intent
+            message="Run cancellation requested by user. Transitioning to ABORTING."
+        )
+        
+        if run.running_tasks == 0:
+            run.status = RunStatus.CANCELLED
+            run.completed_at = datetime.now(timezone.utc)
+            self.event_publisher.publish_event(
+                run_id=str(run.id),
+                event_type=EventType.RUN_CANCELLED,
+                message="Run cancelled completely."
+            )
+            
+        self.db.commit()
+
+    def execute_resume_run(self, cmd: ResumeRunCommand) -> None:
+        run = self.db.query(AtlasRun).filter_by(id=cmd.run_id).with_for_update().one_or_none()
+        if not run:
+            raise ValueError(f"Run {cmd.run_id} not found.")
+            
+        if run.status != RunStatus.PAUSED:
+            raise ValueError(f"Run {cmd.run_id} is not PAUSED.")
+            
+        run.status = RunStatus.QUEUED
+        
+        self.event_publisher.publish_event(
+            run_id=str(run.id),
+            event_type=EventType.RUN_RESUMED,
+            message="Run resumed by user."
+        )
         self.db.commit()

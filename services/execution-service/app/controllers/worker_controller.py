@@ -33,17 +33,6 @@ class WorkerController:
         self.db.add(new_worker)
         self.db.flush()
         
-        # Publish Event
-        # Note: Worker events might not be tied to a specific atlas_run_id, 
-        # so we pass a dummy or we adjust the event publisher/model to allow null run_id for worker events.
-        # Wait, the RunEvent model requires atlas_run_id to not be null. 
-        # For system-level worker events, we might need a separate WorkerEvent table or allow atlas_run_id=None.
-        # As per the INVARIANTS, "RunEvent payload must always include event_type, run_id, and timestamp".
-        # So we might not publish a RunEvent for worker registration, OR we need a dummy run_id.
-        # Let's check RunEvent model. `atlas_run_id` is nullable=False.
-        # Thus, WORKER_REGISTERED and WORKER_HEARTBEAT cannot be easily written to RunEvent unless tied to a run.
-        # For now, we will skip writing to run_events for global worker actions, or just persist the worker.
-        
         self.db.commit()
         return new_worker.id
         
@@ -58,14 +47,18 @@ class WorkerController:
         worker.current_load = cmd.current_load
         worker.health = cmd.health
         
-        # If the worker was offline but is heartbeating again, mark it READY
-        if worker.status == WorkerStatus.OFFLINE and cmd.health == "healthy":
-            worker.status = WorkerStatus.READY
+        if worker.status in [WorkerStatus.UNHEALTHY, WorkerStatus.OFFLINE]:
+            worker.status = WorkerStatus.READY # Heartbeat returned
             
         self.db.commit()
 
-    def mark_offline(self, worker_id: UUID) -> None:
-        """Marks a worker as OFFLINE."""
+    def execute_mark_unhealthy(self, worker_id: UUID) -> None:
+        worker = self.db.query(ExecutionWorker).filter_by(id=worker_id).with_for_update().one_or_none()
+        if worker and worker.status in [WorkerStatus.READY, WorkerStatus.BUSY]:
+            worker.status = WorkerStatus.UNHEALTHY
+            self.db.commit()
+
+    def execute_mark_offline(self, worker_id: UUID) -> None:
         worker = self.db.query(ExecutionWorker).filter_by(id=worker_id).with_for_update().one_or_none()
         if worker and worker.status != WorkerStatus.OFFLINE:
             worker.status = WorkerStatus.OFFLINE

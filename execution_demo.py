@@ -25,6 +25,9 @@ from services.execution_service.app.controllers.worker_controller import WorkerC
 from services.execution_service.app.controllers.task_controller import TaskController
 from services.execution_service.app.events.publisher import PostgresEventPublisher
 
+from services.execution_service.app.scheduler.core import AtlasScheduler
+from services.execution_service.app.scheduler.policies import CompositePolicy, GlobalConcurrencyPolicy, PerWorkerConcurrencyPolicy
+
 # --- Demo Setup Helpers ---
 
 def setup_db():
@@ -136,25 +139,38 @@ def demo_happy_path(db_session):
     run_ctrl.execute_validate_run(ValidateRunCommand(run_id=run_id))
     print("[*] Run Validated & Queued.")
     
-    # 6. Execute Tasks
-    for i, tid in enumerate(task_ids, 1):
-        # Claim
-        claimed = task_ctrl.execute_claim_tasks(ClaimTasksCommand(worker_id=worker_id, max_tasks=1))
-        if not claimed:
-            print("  [!] Failed to claim task!")
-            continue
-            
-        claimed_id = claimed[0]
-        print(f"[*] Task {i} Claimed by worker.")
-        
+    # 6. Initialize Scheduler
+    policy = CompositePolicy([
+        GlobalConcurrencyPolicy(max_running=100),
+        PerWorkerConcurrencyPolicy(max_running=2) # Max 2 tasks per worker concurrently
+    ])
+    scheduler = AtlasScheduler(db_session, task_ctrl, publisher, policy)
+    
+    # 7. Run Scheduler Tick (Simulating background loop)
+    print("\n[*] Scheduler Ticking...")
+    scheduler.tick()
+    print(scheduler.metrics.summary())
+    
+    # 8. Execute Tasks (Worker discovers claimed tasks and completes them)
+    # The worker would normally pull its assigned tasks from an endpoint, but we mock it here.
+    running_tasks = db_session.query(AtlasTask).filter_by(assigned_worker_id=worker_id, status=TaskStatus.RUNNING).all()
+    print(f"\n[*] Worker found {len(running_tasks)} RUNNING tasks assigned to it.")
+    
+    for i, t in enumerate(running_tasks, 1):
         # Simulate execution
         time.sleep(0.5)
         
         # Complete
         task_ctrl.execute_complete_task(CompleteTaskCommand(
-            worker_id=worker_id, task_id=claimed_id, raw_output="mock_answer"
+            worker_id=worker_id, task_id=t.id, raw_output=f"mock_answer_{i}"
         ))
-        print(f"[*] Task {i} Completed.")
+        print(f"[*] Task {str(t.id)[:8]} Completed.")
+        
+        # Tick scheduler again because worker freed up capacity!
+        scheduler.tick()
+
+    # Show Results
+    print("\n[*] Final Scheduler Metrics:", scheduler.metrics.summary())
 
     # Show Results
     print_timeline(db_session, run_id)

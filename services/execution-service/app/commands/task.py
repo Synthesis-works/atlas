@@ -6,7 +6,8 @@ class ClaimTasksCommand(BaseModel):
     worker_id: UUID4
     max_tasks: int = 1
     # Filtering attributes (Scheduler will expand these later)
-    target_model: Optional[str] = None 
+    target_model: Optional[str] = None
+    target_task_id: Optional[UUID4] = None
 
 class CompleteTaskCommand(BaseModel):
     worker_id: UUID4

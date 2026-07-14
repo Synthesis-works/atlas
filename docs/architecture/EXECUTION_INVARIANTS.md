@@ -25,3 +25,8 @@ These rules form the "constitution" of the architecture. Whenever changing code,
 * A Worker may only complete or fail tasks that it currently owns.
 * Task ownership is exclusive. A task can only transition from `QUEUED` to `RUNNING` once.
 * Only the Execution Controller may transfer ownership. Atomic claiming prevents race conditions.
+
+## Recovery boundaries
+* Detection never changes state.
+* Recovery decisions never detect failures.
+* ExecutionController is the only component allowed to execute recovery transitions.
