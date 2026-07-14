@@ -21,6 +21,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from atlas_db.core.base import Base
 import atlas_db.models
 
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import JSONB
+
+@compiles(JSONB, "sqlite")
+def compile_jsonb_sqlite(type_, compiler, **kw):
+    return "JSON"
+
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
