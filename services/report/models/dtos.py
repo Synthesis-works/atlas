@@ -57,9 +57,6 @@ class BenchmarkPerformanceDTO(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
-from packages.core.models.pagination import PaginatedResponseDTO
-from packages.core.models.health import SystemHealthDTO, VersionInfoDTO
-
 class HistoryEntryDTO(BaseModel):
     run_id: UUID
     target_model: str
@@ -70,5 +67,18 @@ class HistoryEntryDTO(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
-class PaginatedHistoryResponseDTO(PaginatedResponseDTO[HistoryEntryDTO]):
-    pass
+class PaginatedHistoryResponseDTO(BaseModel):
+    items: List[HistoryEntryDTO]
+    total: int
+    page: int
+    size: int
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class SystemHealthDTO(BaseModel):
+    status: str
+    timestamp: datetime
+
+class VersionInfoDTO(BaseModel):
+    service: str
+    version: str
