@@ -15,6 +15,14 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+class TokenClaims(BaseModel):
+    sub: uuid.UUID
+    membership_id: Optional[uuid.UUID] = None
+    organization_id: Optional[uuid.UUID] = None
+    exp: int
+    iat: int
+    jti: uuid.UUID
+
 class AuthUserRead(BaseModel):
     id: uuid.UUID
     email: EmailStr

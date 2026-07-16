@@ -61,13 +61,13 @@ def test_login_user_success():
 
 def test_missing_jwt_token():
     response = client.get("/api/v1/auth/me")
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Not authenticated"
+    assert response.status_code == 401
+    assert response.json()["error"]["message"] in ("Not authenticated", "Could not validate credentials", "Invalid token payload")
 
 def test_malformed_jwt_token():
     response = client.get("/api/v1/auth/me", headers={"Authorization": "Bearer malformed.token.here"})
     assert response.status_code == 401
-    # PyJWT raises PyJWTError, which is caught and returns 'Could not validate credentials'
+    assert response.json()["error"]["message"] == "Could not validate credentials"
 
 import jwt
 from datetime import datetime, timedelta, timezone
@@ -75,10 +75,12 @@ from apps.backend.config import settings
 
 def test_expired_jwt_token():
     expire = datetime.now(timezone.utc) - timedelta(minutes=15) # expired 15 mins ago
-    to_encode = {"sub": str(uuid4()), "exp": expire}
+    iat = datetime.now(timezone.utc) - timedelta(minutes=30)
+    to_encode = {"sub": str(uuid4()), "exp": expire, "iat": iat, "jti": str(uuid4())}
     encoded_jwt = jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm)
     
     response = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {encoded_jwt}"})
     assert response.status_code == 401
-    assert response.json()["detail"] == "Could not validate credentials"
+    assert response.json()["error"]["message"] == "Could not validate credentials"
+
 

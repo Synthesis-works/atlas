@@ -40,24 +40,32 @@ def get_project_service(db: Session = Depends(get_db_session)) -> ProjectService
 def get_auth_service(db: Session = Depends(get_db_session)) -> AuthService:
     return AuthService(user_repo=UserRepository(db))
 
-def get_current_user(
-    token: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db_session)
-) -> User:
+from apps.backend.schemas.auth import TokenClaims
+
+def require_authenticated(token: HTTPAuthorizationCredentials = Depends(security)) -> TokenClaims:
     try:
         payload = jwt.decode(token.credentials, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
-        user_id: str = payload.get("sub")
-        if user_id is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        return TokenClaims(**payload)
     except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+    except Exception:
+        # Pydantic validation error or similar
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+def get_current_user(
+    claims: TokenClaims = Depends(require_authenticated),
+    db: Session = Depends(get_db_session)
+) -> User:
     user_repo = UserRepository(db)
-    user = user_repo.get(UUID(user_id))
+    user = user_repo.get(claims.sub)
     if user is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
         
@@ -67,32 +75,15 @@ def get_current_user(
     return user
 
 def get_current_member(
-    token: HTTPAuthorizationCredentials = Depends(security),
+    claims: TokenClaims = Depends(require_authenticated),
     db: Session = Depends(get_db_session)
 ) -> OrganizationMemberRead:
-    # Slice 3A only implements basic identity. We will just decode the token 
-    # to see if it carries a membership_id, or return a fake/error one until Slice 3B is built.
-    # To keep the previous tests running, we will implement the minimum viable here or 
-    # extract the membership if provided in the token. 
-    
-    # Let's decode the token
-    try:
-        payload = jwt.decode(token.credentials, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
-        membership_id = payload.get("membership_id")
-        # In Slice 3B we will look this up properly and enforce roles.
-        # For now, to keep the current API shape running if tested:
-        if membership_id:
-            member_repo = OrganizationMemberRepository(db)
-            member = member_repo.get(UUID(membership_id))
-            if not member:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid membership")
-            return OrganizationMemberRead.model_validate(member)
-        else:
-            # Fallback for now if the token doesn't have a membership
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No organization context")
-    except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    # Basic fallback check for active membership when we aren't enforcing via org_id
+    if not claims.membership_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No organization context")
+        
+    member_repo = OrganizationMemberRepository(db)
+    member = member_repo.get(claims.membership_id)
+    if not member or member.status != MembershipStatus.ACTIVE:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid membership")
+    return OrganizationMemberRead.model_validate(member)

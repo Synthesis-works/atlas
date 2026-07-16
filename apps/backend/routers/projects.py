@@ -4,18 +4,26 @@ from uuid import UUID
 
 from apps.backend.schemas.responses import APIResponse
 from apps.backend.schemas.projects import ProjectCreate, ProjectRead
-from apps.backend.schemas.organizations import OrganizationMemberRead
 from apps.backend.services.projects import ProjectService
-from apps.backend.dependencies import get_project_service, get_current_member
+from apps.backend.dependencies import get_project_service, require_authenticated
+from apps.backend.schemas.auth import TokenClaims
+from apps.backend.authz import require_org_member, require_role, get_project_authz_service, ProjectAuthorizationService
+from atlas_db.models.core import OrganizationRole, OrganizationMember
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
 @router.get("/{project_id}", response_model=APIResponse[ProjectRead])
 def get_project(
     project_id: UUID,
-    current_member: OrganizationMemberRead = Depends(get_current_member),
+    claims: TokenClaims = Depends(require_authenticated),
+    project_authz: ProjectAuthorizationService = Depends(get_project_authz_service),
     project_service: ProjectService = Depends(get_project_service)
 ):
+    member = project_authz.authorize_project_access(
+        project_id=project_id,
+        user_id=claims.sub,
+        allowed_roles=[OrganizationRole.VIEWER, OrganizationRole.MEMBER, OrganizationRole.ADMIN, OrganizationRole.OWNER]
+    )
     project = project_service.get(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -31,7 +39,7 @@ org_projects_router = APIRouter(prefix="/organizations/{org_id}/projects", tags=
 @org_projects_router.get("", response_model=APIResponse[List[ProjectRead]])
 def list_org_projects(
     org_id: UUID,
-    current_member: OrganizationMemberRead = Depends(get_current_member),
+    member: OrganizationMember = Depends(require_org_member),
     project_service: ProjectService = Depends(get_project_service)
 ):
     projects = project_service.list_for_org(org_id)
@@ -41,11 +49,12 @@ def list_org_projects(
 def create_project(
     org_id: UUID,
     data: ProjectCreate,
-    current_member: OrganizationMemberRead = Depends(get_current_member),
+    member: OrganizationMember = Depends(require_role([OrganizationRole.MEMBER, OrganizationRole.ADMIN, OrganizationRole.OWNER])),
     project_service: ProjectService = Depends(get_project_service)
 ):
-    project = project_service.create(org_id, member_id=current_member.id, data=data)
+    project = project_service.create(org_id, member_id=member.id, data=data)
     return APIResponse.success_response(
         data=project,
         message="Project created successfully"
     )
+
