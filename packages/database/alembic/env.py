@@ -19,7 +19,22 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from atlas_db.core.base import Base
-import atlas_db.models
+# Import all models here so that they are registered with Base.metadata
+import atlas_db.models.core
+import atlas_db.models.authoring
+import atlas_db.models.dataset
+import atlas_db.models.evaluation
+import atlas_db.models.execution
+import atlas_db.models.reporting
+import atlas_db.models.system
+import atlas_db.models.tasks
+
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import JSONB
+
+@compiles(JSONB, 'sqlite')
+def compile_jsonb_sqlite(type_, compiler, **kw):
+    return 'TEXT'
 
 # add your model's MetaData object here
 # for 'autogenerate' support
