@@ -40,6 +40,19 @@ def get_project_service(db: Session = Depends(get_db_session)) -> ProjectService
 def get_auth_service(db: Session = Depends(get_db_session)) -> AuthService:
     return AuthService(user_repo=UserRepository(db))
 
+from apps.backend.services.datasets import DatasetService
+from apps.backend.services.publishing import PublishingService
+from atlas_db.repositories.dataset import DatasetRepository, DatasetVersionRepository
+
+def get_dataset_service(db: Session = Depends(get_db_session)) -> DatasetService:
+    return DatasetService(
+        dataset_repo=DatasetRepository(db),
+        version_repo=DatasetVersionRepository(db)
+    )
+
+def get_publishing_service(db: Session = Depends(get_db_session)) -> PublishingService:
+    return PublishingService(version_repo=DatasetVersionRepository(db))
+
 from apps.backend.schemas.auth import TokenClaims
 
 def require_authenticated(token: HTTPAuthorizationCredentials = Depends(security)) -> TokenClaims:

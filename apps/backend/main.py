@@ -43,7 +43,7 @@ def create_app() -> FastAPI:
     # The health check is typically mounted at the root rather than under api/v1 prefix
     app.include_router(health.router)
 
-    from apps.backend.routers import organizations, projects, auth
+    from apps.backend.routers import organizations, projects, auth, datasets
     
     # We will mount these under /api/v1 for the actual domain routes
     api_v1 = FastAPI()
@@ -51,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(organizations.router, prefix="/api/v1")
     app.include_router(projects.router, prefix="/api/v1")
     app.include_router(projects.org_projects_router, prefix="/api/v1")
+    app.include_router(datasets.router, prefix="/api/v1")
 
     return app
 

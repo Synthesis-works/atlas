@@ -61,8 +61,9 @@ def upgrade():
     # 4. Add member tracking to projects
     op.add_column('projects', sa.Column('created_by_member_id', sa.UUID(), nullable=True))
     op.add_column('projects', sa.Column('updated_by_member_id', sa.UUID(), nullable=True))
-    op.create_foreign_key('fk_projects_created_by_member', 'projects', 'organization_members', ['created_by_member_id'], ['id'], ondelete='SET NULL')
-    op.create_foreign_key('fk_projects_updated_by_member', 'projects', 'organization_members', ['updated_by_member_id'], ['id'], ondelete='SET NULL')
+    with op.batch_alter_table('projects') as batch_op:
+        batch_op.create_foreign_key('fk_projects_created_by_member', 'organization_members', ['created_by_member_id'], ['id'], ondelete='SET NULL')
+        batch_op.create_foreign_key('fk_projects_updated_by_member', 'organization_members', ['updated_by_member_id'], ['id'], ondelete='SET NULL')
 
     # 5. Create invitations table
     op.create_table('invitations',
@@ -92,8 +93,9 @@ def downgrade():
     op.drop_index(op.f('ix_invitations_email'), table_name='invitations')
     op.drop_table('invitations')
 
-    op.drop_constraint('fk_projects_updated_by_member', 'projects', type_='foreignkey')
-    op.drop_constraint('fk_projects_created_by_member', 'projects', type_='foreignkey')
+    with op.batch_alter_table('projects') as batch_op:
+        batch_op.drop_constraint('fk_projects_updated_by_member', type_='foreignkey')
+        batch_op.drop_constraint('fk_projects_created_by_member', type_='foreignkey')
     op.drop_column('projects', 'updated_by_member_id')
     op.drop_column('projects', 'created_by_member_id')
 
