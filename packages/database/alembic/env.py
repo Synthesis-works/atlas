@@ -27,6 +27,13 @@ from sqlalchemy.dialects.postgresql import JSONB
 def compile_jsonb_sqlite(type_, compiler, **kw):
     return 'TEXT'
 
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import JSONB
+
+@compiles(JSONB, "sqlite")
+def compile_jsonb_sqlite(type_, compiler, **kw):
+    return "JSON"
+
 # add your model's MetaData object here
 # for 'autogenerate' support
 # from myapp import mymodel
