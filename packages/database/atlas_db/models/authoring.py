@@ -3,7 +3,7 @@ import enum
 from datetime import datetime
 from sqlalchemy import String, ForeignKey, DateTime, Table, Column, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import ENUM
+from sqlalchemy.dialects.postgresql import ENUM, JSONB
 from atlas_db.core.base import Base, BaseMixin, utcnow
 
 class BenchmarkState(str, enum.Enum):
@@ -91,10 +91,17 @@ class BenchmarkVersion(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     benchmark_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("benchmarks.id", ondelete="CASCADE"), nullable=False)
     version_string: Mapped[str] = mapped_column(String(50), nullable=False)
+    
+    primary_dataset_version_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("dataset_versions.id", ondelete="RESTRICT"), nullable=True, index=True)
+    evaluation_config: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
+    metric_config: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
+    scoring_policy: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
 
     benchmark: Mapped["Benchmark"] = relationship("Benchmark", back_populates="versions")
+    primary_dataset_version: Mapped["DatasetVersion | None"] = relationship("DatasetVersion")
 
     __table_args__ = (
         UniqueConstraint("benchmark_id", "version_string", name="uq_benchmark_version"),

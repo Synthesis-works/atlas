@@ -41,6 +41,7 @@ def get_auth_service(db: Session = Depends(get_db_session)) -> AuthService:
     return AuthService(user_repo=UserRepository(db))
 
 from apps.backend.services.datasets import DatasetService
+from apps.backend.services.benchmarks import BenchmarkService
 from apps.backend.services.publishing import PublishingService
 from atlas_db.repositories.dataset import DatasetRepository, DatasetVersionRepository
 
@@ -49,6 +50,9 @@ def get_dataset_service(db: Session = Depends(get_db_session)) -> DatasetService
         dataset_repo=DatasetRepository(db),
         version_repo=DatasetVersionRepository(db)
     )
+
+def get_benchmark_service(db: Session = Depends(get_db_session)) -> BenchmarkService:
+    return BenchmarkService(db)
 
 def get_publishing_service(db: Session = Depends(get_db_session)) -> PublishingService:
     return PublishingService(version_repo=DatasetVersionRepository(db))
