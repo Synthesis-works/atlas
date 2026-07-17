@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import String, ForeignKey, Boolean, DateTime, Index
+from sqlalchemy import String, ForeignKey, Boolean, Index
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import JSONB
 from atlas_db.core.base import Base, BaseMixin

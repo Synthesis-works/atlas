@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any, List
+from typing import Optional
 
 class ExecutionContext(BaseModel):
     language: str = Field(default="python", description="Programming language for execution")

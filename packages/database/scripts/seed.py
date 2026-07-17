@@ -1,7 +1,6 @@
 import asyncio
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from atlas_db.core.base import Base
 from atlas_db.models.core import Organization, User, Project
 
 async def main():

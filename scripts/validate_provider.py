@@ -53,7 +53,7 @@ def main():
     if sys.stdout.encoding != 'utf-8':
         sys.stdout.reconfigure(encoding='utf-8')
     
-    print(f"\n--- Atlas Validation Suite ---")
+    print("\n--- Atlas Validation Suite ---")
     print(f"Starting Validation for: {args.provider} ({args.model})\n")
         
     try:
@@ -109,7 +109,7 @@ def main():
             print("Evaluation       N/A\n")
             print("Quota            LIMITED (Rate Limit Reached)\n")
         else:
-            print(f"Connection       FAILED")
+            print("Connection       FAILED")
             print(f"Error            {str(e)}\n")
         sys.exit(1)
 

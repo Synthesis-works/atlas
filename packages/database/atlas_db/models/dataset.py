@@ -6,9 +6,15 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB, ENUM
 from atlas_db.core.base import Base, BaseMixin, utcnow
 
-class ValidationStatus(str, enum.Enum):
-    PENDING = "pending"
-    VALIDATED = "validated"
+class DatasetStatus(str, enum.Enum):
+    ACTIVE = "active"
+    ARCHIVED = "archived"
+
+class DatasetLifecycle(str, enum.Enum):
+    UPLOADED = "uploaded"
+    VALIDATING = "validating"
+    VALID = "valid"
+    PUBLISHED = "published"
     FAILED = "failed"
 
 class DatasetRegistry(Base, BaseMixin):
@@ -39,29 +45,42 @@ class DatasetLicense(Base, BaseMixin):
 class Dataset(Base, BaseMixin):
     __tablename__ = "datasets"
 
-    registry_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("dataset_registries.id"), nullable=False, index=True)
-    source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("dataset_sources.id"), nullable=False, index=True)
-    license_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("dataset_licenses.id"), nullable=False, index=True)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True)
+    registry_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("dataset_registries.id"), nullable=True, index=True)
+    source_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("dataset_sources.id"), nullable=True, index=True)
+    license_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("dataset_licenses.id"), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
+    
+    created_by_member_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organization_members.id", ondelete="SET NULL"), nullable=True)
+    status: Mapped[DatasetStatus] = mapped_column(
+        ENUM(DatasetStatus, name="dataset_status"),
+        nullable=False,
+        default=DatasetStatus.ACTIVE
+    )
 
-    registry: Mapped["DatasetRegistry"] = relationship("DatasetRegistry", back_populates="datasets")
-    source: Mapped["DatasetSource"] = relationship("DatasetSource", back_populates="datasets")
-    license: Mapped["DatasetLicense"] = relationship("DatasetLicense", back_populates="datasets")
+    project: Mapped["Project"] = relationship("Project")
+    registry: Mapped["DatasetRegistry | None"] = relationship("DatasetRegistry", back_populates="datasets")
+    source: Mapped["DatasetSource | None"] = relationship("DatasetSource", back_populates="datasets")
+    license: Mapped["DatasetLicense | None"] = relationship("DatasetLicense", back_populates="datasets")
     versions: Mapped[list["DatasetVersion"]] = relationship("DatasetVersion", back_populates="dataset")
+    
+    __table_args__ = (
+        UniqueConstraint("project_id", "name", name="uq_dataset_project_name"),
+    )
 
 class DatasetVersion(Base):
     __tablename__ = "dataset_versions"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    dataset_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("datasets.id"), nullable=False, index=True)
+    dataset_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False, index=True)
     version_string: Mapped[str] = mapped_column(String(50), nullable=False)
     storage_path: Mapped[str] = mapped_column(String, nullable=False)
     checksum: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    validation_status: Mapped[ValidationStatus] = mapped_column(
-        ENUM(ValidationStatus, name="dataset_validation_status"),
+    lifecycle: Mapped[DatasetLifecycle] = mapped_column(
+        ENUM(DatasetLifecycle, name="dataset_lifecycle"),
         nullable=False,
-        default=ValidationStatus.PENDING
+        default=DatasetLifecycle.UPLOADED
     )
     schema_def: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
     version_number: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
@@ -76,3 +95,4 @@ class DatasetVersion(Base):
     __table_args__ = (
         UniqueConstraint("dataset_id", "version_string", name="uq_dataset_version"),
     )
+

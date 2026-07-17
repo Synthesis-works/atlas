@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict
 from .base import BaseLLMClient
 from .ollama import OllamaClient
 from ..models.prompt import Prompt
@@ -9,7 +9,9 @@ class MockClient(BaseLLMClient):
     def health(self) -> bool: return True
     def list_models(self) -> list: return []
     def generate(self, model: str, prompt: Prompt, **kwargs) -> LLMResponse:
-        import time, random, re
+        import time
+        import random
+        import re
         # Simulate slight delay
         time.sleep(0.5)
         

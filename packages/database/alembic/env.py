@@ -19,7 +19,13 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from atlas_db.core.base import Base
-import atlas_db.models
+import atlas_db.models  # Import all models here so that they are registered with Base.metadata
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import JSONB
+
+@compiles(JSONB, 'sqlite')
+def compile_jsonb_sqlite(type_, compiler, **kw):
+    return 'TEXT'
 
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.dialects.postgresql import JSONB
@@ -53,7 +59,7 @@ def run_migrations_offline() -> None:
 
     """
     url = config.get_main_option("sqlalchemy.url")
-    context.configure(
+    context.configure(render_as_batch=True, 
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
@@ -78,7 +84,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
+        context.configure(render_as_batch=True, 
             connection=connection, target_metadata=target_metadata
         )
 

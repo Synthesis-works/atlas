@@ -1,4 +1,3 @@
-import pytest
 from atlas_db.models.core import User
 from atlas_db.repositories.base import BaseRepository
 

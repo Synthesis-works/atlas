@@ -1,6 +1,5 @@
 import json
 import glob
-import os
 import argparse
 
 def analyze_experiment(exp_id):

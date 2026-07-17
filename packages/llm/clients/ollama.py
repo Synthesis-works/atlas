@@ -1,6 +1,6 @@
 import httpx
 import time
-from typing import List, Any
+from typing import List
 from .base import BaseLLMClient
 from ..config import OLLAMA_HOST
 from ..exceptions import LLMConnectionError, GenerationError, TimeoutError, ModelNotFoundError
@@ -80,7 +80,7 @@ class OllamaClient(BaseLLMClient):
                     created_at=data.get("created_at", "")
                 )
         except httpx.TimeoutException:
-            raise TimeoutError(f"Generation timed out after 120 seconds.")
+            raise TimeoutError("Generation timed out after 120 seconds.")
         except httpx.RequestError as e:
             raise LLMConnectionError(f"Failed to communicate with Ollama: {e}")
         except Exception as e:

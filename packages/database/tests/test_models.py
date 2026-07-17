@@ -1,8 +1,6 @@
 import pytest
-import sqlalchemy
 from sqlalchemy.exc import IntegrityError
 from atlas_db.models.core import Organization, Project, User, Configuration, ConfigurationScope
-from atlas_db.models.authoring import Benchmark
 
 def test_organization_creation(session):
     org = Organization(name="Test Org")
