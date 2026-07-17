@@ -1,9 +1,6 @@
-from .base import BaseRepository
 from .core import OrganizationRepository, UserRepository, ProjectRepository, ConfigurationRepository, ConfigurationVersionRepository
 from .dataset import DatasetRepository, DatasetVersionRepository, DatasetRegistryRepository, DatasetSourceRepository, DatasetLicenseRepository
 from .authoring import BenchmarkRepository, BenchmarkVersionRepository, BenchmarkLifecycleRepository, BenchmarkCategoryRepository, CapabilityRepository
 from .tasks import TaskRepository, PromptRepository, TestCaseRepository, ConstraintRepository, EvaluationRuleRepository
-from .execution import ExecutionAdapterRepository, ExecutionAdapterVersionRepository, EvaluationSessionRepository, AtlasRunRepository, ModelOutputRepository, ArtifactRepository
+from .execution import ExecutionAdapterRepository, ExecutionAdapterVersionRepository, ModelOutputRepository, ArtifactRepository
 from .evaluation import EvaluationStrategyRepository, EvaluationStrategyVersionRepository, JudgeRepository, EvaluationResultRepository, EvaluationResultDetailRepository, CapabilityProfileRepository, CapabilityScoreRepository
-from .reporting import ReportRepository, ReportVersionRepository, ReportMetricRepository
-from .system import AuditLogRepository, NotificationRepository

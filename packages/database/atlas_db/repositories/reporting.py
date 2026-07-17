@@ -1,4 +1,3 @@
-from sqlalchemy.orm import Session
 from .base import BaseRepository
 from atlas_db.models.reporting import Report, ReportVersion, ReportMetric
 

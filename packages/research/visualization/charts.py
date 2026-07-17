@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
-from typing import List, Dict, Any
+from typing import List, Dict
 import numpy as np
 
 class ChartGenerator:

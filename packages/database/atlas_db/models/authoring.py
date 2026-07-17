@@ -1,7 +1,7 @@
 import uuid
 import enum
 from datetime import datetime
-from sqlalchemy import String, ForeignKey, DateTime, Table, Column, UniqueConstraint, Index
+from sqlalchemy import String, ForeignKey, DateTime, Table, Column, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import ENUM, JSONB
 from atlas_db.core.base import Base, BaseMixin, utcnow

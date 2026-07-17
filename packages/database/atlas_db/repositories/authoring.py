@@ -1,4 +1,3 @@
-from sqlalchemy.orm import Session
 from .base import BaseRepository
 from atlas_db.models.authoring import Benchmark, BenchmarkVersion, BenchmarkLifecycle, BenchmarkCategory, Capability
 

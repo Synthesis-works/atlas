@@ -28,9 +28,7 @@ def create_mock_jwt(user_id: str, org_id: str = None, mem_id: str = None):
 
 @pytest.fixture
 def mock_dependencies(monkeypatch):
-    from apps.backend.authz import require_org_member, require_role
-    from apps.backend.dependencies import get_org_service, get_project_service, require_authenticated
-    from atlas_db.repositories.core import OrganizationMemberRepository
+    from apps.backend.dependencies import get_org_service, get_project_service
     
     # We will mock OrganizationMemberRepository.get_by_user_and_org
     mock_repo_instance = MagicMock()

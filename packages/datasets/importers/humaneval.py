@@ -1,6 +1,4 @@
-import gzip
 import json
-import os
 import os
 from typing import Any, List
 from .base import BaseImporter

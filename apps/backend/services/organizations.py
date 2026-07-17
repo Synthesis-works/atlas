@@ -2,7 +2,6 @@ from typing import List, Optional
 from uuid import UUID
 from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException
-from pydantic import EmailStr
 import secrets
 from atlas_db.repositories.core import OrganizationRepository, OrganizationMemberRepository, InvitationRepository
 from atlas_db.models.core import Organization, OrganizationMember, OrganizationRole, MembershipStatus, Invitation, InvitationStatus

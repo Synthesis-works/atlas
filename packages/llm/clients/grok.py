@@ -1,7 +1,6 @@
 import os
 import time
 import httpx
-from typing import Optional
 from .base import BaseLLMClient
 from ..models.prompt import Prompt
 from ..models.response import LLMResponse

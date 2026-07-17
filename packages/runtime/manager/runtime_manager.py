@@ -1,4 +1,4 @@
-from typing import Dict, Optional
+from typing import Dict
 from ..models.execution_request import ExecutionRequest
 from ..models.execution_result import ExecutionResult
 from ..runtimes.base import BaseRuntime

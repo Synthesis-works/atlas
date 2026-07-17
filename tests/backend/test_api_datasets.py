@@ -3,7 +3,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from apps.backend.main import app
-from apps.backend.schemas.datasets import DatasetCreate
 from apps.backend.services.datasets import DatasetService
 from apps.backend.dependencies import get_dataset_service, require_authenticated
 from apps.backend.authz import get_project_authz_service, ProjectAuthorizationService

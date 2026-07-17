@@ -6,3 +6,7 @@ uvicorn>=0.23.0
 pydantic-settings>=2.0.0
 pwdlib[argon2]>=0.2.0
 PyJWT>=2.8.0
+
+celery>=5.3.0
+redis>=5.0.0
+structlog

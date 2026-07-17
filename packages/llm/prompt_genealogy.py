@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 class PromptGenealogy:
     def __init__(self, prompts_dir: str = "prompts", benchmark_pack: str = None):

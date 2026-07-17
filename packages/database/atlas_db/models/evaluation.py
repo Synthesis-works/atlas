@@ -70,7 +70,7 @@ class EvaluationResult(Base, BaseMixin):
 class CapabilityProfile(Base, BaseMixin):
     __tablename__ = "capability_profiles"
 
-    atlas_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("atlas_runs.id", ondelete="CASCADE"), nullable=False, unique=True)
+    execution_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("executions.id", ondelete="CASCADE"), nullable=False, unique=True)
     overall_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     profile_metadata: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
 

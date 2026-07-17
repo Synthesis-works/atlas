@@ -1,6 +1,5 @@
 import uuid
 from datetime import datetime
-import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import Mock
 

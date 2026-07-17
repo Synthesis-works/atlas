@@ -1,8 +1,7 @@
-from typing import List, Dict, Any
-import os
+from typing import List
 
 from packages.research.datasets.experiment_loader import ExperimentLoader
-from packages.research.statistics.confidence import format_ci, binomial_confidence_interval_95
+from packages.research.statistics.confidence import format_ci
 
 class PromptComparator:
     def __init__(self, loader: ExperimentLoader):

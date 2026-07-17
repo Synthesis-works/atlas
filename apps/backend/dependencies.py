@@ -2,7 +2,6 @@ from typing import Generator
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from uuid import UUID
 import jwt
 
 from atlas_db.core.session import SessionLocal
@@ -10,7 +9,7 @@ from atlas_db.repositories.core import (
     OrganizationRepository, OrganizationMemberRepository, 
     InvitationRepository, ProjectRepository, UserRepository
 )
-from atlas_db.models.core import User, OrganizationRole, MembershipStatus
+from atlas_db.models.core import User, MembershipStatus
 from apps.backend.services.organizations import OrganizationService
 from apps.backend.services.projects import ProjectService
 from apps.backend.services.auth import AuthService

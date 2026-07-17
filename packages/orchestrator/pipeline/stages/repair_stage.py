@@ -1,5 +1,5 @@
 from packages.orchestrator.pipeline.base import PipelineStage
-from packages.orchestrator.models import TaskRunState, TaskRunResult, JobConfig
+from packages.orchestrator.models import TaskRunState, TaskRunResult
 from packages.orchestrator.agents.ollama_repair import OllamaRepairAgent
 import time
 

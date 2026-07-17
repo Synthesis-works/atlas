@@ -1,4 +1,3 @@
-from sqlalchemy.orm import Session
 from .base import BaseRepository
 from atlas_db.models.core import Organization, User, Project, Configuration, ConfigurationVersion, OrganizationMember, Invitation
 

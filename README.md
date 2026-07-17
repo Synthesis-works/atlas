@@ -1,77 +1,99 @@
-# Project Atlas
+# Atlas Backend v1.0.0
 
-Project Atlas is an AI Evaluation Operating System built from scratch as a modular monorepo.
+Atlas is a distributed execution and evaluation platform for large language models. It provides a structured, API-first approach to defining datasets, composing benchmarks, executing AI models against those benchmarks, and evaluating their responses.
 
-- **Organization:** [Synthesis-works](https://github.com/Synthesis-works)
-- **Repository:** [atlas](https://github.com/Synthesis-works/atlas)
+## License
 
-## Repository Structure
+Copyright (c) 2026. All rights reserved.
 
-The monorepo follows the Atlas V1 Repository Architecture:
+## Architecture
 
-- `apps/` - Main frontend applications (e.g., `web/`)
-- `services/` - Backend microservices (e.g., `auth-service/`, `execution-service/`, `evaluation-service/`)
-- `packages/` - Reusable internal code and libraries (e.g., `database/`)
-- `benchmarks/` - AI evaluation benchmarks
-- `datasets/` - Raw and processed data
-- `infrastructure/` - Deployment and hosting configuration
-- `docker/` - Containerization files
-- `scripts/` - Automation and setup utilities
-- `docs/` - Project documentation (e.g., `scratchpad/`)
-- `tests/` - System-wide testing
-- `configs/` - Environment configurations
-- `sdk/` - Future SDK development
-- `cli/` - Future Command Line Interface
-- `.github/` - CI/CD and repository automation
-## Atlas Benchmark Framework v1.0
+The Atlas backend follows a clean, modular architecture separating the domain model from asynchronous orchestration. 
 
-The benchmark module allows you to run robust, reproducible AI coding evaluations.
+```mermaid
+graph TD
+    API[FastAPI Gateway] --> Auth[RBAC & AuthZ]
+    Auth --> ExecutionService[Execution Service]
+    ExecutionService --> Celery[Celery Dispatcher]
+    Celery --> ExecutionWorker[Execution Worker]
+    ExecutionWorker --> ExecutionRunner[Execution Runner]
+    ExecutionRunner --> ModelAdapter[Model Adapters]
+    ExecutionWorker --> EventBus[Event Bus]
+    EventBus --> EvaluationWorker[Evaluation Worker]
+    
+    subgraph Core Domain
+        Datasets
+        Benchmarks
+        Executions
+        Evaluations
+    end
+```
 
-### Quick Start
+## Technology Stack
 
-Run an experiment on a dataset (e.g., HumanEval or MBPP) using a supported provider:
+- **Framework**: FastAPI (Python 3.10+)
+- **Database**: SQLite (via SQLAlchemy 2.0)
+- **Migrations**: Alembic
+- **Task Queue**: Celery with Redis broker
+- **Observability**: Structlog (structured JSON logging + ContextVar Correlation IDs)
+- **Testing**: Pytest
 
-``powershell
-# Run the first 10 HumanEval tasks using Ollama (local model)
-py scripts/run_experiment.py --dataset humaneval --provider ollama --limit 10
-``
+## Core Features
 
-To run all tasks, omit the --limit flag:
-``powershell
-py scripts/run_experiment.py --dataset humaneval --provider ollama --model qwen2.5-coder:1.5b --prompt v3
-``
+- **Multi-Tenant Organizations & Projects**: Full RBAC isolation for resources.
+- **Immutable Versioning**: Datasets and Benchmarks are immutably versioned for reproducibility.
+- **Distributed Execution Engine**: Background task processing via Celery for running large-scale evaluations.
+- **Event-Driven Evaluation**: Asynchronous evaluation dispatch decoupled from core execution.
+- **Progress Tracking**: Real-time progress updates with batched database writes.
+- **Deep Observability**: Distributed tracing with `X-Correlation-ID` across API boundaries and background tasks.
 
-### Resume Experiments
+## API Endpoints (Summary)
 
-Experiments are automatically checkpointed. If you stop an experiment (e.g., via Ctrl+C), you can safely resume it:
+The backend provides a RESTful API mounted at `/api/v1`:
 
-``powershell
-py scripts/run_experiment.py --resume exp-humaneval-123456
-``
-Atlas will skip completed tasks and continue from where it left off.
+- `/auth/*`: Login and JWT generation.
+- `/organizations/*`: Organization and membership management.
+- `/projects/*`: Project lifecycle within organizations.
+- `/datasets/*`: Authoring and versioning evaluation datasets.
+- `/benchmarks/*`: Combining datasets into executable benchmarks.
+- `/projects/{id}/executions/*`: Triggering and monitoring runs.
+- `/system/celery/health`: Cluster health monitoring.
 
-### Generate Reports
+## Local Setup
 
-Generate an exhaustive Markdown report from a completed experiment run:
+### 1. Requirements
+- Python 3.10+
+- Redis Server (running on `localhost:6379`)
 
-``powershell
-py scripts/generate_report.py --exp exp-humaneval-123456
-``
+### 2. Installation
+```bash
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-### Compare Prompts (McNemar's Test)
+### 3. Database Setup
+```bash
+cd packages/database
+python -m alembic upgrade head
+```
 
-Compare two runs of the same model with different prompt versions to see if the improvement is statistically significant:
+### 4. Running the API
+```bash
+uvicorn apps.backend.main:app --reload --port 8000
+```
 
-``powershell
-py scripts/mcnemar_test.py --exp1 exp-humaneval-111111 --exp2 exp-humaneval-222222
-``
+### 5. Running the Celery Worker
+```bash
+# Ensure Redis is running
+celery -A apps.backend.worker.celery_app worker --loglevel=INFO
+```
 
-### Validate Providers
+### 6. Running Tests
+```bash
+python -m pytest tests/backend
+```
 
-Before running a large benchmark, validate that your API credentials and setup are working:
+## Release History
 
-``powershell
-py scripts/validate_provider.py --provider gemini --model gemini-2.5-flash
-py scripts/validate_provider.py --provider grok --model grok-2-1212
-``
-This runs a tiny 10-task test suite to verify generation, extraction, execution, and evaluation.
+- **v1.0.0 (Current)**: Initial stable release. Implemented authentication, dataset/benchmark versioning, asynchronous execution orchestration, distributed evaluation, and operational observability.

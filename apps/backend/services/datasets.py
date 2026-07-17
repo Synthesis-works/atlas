@@ -1,11 +1,10 @@
 import uuid
 from typing import Sequence, Optional
-from fastapi import HTTPException, status
 from sqlalchemy import select
 
-from atlas_db.models.dataset import Dataset, DatasetStatus, DatasetVersion
+from atlas_db.models.dataset import Dataset, DatasetStatus
 from atlas_db.repositories.dataset import DatasetRepository, DatasetVersionRepository
-from apps.backend.schemas.datasets import DatasetCreate, DatasetVersionCreate
+from apps.backend.schemas.datasets import DatasetCreate
 
 class DatasetService:
     def __init__(self, dataset_repo: DatasetRepository, version_repo: DatasetVersionRepository):
