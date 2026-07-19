@@ -17,7 +17,10 @@ from atlas_db.repositories.authoring import (
     CapabilityRepository
 )
 from atlas_db.models.authoring import BenchmarkState
-from apps.backend.schemas.benchmarks import BenchmarkCreate, BenchmarkUpdate, BenchmarkRead
+from apps.backend.schemas.benchmarks import (
+    BenchmarkCreate, BenchmarkUpdate, BenchmarkRead,
+    BenchmarkVersionCreate, BenchmarkVersionUpdate, BenchmarkVersionRead
+)
 
 def map_domain_error(e: Exception):
     if isinstance(e, PermissionDeniedError):
@@ -168,6 +171,105 @@ class BenchmarkApplicationService:
             self.domain_service.assert_editable(benchmark)
 
             self.benchmark_repo.delete(id=benchmark_id, hard=False, commit=True)
+        except HTTPException:
+            self.benchmark_repo.db.rollback()
+            raise
+        except Exception as e:
+            self.benchmark_repo.db.rollback()
+            map_domain_error(e)
+
+    def create_version(self, benchmark_id: uuid.UUID, user_id: uuid.UUID, user_role: str, data: BenchmarkVersionCreate) -> BenchmarkVersionRead:
+        try:
+            version = self.domain_service.create_version(
+                benchmark_id=benchmark_id,
+                version_string=data.version_string,
+                user_id=user_id,
+                user_role=user_role,
+                dataset_version_ids=data.dataset_version_ids,
+                evaluation_strategy_id=data.evaluation_strategy_id
+            )
+            
+            benchmark = self.benchmark_repo.get(benchmark_id)
+            
+            from apps.backend.schemas.events import AuditEvent
+            from datetime import datetime, timezone
+            
+            # Structured audit event
+            event = AuditEvent(
+                event_id=uuid.uuid4(),
+                timestamp=datetime.now(timezone.utc),
+                actor_id=user_id,
+                resource_type="BenchmarkVersion",
+                resource_id=version.id,
+                action="VERSION_CREATED",
+                changes={"version_string": data.version_string, "benchmark_id": str(benchmark_id)}
+            )
+            
+            return BenchmarkVersionRead(
+                id=version.id,
+                benchmark_id=version.benchmark_id,
+                version_string=version.version_string,
+                state=benchmark.status,
+                dataset_version_ids=version.dataset_version_ids,
+                evaluation_strategy_id=version.evaluation_strategy_id
+            )
+        except HTTPException:
+            self.benchmark_repo.db.rollback()
+            raise
+        except Exception as e:
+            self.benchmark_repo.db.rollback()
+            map_domain_error(e)
+
+    def get_versions(self, benchmark_id: uuid.UUID) -> List[BenchmarkVersionRead]:
+        benchmark = self.benchmark_repo.get(benchmark_id)
+        if not benchmark:
+            raise HTTPException(status_code=404, detail="Benchmark not found")
+            
+        versions = self.benchmark_repo.db.query(self.domain_service.version_repo.model).filter_by(benchmark_id=benchmark_id).all()
+        return [
+            BenchmarkVersionRead(
+                id=v.id,
+                benchmark_id=v.benchmark_id,
+                version_string=v.version_string,
+                state=benchmark.status,
+                dataset_version_ids=v.dataset_version_ids,
+                evaluation_strategy_id=v.evaluation_strategy_id
+            ) for v in versions
+        ]
+
+    def update_version(self, version_id: uuid.UUID, user_id: uuid.UUID, user_role: str, data: BenchmarkVersionUpdate) -> BenchmarkVersionRead:
+        try:
+            version = self.domain_service.update_version(
+                version_id=version_id,
+                user_id=user_id,
+                user_role=user_role,
+                dataset_version_ids=data.dataset_version_ids,
+                evaluation_strategy_id=data.evaluation_strategy_id
+            )
+            
+            benchmark = self.benchmark_repo.get(version.benchmark_id)
+            
+            from apps.backend.schemas.events import AuditEvent
+            from datetime import datetime, timezone
+            
+            event = AuditEvent(
+                event_id=uuid.uuid4(),
+                timestamp=datetime.now(timezone.utc),
+                actor_id=user_id,
+                resource_type="BenchmarkVersion",
+                resource_id=version.id,
+                action="VERSION_UPDATED",
+                changes={"dataset_version_ids": str(data.dataset_version_ids), "evaluation_strategy_id": str(data.evaluation_strategy_id)}
+            )
+            
+            return BenchmarkVersionRead(
+                id=version.id,
+                benchmark_id=version.benchmark_id,
+                version_string=version.version_string,
+                state=benchmark.status,
+                dataset_version_ids=version.dataset_version_ids,
+                evaluation_strategy_id=version.evaluation_strategy_id
+            )
         except HTTPException:
             self.benchmark_repo.db.rollback()
             raise

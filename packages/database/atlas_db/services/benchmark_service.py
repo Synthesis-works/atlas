@@ -109,6 +109,98 @@ class BenchmarkService:
             return True
         return False
 
+    def create_version(
+        self,
+        benchmark_id: uuid.UUID,
+        version_string: str,
+        user_id: uuid.UUID,
+        user_role: str,
+        dataset_version_ids: Optional[List[uuid.UUID]] = None,
+        evaluation_strategy_id: Optional[uuid.UUID] = None
+    ) -> BenchmarkVersion:
+        """Create a new version for a benchmark."""
+        try:
+            benchmark = self.benchmark_repo.get_for_update(benchmark_id)
+            if not benchmark:
+                raise ValueError("Benchmark not found")
+
+            # Check if an active editable version already exists
+            if benchmark.status in [BenchmarkState.DESIGN, BenchmarkState.DRAFT, BenchmarkState.VALIDATION, BenchmarkState.REVIEW]:
+                raise ConcurrencyViolationError("An active editable version already exists.")
+            
+            if benchmark.status == BenchmarkState.ARCHIVE:
+                raise InvalidStateTransitionError("Cannot create a version for an archived benchmark.")
+
+            # Validate permission
+            if not self.can_edit(benchmark, user_id, user_role):
+                raise PermissionDeniedError("User does not have permission to create versions.")
+
+            version_data = {
+                "benchmark_id": benchmark.id,
+                "version_string": version_string,
+                "created_by_id": user_id,
+                "dataset_version_ids": dataset_version_ids,
+                "evaluation_strategy_id": evaluation_strategy_id
+            }
+            version = self.version_repo.create(obj_in=version_data, commit=False)
+
+            # Change benchmark state to DRAFT
+            benchmark = self.benchmark_repo.update(
+                db_obj=benchmark,
+                obj_in={"status": BenchmarkState.DRAFT},
+                commit=False
+            )
+            
+            lifecycle_data = {
+                "benchmark_id": benchmark.id,
+                "state": BenchmarkState.DRAFT,
+                "changed_by_id": user_id
+            }
+            self.lifecycle_repo.create(obj_in=lifecycle_data, commit=False)
+
+            self.benchmark_repo.db.commit()
+            self.benchmark_repo.db.refresh(version)
+            return version
+        except Exception:
+            self.benchmark_repo.db.rollback()
+            raise
+
+    def update_version(
+        self,
+        version_id: uuid.UUID,
+        user_id: uuid.UUID,
+        user_role: str,
+        dataset_version_ids: Optional[List[uuid.UUID]] = None,
+        evaluation_strategy_id: Optional[uuid.UUID] = None
+    ) -> BenchmarkVersion:
+        """Update an existing version."""
+        try:
+            version = self.version_repo.get_for_update(version_id)
+            if not version:
+                raise ValueError("Version not found")
+
+            benchmark = self.benchmark_repo.get(version.benchmark_id)
+            
+            if not self.can_edit(benchmark, user_id, user_role):
+                raise PermissionDeniedError("User does not have permission to edit versions.")
+            
+            self.assert_editable(benchmark)
+
+            update_data = {}
+            if dataset_version_ids is not None:
+                update_data["dataset_version_ids"] = dataset_version_ids
+            if evaluation_strategy_id is not None:
+                update_data["evaluation_strategy_id"] = evaluation_strategy_id
+                
+            updated_version = self.version_repo.update(db_obj=version, obj_in=update_data, commit=False)
+            
+            self.version_repo.db.commit()
+            self.version_repo.db.refresh(updated_version)
+            return updated_version
+        except Exception:
+            self.version_repo.db.rollback()
+            raise
+
     def transition_state(
         self,
         benchmark_id: uuid.UUID,

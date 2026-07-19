@@ -54,6 +54,7 @@ def create_app() -> FastAPI:
     app.include_router(datasets.router, prefix="/api/v1")
     app.include_router(benchmarks.project_benchmarks_router, prefix="/api/v1")
     app.include_router(benchmarks.benchmarks_router, prefix="/api/v1")
+    app.include_router(benchmarks.benchmark_versions_router, prefix="/api/v1")
 
     return app
 

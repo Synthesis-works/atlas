@@ -22,3 +22,23 @@ class BenchmarkRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+class BenchmarkVersionCreate(BaseModel):
+    version_string: str
+    dataset_version_ids: Optional[List[UUID]] = []
+    evaluation_strategy_id: Optional[UUID] = None
+
+class BenchmarkVersionUpdate(BaseModel):
+    dataset_version_ids: Optional[List[UUID]] = None
+    evaluation_strategy_id: Optional[UUID] = None
+
+class BenchmarkVersionRead(BaseModel):
+    id: UUID
+    benchmark_id: UUID
+    version_string: str
+    state: str
+    dataset_version_ids: Optional[List[UUID]] = []
+    evaluation_strategy_id: Optional[UUID] = None
+    
+    class Config:
+        from_attributes = True

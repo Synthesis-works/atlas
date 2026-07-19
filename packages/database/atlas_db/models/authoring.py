@@ -4,6 +4,7 @@ from datetime import datetime
 from sqlalchemy import String, ForeignKey, DateTime, Table, Column, UniqueConstraint, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import ENUM
+from sqlalchemy.dialects import postgresql
 from atlas_db.core.base import Base, BaseMixin, utcnow
 
 class BenchmarkState(str, enum.Enum):
@@ -93,6 +94,10 @@ class BenchmarkVersion(Base):
     version_string: Mapped[str] = mapped_column(String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    
+    # Version Metadata
+    dataset_version_ids: Mapped[list[uuid.UUID] | None] = mapped_column(postgresql.ARRAY(postgresql.UUID(as_uuid=True)), nullable=True)
+    evaluation_strategy_id: Mapped[uuid.UUID | None] = mapped_column(postgresql.UUID(as_uuid=True), nullable=True)
 
     benchmark: Mapped["Benchmark"] = relationship("Benchmark", back_populates="versions")
 
