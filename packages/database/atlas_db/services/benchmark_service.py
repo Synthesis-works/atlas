@@ -1,6 +1,9 @@
 import uuid
 from typing import Optional, List, Dict, Any
 
+from typing import Optional, List, Dict, Any, Tuple
+
+from atlas_db.events import DomainEvent
 from atlas_db.models.authoring import (
     Benchmark, 
     BenchmarkState, 
@@ -54,7 +57,7 @@ class BenchmarkService:
         domain: Optional[str] = None,
         type: Optional[str] = None,
         visibility: Optional[str] = None
-    ) -> Benchmark:
+    ) -> Tuple[Benchmark, List[DomainEvent]]:
         """Create a new benchmark in PROPOSAL state."""
         benchmark_data = {
             "project_id": project_id,
@@ -80,7 +83,15 @@ class BenchmarkService:
             
             self.benchmark_repo.db.commit()
             self.benchmark_repo.db.refresh(benchmark)
-            return benchmark
+            
+            event = DomainEvent(
+                actor_id=author_id,
+                resource_type="Benchmark",
+                resource_id=benchmark.id,
+                action="BENCHMARK_CREATED",
+                changes={"name": name, "project_id": str(project_id)}
+            )
+            return benchmark, [event]
         except Exception:
             self.benchmark_repo.db.rollback()
             raise
@@ -117,7 +128,7 @@ class BenchmarkService:
         user_role: str,
         dataset_version_ids: Optional[List[uuid.UUID]] = None,
         evaluation_strategy_id: Optional[uuid.UUID] = None
-    ) -> BenchmarkVersion:
+    ) -> Tuple[BenchmarkVersion, List[DomainEvent]]:
         """Create a new version for a benchmark."""
         try:
             benchmark = self.benchmark_repo.get_for_update(benchmark_id)
@@ -160,7 +171,15 @@ class BenchmarkService:
 
             self.benchmark_repo.db.commit()
             self.benchmark_repo.db.refresh(version)
-            return version
+            
+            event = DomainEvent(
+                actor_id=user_id,
+                resource_type="BenchmarkVersion",
+                resource_id=version.id,
+                action="VERSION_CREATED",
+                changes={"version_string": version_string, "benchmark_id": str(benchmark_id)}
+            )
+            return version, [event]
         except Exception:
             self.benchmark_repo.db.rollback()
             raise
@@ -172,7 +191,7 @@ class BenchmarkService:
         user_role: str,
         dataset_version_ids: Optional[List[uuid.UUID]] = None,
         evaluation_strategy_id: Optional[uuid.UUID] = None
-    ) -> BenchmarkVersion:
+    ) -> Tuple[BenchmarkVersion, List[DomainEvent]]:
         """Update an existing version."""
         try:
             version = self.version_repo.get_for_update(version_id)
@@ -196,7 +215,18 @@ class BenchmarkService:
             
             self.version_repo.db.commit()
             self.version_repo.db.refresh(updated_version)
-            return updated_version
+            
+            event = DomainEvent(
+                actor_id=user_id,
+                resource_type="BenchmarkVersion",
+                resource_id=version_id,
+                action="VERSION_UPDATED",
+                changes={
+                    "dataset_version_ids": str(dataset_version_ids),
+                    "evaluation_strategy_id": str(evaluation_strategy_id)
+                }
+            )
+            return updated_version, [event]
         except Exception:
             self.version_repo.db.rollback()
             raise
@@ -207,7 +237,7 @@ class BenchmarkService:
         target_state: BenchmarkState,
         user_id: uuid.UUID,
         user_role: str
-    ) -> Benchmark:
+    ) -> Tuple[Benchmark, List[DomainEvent]]:
         """Transition benchmark state following the lifecycle engine rules with locking."""
         
         try:
@@ -262,9 +292,68 @@ class BenchmarkService:
             
             self.benchmark_repo.db.commit()
             self.benchmark_repo.db.refresh(updated_benchmark)
-            return updated_benchmark
+            
+            event = DomainEvent(
+                actor_id=user_id,
+                resource_type="Benchmark",
+                resource_id=benchmark_id,
+                action="LIFECYCLE_TRANSITION",
+                changes={
+                    "from_state": str(current_state),
+                    "to_state": str(target_state)
+                }
+            )
+            return updated_benchmark, [event]
         except Exception:
             self.benchmark_repo.db.rollback()
+            raise
+
+    def validate_version(self, version_id: uuid.UUID, user_id: uuid.UUID, user_role: str) -> Tuple[BenchmarkVersion, List[DomainEvent]]:
+        try:
+            version = self.version_repo.get(version_id)
+            if not version:
+                raise ValueError("Version not found")
+                
+            benchmark = self.benchmark_repo.get(version.benchmark_id)
+            
+            # Perform semantic validation
+            if not benchmark.categories:
+                raise InvariantViolationError("Benchmark must have at least one category to be validated.")
+            if not benchmark.capabilities:
+                raise InvariantViolationError("Benchmark must have at least one capability to be validated.")
+            if not version.dataset_version_ids:
+                raise InvariantViolationError("Benchmark version must have at least one dataset bound to be validated.")
+            if not version.evaluation_strategy_id:
+                raise InvariantViolationError("Benchmark version must have an evaluation strategy to be validated.")
+                
+            # Transition state to VALIDATION
+            benchmark, events = self.transition_state(benchmark.id, BenchmarkState.VALIDATION, user_id, user_role)
+            return version, events
+        except Exception:
+            raise
+
+    def publish_version(self, version_id: uuid.UUID, user_id: uuid.UUID, user_role: str) -> Tuple[BenchmarkVersion, List[DomainEvent]]:
+        try:
+            version = self.version_repo.get(version_id)
+            if not version:
+                raise ValueError("Version not found")
+                
+            # Transition state from REVIEW to PUBLISHED
+            benchmark, events = self.transition_state(version.benchmark_id, BenchmarkState.PUBLISHED, user_id, user_role)
+            return version, events
+        except Exception:
+            raise
+
+    def archive_version(self, version_id: uuid.UUID, user_id: uuid.UUID, user_role: str) -> Tuple[BenchmarkVersion, List[DomainEvent]]:
+        try:
+            version = self.version_repo.get(version_id)
+            if not version:
+                raise ValueError("Version not found")
+                
+            # Transition state from PUBLISHED to ARCHIVE
+            benchmark, events = self.transition_state(version.benchmark_id, BenchmarkState.ARCHIVE, user_id, user_role)
+            return version, events
+        except Exception:
             raise
 
     def _validate_invariants(self, benchmark: Benchmark):

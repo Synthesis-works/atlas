@@ -51,12 +51,19 @@ class BenchmarkApplicationService:
 
     def create_benchmark(self, project_id: uuid.UUID, author_id: uuid.UUID, data: BenchmarkCreate) -> BenchmarkRead:
         try:
-            benchmark = self.domain_service.create_benchmark(
-                project_id=project_id,
+            benchmark, events = self.domain_service.create_benchmark(
+                project_id=data.project_id,
                 author_id=author_id,
                 name=data.name,
-                objective=data.objective
+                objective=data.objective,
+                difficulty=data.difficulty,
+                domain=data.domain,
+                type=data.type,
+                visibility=data.visibility
             )
+            
+            for event in events:
+                print(f"Audit Event: {event}")
             
             # Associate categories and capabilities
             if data.category_ids:
@@ -180,7 +187,7 @@ class BenchmarkApplicationService:
 
     def create_version(self, benchmark_id: uuid.UUID, user_id: uuid.UUID, user_role: str, data: BenchmarkVersionCreate) -> BenchmarkVersionRead:
         try:
-            version = self.domain_service.create_version(
+            version, events = self.domain_service.create_version(
                 benchmark_id=benchmark_id,
                 version_string=data.version_string,
                 user_id=user_id,
@@ -189,21 +196,10 @@ class BenchmarkApplicationService:
                 evaluation_strategy_id=data.evaluation_strategy_id
             )
             
+            for event in events:
+                print(f"Audit Event: {event}")
+            
             benchmark = self.benchmark_repo.get(benchmark_id)
-            
-            from apps.backend.schemas.events import AuditEvent
-            from datetime import datetime, timezone
-            
-            # Structured audit event
-            event = AuditEvent(
-                event_id=uuid.uuid4(),
-                timestamp=datetime.now(timezone.utc),
-                actor_id=user_id,
-                resource_type="BenchmarkVersion",
-                resource_id=version.id,
-                action="VERSION_CREATED",
-                changes={"version_string": data.version_string, "benchmark_id": str(benchmark_id)}
-            )
             
             return BenchmarkVersionRead(
                 id=version.id,
@@ -239,7 +235,7 @@ class BenchmarkApplicationService:
 
     def update_version(self, version_id: uuid.UUID, user_id: uuid.UUID, user_role: str, data: BenchmarkVersionUpdate) -> BenchmarkVersionRead:
         try:
-            version = self.domain_service.update_version(
+            version, events = self.domain_service.update_version(
                 version_id=version_id,
                 user_id=user_id,
                 user_role=user_role,
@@ -247,20 +243,10 @@ class BenchmarkApplicationService:
                 evaluation_strategy_id=data.evaluation_strategy_id
             )
             
+            for event in events:
+                print(f"Audit Event: {event}")
+            
             benchmark = self.benchmark_repo.get(version.benchmark_id)
-            
-            from apps.backend.schemas.events import AuditEvent
-            from datetime import datetime, timezone
-            
-            event = AuditEvent(
-                event_id=uuid.uuid4(),
-                timestamp=datetime.now(timezone.utc),
-                actor_id=user_id,
-                resource_type="BenchmarkVersion",
-                resource_id=version.id,
-                action="VERSION_UPDATED",
-                changes={"dataset_version_ids": str(data.dataset_version_ids), "evaluation_strategy_id": str(data.evaluation_strategy_id)}
-            )
             
             return BenchmarkVersionRead(
                 id=version.id,
@@ -270,6 +256,42 @@ class BenchmarkApplicationService:
                 dataset_version_ids=version.dataset_version_ids,
                 evaluation_strategy_id=version.evaluation_strategy_id
             )
+        except HTTPException:
+            self.benchmark_repo.db.rollback()
+            raise
+        except Exception as e:
+            self.benchmark_repo.db.rollback()
+            map_domain_error(e)
+
+    def validate_version(self, version_id: uuid.UUID, user_id: uuid.UUID, user_role: str):
+        try:
+            version, events = self.domain_service.validate_version(version_id, user_id, user_role)
+            for event in events:
+                print(f"Audit Event: {event}")
+        except HTTPException:
+            self.benchmark_repo.db.rollback()
+            raise
+        except Exception as e:
+            self.benchmark_repo.db.rollback()
+            map_domain_error(e)
+
+    def publish_version(self, version_id: uuid.UUID, user_id: uuid.UUID, user_role: str):
+        try:
+            version, events = self.domain_service.publish_version(version_id, user_id, user_role)
+            for event in events:
+                print(f"Audit Event: {event}")
+        except HTTPException:
+            self.benchmark_repo.db.rollback()
+            raise
+        except Exception as e:
+            self.benchmark_repo.db.rollback()
+            map_domain_error(e)
+
+    def archive_version(self, version_id: uuid.UUID, user_id: uuid.UUID, user_role: str):
+        try:
+            version, events = self.domain_service.archive_version(version_id, user_id, user_role)
+            for event in events:
+                print(f"Audit Event: {event}")
         except HTTPException:
             self.benchmark_repo.db.rollback()
             raise

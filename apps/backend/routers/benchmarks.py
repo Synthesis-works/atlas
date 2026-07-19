@@ -223,3 +223,72 @@ def update_benchmark_version(
     )
     
     return APIResponse.success_response(data=updated)
+
+@benchmark_versions_router.post("/{version_id}/validate", status_code=status.HTTP_202_ACCEPTED)
+def validate_benchmark_version(
+    version_id: UUID,
+    claims: TokenClaims = Depends(require_authenticated),
+    project_authz: ProjectAuthorizationService = Depends(get_project_authz_service),
+    app_service: BenchmarkApplicationService = Depends(get_benchmark_app_service)
+):
+    version = app_service.domain_service.version_repo.get(version_id)
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+        
+    benchmark = app_service.get_benchmark(version.benchmark_id)
+    
+    member = project_authz.authorize_project_access(
+        project_id=benchmark.project_id,
+        user_id=claims.sub,
+        allowed_roles=[OrganizationRole.MEMBER, OrganizationRole.ADMIN, OrganizationRole.OWNER]
+    )
+    
+    user_role = map_member_role_to_string(member.role)
+    app_service.validate_version(version_id, claims.sub, user_role)
+    return None
+
+@benchmark_versions_router.post("/{version_id}/publish", status_code=status.HTTP_200_OK)
+def publish_benchmark_version(
+    version_id: UUID,
+    claims: TokenClaims = Depends(require_authenticated),
+    project_authz: ProjectAuthorizationService = Depends(get_project_authz_service),
+    app_service: BenchmarkApplicationService = Depends(get_benchmark_app_service)
+):
+    version = app_service.domain_service.version_repo.get(version_id)
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+        
+    benchmark = app_service.get_benchmark(version.benchmark_id)
+    
+    member = project_authz.authorize_project_access(
+        project_id=benchmark.project_id,
+        user_id=claims.sub,
+        allowed_roles=[OrganizationRole.ADMIN, OrganizationRole.OWNER]
+    )
+    
+    user_role = map_member_role_to_string(member.role)
+    app_service.publish_version(version_id, claims.sub, user_role)
+    return None
+
+@benchmark_versions_router.post("/{version_id}/archive", status_code=status.HTTP_200_OK)
+def archive_benchmark_version(
+    version_id: UUID,
+    claims: TokenClaims = Depends(require_authenticated),
+    project_authz: ProjectAuthorizationService = Depends(get_project_authz_service),
+    app_service: BenchmarkApplicationService = Depends(get_benchmark_app_service)
+):
+    version = app_service.domain_service.version_repo.get(version_id)
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+        
+    benchmark = app_service.get_benchmark(version.benchmark_id)
+    
+    member = project_authz.authorize_project_access(
+        project_id=benchmark.project_id,
+        user_id=claims.sub,
+        allowed_roles=[OrganizationRole.ADMIN, OrganizationRole.OWNER]
+    )
+    
+    user_role = map_member_role_to_string(member.role)
+    app_service.archive_version(version_id, claims.sub, user_role)
+    return None
