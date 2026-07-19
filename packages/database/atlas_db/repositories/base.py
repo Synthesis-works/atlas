@@ -16,22 +16,28 @@ class BaseRepository(Generic[ModelType]):
             query = query.filter(self.model.archived_at.is_(None))
         return query.first()
 
-    def create(self, *, obj_in: dict) -> ModelType:
+    def create(self, *, obj_in: dict, commit: bool = True) -> ModelType:
         obj = self.model(**obj_in)
         self.db.add(obj)
-        self.db.commit()
-        self.db.refresh(obj)
+        if commit:
+            self.db.commit()
+            self.db.refresh(obj)
+        else:
+            self.db.flush()
         return obj
 
-    def update(self, *, db_obj: ModelType, obj_in: dict) -> ModelType:
+    def update(self, *, db_obj: ModelType, obj_in: dict, commit: bool = True) -> ModelType:
         for field, value in obj_in.items():
             setattr(db_obj, field, value)
         self.db.add(db_obj)
-        self.db.commit()
-        self.db.refresh(db_obj)
+        if commit:
+            self.db.commit()
+            self.db.refresh(db_obj)
+        else:
+            self.db.flush()
         return db_obj
 
-    def delete(self, *, id: Any, hard: bool = False) -> ModelType | None:
+    def delete(self, *, id: Any, hard: bool = False, commit: bool = True) -> ModelType | None:
         obj = self.db.get(self.model, id)
         if obj:
             if not hard and hasattr(self.model, 'archived_at'):
@@ -40,5 +46,8 @@ class BaseRepository(Generic[ModelType]):
                 self.db.add(obj)
             else:
                 self.db.delete(obj)
-            self.db.commit()
+            if commit:
+                self.db.commit()
+            else:
+                self.db.flush()
         return obj
