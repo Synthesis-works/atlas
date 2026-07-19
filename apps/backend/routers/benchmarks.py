@@ -245,7 +245,7 @@ def validate_benchmark_version(
     
     user_role = map_member_role_to_string(member.role)
     app_service.validate_version(version_id, claims.sub, user_role)
-    return None
+    return APIResponse.success_response(data=None)
 
 @benchmark_versions_router.post("/{version_id}/publish", status_code=status.HTTP_200_OK)
 def publish_benchmark_version(
@@ -268,7 +268,7 @@ def publish_benchmark_version(
     
     user_role = map_member_role_to_string(member.role)
     app_service.publish_version(version_id, claims.sub, user_role)
-    return None
+    return APIResponse.success_response(data=None)
 
 @benchmark_versions_router.post("/{version_id}/archive", status_code=status.HTTP_200_OK)
 def archive_benchmark_version(
@@ -291,4 +291,4 @@ def archive_benchmark_version(
     
     user_role = map_member_role_to_string(member.role)
     app_service.archive_version(version_id, claims.sub, user_role)
-    return None
+    return APIResponse.success_response(data=None)

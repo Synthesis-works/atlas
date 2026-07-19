@@ -206,7 +206,7 @@ class BenchmarkApplicationService:
                 benchmark_id=version.benchmark_id,
                 version_string=version.version_string,
                 state=benchmark.status,
-                dataset_version_ids=version.dataset_version_ids,
+                dataset_version_ids=[dv.id for dv in version.dataset_versions] if version.dataset_versions else [],
                 evaluation_strategy_id=version.evaluation_strategy_id
             )
         except HTTPException:
@@ -228,7 +228,7 @@ class BenchmarkApplicationService:
                 benchmark_id=v.benchmark_id,
                 version_string=v.version_string,
                 state=benchmark.status,
-                dataset_version_ids=v.dataset_version_ids,
+                dataset_version_ids=[dv.id for dv in v.dataset_versions] if v.dataset_versions else [],
                 evaluation_strategy_id=v.evaluation_strategy_id
             ) for v in versions
         ]
@@ -253,7 +253,7 @@ class BenchmarkApplicationService:
                 benchmark_id=version.benchmark_id,
                 version_string=version.version_string,
                 state=benchmark.status,
-                dataset_version_ids=version.dataset_version_ids,
+                dataset_version_ids=[dv.id for dv in version.dataset_versions] if version.dataset_versions else [],
                 evaluation_strategy_id=version.evaluation_strategy_id
             )
         except HTTPException:

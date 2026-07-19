@@ -86,6 +86,13 @@ class BenchmarkLifecycle(Base):
 
     benchmark: Mapped["Benchmark"] = relationship("Benchmark", back_populates="lifecycles")
 
+benchmark_version_dataset_link = Table(
+    "benchmark_version_dataset_link",
+    Base.metadata,
+    Column("benchmark_version_id", ForeignKey("benchmark_versions.id", ondelete="CASCADE"), primary_key=True),
+    Column("dataset_version_id", ForeignKey("dataset_versions.id", ondelete="CASCADE"), primary_key=True)
+)
+
 class BenchmarkVersion(Base):
     __tablename__ = "benchmark_versions"
 
@@ -96,10 +103,12 @@ class BenchmarkVersion(Base):
     created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     
     # Version Metadata
-    dataset_version_ids: Mapped[list[uuid.UUID] | None] = mapped_column(postgresql.ARRAY(postgresql.UUID(as_uuid=True)), nullable=True)
     evaluation_strategy_id: Mapped[uuid.UUID | None] = mapped_column(postgresql.UUID(as_uuid=True), nullable=True)
 
     benchmark: Mapped["Benchmark"] = relationship("Benchmark", back_populates="versions")
+    dataset_versions: Mapped[list["DatasetVersion"]] = relationship(
+        "DatasetVersion", secondary=benchmark_version_dataset_link
+    )
 
     __table_args__ = (
         UniqueConstraint("benchmark_id", "version_string", name="uq_benchmark_version"),

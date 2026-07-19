@@ -84,12 +84,12 @@ class BenchmarkService:
             self.benchmark_repo.db.commit()
             self.benchmark_repo.db.refresh(benchmark)
             
-            event = DomainEvent(
+            from atlas_db.events import BenchmarkCreatedEvent
+            event = BenchmarkCreatedEvent(
+                aggregate_id=benchmark.id,
                 actor_id=author_id,
-                resource_type="Benchmark",
-                resource_id=benchmark.id,
-                action="BENCHMARK_CREATED",
-                changes={"name": name, "project_id": str(project_id)}
+                name=name,
+                project_id=project_id
             )
             return benchmark, [event]
         except Exception:
@@ -97,18 +97,18 @@ class BenchmarkService:
             raise
 
     def can_edit(self, benchmark: Benchmark, user_id: uuid.UUID, user_role: str) -> bool:
-        """Check if user can edit unpublished versions."""
-        if benchmark.status in [BenchmarkState.PUBLISHED, BenchmarkState.ARCHIVE]:
-            return False
-        if user_role in ["org_admin", "project_write"]:
+        """Check if user can edit."""
+        if user_role in ["org_admin", "project_write", "project_admin"]:
+            return True
+        if benchmark.author_id == user_id:
             return True
         return False
 
     def can_publish(self, benchmark: Benchmark, user_id: uuid.UUID, user_role: str) -> bool:
         """Check if user can publish."""
-        if user_role == "org_admin":
+        if user_role in ["org_admin", "project_admin"]:
             return True
-        if benchmark.author_id == user_id and user_role == "project_write":
+        if benchmark.author_id == user_id:
             return True
         return False
 
@@ -150,10 +150,16 @@ class BenchmarkService:
                 "benchmark_id": benchmark.id,
                 "version_string": version_string,
                 "created_by_id": user_id,
-                "dataset_version_ids": dataset_version_ids,
                 "evaluation_strategy_id": evaluation_strategy_id
             }
             version = self.version_repo.create(obj_in=version_data, commit=False)
+            
+            if dataset_version_ids:
+                from atlas_db.models.dataset import DatasetVersion
+                dataset_versions = self.version_repo.db.query(DatasetVersion).filter(DatasetVersion.id.in_(dataset_version_ids)).all()
+                if len(dataset_versions) != len(dataset_version_ids):
+                    raise ValueError("One or more dataset versions not found.")
+                version.dataset_versions = dataset_versions
 
             # Change benchmark state to DRAFT
             benchmark = self.benchmark_repo.update(
@@ -172,12 +178,14 @@ class BenchmarkService:
             self.benchmark_repo.db.commit()
             self.benchmark_repo.db.refresh(version)
             
-            event = DomainEvent(
+            from atlas_db.events import BenchmarkVersionCreatedEvent
+            event = BenchmarkVersionCreatedEvent(
+                aggregate_id=version.id,
                 actor_id=user_id,
-                resource_type="BenchmarkVersion",
-                resource_id=version.id,
-                action="VERSION_CREATED",
-                changes={"version_string": version_string, "benchmark_id": str(benchmark_id)}
+                benchmark_id=benchmark_id,
+                version_string=version_string,
+                dataset_version_ids=dataset_version_ids,
+                evaluation_strategy_id=evaluation_strategy_id
             )
             return version, [event]
         except Exception:
@@ -206,25 +214,27 @@ class BenchmarkService:
             self.assert_editable(benchmark)
 
             update_data = {}
-            if dataset_version_ids is not None:
-                update_data["dataset_version_ids"] = dataset_version_ids
             if evaluation_strategy_id is not None:
                 update_data["evaluation_strategy_id"] = evaluation_strategy_id
                 
             updated_version = self.version_repo.update(db_obj=version, obj_in=update_data, commit=False)
             
+            if dataset_version_ids is not None:
+                from atlas_db.models.dataset import DatasetVersion
+                dataset_versions = self.version_repo.db.query(DatasetVersion).filter(DatasetVersion.id.in_(dataset_version_ids)).all()
+                if len(dataset_versions) != len(dataset_version_ids):
+                    raise ValueError("One or more dataset versions not found.")
+                updated_version.dataset_versions = dataset_versions
+            
             self.version_repo.db.commit()
             self.version_repo.db.refresh(updated_version)
             
-            event = DomainEvent(
+            from atlas_db.events import BenchmarkVersionUpdatedEvent
+            event = BenchmarkVersionUpdatedEvent(
+                aggregate_id=version_id,
                 actor_id=user_id,
-                resource_type="BenchmarkVersion",
-                resource_id=version_id,
-                action="VERSION_UPDATED",
-                changes={
-                    "dataset_version_ids": str(dataset_version_ids),
-                    "evaluation_strategy_id": str(evaluation_strategy_id)
-                }
+                dataset_version_ids=dataset_version_ids,
+                evaluation_strategy_id=evaluation_strategy_id
             )
             return updated_version, [event]
         except Exception:
@@ -293,15 +303,12 @@ class BenchmarkService:
             self.benchmark_repo.db.commit()
             self.benchmark_repo.db.refresh(updated_benchmark)
             
-            event = DomainEvent(
+            from atlas_db.events import BenchmarkLifecycleTransitionEvent
+            event = BenchmarkLifecycleTransitionEvent(
+                aggregate_id=benchmark_id,
                 actor_id=user_id,
-                resource_type="Benchmark",
-                resource_id=benchmark_id,
-                action="LIFECYCLE_TRANSITION",
-                changes={
-                    "from_state": str(current_state),
-                    "to_state": str(target_state)
-                }
+                from_state=str(current_state.value),
+                to_state=str(target_state.value)
             )
             return updated_benchmark, [event]
         except Exception:
@@ -321,7 +328,7 @@ class BenchmarkService:
                 raise InvariantViolationError("Benchmark must have at least one category to be validated.")
             if not benchmark.capabilities:
                 raise InvariantViolationError("Benchmark must have at least one capability to be validated.")
-            if not version.dataset_version_ids:
+            if not version.dataset_versions:
                 raise InvariantViolationError("Benchmark version must have at least one dataset bound to be validated.")
             if not version.evaluation_strategy_id:
                 raise InvariantViolationError("Benchmark version must have an evaluation strategy to be validated.")
