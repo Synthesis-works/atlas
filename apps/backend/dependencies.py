@@ -56,6 +56,31 @@ def get_benchmark_service(db: Session = Depends(get_db_session)) -> BenchmarkSer
 def get_publishing_service(db: Session = Depends(get_db_session)) -> PublishingService:
     return PublishingService(version_repo=DatasetVersionRepository(db))
 
+from atlas_db.services.benchmark_service import BenchmarkService
+from atlas_db.repositories.authoring import BenchmarkRepository, BenchmarkLifecycleRepository, BenchmarkVersionRepository, BenchmarkCategoryRepository, CapabilityRepository
+from apps.backend.services.benchmarks import BenchmarkApplicationService
+
+def get_benchmark_app_service(db: Session = Depends(get_db_session)) -> BenchmarkApplicationService:
+    benchmark_repo = BenchmarkRepository(db)
+    lifecycle_repo = BenchmarkLifecycleRepository(db)
+    version_repo = BenchmarkVersionRepository(db)
+    category_repo = BenchmarkCategoryRepository(db)
+    capability_repo = CapabilityRepository(db)
+    
+    domain_service = BenchmarkService(
+        benchmark_repo=benchmark_repo,
+        lifecycle_repo=lifecycle_repo,
+        version_repo=version_repo
+    )
+    
+    return BenchmarkApplicationService(
+        domain_service=domain_service,
+        benchmark_repo=benchmark_repo,
+        category_repo=category_repo,
+        capability_repo=capability_repo
+    )
+
+
 from apps.backend.schemas.auth import TokenClaims
 
 def require_authenticated(token: HTTPAuthorizationCredentials = Depends(security)) -> TokenClaims:

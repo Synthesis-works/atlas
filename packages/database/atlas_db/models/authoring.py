@@ -4,6 +4,7 @@ from datetime import datetime
 from sqlalchemy import String, ForeignKey, DateTime, Table, Column, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import ENUM, JSONB
+from sqlalchemy.dialects import postgresql
 from atlas_db.core.base import Base, BaseMixin, utcnow
 
 class BenchmarkState(str, enum.Enum):
@@ -85,6 +86,13 @@ class BenchmarkLifecycle(Base):
 
     benchmark: Mapped["Benchmark"] = relationship("Benchmark", back_populates="lifecycles")
 
+benchmark_version_dataset_link = Table(
+    "benchmark_version_dataset_link",
+    Base.metadata,
+    Column("benchmark_version_id", ForeignKey("benchmark_versions.id", ondelete="CASCADE"), primary_key=True),
+    Column("dataset_version_id", ForeignKey("dataset_versions.id", ondelete="CASCADE"), primary_key=True)
+)
+
 class BenchmarkVersion(Base):
     __tablename__ = "benchmark_versions"
 
@@ -99,8 +107,14 @@ class BenchmarkVersion(Base):
     
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    
+    # Version Metadata
+    evaluation_strategy_id: Mapped[uuid.UUID | None] = mapped_column(postgresql.UUID(as_uuid=True), nullable=True)
 
     benchmark: Mapped["Benchmark"] = relationship("Benchmark", back_populates="versions")
+    dataset_versions: Mapped[list["DatasetVersion"]] = relationship(
+        "DatasetVersion", secondary=benchmark_version_dataset_link
+    )
     primary_dataset_version: Mapped["DatasetVersion | None"] = relationship("DatasetVersion")
 
     __table_args__ = (
