@@ -36,7 +36,6 @@ class McNemarTest:
         
         # Approximate p-value for 1 degree of freedom chi-squared
         # To avoid scipy dependency, we use a rough threshold table or math approximation
-        import math
         from scipy.stats import chi2
         
         try:

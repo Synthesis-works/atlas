@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from sklearn.feature_extraction.text import TfidfVectorizer
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 from packages.embedding.base import BaseEmbeddingProvider
 
 class SemanticClusterer:

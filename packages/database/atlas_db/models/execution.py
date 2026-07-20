@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 import enum
 from datetime import datetime
 from sqlalchemy import String, ForeignKey, DateTime, Integer, BigInteger, UniqueConstraint, Index
@@ -11,12 +12,14 @@ class AdapterType(str, enum.Enum):
     KUBERNETES = "kubernetes"
     AWS_BATCH = "aws_batch"
 
-class RunStatus(str, enum.Enum):
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
+class ExecutionStatus(str, enum.Enum):
+    DRAFT = "DRAFT"
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+    TIMED_OUT = "TIMED_OUT"
 
 class ArtifactType(str, enum.Enum):
     LOG = "log"
@@ -50,55 +53,59 @@ class ExecutionAdapterVersion(Base):
         UniqueConstraint("adapter_id", "version_string", name="uq_adapter_version"),
     )
 
-class EvaluationSession(Base, BaseMixin):
-    __tablename__ = "evaluation_sessions"
+class Execution(Base, BaseMixin):
+    __tablename__ = "executions"
 
     project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id"), nullable=False, index=True)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-    atlas_runs: Mapped[list["AtlasRun"]] = relationship("AtlasRun", back_populates="session")
-
-class AtlasRun(Base, BaseMixin):
-    __tablename__ = "atlas_runs"
-
-    session_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("evaluation_sessions.id"), nullable=False, index=True)
     benchmark_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("benchmark_versions.id"), nullable=False, index=True)
-    adapter_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("execution_adapter_versions.id"), nullable=False, index=True)
-    target_model: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    status: Mapped[RunStatus] = mapped_column(
-        ENUM(RunStatus, name="run_status"),
+    submitted_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("organization_members.id"), nullable=True, index=True)
+    
+    status: Mapped[ExecutionStatus] = mapped_column(
+        ENUM(ExecutionStatus, name="execution_status"),
         nullable=False,
-        default=RunStatus.PENDING
+        default=ExecutionStatus.DRAFT
     )
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    target_model: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    execution_config: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
+    benchmark_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    
+    # Worker Tracking
+    celery_task_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    cancellation_requested: Mapped[bool] = mapped_column(default=False)
+    
+    # Progress Tracking
+    total_items: Mapped[int] = mapped_column(default=0)
+    completed_items: Mapped[int] = mapped_column(default=0)
 
-    session: Mapped["EvaluationSession"] = relationship("EvaluationSession", back_populates="atlas_runs")
-    model_outputs: Mapped[list["ModelOutput"]] = relationship("ModelOutput", back_populates="atlas_run")
-    artifacts: Mapped[list["Artifact"]] = relationship("Artifact", back_populates="atlas_run")
+    # Timing
+    queued_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    model_outputs: Mapped[list["ModelOutput"]] = relationship("ModelOutput", back_populates="execution")
+    artifacts: Mapped[list["Artifact"]] = relationship("Artifact", back_populates="execution")
 
     __table_args__ = (
-        Index("ix_atlas_runs_status_created_at", "status", "created_at"),
+        Index("ix_executions_status_created_at", "status", "created_at"),
     )
 
 class ModelOutput(Base, BaseMixin):
     __tablename__ = "model_outputs"
 
-    atlas_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("atlas_runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    execution_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("executions.id", ondelete="CASCADE"), nullable=False, index=True)
     test_case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("test_cases.id"), nullable=False, index=True)
     raw_output: Mapped[str] = mapped_column(String, nullable=False)
     duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     tokens_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    atlas_run: Mapped["AtlasRun"] = relationship("AtlasRun", back_populates="model_outputs")
+    execution: Mapped["Execution"] = relationship("Execution", back_populates="model_outputs")
     evaluation_result: Mapped["EvaluationResult"] = relationship("EvaluationResult", back_populates="model_output", uselist=False)
 
 class Artifact(Base, BaseMixin):
     __tablename__ = "artifacts"
 
-    atlas_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("atlas_runs.id", ondelete="CASCADE"), nullable=False, index=True)
+    execution_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("executions.id", ondelete="CASCADE"), nullable=False, index=True)
     type: Mapped[ArtifactType] = mapped_column(
         ENUM(ArtifactType, name="artifact_type"),
         nullable=False
@@ -106,4 +113,4 @@ class Artifact(Base, BaseMixin):
     uri: Mapped[str] = mapped_column(String, nullable=False)
     size_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
-    atlas_run: Mapped["AtlasRun"] = relationship("AtlasRun", back_populates="artifacts")
+    execution: Mapped["Execution"] = relationship("Execution", back_populates="artifacts")

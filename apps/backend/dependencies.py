@@ -2,7 +2,6 @@ from typing import Generator
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from uuid import UUID
 import jwt
 
 from atlas_db.core.session import SessionLocal
@@ -10,7 +9,7 @@ from atlas_db.repositories.core import (
     OrganizationRepository, OrganizationMemberRepository, 
     InvitationRepository, ProjectRepository, UserRepository
 )
-from atlas_db.models.core import User, OrganizationRole, MembershipStatus
+from atlas_db.models.core import User, MembershipStatus
 from apps.backend.services.organizations import OrganizationService
 from apps.backend.services.projects import ProjectService
 from apps.backend.services.auth import AuthService
@@ -41,6 +40,7 @@ def get_auth_service(db: Session = Depends(get_db_session)) -> AuthService:
     return AuthService(user_repo=UserRepository(db))
 
 from apps.backend.services.datasets import DatasetService
+from apps.backend.services.benchmarks import BenchmarkService
 from apps.backend.services.publishing import PublishingService
 from atlas_db.repositories.dataset import DatasetRepository, DatasetVersionRepository
 
@@ -49,6 +49,9 @@ def get_dataset_service(db: Session = Depends(get_db_session)) -> DatasetService
         dataset_repo=DatasetRepository(db),
         version_repo=DatasetVersionRepository(db)
     )
+
+def get_benchmark_service(db: Session = Depends(get_db_session)) -> BenchmarkService:
+    return BenchmarkService(db)
 
 def get_publishing_service(db: Session = Depends(get_db_session)) -> PublishingService:
     return PublishingService(version_repo=DatasetVersionRepository(db))

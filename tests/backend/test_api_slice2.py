@@ -1,12 +1,12 @@
 import pytest
 from fastapi.testclient import TestClient
-from uuid import UUID, uuid4
+from uuid import uuid4
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 from apps.backend.main import app
 from apps.backend.dependencies import get_org_service, get_project_service, get_current_member
-from apps.backend.schemas.organizations import OrganizationMemberRead, InvitationRead
+from apps.backend.schemas.organizations import OrganizationMemberRead
 from atlas_db.models.core import Organization, OrganizationRole, MembershipStatus, Project, Invitation, InvitationStatus
 
 client = TestClient(app)
@@ -33,9 +33,15 @@ MOCK_MEMBER = OrganizationMemberRead(
 def override_get_current_member():
     return MOCK_MEMBER
 
+def override_get_current_user():
+    from atlas_db.models.core import User
+    return User(id=uuid4(), email="test@example.com", is_active=True, is_verified=True, full_name="Test User")
+
 app.dependency_overrides[get_org_service] = override_get_org_service
 app.dependency_overrides[get_project_service] = override_get_project_service
 app.dependency_overrides[get_current_member] = override_get_current_member
+from apps.backend.dependencies import get_current_user
+app.dependency_overrides[get_current_user] = override_get_current_user
 
 @pytest.fixture(autouse=True)
 def reset_mocks():

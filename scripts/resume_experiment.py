@@ -1,12 +1,9 @@
 import sys
 import os
 import argparse
-import json
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from packages.orchestrator.atlas_orchestrator import AtlasOrchestrator
-from packages.experiments.models import ExperimentConfig
 
 def main():
     parser = argparse.ArgumentParser(description="Resume an Atlas Experiment")

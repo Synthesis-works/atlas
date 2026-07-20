@@ -19,7 +19,7 @@ class ReportVersion(Base):
     report_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("reports.id"), nullable=False)
     version_string: Mapped[str] = mapped_column(String(50), nullable=False)
     summary: Mapped[str | None] = mapped_column(String, nullable=True)
-    evaluation_session_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("evaluation_sessions.id"), nullable=True)
+    execution_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("executions.id"), nullable=True)
     
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
     created_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"), nullable=True)

@@ -1,7 +1,7 @@
 import os
 import json
-from typing import List, Optional, Dict, Any
-from .models import JobConfig, TaskRunResult, TaskRunState
+from typing import List, Dict, Any
+from .models import JobConfig, TaskRunResult
 
 class StateManager:
     def __init__(self, base_dir: str = "results/jobs"):

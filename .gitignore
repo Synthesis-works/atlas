@@ -13,3 +13,6 @@ analysis/
 report.md
 .pytest_cache/
 *.pdf
+*.db
+*.db-journal
+.ruff_cache/

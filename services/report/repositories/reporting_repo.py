@@ -1,0 +1,70 @@
+from typing import List, Optional, Any, Tuple
+from uuid import UUID
+from sqlalchemy.orm import Session
+from sqlalchemy import select, func, desc
+from atlas_db.models.execution import AtlasRun, ModelOutput
+from atlas_db.models.evaluation import EvaluationResult, CapabilityProfile, CapabilityScore
+
+class ReportingRepository:
+    """
+    Abstracts direct database access for the Reporting Service.
+    Queries the database and returns raw SQLAlchemy objects or basic tuples.
+    Does NOT map to Read Models - that's the job of the Query Service.
+    """
+    def __init__(self, db: Session):
+        self.db = db
+
+    def get_runs_for_model(self, model_identifier: str, limit: int = 100, offset: int = 0) -> List[AtlasRun]:
+        stmt = select(AtlasRun).where(AtlasRun.target_model == model_identifier).order_by(desc(AtlasRun.created_at)).limit(limit).offset(offset)
+        return list(self.db.scalars(stmt))
+
+    def get_evaluations_for_model(self, model_identifier: str) -> List[EvaluationResult]:
+        # Get evaluation results joined with ModelOutput and AtlasRun
+        stmt = (
+            select(EvaluationResult)
+            .join(ModelOutput, EvaluationResult.model_output_id == ModelOutput.id)
+            .join(AtlasRun, ModelOutput.atlas_run_id == AtlasRun.id)
+            .where(AtlasRun.target_model == model_identifier)
+        )
+        return list(self.db.scalars(stmt))
+    
+    def get_capability_profiles_for_model(self, model_identifier: str) -> List[CapabilityProfile]:
+        stmt = (
+            select(CapabilityProfile)
+            .join(AtlasRun, CapabilityProfile.atlas_run_id == AtlasRun.id)
+            .where(AtlasRun.target_model == model_identifier)
+        )
+        return list(self.db.scalars(stmt))
+
+    def get_latest_capability_profile(self, model_identifier: str) -> Optional[CapabilityProfile]:
+        stmt = (
+            select(CapabilityProfile)
+            .join(AtlasRun, CapabilityProfile.atlas_run_id == AtlasRun.id)
+            .where(AtlasRun.target_model == model_identifier)
+            .order_by(desc(AtlasRun.created_at))
+            .limit(1)
+        )
+        return self.db.scalars(stmt).first()
+
+    def get_overall_leaderboard_data(self, limit: int = 10) -> List[Tuple[str, float]]:
+        # A simple aggregation: average overall_score by target_model
+        stmt = (
+            select(
+                AtlasRun.target_model,
+                func.avg(CapabilityProfile.overall_score).label("avg_score")
+            )
+            .join(CapabilityProfile, CapabilityProfile.atlas_run_id == AtlasRun.id)
+            .group_by(AtlasRun.target_model)
+            .order_by(desc("avg_score"))
+            .limit(limit)
+        )
+        return list(self.db.execute(stmt))
+
+    def get_history(self, limit: int = 50, offset: int = 0) -> Tuple[List[AtlasRun], int]:
+        stmt = select(AtlasRun).order_by(desc(AtlasRun.created_at)).limit(limit).offset(offset)
+        items = list(self.db.scalars(stmt))
+        
+        count_stmt = select(func.count()).select_from(AtlasRun)
+        total = self.db.scalar(count_stmt) or 0
+        
+        return items, total

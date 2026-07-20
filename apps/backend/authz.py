@@ -5,8 +5,21 @@ from sqlalchemy.orm import Session
 
 from apps.backend.dependencies import require_authenticated, get_db_session
 from apps.backend.schemas.auth import TokenClaims
+from apps.backend.config import settings
 from atlas_db.repositories.core import OrganizationMemberRepository
-from atlas_db.models.core import OrganizationRole, MembershipStatus, OrganizationMember
+from atlas_db.models.core import OrganizationRole, MembershipStatus, OrganizationMember, User
+
+def require_superuser(
+    claims: TokenClaims = Depends(require_authenticated),
+    db: Session = Depends(get_db_session)
+) -> User:
+    user = db.query(User).filter(User.id == claims.sub).first()
+    if not user or user.email not in settings.admin_emails:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="System administrative access required."
+        )
+    return user
 
 def require_org_member(
     org_id: UUID = Path(...),

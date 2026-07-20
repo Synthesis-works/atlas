@@ -3,11 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from apps.backend.config import settings
 from apps.backend.lifespan import lifespan
 from apps.backend.routers import health
+from apps.backend.core.logging import setup_logging
 
 def create_app() -> FastAPI:
     """
     Factory function to create and configure the FastAPI application.
     """
+    setup_logging()
+    
     from apps.backend.middleware.request_context import RequestContextMiddleware
     from apps.backend.exceptions import (
         custom_http_exception_handler,
@@ -46,7 +49,7 @@ def create_app() -> FastAPI:
     # The health check is typically mounted at the root rather than under api/v1 prefix
     app.include_router(health.router)
 
-    from apps.backend.routers import organizations, projects, auth, datasets, benchmarks, executions, internal_workers
+    from apps.backend.routers import organizations, projects, auth, datasets, benchmarks, executions, internal_workers, evaluation, system
     
     # We will mount these under /api/v1 for the actual domain routes
     api_v1 = FastAPI()
@@ -61,6 +64,8 @@ def create_app() -> FastAPI:
     app.include_router(executions.benchmark_executions_router, prefix="/api/v1")
     app.include_router(executions.executions_router, prefix="/api/v1")
     app.include_router(internal_workers.workers_router, prefix="/api/v1/internal/workers")
+    app.include_router(evaluation.router, prefix="/api/v1")
+    app.include_router(system.router, prefix="/api/v1")
 
     return app
 

@@ -1,6 +1,5 @@
 import uuid
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
 
 from atlas_db.models.dataset import DatasetVersion, DatasetLifecycle
 from atlas_db.repositories.dataset import DatasetVersionRepository

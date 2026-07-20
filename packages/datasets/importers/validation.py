@@ -1,6 +1,5 @@
 from ..models import DatasetPack, DatasetManifest
 from packages.benchmark.models.task import Task, EvaluationConfig
-from typing import List
 
 class ValidationImporter:
     """Provides a small, consistent 10-task set for provider validation."""

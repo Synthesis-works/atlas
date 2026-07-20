@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 class ResearchQuestionTracker:
     def __init__(self, registry_file: str = "research/questions/registry.json"):

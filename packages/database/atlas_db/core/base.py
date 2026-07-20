@@ -1,7 +1,6 @@
-from typing import Any
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Column, DateTime, Integer, event, ForeignKey, MetaData
+from sqlalchemy import DateTime, Integer, ForeignKey, MetaData
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, declared_attr
 
