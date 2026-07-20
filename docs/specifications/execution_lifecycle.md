@@ -17,6 +17,13 @@ This document defines the lifecycle states and transitions for the Phase B Execu
 | `CANCELLING`| A cancellation request has been received, waiting for worker to cleanly terminate. |
 | `CANCELLED` | The execution was aborted by the user or system before completion. |
 
+## Execution Attempt Invariants
+To maintain auditability and clean historical records for retries, all attempts follow strict invariants:
+1. **Exactly one attempt may be active.** A new attempt cannot be created if the previous attempt is still `IN_PROGRESS`.
+2. **All previous attempts are immutable.** Once an attempt transitions to `SUCCESS`, `FAILED`, or `CANCELLED`, its state, timestamps, and attached artifacts cannot be modified.
+3. **Attempt numbers are monotonic.** They must increment strictly sequentially (1, 2, 3...).
+4. **Attempt numbers never reuse deleted attempts.** If an attempt is somehow rolled back or removed (which is disallowed), its number is burned.
+
 ## Transition Matrix
 
 | Current State | Action | Next State | Allowed |

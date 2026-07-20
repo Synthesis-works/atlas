@@ -4,7 +4,10 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from datetime import datetime, timezone
 from apps.backend.schemas.responses import APIErrorResponse, ErrorDetail, ResponseMeta
-
+from packages.execution_engine.domain.exceptions import (
+    DomainException, InvalidStateTransitionError, InvariantViolationError,
+    ImmutableExecutionError, RetryLimitExceededError, LeaseException, ExecutionNotFoundError
+)
 def _get_meta(request: Request) -> ResponseMeta:
     return ResponseMeta(
         request_id=getattr(request.state, "request_id", "unknown"),
@@ -37,6 +40,27 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         meta=_get_meta(request)
     )
     return JSONResponse(status_code=422, content=error_response.model_dump(mode="json"))
+
+async def domain_exception_handler(request: Request, exc: DomainException) -> JSONResponse:
+    """
+    Handle domain exceptions gracefully.
+    """
+    status_code = 400
+    if isinstance(exc, (InvalidStateTransitionError, ImmutableExecutionError)):
+        status_code = 409
+    elif isinstance(exc, ExecutionNotFoundError):
+        status_code = 404
+    elif isinstance(exc, LeaseOwnershipError):
+        status_code = 403
+    
+    error_response = APIErrorResponse(
+        error=ErrorDetail(
+            code=exc.__class__.__name__,
+            message=str(exc)
+        ),
+        meta=_get_meta(request)
+    )
+    return JSONResponse(status_code=status_code, content=error_response.model_dump(mode="json"))
 
 async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
