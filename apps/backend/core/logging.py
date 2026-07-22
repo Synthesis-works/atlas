@@ -13,11 +13,17 @@ def setup_logging():
         level=getattr(logging, settings.log_level.upper(), logging.INFO)
     )
 
+    from apps.backend.core.telemetry.logging import (
+        inject_context_ids, redact_sensitive_data, sample_debug_logs
+    )
+    
     shared_processors = [
-        structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso"),
+        inject_context_ids,
+        redact_sensitive_data,
+        sample_debug_logs,
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
     ]

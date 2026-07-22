@@ -9,19 +9,44 @@ from packages.execution_engine.domain.models import Execution, ExecutionState
 from packages.execution_engine.persistence.interfaces import ExecutionRepository
 from packages.execution_engine.persistence.models import ExecutionModel, ExecutionAttemptModel, LeaseModel
 from packages.execution_engine.persistence.mapper import ExecutionMapper
+from atlas_db.models.outbox import OutboxMessage
+from apps.backend.core.telemetry import get_correlation_id, get_trace_id
 
 class SqlAlchemyExecutionRepository(ExecutionRepository):
     def __init__(self, session: Session):
         self.session = session
 
     def save(self, execution: Execution) -> None:
-        """Saves or updates an Execution aggregate."""
+        """Saves or updates an Execution aggregate and records any pending Domain Events to the Outbox."""
         model = self.session.get(ExecutionModel, execution.id)
         if model is None:
             model = ExecutionMapper.to_model(execution)
             self.session.add(model)
         else:
             ExecutionMapper.update_model(execution, model)
+            
+        # Pull pending domain events from the aggregate and write them to the Outbox table
+        events = execution.pull_events()
+        for event in events:
+            # Capture current trace context
+            trace_ctx = {
+                "correlation_id": get_correlation_id(),
+                "trace_id": get_trace_id()
+            }
+            
+            outbox_msg = OutboxMessage(
+                event_id=uuid.uuid4(),
+                aggregate_id=execution.id,
+                aggregate_type="Execution",
+                event_type=event.event_type,
+                event_version=event.event_version,
+                schema_version=1,
+                payload=event.to_dict(),
+                trace_context=trace_ctx,
+                occurred_at=event.timestamp
+            )
+            self.session.add(outbox_msg)
+            
         self.session.flush()
 
     def get(self, execution_id: uuid.UUID) -> Optional[Execution]:

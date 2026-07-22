@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     celery_result_backend: str = Field(default="redis://localhost:6379/0")
     celery_task_always_eager: bool = Field(default=False)
 
+    # Outbox Configuration
+    outbox_batch_size: int = Field(default=100)
+    outbox_poll_interval: int = Field(default=5)
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -7,6 +7,9 @@ from apps.backend.worker.celery_app import celery_app
 from apps.backend.worker.execution_worker import ExecutionWorker
 from apps.backend.services.evaluation import EvaluationService
 from atlas_db.core.session import SessionLocal
+from packages.execution_engine.application.outbox_dispatcher import OutboxDispatcher
+from packages.execution_engine.application.subscribers import CompositeEventPublisher
+from apps.backend.core.telemetry import NullTelemetrySink
 
 logger = structlog.get_logger(__name__)
 
@@ -52,36 +55,31 @@ def run_execution_task(self, execution_id_str: str, correlation_id: str = None):
         raise self.retry(exc=exc, countdown=2 ** self.request.retries)
 
 
+
+
 @celery_app.task(
     bind=True,
-    max_retries=3,
-    soft_time_limit=300
+    max_retries=0, # The sweep handles its own retries of individual events
+    time_limit=60
 )
-def run_evaluation_task(self, execution_id_str: str, correlation_id: str = None):
+def outbox_sweep_task(self):
     """
-    Celery task to run the downstream evaluation.
+    Celery periodic task to process pending outbox events.
     """
-    execution_id = uuid.UUID(execution_id_str)
-    logger.info("Starting Evaluation Task", execution_id=str(execution_id))
+    from packages.evaluation_engine.application.subscriber import EvaluationSubscriber
+    
     try:
         with SessionLocal() as db:
-            eval_service = EvaluationService(db)
-            # Evaluate without force
-            eval_service.evaluate_execution(execution_id, force=False)
-            db.commit()
-    except SoftTimeLimitExceeded:
-        logger.warning("Evaluation timed out", execution_id=str(execution_id))
-        raise
+            # Note: We construct a CompositeEventPublisher here.
+            # In a real DI container this would be injected.
+            publisher = CompositeEventPublisher(
+                telemetry_sink=NullTelemetrySink(),
+                subscribers=[EvaluationSubscriber()] # Hook the new evaluation subsystem
+            )
+            dispatcher = OutboxDispatcher(session=db, publisher=publisher)
+            processed_count = dispatcher.sweep()
+            if processed_count > 0:
+                logger.info(f"Outbox sweep processed {processed_count} messages")
     except Exception as exc:
-        dead_letter_payload = {
-            "execution_id": str(execution_id),
-            "celery_task_id": self.request.id,
-            "retry_count": self.request.retries,
-            "exception_type": type(exc).__name__,
-            "exception_message": str(exc),
-            "occurred_at": datetime.datetime.utcnow().isoformat()
-        }
-        logger.error("Evaluation task failed", dead_letter=dead_letter_payload, exc_info=True)
-        if self.request.retries >= self.max_retries:
-            logger.error("Max retries exceeded, evaluation permanently failed", dead_letter=dead_letter_payload)
-        raise self.retry(exc=exc, countdown=2 ** self.request.retries)
+        logger.error("Outbox sweep failed", exc_info=True)
+

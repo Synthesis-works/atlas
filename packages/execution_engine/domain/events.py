@@ -7,6 +7,32 @@ from typing import Optional
 class DomainEvent:
     timestamp: datetime
     
+    @property
+    def event_type(self) -> str:
+        return self.__class__.__name__
+        
+    @property
+    def event_version(self) -> int:
+        return 1
+
+    def to_dict(self) -> dict:
+        import dataclasses
+        data = dataclasses.asdict(self)
+        # Convert UUIDs to strings and datetime to isoformat
+        def _serialize_val(val):
+            if isinstance(val, uuid.UUID):
+                return str(val)
+            if isinstance(val, datetime):
+                return val.isoformat()
+            if isinstance(val, dict):
+                return {k: _serialize_val(v) for k, v in val.items()}
+            if isinstance(val, list):
+                return [_serialize_val(v) for v in val]
+            return val
+            
+        return {k: _serialize_val(v) for k, v in data.items() if k != "timestamp"}
+
+    
 @dataclass(frozen=True)
 class ExecutionQueuedEvent(DomainEvent):
     execution_id: uuid.UUID

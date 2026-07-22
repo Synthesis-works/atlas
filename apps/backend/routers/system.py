@@ -35,3 +35,57 @@ def celery_health(user: User = Depends(require_superuser)):
             message=f"Failed to fetch Celery health: {str(e)}",
             status_code=503
         )
+
+
+@router.get("/health/live")
+async def health_live():
+    """
+    Liveness probe. Returns 200 OK if the process is running.
+    """
+    return {
+        "status": "alive",
+        "version": "0.9.0"
+    }
+
+from sqlalchemy import text
+from atlas_db.session import get_db
+from sqlalchemy.orm import Session
+
+@router.get("/health/ready")
+async def health_ready(db: Session = Depends(get_db)):
+    """
+    Readiness probe. Returns 200 OK if dependencies are available.
+    
+    Dependencies checked:
+    - Database (PostgreSQL)
+    
+    Not checked (handled by other services):
+    - Celery workers
+    - Redis (message broker)
+    """
+    try:
+        db.execute(text("SELECT 1"))
+        db_status = "connected"
+    except Exception as e:
+        return APIResponse.error_response(
+            message="Database connection failed",
+            status_code=503
+        )
+        
+    return {
+        "status": "ready",
+        "checks": {
+            "database": db_status
+        }
+    }
+
+from fastapi.responses import PlainTextResponse
+
+@router.get("/metrics", response_class=PlainTextResponse)
+async def metrics():
+    """
+    Exposes metrics for Prometheus scraping.
+    """
+    # This would typically return `prometheus_client.generate_latest()`
+    # We return a placeholder for now since we haven't configured a full prometheus registry
+    return "# HELP atlas_health_checks_total Total health checks\n# TYPE atlas_health_checks_total counter\natlas_health_checks_total 1.0\n"

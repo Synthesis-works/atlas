@@ -23,7 +23,13 @@ celery_app.conf.update(
     enable_utc=True,
     # Example concurrency / prefetch limits
     worker_prefetch_multiplier=1,
-    worker_concurrency=4
+    worker_concurrency=4,
+    beat_schedule={
+        "outbox-sweep": {
+            "task": "apps.backend.worker.tasks.outbox_sweep_task",
+            "schedule": settings.outbox_poll_interval,
+        }
+    }
 )
 
 @task_prerun.connect

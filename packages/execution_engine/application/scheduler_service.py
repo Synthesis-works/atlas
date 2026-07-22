@@ -5,8 +5,11 @@ from sqlalchemy.orm import Session
 from packages.execution_engine.domain.services import ExecutionService
 from packages.execution_engine.persistence.interfaces import ExecutionRepository
 from packages.execution_engine.application.interfaces import EventPublisher
+from apps.backend.core.telemetry import (
+    set_correlation_id, set_trace_id, generate_uuidv7, get_logger
+)
 
-logger = logging.getLogger(__name__)
+logger = get_logger("SCHEDULER")
 
 class SchedulerService:
     """
@@ -14,11 +17,9 @@ class SchedulerService:
     """
     def __init__(self, 
                  domain_service: ExecutionService,
-                 execution_repo: ExecutionRepository,
-                 event_publisher: EventPublisher):
+                 execution_repo: ExecutionRepository):
         self.domain_service = domain_service
         self.execution_repo = execution_repo
-        self.event_publisher = event_publisher
 
     def sweep_expired_leases(self, limit: int = 50) -> int:
         """
@@ -27,36 +28,33 @@ class SchedulerService:
         it moves on to the next.
         Returns the number of leases successfully swept.
         """
+        # Generate a correlation ID for this entire scheduler sweep
+        sweep_correlation_id = generate_uuidv7()
+        set_correlation_id(sweep_correlation_id)
+        
         swept_count = 0
         
         # Pull executions with expired active attempts (SKIP LOCKED)
         try:
             executions = self.execution_repo.find_expired_active_attempts(limit=limit)
         except Exception as e:
-            logger.error(f"Failed to query expired leases: {e}")
+            logger.error("Failed to query expired leases", exc_info=True)
             return 0
             
         for execution in executions:
+            # Derive a child context for this specific execution
+            set_trace_id(generate_uuidv7())
+            
             try:
                 # Expire the lease. The domain decides if it is a retry or failure.
                 self.domain_service.expire_lease(execution)
                 
-                # Persist the state transition
+                # Persist the state transition (and outbox events)
                 self.execution_repo.save(execution)
                 
-                # Pull events (preserving causal order)
-                events = execution.pull_events()
-                
-                # Note: Publish failure does not roll back the DB commit in this model.
-                # In a robust system, an outbox pattern should be used.
-                try:
-                    self.event_publisher.publish(events)
-                except Exception as e:
-                    logger.error(f"Failed to publish events for execution {execution.id}: {e}")
-                    
                 swept_count += 1
             except Exception as e:
-                logger.error(f"Failed to process expired lease for execution {execution.id}: {e}")
+                logger.error(f"Failed to process expired lease for execution {execution.id}", exc_info=True)
                 # Continue with the next execution
                 continue
                 

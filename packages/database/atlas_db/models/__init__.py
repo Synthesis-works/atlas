@@ -7,3 +7,4 @@ from atlas_db.models.execution import *
 from atlas_db.models.evaluation import *
 from atlas_db.models.reporting import *
 from atlas_db.models.system import *
+from atlas_db.models.outbox import *

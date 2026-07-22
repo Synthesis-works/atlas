@@ -10,10 +10,6 @@ from packages.database.atlas_db.repositories.authoring import BenchmarkRepositor
 
 logger = logging.getLogger(__name__)
 
-class EventPublisher:
-    """Stub event publisher"""
-    def publish(self, event):
-        logger.info(f"Event published: {event}")
 
 class ExecutionApplicationService:
     """
@@ -21,15 +17,12 @@ class ExecutionApplicationService:
     Exposes operations for the public control-plane API.
     """
     
-    def __init__(self, 
                  domain_service: ExecutionService, 
                  execution_repo: ExecutionRepository,
-                 benchmark_repo: BenchmarkRepository,
-                 event_publisher: EventPublisher = EventPublisher()):
+                 benchmark_repo: BenchmarkRepository):
         self.domain_service = domain_service
         self.execution_repo = execution_repo
         self.benchmark_repo = benchmark_repo
-        self.event_publisher = event_publisher
 
     def submit_execution(self, benchmark_version_id: uuid.UUID, submitted_by: uuid.UUID) -> Execution:
         """
@@ -49,9 +42,6 @@ class ExecutionApplicationService:
         
         # Save to DB (commits transaction via Unit of Work or session dependency higher up)
         self.execution_repo.save(execution)
-        
-        for event in execution.pull_events():
-            self.event_publisher.publish(event)
             
         return execution
         
@@ -74,8 +64,5 @@ class ExecutionApplicationService:
             
         self.domain_service.cancel(execution)
         self.execution_repo.save(execution)
-        
-        for event in execution.pull_events():
-            self.event_publisher.publish(event)
         
         return execution

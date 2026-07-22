@@ -21,8 +21,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # 1. Update run_status Enum
-    op.execute("ALTER TYPE run_status ADD VALUE 'VALIDATING'")
-    op.execute("ALTER TYPE run_status ADD VALUE 'ABORTING'")
+    bind = op.get_bind()
+    if bind.engine.name == 'postgresql':
+        op.execute("ALTER TYPE run_status ADD VALUE 'VALIDATING'")
+        op.execute("ALTER TYPE run_status ADD VALUE 'ABORTING'")
 
     # 2. Create new Enums
     task_status_enum = postgresql.ENUM('PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED', name='task_status')
@@ -42,8 +44,8 @@ def upgrade() -> None:
     # 3. Create execution_workers table
     op.create_table('execution_workers',
         sa.Column('id', sa.Uuid(), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
         sa.Column('adapter_id', sa.Uuid(), nullable=False),
         sa.Column('name', sa.String(length=255), nullable=False),
         sa.Column('status', worker_status_enum, nullable=False),
@@ -64,8 +66,8 @@ def upgrade() -> None:
     # 4. Create atlas_tasks table
     op.create_table('atlas_tasks',
         sa.Column('id', sa.Uuid(), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
         sa.Column('atlas_run_id', sa.Uuid(), nullable=False),
         sa.Column('assigned_worker_id', sa.Uuid(), nullable=True),
         sa.Column('status', task_status_enum, nullable=False),
@@ -83,8 +85,8 @@ def upgrade() -> None:
     # 5. Create run_events table
     op.create_table('run_events',
         sa.Column('id', sa.Uuid(), nullable=False),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
         sa.Column('atlas_run_id', sa.Uuid(), nullable=False),
         sa.Column('atlas_task_id', sa.Uuid(), nullable=True),
         sa.Column('execution_worker_id', sa.Uuid(), nullable=True),
@@ -107,9 +109,15 @@ def upgrade() -> None:
     op.add_column('atlas_runs', sa.Column('error_message', sa.String(), nullable=True))
 
     # 7. Update model_outputs table to reference atlas_tasks
-    op.add_column('model_outputs', sa.Column('atlas_task_id', sa.Uuid(), nullable=True))
-    op.create_foreign_key('fk_model_outputs_atlas_task_id', 'model_outputs', 'atlas_tasks', ['atlas_task_id'], ['id'], ondelete='CASCADE')
-    op.create_index(op.f('ix_model_outputs_atlas_task_id'), 'model_outputs', ['atlas_task_id'], unique=False)
+    if bind.engine.name == 'sqlite':
+        with op.batch_alter_table('model_outputs') as batch_op:
+            batch_op.add_column(sa.Column('atlas_task_id', sa.Uuid(), nullable=True))
+            batch_op.create_foreign_key('fk_model_outputs_atlas_task_id', 'atlas_tasks', ['atlas_task_id'], ['id'], ondelete='CASCADE')
+            batch_op.create_index(op.f('ix_model_outputs_atlas_task_id'), ['atlas_task_id'], unique=False)
+    else:
+        op.add_column('model_outputs', sa.Column('atlas_task_id', sa.Uuid(), nullable=True))
+        op.create_foreign_key('fk_model_outputs_atlas_task_id', 'model_outputs', 'atlas_tasks', ['atlas_task_id'], ['id'], ondelete='CASCADE')
+        op.create_index(op.f('ix_model_outputs_atlas_task_id'), 'model_outputs', ['atlas_task_id'], unique=False)
 
 
 def downgrade() -> None:
