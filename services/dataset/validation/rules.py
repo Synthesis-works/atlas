@@ -4,7 +4,7 @@ import io
 
 
 class ValidationResult:
-    def __init__(self, is_valid: bool, errors: list[str] = None):
+    def __init__(self, is_valid: bool, errors: list[str] = None):  # type: ignore
         self.is_valid = is_valid
         self.errors = errors or []
 

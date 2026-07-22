@@ -6,7 +6,7 @@ from ..config import OLLAMA_HOST
 from ..exceptions import GenerationError, LLMConnectionError, ModelNotFoundError, TimeoutError
 from ..models.prompt import Prompt
 from ..models.response import LLMResponse
-from ..models.types import ModelInfo
+from ..models.model_types import ModelInfo
 from .base import BaseLLMClient
 
 
@@ -20,7 +20,7 @@ class OllamaClient(BaseLLMClient):
         try:
             with httpx.Client(timeout=5.0) as client:
                 response = client.get(self.host)
-                return response.status_code == 200
+                return response.status_code == 200  # type: ignore
         except Exception:
             return False
 

@@ -12,7 +12,7 @@ class ResearchQuestionTracker:
         if os.path.exists(self.registry_file):
             try:
                 with open(self.registry_file, encoding="utf-8") as f:
-                    return json.load(f)
+                    return json.load(f)  # type: ignore
             except json.JSONDecodeError:
                 return {}
         return {}

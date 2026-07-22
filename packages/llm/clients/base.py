@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 from ..models.prompt import Prompt
 from ..models.response import LLMResponse
-from ..models.types import ModelInfo
+from ..models.model_types import ModelInfo
 
 
 class BaseLLMClient(ABC):

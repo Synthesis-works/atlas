@@ -9,7 +9,7 @@ from app.commands.evaluation import (
     StartEvaluationAttemptCommand,
 )
 from app.events.publisher import EvaluationEventPublisher
-from app.events.types import EvaluationEventType
+from app.events.event_types import EvaluationEventType
 from atlas_db.models.evaluation import (
     AttemptStatus,
     EvaluationArtifact,
@@ -49,7 +49,7 @@ class EvaluationController:
         )
 
         self.db.commit()
-        return new_job.id
+        return new_job.id  # type: ignore
 
     def execute_start_evaluation_attempt(self, cmd: StartEvaluationAttemptCommand) -> UUID:
         """Handles StartEvaluationAttemptCommand"""
@@ -106,7 +106,7 @@ class EvaluationController:
         )
 
         self.db.commit()
-        return new_attempt.id
+        return new_attempt.id  # type: ignore
 
     def execute_complete_evaluation_attempt(self, cmd: CompleteEvaluationAttemptCommand) -> None:
         """Handles CompleteEvaluationAttemptCommand"""

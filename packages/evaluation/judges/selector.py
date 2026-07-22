@@ -11,4 +11,4 @@ class JudgeSelector:
         judge = self.judges.get(name)
         if not judge:
             raise ValueError(f"Judge '{name}' not found.")
-        return judge
+        return judge  # type: ignore

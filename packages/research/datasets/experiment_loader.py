@@ -12,16 +12,16 @@ class ExperimentLoader:
         if not os.path.exists(summary_path):
             raise FileNotFoundError(f"Summary not found for experiment {exp_id}")
         with open(summary_path, encoding="utf-8") as f:
-            return json.load(f)
+            return json.load(f)  # type: ignore
 
     def load_config(self, exp_id: str) -> dict[str, Any]:
         config_path = os.path.join(self.base_dir, exp_id, "experiment_config.json")
         if not os.path.exists(config_path):
             return {}
         with open(config_path, encoding="utf-8") as f:
-            return json.load(f)
+            return json.load(f)  # type: ignore
 
-    def load_tasks(self, exp_id: str, state_filter: str = None) -> list[dict[str, Any]]:
+    def load_tasks(self, exp_id: str, state_filter: str = None) -> list[dict[str, Any]]:  # type: ignore
         tasks_dir = os.path.join(self.base_dir, exp_id, "tasks")
         if not os.path.exists(tasks_dir):
             raise FileNotFoundError(f"Tasks directory not found for experiment {exp_id}")

@@ -15,7 +15,9 @@ class PromptStage(PipelineStage):
         pack_name = context.get("pack_name")
         try:
             prompt = PromptBuilder.build_from_task(
-                task, version=prompt_version, benchmark_pack=pack_name
+                task,
+                version=prompt_version,
+                benchmark_pack=pack_name,  # type: ignore
             )
             context["prompt"] = prompt
             result.prompt = prompt.user

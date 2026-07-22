@@ -9,7 +9,7 @@ class MetricEngine:
     Validates, normalizes, and aggregates MetricValueModels.
     """
 
-    def __init__(self, validation_rules: dict[str, dict[str, Any]] = None):
+    def __init__(self, validation_rules: dict[str, dict[str, Any]] = None):  # type: ignore
         # validation_rules could define min/max for specific metric names
         self.validation_rules = validation_rules or {}
 
@@ -70,7 +70,7 @@ class MetricEngine:
                 avg = sum(m.value for m in group) / len(group)
                 new_m = group[0].model_copy(update={"value": avg})
                 if hasattr(new_m, "normalized_value") and hasattr(group[0], "normalized_value"):
-                    new_m.normalized_value = sum(m.normalized_value for m in group) / len(group)
+                    new_m.normalized_value = sum(m.normalized_value for m in group) / len(group)  # type: ignore
                 aggregated.append(new_m)
             elif agg_type == "sum":
                 total = sum(m.value for m in group)

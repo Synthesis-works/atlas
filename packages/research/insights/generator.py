@@ -38,6 +38,6 @@ class InsightGenerator:
             )
             with urllib.request.urlopen(req, timeout=120) as response:
                 result = json.loads(response.read().decode("utf-8"))
-                return result.get("message", {}).get("content", "")
+                return result.get("message", {}).get("content", "")  # type: ignore
         except Exception as e:
             return f"*Error generating insights: {e}*"

@@ -16,7 +16,7 @@ class OllamaEmbeddingProvider(BaseEmbeddingProvider):
                 f"{self.base_url}/api/embeddings", json={"model": self.model, "prompt": text}
             )
             response.raise_for_status()
-            return response.json()["embedding"]
+            return response.json()["embedding"]  # type: ignore
 
     def embed_many(self, texts: list[str]) -> list[list[float]]:
         # Process sequentially. Can be parallelized later if needed.

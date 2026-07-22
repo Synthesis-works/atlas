@@ -11,7 +11,7 @@ sys.path.insert(
 )
 
 from app.commands.run import CreateRunCommand, ValidateRunCommand
-from app.controllers.run_controller import ExecutionController
+from app.controllers.run_controller import ExecutionController  # type: ignore
 from app.events.publisher import PostgresEventPublisher
 from atlas_db.core.base import Base
 

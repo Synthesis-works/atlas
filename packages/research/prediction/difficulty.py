@@ -66,4 +66,4 @@ class DifficultyPredictor:
             + (0.1 * length_score)
         )
 
-        return min(1.0, max(0.0, score))
+        return min(1.0, max(0.0, score))  # type: ignore

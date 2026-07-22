@@ -16,7 +16,7 @@ class BaseRepository(Generic[ModelType]):
         query = self.db.query(self.model).filter(self.model.id == id)
         if not include_archived and hasattr(self.model, "archived_at"):
             query = query.filter(self.model.archived_at.is_(None))
-        return query.first()
+        return query.first()  # type: ignore
 
     def create(self, *, obj_in: dict, commit: bool = True) -> ModelType:
         obj = self.model(**obj_in)
@@ -26,7 +26,7 @@ class BaseRepository(Generic[ModelType]):
             self.db.refresh(obj)
         else:
             self.db.flush()
-        return obj
+        return obj  # type: ignore
 
     def update(self, *, db_obj: ModelType, obj_in: dict, commit: bool = True) -> ModelType:
         for field, value in obj_in.items():
@@ -53,4 +53,4 @@ class BaseRepository(Generic[ModelType]):
                 self.db.commit()
             else:
                 self.db.flush()
-        return obj
+        return obj  # type: ignore

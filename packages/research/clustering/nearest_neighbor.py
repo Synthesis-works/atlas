@@ -9,7 +9,7 @@ class NearestNeighborSuccessFinder:
     def __init__(self, embedding_provider: BaseEmbeddingProvider):
         self.embedding_provider = embedding_provider
         self.success_embeddings = None
-        self.success_tasks = []
+        self.success_tasks = []  # type: ignore
 
     def build_index(self, success_tasks: list[dict[str, Any]], text_key: str = "prompt"):
         """
@@ -34,7 +34,7 @@ class NearestNeighborSuccessFinder:
         Returns (task, distance)
         """
         if self.success_embeddings is None or len(self.success_embeddings) == 0:
-            return None, float("inf")
+            return None, float("inf")  # type: ignore
 
         text = failed_task.get(text_key, failed_task.get("task_id", ""))
         emb = np.array(self.embedding_provider.embed(text))

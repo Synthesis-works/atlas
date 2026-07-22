@@ -25,7 +25,7 @@ class AtlasOrchestrator:
         registry = InMemoryRegistry()
         validators = [SchemaValidator(), MetadataValidator(), RegistryValidator(registry)]
         loaders = {"yaml": YAMLLoader()}
-        self.benchmark_mgr = BenchmarkManager(registry, validators, loaders)
+        self.benchmark_mgr = BenchmarkManager(registry, validators, loaders)  # type: ignore
         # Note: Datasets are loaded per pack in run_pack()
         self.provider_adapter = ProviderAdapter()
         self.runtime_mgr = RuntimeManager()
@@ -60,7 +60,7 @@ class AtlasOrchestrator:
             "runtime_manager": self.runtime_mgr,
             "state_manager": self.state_mgr,
             "pack_name": config.benchmark_pack,
-            "pack_tasks": self.pack_tasks,
+            "pack_tasks": self.pack_tasks,  # type: ignore
             "needs_reexecution": False,
         }
 

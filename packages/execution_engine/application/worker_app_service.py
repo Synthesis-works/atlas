@@ -3,7 +3,7 @@ import uuid
 from datetime import timedelta
 
 from packages.execution_engine.api.worker_dtos import AcquireResponse, ArtifactDTO
-from packages.execution_engine.application.execution_app_service import EventPublisher
+from packages.execution_engine.application.execution_app_service import EventPublisher  # type: ignore
 from packages.execution_engine.domain.exceptions import ExecutionNotFoundError, LeaseOwnershipError
 from packages.execution_engine.domain.models import (
     Artifact,

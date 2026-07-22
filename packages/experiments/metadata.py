@@ -35,7 +35,7 @@ def get_model_digest(model_name: str) -> str:
             models = resp.json().get("models", [])
             for m in models:
                 if m["name"] == model_name or m["name"] == f"{model_name}:latest":
-                    return m.get("digest", "unknown")
+                    return m.get("digest", "unknown")  # type: ignore
     except Exception:
         pass
     return "unknown"
@@ -51,7 +51,7 @@ def get_cpu_info() -> str:
 
 def get_ram_gb() -> float:
     try:
-        return round(psutil.virtual_memory().total / (1024**3), 2)
+        return round(psutil.virtual_memory().total / (1024**3), 2)  # type: ignore
     except Exception:
         return 0.0
 

@@ -10,7 +10,7 @@ class PromptBuilder:
     """Builds LLM prompts from Benchmark Tasks."""
 
     @staticmethod
-    def build_from_task(task: Task, version: str = "v1", benchmark_pack: str = None) -> Prompt:
+    def build_from_task(task: Task, version: str = "v1", benchmark_pack: str = None) -> Prompt:  # type: ignore
         """
         Converts a Task into a structured Prompt.
         """

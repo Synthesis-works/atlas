@@ -66,7 +66,7 @@ class StateManager:
         if os.path.exists(state_path):
             with open(state_path, encoding="utf-8") as f:
                 state = json.load(f)
-            return state.get("pending_tasks", [])
+            return state.get("pending_tasks", [])  # type: ignore
         return []
 
     def load_all_results(self, job_id: str) -> list[TaskRunResult]:

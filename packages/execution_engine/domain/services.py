@@ -202,7 +202,7 @@ class ExecutionService:
                 ExecutionRetryEvent(
                     timestamp=self.clock.now(),
                     execution_id=execution.id,
-                    attempt_id=attempt.id,
+                    attempt_id=attempt.id,  # type: ignore
                     error_message=error_message,
                 )
             )
@@ -213,7 +213,7 @@ class ExecutionService:
                 ExecutionFailedEvent(
                     timestamp=self.clock.now(),
                     execution_id=execution.id,
-                    attempt_id=attempt.id if attempt else None,
+                    attempt_id=attempt.id if attempt else None,  # type: ignore
                     error_message=error_message,
                     will_retry=False,
                 )

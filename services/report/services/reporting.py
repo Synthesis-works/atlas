@@ -34,7 +34,7 @@ class ReportingService:
         cache_key = f"capability_dashboard:{model_identifier}"
         cached = self.cache.get(cache_key)
         if cached:
-            return cached
+            return cached  # type: ignore
 
         data = self.capability_query.get_capability_dashboard(model_identifier)
         if data:
@@ -45,7 +45,7 @@ class ReportingService:
         cache_key = f"leaderboard:{strategy_name}:{limit}"
         cached = self.cache.get(cache_key)
         if cached:
-            return cached
+            return cached  # type: ignore
 
         strategy = self.leaderboard_strategies.get(strategy_name, OverallLeaderboardStrategy())
         data = strategy.execute(self.leaderboard_query, limit=limit)

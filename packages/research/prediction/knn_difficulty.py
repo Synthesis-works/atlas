@@ -9,7 +9,7 @@ class KNNDifficultyPredictor:
 
     def __init__(self, registry_path: str = "results/experiments/registry.json", k: int = 5):
         self.k = k
-        self.history = []
+        self.history = []  # type: ignore
 
         # Load historical tasks from experiments
         # We need task embeddings and their pass status

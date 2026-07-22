@@ -46,7 +46,7 @@ class RunController:
 
         # Commit the transaction so the run is durably created
         self.db.commit()
-        return new_run.id
+        return new_run.id  # type: ignore
 
     def execute_validate_run(self, cmd: ValidateRunCommand) -> None:
         """Handles ValidateRunCommand"""

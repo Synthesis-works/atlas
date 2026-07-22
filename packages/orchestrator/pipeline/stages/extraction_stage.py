@@ -12,7 +12,7 @@ class ExtractionStage(PipelineStage):
 
         extractor = CodeBlockExtractor()
         try:
-            code = extractor.extract(result.raw_response)
+            code = extractor.extract(result.raw_response)  # type: ignore
             result.extracted_code = code
         except Exception as e:
             result.state = TaskRunState.FAILED

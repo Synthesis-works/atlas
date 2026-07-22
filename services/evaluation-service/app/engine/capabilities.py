@@ -20,7 +20,7 @@ class CapabilityEngine:
     No benchmark awareness. Simple weighted mapping logic.
     """
 
-    def __init__(self, mapping_rules: dict[str, str] = None):
+    def __init__(self, mapping_rules: dict[str, str] = None):  # type: ignore
         # Maps metric category to Capability name
         # Default simple mapping:
         self.mapping_rules = mapping_rules or {

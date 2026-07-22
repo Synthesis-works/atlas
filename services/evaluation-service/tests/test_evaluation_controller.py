@@ -28,7 +28,7 @@ from app.commands.evaluation import (
     StartEvaluationAttemptCommand,
 )
 from app.controllers.evaluation_controller import EvaluationController
-from app.events.types import EvaluationEventType
+from app.events.event_types import EvaluationEventType
 from app.pipelines.base import EvaluationResultBundle
 from atlas_db.core.base import Base
 

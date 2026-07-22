@@ -14,7 +14,7 @@ class RepairStage(PipelineStage):
         self.max_retries = max_retries
         self.agent = OllamaRepairAgent()
 
-    def execute(self, context: dict, state: TaskRunResult) -> TaskRunResult:
+    def execute(self, context: dict, state: TaskRunResult) -> TaskRunResult:  # type: ignore
         if (
             state.state != TaskRunState.FAILED
             and getattr(state, "evaluation_status", None) != "fail"
@@ -40,7 +40,7 @@ class RepairStage(PipelineStage):
             original_prompt=state.prompt or "",
             failed_code=state.extracted_code or "",
             error_message=err_msg,
-            model=job_config.model,
+            model=job_config.model,  # type: ignore
         )
         latency = int((time.time() - start_time) * 1000)
 

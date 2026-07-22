@@ -4,7 +4,7 @@ from typing import Any
 
 
 class PromptGenealogy:
-    def __init__(self, prompts_dir: str = "prompts", benchmark_pack: str = None):
+    def __init__(self, prompts_dir: str = "prompts", benchmark_pack: str = None):  # type: ignore
         self.prompts_dir = prompts_dir
 
         if benchmark_pack:
@@ -29,5 +29,5 @@ class PromptGenealogy:
             if version in variants:
                 info = variants[version].copy()
                 info["family"] = family
-                return info
+                return info  # type: ignore
         return {"family": "Unknown"}

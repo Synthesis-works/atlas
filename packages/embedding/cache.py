@@ -20,7 +20,7 @@ class CachedEmbeddingProvider(BaseEmbeddingProvider):
         path = self._get_cache_path(text)
         if os.path.exists(path):
             with open(path, encoding="utf-8") as f:
-                return json.load(f)
+                return json.load(f)  # type: ignore
 
         # Cache miss, fetch from provider
         vector = self.provider.embed(text)

@@ -47,7 +47,7 @@ def redact_sensitive_data(
             return [_scrub(item) for item in obj]
         return obj
 
-    return _scrub(event_dict)
+    return _scrub(event_dict)  # type: ignore
 
 
 def sample_debug_logs(

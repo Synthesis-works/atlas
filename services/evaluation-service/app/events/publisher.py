@@ -1,6 +1,6 @@
 from typing import Any, Protocol
 
-from .types import EvaluationEventType
+from ..events.event_types import EvaluationEventType
 
 
 class EvaluationEventPublisher(Protocol):

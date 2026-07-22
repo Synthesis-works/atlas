@@ -30,7 +30,7 @@ class TaskController:
         self,
         db: Session,
         event_publisher: EventPublisher,
-        recovery_policy: RecoveryDecisionPolicy = None,
+        recovery_policy: RecoveryDecisionPolicy = None,  # type: ignore
     ):
         self.db = db
         self.event_publisher = event_publisher

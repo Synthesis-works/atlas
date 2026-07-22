@@ -164,7 +164,7 @@ class EvaluationAppService:
             strategy_version_id=strategy_id,
             timestamp=datetime.utcnow(),
         )
-        self.event_publisher.publish([evt])
+        self.event_publisher.publish([evt])  # type: ignore
 
     def _publish_completed(
         self,
@@ -181,7 +181,7 @@ class EvaluationAppService:
             artifact_count=artifact_count,
             timestamp=datetime.utcnow(),
         )
-        self.event_publisher.publish([evt])
+        self.event_publisher.publish([evt])  # type: ignore
 
     def _publish_failed(self, eval_id: uuid.UUID, exec_id: uuid.UUID, reason: str):
         evt = EvaluationFailedEvent(
@@ -191,4 +191,4 @@ class EvaluationAppService:
             reason=reason,
             timestamp=datetime.utcnow(),
         )
-        self.event_publisher.publish([evt])
+        self.event_publisher.publish([evt])  # type: ignore

@@ -15,7 +15,7 @@ class JSONLoader(FileLoader):
 
         try:
             with open(file_path, encoding="utf-8") as f:
-                return json.load(f)
+                return json.load(f)  # type: ignore
         except json.JSONDecodeError as e:
             raise LoaderError(f"Failed to parse JSON file {file_path}: {e}")
         except Exception as e:

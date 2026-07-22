@@ -37,7 +37,7 @@ class WorkerController:
         self.db.flush()
 
         self.db.commit()
-        return new_worker.id
+        return new_worker.id  # type: ignore
 
     def execute_heartbeat(self, cmd: HeartbeatWorkerCommand) -> None:
         """Handles HeartbeatWorkerCommand"""

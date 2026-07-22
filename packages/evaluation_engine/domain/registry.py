@@ -39,7 +39,7 @@ class EvaluationRegistry:
         # For simplicity in this interface, we assume evaluators that need a judge
         # accept it in their constructor.
         if judge_instance:
-            evaluator_instance = evaluator_cls(judge=judge_instance)
+            evaluator_instance = evaluator_cls(judge=judge_instance)  # type: ignore
         else:
             evaluator_instance = evaluator_cls()
 

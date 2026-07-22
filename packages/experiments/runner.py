@@ -78,7 +78,7 @@ class ExperimentRunner:
             lineage_reason=exp_config.lineage_reason,
         )
 
-        self.orchestrator.pack_tasks = {t.task_id: t for t in tasks}
+        self.orchestrator.pack_tasks = {t.task_id: t for t in tasks}  # type: ignore
         task_ids = [t.task_id for t in tasks]
 
         self.orchestrator.state_mgr.init_job(job_config, task_ids)
@@ -146,19 +146,19 @@ class ExperimentRunner:
             from packages.datasets.importers.humaneval import HumanEvalImporter
 
             pack = HumanEvalImporter().import_pack()
-            self.orchestrator.pack_tasks = {t.task_id: t for t in pack.tasks}
+            self.orchestrator.pack_tasks = {t.task_id: t for t in pack.tasks}  # type: ignore
         elif pack_name == "mbpp":
             from packages.datasets.importers.mbpp import MBPPImporter
 
             pack = MBPPImporter().import_pack()
-            self.orchestrator.pack_tasks = {t.task_id: t for t in pack.tasks}
+            self.orchestrator.pack_tasks = {t.task_id: t for t in pack.tasks}  # type: ignore
         elif pack_name == "validation":
             from packages.datasets.importers.validation import ValidationImporter
 
             pack = ValidationImporter().import_pack()
-            self.orchestrator.pack_tasks = {t.task_id: t for t in pack.tasks}
+            self.orchestrator.pack_tasks = {t.task_id: t for t in pack.tasks}  # type: ignore
 
-        total_tasks = len(self.orchestrator.pack_tasks)
+        total_tasks = len(self.orchestrator.pack_tasks)  # type: ignore
         if exp_config.max_tasks is not None:
             total_tasks = min(total_tasks, exp_config.max_tasks)
 
