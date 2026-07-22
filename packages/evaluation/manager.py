@@ -1,9 +1,11 @@
 import uuid
-from typing import List, Dict, Any
-from .pipeline import EvaluationPipeline
-from .results.result import EvaluationResult
+from typing import Any
+
 from .metrics.accuracy import AccuracyMetric
 from .metrics.latency import LatencyMetric
+from .pipeline import EvaluationPipeline
+from .results.result import EvaluationResult
+
 
 class EvaluationManager:
     def __init__(self):
@@ -12,11 +14,9 @@ class EvaluationManager:
 
     def run_evaluation(self, benchmark_id: str, task, llm_response) -> EvaluationResult:
         status, normalized, score, confidence = self.pipeline.evaluate(
-            config=task.evaluation,
-            expected=task.expected_output,
-            actual=llm_response.response
+            config=task.evaluation, expected=task.expected_output, actual=llm_response.response
         )
-        
+
         return EvaluationResult(
             id=str(uuid.uuid4()),
             benchmark_id=benchmark_id,
@@ -30,10 +30,10 @@ class EvaluationManager:
             normalized_output=normalized,
             latency_ms=llm_response.latency_ms,
             score=score,
-            confidence=confidence
+            confidence=confidence,
         )
-        
-    def compute_metrics(self, results: List[EvaluationResult]) -> Dict[str, Any]:
+
+    def compute_metrics(self, results: list[EvaluationResult]) -> dict[str, Any]:
         report = {}
         for metric in self.metrics:
             report[metric.name] = metric.compute(results)

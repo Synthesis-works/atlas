@@ -1,21 +1,23 @@
-import os
 import json
+import os
 from datetime import datetime
+
 from ..models.execution_result import ExecutionResult
+
 
 class RuntimeLogger:
     def __init__(self, logs_dir: str = "logs"):
         self.logs_dir = logs_dir
-        
+
     def log_execution(self, task_id: str, model_id: str, result: ExecutionResult) -> str:
         date_str = datetime.now().strftime("%Y-%m-%d")
         day_dir = os.path.join(self.logs_dir, date_str)
         os.makedirs(day_dir, exist_ok=True)
-        
+
         base_path = os.path.join(day_dir, f"{result.execution_id}")
         json_path = f"{base_path}.json"
         txt_path = f"{base_path}.log"
-        
+
         log_data = {
             "execution_id": result.execution_id,
             "task_id": task_id,
@@ -25,12 +27,12 @@ class RuntimeLogger:
             "stdout": result.stdout,
             "stderr": result.stderr,
             "exit_code": result.exit_code,
-            "exception": result.exception
+            "exception": result.exception,
         }
-        
+
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(log_data, f, indent=2)
-            
+
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write(f"Execution ID: {result.execution_id}\n")
             f.write(f"Task ID: {task_id}\n")
@@ -42,5 +44,5 @@ class RuntimeLogger:
             f.write(f"--- Stderr ---\n{result.stderr}\n")
             if result.exception:
                 f.write(f"--- Exception ---\n{result.exception}\n")
-                
+
         return json_path

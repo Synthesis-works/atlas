@@ -1,11 +1,12 @@
-import sys
-import os
 import json
+import os
+import sys
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from packages.datasets.importers.humaneval import HumanEvalImporter
 from packages.datasets.importers.mbpp import MBPPImporter
+
 
 def main():
     print("Testing HumanEval Importer...")
@@ -17,9 +18,9 @@ def main():
     print(json.dumps(he_pack.stats.model_dump(), indent=2))
     print(f"\nSample Task ID: {he_pack.tasks[0].task_id}")
     print(f"Sample Input: {he_pack.tasks[0].input[:50]}...")
-    
+
     print("-" * 50)
-    
+
     print("Testing MBPP Importer...")
     mbpp_importer = MBPPImporter()
     mbpp_pack = mbpp_importer.import_pack()
@@ -29,6 +30,7 @@ def main():
     print(json.dumps(mbpp_pack.stats.model_dump(), indent=2))
     print(f"\nSample Task ID: {mbpp_pack.tasks[0].task_id}")
     print(f"Sample Input: {mbpp_pack.tasks[0].input[:50]}...")
+
 
 if __name__ == "__main__":
     main()

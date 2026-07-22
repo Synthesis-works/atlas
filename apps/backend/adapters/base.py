@@ -1,12 +1,15 @@
-from pydantic import BaseModel
-from typing import Optional, Any
 from abc import ABC, abstractmethod
+from typing import Any
+
+from pydantic import BaseModel
+
 
 class PredictionResult(BaseModel):
     output_text: str
-    latency_ms: Optional[int] = None
-    token_usage: Optional[int] = None
-    raw_response: Optional[Any] = None
+    latency_ms: int | None = None
+    token_usage: int | None = None
+    raw_response: Any | None = None
+
 
 class BaseModelAdapter(ABC):
     @abstractmethod

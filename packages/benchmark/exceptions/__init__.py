@@ -2,9 +2,9 @@ from .errors import (
     BenchmarkError,
     BenchmarkValidationError,
     DuplicateBenchmarkError,
+    ImporterError,
     LoaderError,
     RegistryError,
-    ImporterError
 )
 
 __all__ = [
@@ -13,5 +13,5 @@ __all__ = [
     "DuplicateBenchmarkError",
     "LoaderError",
     "RegistryError",
-    "ImporterError"
+    "ImporterError",
 ]

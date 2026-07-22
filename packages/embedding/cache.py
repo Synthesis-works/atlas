@@ -1,8 +1,9 @@
-import os
-import json
 import hashlib
-from typing import List
+import json
+import os
+
 from .base import BaseEmbeddingProvider
+
 
 class CachedEmbeddingProvider(BaseEmbeddingProvider):
     def __init__(self, provider: BaseEmbeddingProvider, cache_dir: str = "cache/embeddings"):
@@ -12,22 +13,22 @@ class CachedEmbeddingProvider(BaseEmbeddingProvider):
 
     def _get_cache_path(self, text: str) -> str:
         # Hash the text to create a unique cache filename
-        text_hash = hashlib.sha256(text.encode('utf-8')).hexdigest()
+        text_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()
         return os.path.join(self.cache_dir, f"{text_hash}.json")
 
-    def embed(self, text: str) -> List[float]:
+    def embed(self, text: str) -> list[float]:
         path = self._get_cache_path(text)
         if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 return json.load(f)
-                
+
         # Cache miss, fetch from provider
         vector = self.provider.embed(text)
-        
+
         with open(path, "w", encoding="utf-8") as f:
             json.dump(vector, f)
-            
+
         return vector
 
-    def embed_many(self, texts: List[str]) -> List[List[float]]:
+    def embed_many(self, texts: list[str]) -> list[list[float]]:
         return [self.embed(t) for t in texts]

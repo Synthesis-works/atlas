@@ -1,17 +1,19 @@
-from typing import List, Optional, Dict, Any
-from ..interfaces.registry import BaseRegistry
+from typing import Any
+
 from ..interfaces.loader import BaseLoader
+from ..interfaces.registry import BaseRegistry
 from ..interfaces.validation import BaseValidator
 from ..models import Benchmark
 
+
 class BenchmarkManager:
     """Facade for managing benchmarks, orchestrating loaders, validators, and registries."""
-    
+
     def __init__(
         self,
         registry: BaseRegistry,
-        validators: List[BaseValidator],
-        loaders: Dict[str, BaseLoader]
+        validators: list[BaseValidator],
+        loaders: dict[str, BaseLoader],
     ):
         self.registry = registry
         self.validators = validators
@@ -21,24 +23,24 @@ class BenchmarkManager:
         """Load a benchmark from a source, validate it, and register it."""
         if format not in self.loaders:
             raise ValueError(f"No loader configured for format '{format}'")
-            
+
         loader = self.loaders[format]
         benchmark = loader.load(source)
-        
+
         # Validate
         for validator in self.validators:
             validator.validate(benchmark)
-            
+
         # Register
         self.registry.register(benchmark)
-        
+
         return benchmark
 
-    def get_benchmark(self, benchmark_id: str) -> Optional[Benchmark]:
+    def get_benchmark(self, benchmark_id: str) -> Benchmark | None:
         """Retrieve a benchmark from the registry."""
         return self.registry.get(benchmark_id)
 
-    def search_benchmarks(self, filters: Optional[Dict[str, Any]] = None) -> List[Benchmark]:
+    def search_benchmarks(self, filters: dict[str, Any] | None = None) -> list[Benchmark]:
         """Search benchmarks in the registry."""
         return self.registry.list_benchmarks(filters)
 

@@ -1,27 +1,31 @@
-from typing import List, Optional, Dict, Any
+from typing import Any
+
+from ..exceptions import DuplicateBenchmarkError
 from ..interfaces.registry import BaseRegistry
 from ..models import Benchmark
-from ..exceptions import DuplicateBenchmarkError
+
 
 class InMemoryRegistry(BaseRegistry):
     """In-memory implementation of the benchmark registry."""
 
     def __init__(self):
-        self._store: Dict[str, Benchmark] = {}
+        self._store: dict[str, Benchmark] = {}
 
     def register(self, benchmark: Benchmark) -> None:
         if benchmark.metadata.benchmark_id in self._store:
-            raise DuplicateBenchmarkError(f"Benchmark with ID {benchmark.metadata.benchmark_id} already exists.")
+            raise DuplicateBenchmarkError(
+                f"Benchmark with ID {benchmark.metadata.benchmark_id} already exists."
+            )
         self._store[benchmark.metadata.benchmark_id] = benchmark
 
-    def get(self, benchmark_id: str) -> Optional[Benchmark]:
+    def get(self, benchmark_id: str) -> Benchmark | None:
         return self._store.get(benchmark_id)
 
-    def list_benchmarks(self, filters: Optional[Dict[str, Any]] = None) -> List[Benchmark]:
+    def list_benchmarks(self, filters: dict[str, Any] | None = None) -> list[Benchmark]:
         benchmarks = list(self._store.values())
         if not filters:
             return benchmarks
-            
+
         filtered = []
         for b in benchmarks:
             match = True

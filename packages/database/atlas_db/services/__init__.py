@@ -1,11 +1,11 @@
 from .benchmark_service import (
     BenchmarkService,
     BenchmarkServiceError,
-    PermissionDeniedError,
+    ConcurrencyViolationError,
+    ImmutableVersionError,
     InvalidStateTransitionError,
     InvariantViolationError,
-    ImmutableVersionError,
-    ConcurrencyViolationError
+    PermissionDeniedError,
 )
 
 __all__ = [
@@ -15,5 +15,5 @@ __all__ = [
     "InvalidStateTransitionError",
     "InvariantViolationError",
     "ImmutableVersionError",
-    "ConcurrencyViolationError"
+    "ConcurrencyViolationError",
 ]

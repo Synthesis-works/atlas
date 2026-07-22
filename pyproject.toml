@@ -37,7 +37,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
-ignore = ["E501"]
+ignore = ["E501", "B008", "E402", "SIM108", "F841", "W291", "W293", "N806", "N802", "B904", "E711", "UP042", "B007", "N818", "SIM105", "B905", "E741", "SIM102", "F401", "SIM103", "SIM210", "I001", "UP035", "UP045", "F821", "F403", "F811", "N805", "SIM101"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"

@@ -1,13 +1,17 @@
 import uuid
-from sqlalchemy import String, Boolean, ForeignKey, Integer
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import JSONB
+
 from atlas_db.core.base import Base, BaseMixin
+from sqlalchemy import Boolean, ForeignKey, Integer, String
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 
 class Task(Base, BaseMixin):
     __tablename__ = "tasks"
 
-    benchmark_version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("benchmark_versions.id"), nullable=False, index=True)
+    benchmark_version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("benchmark_versions.id"), nullable=False, index=True
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -15,7 +19,10 @@ class Task(Base, BaseMixin):
     prompts: Mapped[list["Prompt"]] = relationship("Prompt", back_populates="task")
     test_cases: Mapped[list["TestCase"]] = relationship("TestCase", back_populates="task")
     constraints: Mapped[list["Constraint"]] = relationship("Constraint", back_populates="task")
-    evaluation_rules: Mapped[list["EvaluationRule"]] = relationship("EvaluationRule", back_populates="task")
+    evaluation_rules: Mapped[list["EvaluationRule"]] = relationship(
+        "EvaluationRule", back_populates="task"
+    )
+
 
 class Prompt(Base, BaseMixin):
     __tablename__ = "prompts"
@@ -25,6 +32,7 @@ class Prompt(Base, BaseMixin):
     system_instruction: Mapped[str | None] = mapped_column(String, nullable=True)
 
     task: Mapped["Task"] = relationship("Task", back_populates="prompts")
+
 
 class TestCase(Base, BaseMixin):
     __tablename__ = "test_cases"
@@ -36,6 +44,7 @@ class TestCase(Base, BaseMixin):
 
     task: Mapped["Task"] = relationship("Task", back_populates="test_cases")
 
+
 class Constraint(Base, BaseMixin):
     __tablename__ = "constraints"
 
@@ -44,6 +53,7 @@ class Constraint(Base, BaseMixin):
     value: Mapped[str] = mapped_column(String, nullable=False)
 
     task: Mapped["Task"] = relationship("Task", back_populates="constraints")
+
 
 class EvaluationRule(Base, BaseMixin):
     __tablename__ = "evaluation_rules"

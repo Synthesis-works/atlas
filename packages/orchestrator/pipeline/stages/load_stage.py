@@ -1,14 +1,16 @@
-from typing import Dict, Any
-from packages.orchestrator.pipeline.base import PipelineStage
+from typing import Any
+
 from packages.orchestrator.models import TaskRunResult, TaskRunState
+from packages.orchestrator.pipeline.base import PipelineStage
+
 
 class LoadTaskStage(PipelineStage):
-    def execute(self, context: Dict[str, Any], result: TaskRunResult) -> None:
+    def execute(self, context: dict[str, Any], result: TaskRunResult) -> None:
         if result.state == TaskRunState.FAILED:
             return
-            
+
         pack_tasks = context["pack_tasks"]
-        
+
         try:
             task = pack_tasks.get(result.task_id)
             if not task:

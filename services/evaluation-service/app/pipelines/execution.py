@@ -1,11 +1,11 @@
-from typing import Any, Dict, List
-from .base import EvaluationPipeline, PipelineContext, EvaluationResultBundle, MetricValueModel
+from .base import EvaluationPipeline, EvaluationResultBundle, MetricValueModel, PipelineContext
 from .registry import PipelineRegistry
+
 
 class ExecutionPipeline(EvaluationPipeline):
     def evaluate(self, context: PipelineContext) -> EvaluationResultBundle:
         outputs = context.execution_outputs
-        
+
         if not outputs:
             return EvaluationResultBundle()
 
@@ -16,7 +16,7 @@ class ExecutionPipeline(EvaluationPipeline):
             # Assuming execution output has a 'success' or 'status' field
             if output.get("success") is True or output.get("status") == "passed":
                 passed_count += 1
-                
+
         pass_rate = passed_count / total_count if total_count > 0 else 0.0
 
         metrics = [
@@ -27,7 +27,7 @@ class ExecutionPipeline(EvaluationPipeline):
                 direction="HIGHER_IS_BETTER",
                 unit="percentage",
                 source="ExecutionPipeline",
-                aggregation="mean"
+                aggregation="mean",
             ),
             MetricValueModel(
                 name="pass_count",
@@ -36,8 +36,8 @@ class ExecutionPipeline(EvaluationPipeline):
                 direction="HIGHER_IS_BETTER",
                 unit="count",
                 source="ExecutionPipeline",
-                aggregation="sum"
-            )
+                aggregation="sum",
+            ),
         ]
 
         # Calculate pass@k if requested in config
@@ -53,7 +53,7 @@ class ExecutionPipeline(EvaluationPipeline):
                     direction="HIGHER_IS_BETTER",
                     unit="binary",
                     source="ExecutionPipeline",
-                    aggregation="mean"
+                    aggregation="mean",
                 )
             )
 
@@ -62,7 +62,8 @@ class ExecutionPipeline(EvaluationPipeline):
             artifacts=[],
             judge_traces=[],
             warnings={},
-            metadata={"total_executions": total_count}
+            metadata={"total_executions": total_count},
         )
+
 
 PipelineRegistry.register("ExecutionPipeline", ExecutionPipeline)

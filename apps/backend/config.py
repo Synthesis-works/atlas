@@ -1,18 +1,20 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
     """
     Application settings loaded from environment variables.
     """
+
     app_name: str = Field(default="Atlas Backend API")
     version: str = Field(default="1.0.0")
     debug: bool = Field(default=False)
     environment: str = Field(default="development")
-    
+
     # Database Configuration
     database_url: str = Field(default="sqlite:///./atlas.db")
-    
+
     # API configuration
     api_v1_prefix: str = Field(default="/api/v1")
 
@@ -24,7 +26,7 @@ class Settings(BaseSettings):
 
     # Logging
     log_level: str = Field(default="INFO")
-    logging_format: str = Field(default="console") # "console" or "json"
+    logging_format: str = Field(default="console")  # "console" or "json"
 
     # Celery Configuration
     celery_broker_url: str = Field(default="redis://localhost:6379/0")
@@ -35,10 +37,7 @@ class Settings(BaseSettings):
     outbox_batch_size: int = Field(default=100)
     outbox_poll_interval: int = Field(default=5)
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
 
 settings = Settings()

@@ -1,5 +1,7 @@
 import re
+
 from .base import BaseExtractor
+
 
 class RegexExtractor(BaseExtractor):
     def __init__(self, pattern: str, group: int = 1):

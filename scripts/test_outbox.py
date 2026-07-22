@@ -1,13 +1,13 @@
-import sys
-import os
-import uuid
 import datetime
-from sqlalchemy import create_engine
+import uuid
+
 from atlas_db.core.session import SessionLocal
 from atlas_db.models.outbox import OutboxMessage
-from packages.execution_engine.application.outbox_dispatcher import OutboxDispatcher
-from packages.execution_engine.application.interfaces import EventPublisher
+
 from apps.backend.core.telemetry import get_correlation_id
+from packages.execution_engine.application.interfaces import EventPublisher
+from packages.execution_engine.application.outbox_dispatcher import OutboxDispatcher
+
 
 class MockEventPublisher(EventPublisher):
     def __init__(self):
@@ -36,18 +36,20 @@ def test_schema_and_migrations():
             event_type="TestEvent",
             payload={"test": "payload"},
             trace_context={"correlation_id": "test-corr-id"},
-            occurred_at=datetime.datetime.now(datetime.timezone.utc)
+            occurred_at=datetime.datetime.now(datetime.UTC),
         )
         session.add(msg)
         session.commit()
-        
+
         # Retrieve it
-        retrieved = session.query(OutboxMessage).filter(OutboxMessage.outbox_message_id == msg_id).first()
+        retrieved = (
+            session.query(OutboxMessage).filter(OutboxMessage.outbox_message_id == msg_id).first()
+        )
         assert retrieved is not None
         assert retrieved.status == "PENDING"
         assert retrieved.retry_count == 0
         assert retrieved.trace_context["correlation_id"] == "test-corr-id"
-        
+
         # Clean up
         session.delete(retrieved)
         session.commit()
@@ -64,7 +66,7 @@ def test_successful_dispatch():
             event_type="ExecutionCompletedEvent",
             payload={"execution_id": str(uuid.uuid4()), "attempt_id": str(uuid.uuid4())},
             trace_context={"correlation_id": "test-corr-id-success"},
-            occurred_at=datetime.datetime.now(datetime.timezone.utc)
+            occurred_at=datetime.datetime.now(datetime.UTC),
         )
         session.add(msg)
         session.commit()
@@ -76,14 +78,17 @@ def test_successful_dispatch():
         dispatcher = OutboxDispatcher(session, publisher)
         processed = dispatcher.sweep()
         assert processed >= 1
-    
+
     with SessionLocal() as session:
-        retrieved = session.query(OutboxMessage).filter(OutboxMessage.outbox_message_id == msg_id).first()
+        retrieved = (
+            session.query(OutboxMessage).filter(OutboxMessage.outbox_message_id == msg_id).first()
+        )
         assert retrieved.status == "PROCESSED"
         # Cleanup
         session.delete(retrieved)
         session.commit()
     print("Successful dispatch test passed.")
+
 
 def test_subscriber_failure_and_retry():
     print("Testing failure and retry...")
@@ -95,7 +100,7 @@ def test_subscriber_failure_and_retry():
             event_type="ExecutionCompletedEvent",
             payload={"execution_id": str(uuid.uuid4()), "attempt_id": str(uuid.uuid4())},
             trace_context={"correlation_id": "test-corr-id-fail"},
-            occurred_at=datetime.datetime.now(datetime.timezone.utc)
+            occurred_at=datetime.datetime.now(datetime.UTC),
         )
         session.add(msg)
         session.commit()
@@ -103,37 +108,44 @@ def test_subscriber_failure_and_retry():
 
     publisher = MockEventPublisher()
     publisher.should_fail = True
-    
+
     # 1. Sweep - should fail and mark as FAILED
     with SessionLocal() as session:
         dispatcher = OutboxDispatcher(session, publisher)
         processed = dispatcher.sweep()
         assert processed == 0
-        
+
     with SessionLocal() as session:
-        retrieved = session.query(OutboxMessage).filter(OutboxMessage.outbox_message_id == msg_id).first()
+        retrieved = (
+            session.query(OutboxMessage).filter(OutboxMessage.outbox_message_id == msg_id).first()
+        )
         assert retrieved.status == "FAILED"
         assert retrieved.retry_count == 1
         assert retrieved.next_retry_at > retrieved.created_at
-        
+
         # Fast forward next_retry_at to test retry
-        retrieved.next_retry_at = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=1)
+        retrieved.next_retry_at = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
+            minutes=1
+        )
         session.commit()
-        
+
     # 2. Sweep again with success
     publisher.should_fail = False
     with SessionLocal() as session:
         dispatcher = OutboxDispatcher(session, publisher)
         processed = dispatcher.sweep()
         assert processed >= 1
-        
+
     with SessionLocal() as session:
-        retrieved = session.query(OutboxMessage).filter(OutboxMessage.outbox_message_id == msg_id).first()
+        retrieved = (
+            session.query(OutboxMessage).filter(OutboxMessage.outbox_message_id == msg_id).first()
+        )
         assert retrieved.status == "PROCESSED"
         assert retrieved.retry_count == 1
         session.delete(retrieved)
         session.commit()
     print("Failure and retry test passed.")
+
 
 def test_poison_message():
     print("Testing poison message...")
@@ -145,9 +157,9 @@ def test_poison_message():
             event_type="ExecutionCompletedEvent",
             payload={"execution_id": str(uuid.uuid4()), "attempt_id": str(uuid.uuid4())},
             trace_context={"correlation_id": "test-corr-id-poison"},
-            occurred_at=datetime.datetime.now(datetime.timezone.utc),
-            retry_count=9, # One attempt away from max
-            next_retry_at=datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=1)
+            occurred_at=datetime.datetime.now(datetime.UTC),
+            retry_count=9,  # One attempt away from max
+            next_retry_at=datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=1),
         )
         session.add(msg)
         session.commit()
@@ -155,19 +167,22 @@ def test_poison_message():
 
     publisher = MockEventPublisher()
     publisher.should_fail = True
-    
+
     with SessionLocal() as session:
         dispatcher = OutboxDispatcher(session, publisher)
         processed = dispatcher.sweep()
         assert processed == 0
-        
+
     with SessionLocal() as session:
-        retrieved = session.query(OutboxMessage).filter(OutboxMessage.outbox_message_id == msg_id).first()
+        retrieved = (
+            session.query(OutboxMessage).filter(OutboxMessage.outbox_message_id == msg_id).first()
+        )
         assert retrieved.status == "DEAD_LETTER"
         assert retrieved.retry_count == 10
         session.delete(retrieved)
         session.commit()
     print("Poison message test passed.")
+
 
 if __name__ == "__main__":
     test_schema_and_migrations()

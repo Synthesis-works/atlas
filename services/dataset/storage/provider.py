@@ -2,14 +2,16 @@ import abc
 import os
 import shutil
 
+
 class StorageProvider(abc.ABC):
     @abc.abstractmethod
     def save(self, file_obj, destination_path: str) -> str:
         pass
-        
+
     @abc.abstractmethod
     def get(self, path: str):
         pass
+
 
 class LocalStorageProvider(StorageProvider):
     def __init__(self, base_dir: str = "/tmp/atlas_datasets"):
@@ -28,6 +30,7 @@ class LocalStorageProvider(StorageProvider):
         if not os.path.exists(full_path):
             raise FileNotFoundError(f"Dataset file not found at {full_path}")
         return open(full_path, "rb")
+
 
 # Future implementations:
 # class S3StorageProvider(StorageProvider): ...

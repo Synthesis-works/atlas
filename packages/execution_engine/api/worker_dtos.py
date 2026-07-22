@@ -1,11 +1,14 @@
-from pydantic import BaseModel
 import uuid
-from typing import List, Optional
+
+from pydantic import BaseModel
+
 from packages.execution_engine.domain.models import ArtifactType
+
 
 class AcquireRequest(BaseModel):
     worker_id: uuid.UUID
-    capabilities: List[str]
+    capabilities: list[str]
+
 
 class AcquireResponse(BaseModel):
     lease_id: uuid.UUID
@@ -16,22 +19,27 @@ class AcquireResponse(BaseModel):
     benchmark_version_id: uuid.UUID
     # config/artifact_upload config could go here
 
+
 class HeartbeatRequest(BaseModel):
     worker_id: uuid.UUID
+
 
 class HeartbeatResponse(BaseModel):
     execution_id: uuid.UUID
     lease_expires_at: str
 
+
 class ArtifactDTO(BaseModel):
     type: ArtifactType
     storage_uri: str
 
+
 class CompleteSuccessRequest(BaseModel):
     worker_id: uuid.UUID
-    artifacts: List[ArtifactDTO]
+    artifacts: list[ArtifactDTO]
+
 
 class CompleteFailureRequest(BaseModel):
     worker_id: uuid.UUID
     error_message: str
-    artifacts: List[ArtifactDTO]
+    artifacts: list[ArtifactDTO]

@@ -1,83 +1,95 @@
-from pydantic import BaseModel, ConfigDict
-from typing import List, Optional, Dict, Any
-from uuid import UUID
 from datetime import datetime
+from typing import Any
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict
 
 #
 # API DTOs
 # The exact schemas returned over HTTP to the client.
 #
 
+
 class CapabilityScoreDTO(BaseModel):
     capability_name: str
     score: float
-    
+
     model_config = ConfigDict(from_attributes=True)
+
 
 class CapabilityDashboardDTO(BaseModel):
     model_identifier: str
     overall_score: float
-    scores: List[CapabilityScoreDTO]
-    
+    scores: list[CapabilityScoreDTO]
+
     model_config = ConfigDict(from_attributes=True)
+
 
 class LeaderboardEntryDTO(BaseModel):
     rank: int
     model_identifier: str
     score: float
-    metadata: Dict[str, Any] = {}
-    
+    metadata: dict[str, Any] = {}
+
     model_config = ConfigDict(from_attributes=True)
+
 
 class LeaderboardResponseDTO(BaseModel):
     strategy: str
-    entries: List[LeaderboardEntryDTO]
-    
+    entries: list[LeaderboardEntryDTO]
+
     model_config = ConfigDict(from_attributes=True)
+
 
 class TrendPointDTO(BaseModel):
     timestamp: datetime
     value: float
-    metadata: Dict[str, Any] = {}
-    
+    metadata: dict[str, Any] = {}
+
     model_config = ConfigDict(from_attributes=True)
+
 
 class TrendAnalysisResponseDTO(BaseModel):
     metric_name: str
-    points: List[TrendPointDTO]
-    moving_average: Optional[List[TrendPointDTO]] = None
-    
+    points: list[TrendPointDTO]
+    moving_average: list[TrendPointDTO] | None = None
+
     model_config = ConfigDict(from_attributes=True)
+
 
 class BenchmarkPerformanceDTO(BaseModel):
     benchmark_id: UUID
     benchmark_name: str
     average_score: float
     total_runs: int
-    
+
     model_config = ConfigDict(from_attributes=True)
+
 
 class HistoryEntryDTO(BaseModel):
     run_id: UUID
     target_model: str
     status: str
-    started_at: Optional[datetime]
-    completed_at: Optional[datetime]
-    passed: Optional[bool]
-    
+    started_at: datetime | None
+    completed_at: datetime | None
+    passed: bool | None
+
     model_config = ConfigDict(from_attributes=True)
 
+
 class PaginatedHistoryResponseDTO(BaseModel):
-    items: List[HistoryEntryDTO]
+    items: list[HistoryEntryDTO]
     total: int
     page: int
     size: int
-    
+
     model_config = ConfigDict(from_attributes=True)
+
 
 class SystemHealthDTO(BaseModel):
     status: str
     timestamp: datetime
+
 
 class VersionInfoDTO(BaseModel):
     service: str

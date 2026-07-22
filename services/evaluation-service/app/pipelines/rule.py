@@ -1,7 +1,8 @@
 import re
-from typing import Any, Dict
-from .base import EvaluationPipeline, PipelineContext, EvaluationResultBundle, MetricValueModel
+
+from .base import EvaluationPipeline, EvaluationResultBundle, MetricValueModel, PipelineContext
 from .registry import PipelineRegistry
+
 
 class RulePipeline(EvaluationPipeline):
     def evaluate(self, context: PipelineContext) -> EvaluationResultBundle:
@@ -13,10 +14,10 @@ class RulePipeline(EvaluationPipeline):
             raise ValueError("RulePipeline requires 'regex_pattern' in configuration.")
 
         compiled_regex = re.compile(pattern)
-        
+
         passed_count = 0
         total_count = len(outputs)
-        
+
         for output in outputs:
             text = output.get("text", "")
             if compiled_regex.search(text):
@@ -32,7 +33,7 @@ class RulePipeline(EvaluationPipeline):
                 direction="HIGHER_IS_BETTER",
                 unit="percentage",
                 source="RulePipeline",
-                aggregation="mean"
+                aggregation="mean",
             )
         ]
 
@@ -41,7 +42,8 @@ class RulePipeline(EvaluationPipeline):
             artifacts=[],
             judge_traces=[],
             warnings={},
-            metadata={"pattern": pattern, "matched_count": passed_count}
+            metadata={"pattern": pattern, "matched_count": passed_count},
         )
+
 
 PipelineRegistry.register("RulePipeline", RulePipeline)

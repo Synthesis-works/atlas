@@ -1,15 +1,13 @@
 import ast
-from typing import List
-from ..exceptions import SecurityException, CompilationException
-from .import_checker import ImportChecker
+
+from ..exceptions import CompilationException, SecurityException
 from .call_checker import CallChecker
+from .import_checker import ImportChecker
+
 
 class SecurityValidator:
     def __init__(self):
-        self.checkers = [
-            ImportChecker(),
-            CallChecker()
-        ]
+        self.checkers = [ImportChecker(), CallChecker()]
 
     def validate(self, source_code: str) -> None:
         try:
@@ -17,8 +15,8 @@ class SecurityValidator:
         except SyntaxError as e:
             raise CompilationException(f"Syntax error: {e}")
 
-        all_violations: List[str] = []
-        
+        all_violations: list[str] = []
+
         for checker in self.checkers:
             checker.visit(tree)
             all_violations.extend(checker.violations)

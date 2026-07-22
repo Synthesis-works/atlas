@@ -1,4 +1,3 @@
-import sys
 content = """
     def execute_recovery_decision(self, task_id: UUID) -> str:
         \"\"\"
@@ -60,5 +59,7 @@ content = """
         self.db.commit()
         return action
 """
-with open('services/execution-service/app/controllers/task_controller.py', 'a', encoding='utf-8') as f:
+with open(
+    "services/execution-service/app/controllers/task_controller.py", "a", encoding="utf-8"
+) as f:
     f.write(content)

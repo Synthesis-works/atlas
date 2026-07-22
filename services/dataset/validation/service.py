@@ -1,16 +1,18 @@
-from typing import List
 from uuid import UUID
+
 from atlas_db.models.dataset import ValidationStatus
+
 from ..repositories.dataset_repo import DatasetRepository
 from ..storage.provider import StorageProvider
 from .rules import ValidationRule
+
 
 class ValidationService:
     def __init__(self, repo: DatasetRepository, storage: StorageProvider):
         self.repo = repo
         self.storage = storage
 
-    def validate_version(self, version_id: UUID, rules: List[ValidationRule]) -> bool:
+    def validate_version(self, version_id: UUID, rules: list[ValidationRule]) -> bool:
         version = self.repo.get_version(version_id)
         if not version:
             raise ValueError(f"Version {version_id} not found")

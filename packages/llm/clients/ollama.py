@@ -1,12 +1,14 @@
-import httpx
 import time
-from typing import List
-from .base import BaseLLMClient
+
+import httpx
+
 from ..config import OLLAMA_HOST
-from ..exceptions import LLMConnectionError, GenerationError, TimeoutError, ModelNotFoundError
-from ..models.types import ModelInfo
+from ..exceptions import GenerationError, LLMConnectionError, ModelNotFoundError, TimeoutError
 from ..models.prompt import Prompt
 from ..models.response import LLMResponse
+from ..models.types import ModelInfo
+from .base import BaseLLMClient
+
 
 class OllamaClient(BaseLLMClient):
     """Ollama client communicating via HTTP REST API."""
@@ -22,62 +24,60 @@ class OllamaClient(BaseLLMClient):
         except Exception:
             return False
 
-    def list_models(self) -> List[ModelInfo]:
+    def list_models(self) -> list[ModelInfo]:
         try:
             with httpx.Client(timeout=5.0) as client:
                 response = client.get(f"{self.host}/api/tags")
                 response.raise_for_status()
                 data = response.json()
-                
+
                 models = []
                 for m in data.get("models", []):
                     details = m.get("details", {})
-                    models.append(ModelInfo(
-                        name=m.get("name", ""),
-                        size=m.get("size", 0),
-                        family=details.get("family", ""),
-                        parameter_size=details.get("parameter_size", ""),
-                        quantization=details.get("quantization_level", "")
-                    ))
+                    models.append(
+                        ModelInfo(
+                            name=m.get("name", ""),
+                            size=m.get("size", 0),
+                            family=details.get("family", ""),
+                            parameter_size=details.get("parameter_size", ""),
+                            quantization=details.get("quantization_level", ""),
+                        )
+                    )
                 return models
         except httpx.RequestError as e:
             raise LLMConnectionError(f"Failed to connect to Ollama at {self.host}: {e}")
 
     def generate(self, model: str, prompt: Prompt, **kwargs) -> LLMResponse:
         start_time = time.time()
-        
+
         # Build the prompt string. For simple completion, we combine system and user.
         full_prompt = f"{prompt.system}\n\n{prompt.user}" if prompt.system else prompt.user
-        
-        payload = {
-            "model": model,
-            "prompt": full_prompt,
-            "stream": False,
-            **kwargs
-        }
-        
+
+        payload = {"model": model, "prompt": full_prompt, "stream": False, **kwargs}
+
         try:
             # We use a longer timeout for generation
             with httpx.Client(timeout=120.0) as client:
                 response = client.post(f"{self.host}/api/generate", json=payload)
-                
+
                 if response.status_code == 404:
                     raise ModelNotFoundError(f"Model {model} not found in Ollama.")
                 response.raise_for_status()
-                
+
                 data = response.json()
                 latency_ms = int((time.time() - start_time) * 1000)
-                
+
                 return LLMResponse(
                     provider="ollama",
                     model=model,
                     prompt_tokens=data.get("prompt_eval_count"),
                     completion_tokens=data.get("eval_count"),
-                    total_tokens=(data.get("prompt_eval_count") or 0) + (data.get("eval_count") or 0),
+                    total_tokens=(data.get("prompt_eval_count") or 0)
+                    + (data.get("eval_count") or 0),
                     latency_ms=latency_ms,
                     response=data.get("response", ""),
                     raw=data,
-                    created_at=data.get("created_at", "")
+                    created_at=data.get("created_at", ""),
                 )
         except httpx.TimeoutException:
             raise TimeoutError("Generation timed out after 120 seconds.")

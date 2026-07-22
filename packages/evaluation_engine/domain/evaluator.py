@@ -1,29 +1,40 @@
 import abc
-from typing import Dict, Any, Optional
 import uuid
+from typing import Any
+
 
 class RawMeasurements:
     """
     Encapsulates raw facts extracted during evaluation.
     """
-    def __init__(self, raw_data: Dict[str, Any], artifacts: Optional[Dict[str, str]] = None):
+
+    def __init__(self, raw_data: dict[str, Any], artifacts: dict[str, str] | None = None):
         self.raw_data = raw_data
-        self.artifacts = artifacts or {} # mapping of artifact name to local filepath/uri
+        self.artifacts = artifacts or {}  # mapping of artifact name to local filepath/uri
+
 
 class EvaluatorContext:
-    def __init__(self, execution_id: uuid.UUID, benchmark_version: str, dataset_version: str, environment: str, seed: Optional[int] = None):
+    def __init__(
+        self,
+        execution_id: uuid.UUID,
+        benchmark_version: str,
+        dataset_version: str,
+        environment: str,
+        seed: int | None = None,
+    ):
         self.execution_id = execution_id
         self.benchmark_version = benchmark_version
         self.dataset_version = dataset_version
         self.environment = environment
         self.seed = seed
 
+
 class BaseEvaluator(abc.ABC):
     """
     Base Evaluator Plugin interface.
     Extracts raw facts from execution outputs.
     """
-    
+
     @abc.abstractmethod
     def prepare(self, context: EvaluatorContext) -> None:
         """
@@ -32,7 +43,7 @@ class BaseEvaluator(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def evaluate(self, execution_output: Dict[str, Any]) -> RawMeasurements:
+    def evaluate(self, execution_output: dict[str, Any]) -> RawMeasurements:
         """
         Extract facts and measurements from execution output.
         """

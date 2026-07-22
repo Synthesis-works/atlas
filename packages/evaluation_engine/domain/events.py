@@ -1,7 +1,7 @@
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
-import uuid
-from typing import Optional
+
 
 @dataclass(frozen=True)
 class EvaluationStartedEvent:
@@ -20,7 +20,9 @@ class EvaluationStartedEvent:
 
     def to_dict(self) -> dict:
         import dataclasses
+
         data = dataclasses.asdict(self)
+
         def _serialize_val(val):
             if isinstance(val, uuid.UUID):
                 return str(val)
@@ -31,13 +33,15 @@ class EvaluationStartedEvent:
             if isinstance(val, list):
                 return [_serialize_val(v) for v in val]
             return val
+
         return {k: _serialize_val(v) for k, v in data.items() if k != "timestamp"}
+
 
 @dataclass(frozen=True)
 class EvaluationCompletedEvent:
     evaluation_id: uuid.UUID
     execution_id: uuid.UUID
-    overall_score: Optional[float]
+    overall_score: float | None
     duration_ms: int
     artifact_count: int
     timestamp: datetime
@@ -52,7 +56,9 @@ class EvaluationCompletedEvent:
 
     def to_dict(self) -> dict:
         import dataclasses
+
         data = dataclasses.asdict(self)
+
         def _serialize_val(val):
             if isinstance(val, uuid.UUID):
                 return str(val)
@@ -63,7 +69,9 @@ class EvaluationCompletedEvent:
             if isinstance(val, list):
                 return [_serialize_val(v) for v in val]
             return val
+
         return {k: _serialize_val(v) for k, v in data.items() if k != "timestamp"}
+
 
 @dataclass(frozen=True)
 class EvaluationFailedEvent:
@@ -83,7 +91,9 @@ class EvaluationFailedEvent:
 
     def to_dict(self) -> dict:
         import dataclasses
+
         data = dataclasses.asdict(self)
+
         def _serialize_val(val):
             if isinstance(val, uuid.UUID):
                 return str(val)
@@ -94,4 +104,5 @@ class EvaluationFailedEvent:
             if isinstance(val, list):
                 return [_serialize_val(v) for v in val]
             return val
+
         return {k: _serialize_val(v) for k, v in data.items() if k != "timestamp"}

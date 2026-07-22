@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any
+from typing import Any
+
 from ..models import Benchmark
+
 
 class BaseRegistry(ABC):
     """Abstract base class for a benchmark registry."""
@@ -11,12 +13,12 @@ class BaseRegistry(ABC):
         pass
 
     @abstractmethod
-    def get(self, benchmark_id: str) -> Optional[Benchmark]:
+    def get(self, benchmark_id: str) -> Benchmark | None:
         """Retrieve a benchmark by ID."""
         pass
 
     @abstractmethod
-    def list_benchmarks(self, filters: Optional[Dict[str, Any]] = None) -> List[Benchmark]:
+    def list_benchmarks(self, filters: dict[str, Any] | None = None) -> list[Benchmark]:
         """List all benchmarks, optionally applying filters."""
         pass
 

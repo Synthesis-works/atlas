@@ -1,27 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
 import uuid
-from typing import Optional
 
-from apps.backend.dependencies import get_db, get_current_user
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+
 from apps.backend.authz import require_permission
+from apps.backend.dependencies import get_db
+from packages.database.atlas_db.repositories.authoring import BenchmarkRepository
 from packages.execution_engine.api.dtos import (
-    ExecutionResponse, ExecutionListResponse, ExecutionAttemptResponse, ArtifactResponse
+    ArtifactResponse,
+    ExecutionAttemptResponse,
+    ExecutionListResponse,
+    ExecutionResponse,
 )
 from packages.execution_engine.application.execution_app_service import ExecutionApplicationService
-from packages.execution_engine.persistence.repository import SqlAlchemyExecutionRepository
-from packages.execution_engine.domain.services import ExecutionService
-from packages.database.atlas_db.repositories.authoring import BenchmarkRepository
 from packages.execution_engine.domain.models import Execution
+from packages.execution_engine.domain.services import ExecutionService
+from packages.execution_engine.persistence.repository import SqlAlchemyExecutionRepository
 
 benchmark_executions_router = APIRouter(tags=["Executions"])
 executions_router = APIRouter(tags=["Executions"])
+
 
 def get_execution_service(db: Session = Depends(get_db)) -> ExecutionApplicationService:
     domain_service = ExecutionService()
     execution_repo = SqlAlchemyExecutionRepository(db)
     benchmark_repo = BenchmarkRepository(db)
     return ExecutionApplicationService(domain_service, execution_repo, benchmark_repo)
+
 
 def map_to_response(execution: Execution) -> ExecutionResponse:
     return ExecutionResponse(
@@ -43,16 +48,22 @@ def map_to_response(execution: Execution) -> ExecutionResponse:
                 artifacts=[
                     ArtifactResponse(id=art.id, type=art.type, storage_uri=art.storage_uri)
                     for art in a.artifacts
-                ]
-            ) for a in execution.attempts
-        ]
+                ],
+            )
+            for a in execution.attempts
+        ],
     )
 
-@benchmark_executions_router.post("/benchmarks/{benchmark_version_id}/executions", response_model=ExecutionResponse, status_code=201)
+
+@benchmark_executions_router.post(
+    "/benchmarks/{benchmark_version_id}/executions",
+    response_model=ExecutionResponse,
+    status_code=201,
+)
 def create_execution(
     benchmark_version_id: uuid.UUID,
     service: ExecutionApplicationService = Depends(get_execution_service),
-    current_user: dict = Depends(require_permission("benchmark:execute"))
+    current_user: dict = Depends(require_permission("benchmark:execute")),
 ):
     """
     Creates and queues a new execution for a specific benchmark version.
@@ -61,11 +72,12 @@ def create_execution(
     execution = service.submit_execution(benchmark_version_id, user_id)
     return map_to_response(execution)
 
+
 @executions_router.get("/executions/{execution_id}", response_model=ExecutionResponse)
 def get_execution(
     execution_id: uuid.UUID,
     service: ExecutionApplicationService = Depends(get_execution_service),
-    current_user: dict = Depends(require_permission("execution:read"))
+    current_user: dict = Depends(require_permission("execution:read")),
 ):
     """
     Retrieves details of an execution including attempts, leases, and artifacts.
@@ -73,26 +85,28 @@ def get_execution(
     execution = service.get_execution(execution_id)
     return map_to_response(execution)
 
+
 @executions_router.post("/executions/{execution_id}/cancel", response_model=ExecutionResponse)
 def cancel_execution(
     execution_id: uuid.UUID,
     service: ExecutionApplicationService = Depends(get_execution_service),
-    current_user: dict = Depends(require_permission("execution:cancel"))
+    current_user: dict = Depends(require_permission("execution:cancel")),
 ):
     """
     Cancels a running or queued execution.
     """
     execution = service.cancel_execution(execution_id)
     return map_to_response(execution)
-    
+
+
 @executions_router.get("/executions", response_model=ExecutionListResponse)
 def list_executions(
-    benchmark_version_id: Optional[uuid.UUID] = Query(None),
-    status: Optional[str] = Query(None),
+    benchmark_version_id: uuid.UUID | None = Query(None),
+    status: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     service: ExecutionApplicationService = Depends(get_execution_service),
-    current_user: dict = Depends(require_permission("execution:read"))
+    current_user: dict = Depends(require_permission("execution:read")),
 ):
     """
     Lists executions. Note: In a real app, this needs a DB query that returns multiple executions.

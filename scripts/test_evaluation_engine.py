@@ -1,12 +1,19 @@
-import os
-import uuid
 import datetime
-from sqlalchemy import create_engine
+import uuid
+
 from atlas_db.core.session import SessionLocal
+from atlas_db.models.evaluation import (
+    CapabilityProfile,
+    EvaluationArtifact,
+    EvaluationResult,
+    EvaluationStrategy,
+    EvaluationStrategyVersion,
+)
 from atlas_db.models.execution import Execution, ModelOutput
-from atlas_db.models.evaluation import EvaluationResult, CapabilityProfile, EvaluationArtifact, EvaluationStrategyVersion, EvaluationStrategy
-from packages.execution_engine.domain.events import ExecutionCompletedEvent
+
 from packages.evaluation_engine.application.subscriber import EvaluationSubscriber
+from packages.execution_engine.domain.events import ExecutionCompletedEvent
+
 
 def setup_test_data(session):
     # Setup Strategy
@@ -16,7 +23,7 @@ def setup_test_data(session):
 
     strat_version = EvaluationStrategyVersion(strategy_id=strat.id, version_string="1.0")
     session.add(strat_version)
-    
+
     # Setup Execution
     exec_id = uuid.uuid4()
     execution = Execution(
@@ -24,22 +31,23 @@ def setup_test_data(session):
         benchmark_version_id=uuid.uuid4(),
         status="completed",
         submitted_by=uuid.uuid4(),
-        progress=100
+        progress=100,
     )
     session.add(execution)
-    
+
     # Setup Model Output
     model_output_id = uuid.uuid4()
     model_output = ModelOutput(
         id=model_output_id,
         execution_id=exec_id,
         prompt="Test prompt",
-        raw_completion="Test completion"
+        raw_completion="Test completion",
     )
     session.add(model_output)
     session.commit()
-    
+
     return exec_id, model_output_id
+
 
 def test_evaluation_pipeline():
     print("Testing Evaluation Engine pipeline...")
@@ -49,12 +57,10 @@ def test_evaluation_pipeline():
     # Trigger Evaluation
     subscriber = EvaluationSubscriber()
     event = ExecutionCompletedEvent(
-        execution_id=exec_id,
-        attempt_id=uuid.uuid4(),
-        timestamp=datetime.datetime.utcnow()
+        execution_id=exec_id, attempt_id=uuid.uuid4(), timestamp=datetime.datetime.utcnow()
     )
-    
-    # The subscriber will handle the event, trigger the AppService, 
+
+    # The subscriber will handle the event, trigger the AppService,
     # run ExactMatchEvaluator and ExactMatchScoring, and persist results.
     try:
         subscriber.handle(event)
@@ -64,7 +70,11 @@ def test_evaluation_pipeline():
     # Verify Database state
     with SessionLocal() as session:
         # Check EvaluationResult
-        result = session.query(EvaluationResult).filter(EvaluationResult.model_output_id == model_output_id).first()
+        result = (
+            session.query(EvaluationResult)
+            .filter(EvaluationResult.model_output_id == model_output_id)
+            .first()
+        )
         if result:
             print(f"Found EvaluationResult: status={result.status}, passed={result.passed}")
             assert result.status == "completed"
@@ -73,18 +83,23 @@ def test_evaluation_pipeline():
             print("EvaluationResult not found (MVP mock might be incomplete for test)")
 
         # Check CapabilityProfile
-        profile = session.query(CapabilityProfile).filter(CapabilityProfile.execution_id == exec_id).first()
+        profile = (
+            session.query(CapabilityProfile)
+            .filter(CapabilityProfile.execution_id == exec_id)
+            .first()
+        )
         if profile:
             print(f"Found CapabilityProfile: overall={profile.overall_score}")
             assert profile.overall_score == 100.0
             assert "Reasoning" in profile.score_explanation["breakdown"]
-        
+
         # Check Artifacts
         artifacts = session.query(EvaluationArtifact).all()
         if artifacts:
             for art in artifacts:
                 print(f"Found Artifact: {art.name} at {art.artifact_uri}")
                 assert art.artifact_uri.startswith("artifact://evaluations/")
+
 
 if __name__ == "__main__":
     try:

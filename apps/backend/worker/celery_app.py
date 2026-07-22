@@ -1,6 +1,7 @@
-from celery import Celery
-from celery.signals import task_prerun, task_postrun
 import structlog
+from celery import Celery
+from celery.signals import task_postrun, task_prerun
+
 from apps.backend.config import settings
 from apps.backend.core.logging import setup_logging
 
@@ -11,7 +12,7 @@ celery_app = Celery(
     "atlas_worker",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["apps.backend.worker.tasks"]
+    include=["apps.backend.worker.tasks"],
 )
 
 celery_app.conf.update(
@@ -29,19 +30,19 @@ celery_app.conf.update(
             "task": "apps.backend.worker.tasks.outbox_sweep_task",
             "schedule": settings.outbox_poll_interval,
         }
-    }
+    },
 )
+
 
 @task_prerun.connect
 def setup_structlog_context(task_id, task, *args, **kwargs):
     # Bind celery_task_id and correlation_id (if passed in kwargs)
-    kwargs_dict = kwargs.get('kwargs', {})
-    correlation_id = kwargs_dict.get('correlation_id', task_id)
+    kwargs_dict = kwargs.get("kwargs", {})
+    correlation_id = kwargs_dict.get("correlation_id", task_id)
     structlog.contextvars.bind_contextvars(
-        celery_task_id=task_id,
-        correlation_id=correlation_id,
-        celery_task_name=task.name
+        celery_task_id=task_id, correlation_id=correlation_id, celery_task_name=task.name
     )
+
 
 @task_postrun.connect
 def clear_structlog_context(task_id, task, *args, **kwargs):

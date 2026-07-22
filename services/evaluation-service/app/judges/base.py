@@ -1,10 +1,13 @@
-from typing import Protocol, Optional, Dict, Any
+from typing import Any, Protocol
+
 from pydantic import BaseModel
+
 
 class JudgeResponse(BaseModel):
     score: float
     reasoning: str
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
+
 
 class JudgeProvider(Protocol):
     def evaluate(self, prompt: str, rubric: str) -> JudgeResponse:

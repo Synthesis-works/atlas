@@ -1,16 +1,20 @@
 import abc
-from ..services.queries import LeaderboardQueryService
+
 from ..models.read_models import LeaderboardRead
+from ..services.queries import LeaderboardQueryService
+
 
 class LeaderboardStrategy(abc.ABC):
     @abc.abstractmethod
     def execute(self, query_service: LeaderboardQueryService, **kwargs) -> LeaderboardRead:
         pass
 
+
 class OverallLeaderboardStrategy(LeaderboardStrategy):
     def execute(self, query_service: LeaderboardQueryService, **kwargs) -> LeaderboardRead:
-        limit = kwargs.get('limit', 10)
+        limit = kwargs.get("limit", 10)
         return query_service.get_overall_leaderboard(limit=limit)
+
 
 class CapabilityLeaderboardStrategy(LeaderboardStrategy):
     def execute(self, query_service: LeaderboardQueryService, **kwargs) -> LeaderboardRead:

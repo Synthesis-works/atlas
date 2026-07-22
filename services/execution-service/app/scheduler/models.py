@@ -1,11 +1,12 @@
-from pydantic import BaseModel, UUID4
-from typing import Optional, Dict
+from pydantic import UUID4, BaseModel
+
 
 class SchedulingDecision(BaseModel):
     task_id: UUID4
     worker_id: UUID4
     policy: str
     priority: int
+
 
 class SchedulerMetrics(BaseModel):
     tasks_examined: int = 0
@@ -25,10 +26,10 @@ class SchedulerMetrics(BaseModel):
 
     def record_no_worker(self):
         self.no_worker_available += 1
-        
+
     def record_failed_claim(self):
         self.failed_claim_attempts += 1
-        
+
     def summary(self) -> str:
         return (
             f"Scheduler Metrics -> "

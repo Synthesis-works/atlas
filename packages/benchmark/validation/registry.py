@@ -1,11 +1,12 @@
+from ..exceptions import BenchmarkValidationError
+from ..interfaces.registry import BaseRegistry
 from ..interfaces.validation import BaseValidator
 from ..models import Benchmark
-from ..interfaces.registry import BaseRegistry
-from ..exceptions import BenchmarkValidationError
+
 
 class RegistryValidator(BaseValidator):
     """Validates benchmark against the registry (e.g., uniqueness)."""
-    
+
     def __init__(self, registry: BaseRegistry):
         self.registry = registry
 
