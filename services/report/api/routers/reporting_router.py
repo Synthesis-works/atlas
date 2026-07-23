@@ -69,7 +69,7 @@ def get_history(
     # The PaginatedHistoryResponseDTO model validation could handle this,
     # but constructing it explicitly ensures clear boundary.
     return PaginatedHistoryResponseDTO(
-        items=items,  # Pydantic will coerce HistoryEntryRead to HistoryEntryDTO
+        items=items,  # type: ignore # Pydantic will coerce HistoryEntryRead to HistoryEntryDTO
         total=total,
         page=(offset // limit) + 1,
         size=limit,
