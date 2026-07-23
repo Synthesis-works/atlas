@@ -50,13 +50,13 @@ async def health_live():
     return {"status": "alive", "version": "0.9.0"}
 
 
-from atlas_db.session import get_db
+from apps.backend.dependencies import get_db_session
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 
 @router.get("/health/ready")
-async def health_ready(db: Session = Depends(get_db)):
+async def health_ready(db: Session = Depends(get_db_session)):
     """
     Readiness probe. Returns 200 OK if dependencies are available.
 

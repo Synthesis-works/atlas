@@ -4,7 +4,7 @@ from unittest.mock import patch
 from apps.backend.events.bus import ExecutionCompleted
 from apps.backend.events.celery_bus import CeleryExecutionEventBus
 from apps.backend.worker.celery_app import celery_app
-from apps.backend.worker.tasks import run_evaluation_task
+from apps.backend.worker.tasks import run_execution_task
 
 # Force Celery eager mode for tests just to be safe
 celery_app.conf.update(task_always_eager=True)
@@ -24,7 +24,7 @@ def test_event_bus_dispatches_evaluation_task():
         correlation_id="test",
     )
 
-    with patch("apps.backend.worker.tasks.run_evaluation_task.delay") as mock_delay:
+    with patch("apps.backend.worker.tasks.run_execution_task.delay") as mock_delay:
         bus.emit(event)
         mock_delay.assert_called_once_with(str(execution_id), "test")
 
@@ -38,7 +38,7 @@ def test_evaluation_task(mock_evaluate):
     execution_id = uuid.uuid4()
 
     # Run synchronously
-    run_evaluation_task.apply(args=(str(execution_id),))
+    run_execution_task.apply(args=(str(execution_id),))
 
     # Verify it delegates
     mock_evaluate.assert_called_once_with(execution_id, force=False)

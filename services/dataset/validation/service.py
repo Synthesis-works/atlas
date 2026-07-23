@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from atlas_db.models.dataset import ValidationStatus
+from atlas_db.models.dataset import DatasetLifecycle
 
 from ..repositories.dataset_repo import DatasetRepository
 from ..storage.provider import StorageProvider
@@ -17,7 +17,7 @@ class ValidationService:
         if not version:
             raise ValueError(f"Version {version_id} not found")
 
-        self.repo.update_version_status(version_id, ValidationStatus.PENDING)
+        self.repo.update_version_status(version_id, DatasetLifecycle.VALIDATING)
 
         try:
             with self.storage.get(version.storage_path) as f:
@@ -32,12 +32,13 @@ class ValidationService:
                     break
 
             if all_passed:
-                self.repo.update_version_status(version_id, ValidationStatus.VALIDATED)
+                self.repo.update_version_status(version_id, DatasetLifecycle.VALID)
                 return True
             else:
-                self.repo.update_version_status(version_id, ValidationStatus.FAILED)
+                self.repo.update_version_status(version_id, DatasetLifecycle.FAILED)
                 return False
 
-        except Exception:
-            self.repo.update_version_status(version_id, ValidationStatus.FAILED)
+        except Exception as e:
+            # Handle catastrophic failure
+            self.repo.update_version_status(version_id, DatasetLifecycle.FAILED)
             raise

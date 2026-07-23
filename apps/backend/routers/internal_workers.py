@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
-from apps.backend.dependencies import get_db
+from apps.backend.dependencies import get_db_session
 from apps.backend.worker_auth import require_worker_auth
 from packages.execution_engine.api.worker_dtos import (
     AcquireRequest,
@@ -20,7 +20,7 @@ from packages.execution_engine.persistence.repository import SqlAlchemyExecution
 workers_router = APIRouter(tags=["Internal Workers"], dependencies=[Depends(require_worker_auth)])
 
 
-def get_worker_service(db: Session = Depends(get_db)) -> WorkerApplicationService:
+def get_worker_service(db: Session = Depends(get_db_session)) -> WorkerApplicationService:
     domain_service = ExecutionService()
     execution_repo = SqlAlchemyExecutionRepository(db)
     return WorkerApplicationService(domain_service, execution_repo)

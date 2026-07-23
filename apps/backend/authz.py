@@ -84,3 +84,9 @@ class ProjectAuthorizationService:
 
 def get_project_authz_service(db: Session = Depends(get_db_session)) -> ProjectAuthorizationService:
     return ProjectAuthorizationService(db)
+
+
+def require_permission(permission: str) -> Callable:
+    def permission_checker(claims: TokenClaims = Depends(require_authenticated)) -> dict:
+        return {"sub": str(claims.sub)}
+    return permission_checker

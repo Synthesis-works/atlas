@@ -3,10 +3,10 @@ from uuid import UUID
 from atlas_db.models.dataset import (
     Dataset,
     DatasetLicense,
+    DatasetLifecycle,
     DatasetRegistry,
     DatasetSource,
     DatasetVersion,
-    ValidationStatus,
 )
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -38,7 +38,7 @@ class DatasetRepository:
         self.db.refresh(version)
         return version
 
-    def update_version_status(self, version_id: UUID, status: ValidationStatus) -> None:
+    def update_version_status(self, version_id: UUID, status: DatasetLifecycle) -> None:
         stmt = (
             update(DatasetVersion)
             .where(DatasetVersion.id == version_id)

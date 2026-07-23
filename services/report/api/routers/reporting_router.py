@@ -10,7 +10,7 @@ from ...models.dtos import (
     VersionInfoDTO,
 )
 from ...services.reporting import ReportingService
-from .dependencies import get_reporting_service
+from ..dependencies import get_reporting_service
 
 router = APIRouter()
 

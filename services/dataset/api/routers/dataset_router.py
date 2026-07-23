@@ -11,7 +11,7 @@ from ...services.versioning import VersioningService
 from ...storage.provider import StorageProvider
 from ...validation.rules import RequiredColumnsRule, UTF8EncodingRule
 from ...validation.service import ValidationService
-from .dependencies import (
+from ..dependencies import (
     get_dataset_repository,
     get_publishing_service,
     get_storage_provider,

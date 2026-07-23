@@ -7,9 +7,9 @@ from fastapi.testclient import TestClient
 
 from apps.backend.dependencies import (
     get_benchmark_app_service,
-    get_project_authz_service,
     require_authenticated,
 )
+from apps.backend.authz import get_project_authz_service
 from apps.backend.main import app
 from apps.backend.schemas.auth import TokenClaims
 from apps.backend.schemas.benchmarks import BenchmarkRead
