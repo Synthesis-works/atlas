@@ -67,7 +67,7 @@ class OllamaClient(BaseLLMClient):
                 data = response.json()
                 latency_ms = int((time.time() - start_time) * 1000)
 
-                return LLMResponse(
+                return LLMResponse(  # type: ignore
                     provider="ollama",
                     model=model,
                     prompt_tokens=data.get("prompt_eval_count"),

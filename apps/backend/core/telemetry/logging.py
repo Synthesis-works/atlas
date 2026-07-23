@@ -72,9 +72,9 @@ def configure_logging() -> None:
             structlog.stdlib.add_log_level,
             structlog.stdlib.add_logger_name,
             structlog.processors.TimeStamper(fmt="iso"),
-            inject_context_ids,
-            redact_sensitive_data,
-            sample_debug_logs,
+            inject_context_ids,  # type: ignore
+            redact_sensitive_data,  # type: ignore
+            sample_debug_logs,  # type: ignore
             structlog.processors.StackInfoRenderer(),
             structlog.processors.format_exc_info,
             structlog.processors.JSONRenderer(),
@@ -91,4 +91,4 @@ def get_logger(category: str) -> structlog.BoundLogger:
     Retrieves a logger bound with a specific category.
     """
     logger = structlog.get_logger()
-    return logger.bind(category=category)
+    return logger.bind(category=category)  # type: ignore

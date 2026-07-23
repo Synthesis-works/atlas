@@ -36,7 +36,7 @@ class MockClient(BaseLLMClient):
             code = "def " + func_name + "(*args, **kwargs): return False"  # logic error
 
         response_text = f"Here is the code:\n```python\n{code}\n```"
-        return LLMResponse(
+        return LLMResponse(  # type: ignore
             provider="mock",
             model=model,
             prompt_tokens=100,

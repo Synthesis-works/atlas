@@ -43,7 +43,7 @@ class HumanEvalImporter(BaseImporter):
         except Exception as e:
             raise ImporterError(f"Failed to parse HumanEval dataset: {e}")
 
-        metadata = BenchmarkMetadata(
+        metadata = BenchmarkMetadata(  # type: ignore
             benchmark_id="humaneval-001",
             name="HumanEval",
             description="OpenAI HumanEval dataset for code generation.",

@@ -14,8 +14,8 @@ def visit_ENUM(self, type_, **kw):
     return "VARCHAR"
 
 
-SQLiteTypeCompiler.visit_JSONB = visit_JSONB
-SQLiteTypeCompiler.visit_ENUM = visit_ENUM
+SQLiteTypeCompiler.visit_JSONB = visit_JSONB  # type: ignore
+SQLiteTypeCompiler.visit_ENUM = visit_ENUM  # type: ignore
 
 
 @pytest.fixture(scope="session")

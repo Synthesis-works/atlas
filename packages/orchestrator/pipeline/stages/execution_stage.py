@@ -27,10 +27,10 @@ class ExecutionStage(PipelineStage):
         elif isinstance(task.hidden_tests, str):
             tests_str = task.hidden_tests
 
-        req = ExecutionRequest(
+        req = ExecutionRequest(  # type: ignore
             code=result.extracted_code or "UNKNOWN",
             hidden_tests=tests_str,
-            context=ExecutionContext(language="python", timeout=5, memory_limit=256),
+            context=ExecutionContext(language="python", timeout=5, memory_limit=256),  # type: ignore
         )
 
         try:

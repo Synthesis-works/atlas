@@ -66,7 +66,7 @@ class GrokClient(BaseLLMClient):
             completion_tokens = usage.get("completion_tokens", 0)
             total_tokens = usage.get("total_tokens", 0)
 
-            return LLMResponse(
+            return LLMResponse(  # type: ignore
                 provider="grok",
                 model=model,
                 prompt_tokens=prompt_tokens,

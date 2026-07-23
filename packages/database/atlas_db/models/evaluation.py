@@ -68,7 +68,7 @@ class Judge(Base, BaseMixin):
     model_identifier: Mapped[str] = mapped_column(String(255), nullable=False)
     prompt_template: Mapped[str] = mapped_column(String, nullable=False)
 
-    organization: Mapped["Organization | None"] = relationship("Organization")
+    organization: Mapped["Organization | None"] = relationship("Organization")  # type: ignore
 
 
 class EvaluationResult(Base, BaseMixin):
@@ -97,7 +97,7 @@ class EvaluationResult(Base, BaseMixin):
     failure_reasons: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
     evaluation_context: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
 
-    model_output: Mapped["ModelOutput"] = relationship(
+    model_output: Mapped["ModelOutput"] = relationship(  # type: ignore
         "ModelOutput", back_populates="evaluation_result"
     )
     strategy_version: Mapped["EvaluationStrategyVersion"] = relationship(

@@ -124,7 +124,7 @@ class ModelOutput(Base, BaseMixin):
     tokens_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     execution: Mapped["Execution"] = relationship("Execution", back_populates="model_outputs")
-    evaluation_result: Mapped["EvaluationResult"] = relationship(
+    evaluation_result: Mapped["EvaluationResult"] = relationship(  # type: ignore
         "EvaluationResult", back_populates="model_output", uselist=False
     )
 

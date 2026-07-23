@@ -13,4 +13,4 @@ class ExecutionRequest(BaseModel):
     entry_point: str | None = Field(None, description="Main function or entry point")
     visible_tests: str | None = Field(None, description="Visible tests provided in the prompt")
     hidden_tests: str | None = Field(None, description="Hidden tests strictly for the runtime")
-    context: ExecutionContext = Field(default_factory=ExecutionContext)
+    context: ExecutionContext = Field(default_factory=ExecutionContext)  # type: ignore

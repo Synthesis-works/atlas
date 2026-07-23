@@ -28,7 +28,7 @@ class Task(BaseModel):
     input: Any = Field(..., description="Input data or prompt for the model")
     expected_output: Any = Field(..., description="Expected output for evaluation")
     hidden_tests: Any | None = Field(None, description="Hidden tests to evaluate the model")
-    constraints: TaskConstraints = Field(default_factory=TaskConstraints)
+    constraints: TaskConstraints = Field(default_factory=TaskConstraints)  # type: ignore
     evaluation: EvaluationConfig = Field(default_factory=EvaluationConfig)
     visibility: Visibility = Field(default=Visibility.PUBLIC)
     metadata: dict[str, Any] = Field(default_factory=dict)

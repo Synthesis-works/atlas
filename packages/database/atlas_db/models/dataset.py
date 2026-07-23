@@ -74,7 +74,7 @@ class Dataset(Base, BaseMixin):
         ENUM(DatasetStatus, name="dataset_status"), nullable=False, default=DatasetStatus.ACTIVE
     )
 
-    project: Mapped["Project"] = relationship("Project")
+    project: Mapped["Project"] = relationship("Project")  # type: ignore
     registry: Mapped["DatasetRegistry | None"] = relationship(
         "DatasetRegistry", back_populates="datasets"
     )

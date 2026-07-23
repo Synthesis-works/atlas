@@ -28,11 +28,11 @@ class PythonRuntime(BaseRuntime):
         try:
             self.validate(request)
         except CompilationException as e:
-            return ExecutionResult(
+            return ExecutionResult(  # type: ignore
                 execution_id=run_id, status=ExecutionStatus.SYNTAX_ERROR, exception=str(e)
             )
         except SecurityException as e:
-            return ExecutionResult(
+            return ExecutionResult(  # type: ignore
                 execution_id=run_id, status=ExecutionStatus.SECURITY_VIOLATION, exception=str(e)
             )
 
@@ -58,7 +58,7 @@ class PythonRuntime(BaseRuntime):
                 elif exit_code != 0:
                     status = ExecutionStatus.RUNTIME_ERROR
 
-                return ExecutionResult(
+                return ExecutionResult(  # type: ignore
                     execution_id=run_id,
                     status=status,
                     stdout=stdout,
@@ -70,7 +70,7 @@ class PythonRuntime(BaseRuntime):
                 )
 
             except ExecutionTimeoutException as e:
-                return ExecutionResult(
+                return ExecutionResult(  # type: ignore
                     execution_id=run_id,
                     status=ExecutionStatus.TIMEOUT,
                     stderr=str(e),
@@ -78,7 +78,7 @@ class PythonRuntime(BaseRuntime):
                     failed=True,
                 )
             except Exception as e:
-                return ExecutionResult(
+                return ExecutionResult(  # type: ignore
                     execution_id=run_id,
                     status=ExecutionStatus.UNKNOWN,
                     exception=str(e),

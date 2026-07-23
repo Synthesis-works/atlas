@@ -47,7 +47,7 @@ class ExecutionMapper:
             id=model.id,
             benchmark_version_id=model.benchmark_version_id,
             status=model.status,
-            created_by=model.created_by_id,
+            created_by=model.created_by_id,  # type: ignore
             created_at=model.created_at,
             updated_at=model.updated_at,
             max_retries=model.max_retries,

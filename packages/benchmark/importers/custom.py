@@ -14,7 +14,7 @@ class DummyBenchmarkImporter(BaseImporter):
     """An importer for a custom dummy benchmark to validate architecture."""
 
     def import_data(self, source: str, **kwargs) -> Benchmark:
-        metadata = BenchmarkMetadata(
+        metadata = BenchmarkMetadata(  # type: ignore
             benchmark_id="dummy-bench-001",
             name="Dummy Architecture Benchmark",
             description="A minimal benchmark to validate the Atlas Benchmark Foundation architecture.",
@@ -25,7 +25,7 @@ class DummyBenchmarkImporter(BaseImporter):
             category=BenchmarkCategory.CODING,
         )
 
-        task1 = Task(
+        task1 = Task(  # type: ignore
             task_id="task-1",
             title="Addition",
             description="Add two numbers",
@@ -33,7 +33,7 @@ class DummyBenchmarkImporter(BaseImporter):
             expected_output=3,
         )
 
-        task2 = Task(
+        task2 = Task(  # type: ignore
             task_id="task-2",
             title="String Reversal",
             description="Reverse a string",
@@ -41,7 +41,7 @@ class DummyBenchmarkImporter(BaseImporter):
             expected_output="olleh",
         )
 
-        task3 = Task(
+        task3 = Task(  # type: ignore
             task_id="task-3",
             title="List Sorting",
             description="Sort a list of integers",

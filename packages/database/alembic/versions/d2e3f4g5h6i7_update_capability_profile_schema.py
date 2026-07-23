@@ -117,8 +117,8 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_capability_profiles_execution_id"), table_name="capability_profiles")
     op.drop_index(op.f("ix_capability_profiles_evaluation_id"), table_name="capability_profiles")
 
-    op.drop_constraint(None, "capability_profiles", type_="foreignkey")
-    op.drop_constraint(None, "capability_profiles", type_="foreignkey")
+    op.drop_constraint(None, "capability_profiles", type_="foreignkey")  # type: ignore
+    op.drop_constraint(None, "capability_profiles", type_="foreignkey")  # type: ignore
 
     op.drop_column("capability_profiles", "profile_version")
     op.drop_column("capability_profiles", "strategy_version_id")

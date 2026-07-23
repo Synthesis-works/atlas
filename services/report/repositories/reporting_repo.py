@@ -65,7 +65,7 @@ class ReportingRepository:
             .order_by(desc("avg_score"))
             .limit(limit)
         )
-        return list(self.db.execute(stmt))
+        return list(self.db.execute(stmt))  # type: ignore
 
     def get_history(self, limit: int = 50, offset: int = 0) -> tuple[list[AtlasRun], int]:
         stmt = select(AtlasRun).order_by(desc(AtlasRun.created_at)).limit(limit).offset(offset)

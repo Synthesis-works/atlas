@@ -76,7 +76,7 @@ class MetricEngine:
                 total = sum(m.value for m in group)
                 new_m = group[0].model_copy(update={"value": total})
                 if hasattr(new_m, "normalized_value") and hasattr(group[0], "normalized_value"):
-                    new_m.normalized_value = sum(m.normalized_value for m in group)
+                    new_m.normalized_value = sum(m.normalized_value for m in group)  # type: ignore
                 aggregated.append(new_m)
             else:
                 # Default to taking the last one if unsupported

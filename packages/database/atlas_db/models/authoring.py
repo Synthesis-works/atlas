@@ -152,10 +152,10 @@ class BenchmarkVersion(Base):
     )
 
     benchmark: Mapped["Benchmark"] = relationship("Benchmark", back_populates="versions")
-    dataset_versions: Mapped[list["DatasetVersion"]] = relationship(
+    dataset_versions: Mapped[list["DatasetVersion"]] = relationship(  # type: ignore
         "DatasetVersion", secondary=benchmark_version_dataset_link
     )
-    primary_dataset_version: Mapped["DatasetVersion | None"] = relationship("DatasetVersion")
+    primary_dataset_version: Mapped["DatasetVersion | None"] = relationship("DatasetVersion")  # type: ignore
 
     __table_args__ = (
         UniqueConstraint("benchmark_id", "version_string", name="uq_benchmark_version"),

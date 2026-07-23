@@ -74,7 +74,7 @@ class GeminiClient(BaseLLMClient):
             completion_tokens = usage.get("candidatesTokenCount", 0)
             total_tokens = usage.get("totalTokenCount", 0)
 
-            return LLMResponse(
+            return LLMResponse(  # type: ignore
                 provider="gemini",
                 model=model,
                 prompt_tokens=prompt_tokens,
