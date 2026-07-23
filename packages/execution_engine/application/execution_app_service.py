@@ -10,9 +10,12 @@ from packages.database.atlas_db.repositories.authoring import BenchmarkRepositor
 
 logger = logging.getLogger(__name__)
 
+
 class EventPublisher:
     def publish(self, event):
         pass
+
+
 class ExecutionApplicationService:
     """
     Coordinates transactions and cross-domain dependencies for the Execution Engine.
