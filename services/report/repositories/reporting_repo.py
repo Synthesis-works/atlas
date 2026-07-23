@@ -1,5 +1,5 @@
 from atlas_db.models.evaluation import CapabilityProfile, EvaluationResult
-from atlas_db.models.execution import AtlasRun, ModelOutput
+from atlas_db.models.execution import Execution as AtlasRun, ModelOutput
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 

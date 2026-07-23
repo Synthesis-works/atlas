@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from atlas_db.models.dataset import ValidationStatus
+from atlas_db.models.dataset import DatasetLifecycle
 from pydantic import BaseModel, ConfigDict
 
 
@@ -44,7 +44,7 @@ class DatasetVersionDTO(BaseModel):
     version_string: str
     storage_path: str
     checksum: str | None = None
-    validation_status: ValidationStatus
+    validation_status: DatasetLifecycle
     schema_def: Any | None = None
     version_number: int
     created_at: datetime
