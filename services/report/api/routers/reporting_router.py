@@ -2,14 +2,14 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from ..models.dtos import (
+from ...models.dtos import (
     CapabilityDashboardDTO,
     LeaderboardResponseDTO,
     PaginatedHistoryResponseDTO,
     SystemHealthDTO,
     VersionInfoDTO,
 )
-from ..services.reporting import ReportingService
+from ...services.reporting import ReportingService
 from .dependencies import get_reporting_service
 
 router = APIRouter()
