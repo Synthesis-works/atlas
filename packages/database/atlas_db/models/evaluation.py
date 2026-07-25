@@ -85,7 +85,7 @@ class EvaluationResult(Base, BaseMixin):
     )
 
     status: Mapped[EvaluationStatus] = mapped_column(
-        ENUM(EvaluationStatus, name="evaluation_status", create_type=False),
+        ENUM(EvaluationStatus, name="evaluation_status"),
         nullable=False,
         default=EvaluationStatus.COMPLETED,
     )

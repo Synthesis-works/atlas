@@ -119,7 +119,7 @@ class Invitation(Base, BaseMixin):
     )
     email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     role: Mapped[OrganizationRole] = mapped_column(
-        ENUM(OrganizationRole, name="organization_role_invitation", create_type=False),
+        ENUM(OrganizationRole, name="organization_role", create_type=False),
         nullable=False,
     )
     token: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
