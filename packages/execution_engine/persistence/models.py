@@ -15,7 +15,9 @@ class ExecutionModel(Base, BaseMixin):
     __table_args__ = {"extend_existing": True}
 
     benchmark_version_id: Mapped[uuid.UUID] = mapped_column(nullable=False)
-    status: Mapped[ExecutionState] = mapped_column(SQLEnum(ExecutionState), nullable=False)
+    status: Mapped[ExecutionState] = mapped_column(
+        SQLEnum(ExecutionState, name="execution_status", create_type=False), nullable=False
+    )
     max_retries: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
     project_id: Mapped[uuid.UUID] = mapped_column(default=uuid.uuid4)
     target_model: Mapped[str] = mapped_column(String(255), default="test-model")
@@ -36,7 +38,9 @@ class ExecutionAttemptModel(Base):
         ForeignKey("executions.id", ondelete="CASCADE"), nullable=False, index=True
     )
     attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
-    status: Mapped[AttemptStatus] = mapped_column(SQLEnum(AttemptStatus), nullable=False)
+    status: Mapped[AttemptStatus] = mapped_column(
+        SQLEnum(AttemptStatus, name="attempt_status"), nullable=False
+    )
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error_message: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -77,7 +81,9 @@ class ArtifactModel(Base):
     attempt_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("execution_attempts.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    type: Mapped[ArtifactType] = mapped_column(SQLEnum(ArtifactType), nullable=False)
+    type: Mapped[ArtifactType] = mapped_column(
+        SQLEnum(ArtifactType, name="execution_artifact_type"), nullable=False
+    )
     storage_uri: Mapped[str] = mapped_column(String, nullable=False)
 
     attempt: Mapped["ExecutionAttemptModel"] = relationship(

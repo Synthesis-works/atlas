@@ -620,7 +620,17 @@ def upgrade() -> None:
         "artifacts",
         sa.Column("atlas_run_id", sa.UUID(), nullable=False),
         sa.Column(
-            "type", postgresql.ENUM("LOG", "WEIGHTS", "FILE", name="artifact_type"), nullable=False
+            "type",
+            postgresql.ENUM(
+                "LOG",
+                "LOGS",
+                "WEIGHTS",
+                "FILE",
+                "MODEL_OUTPUT",
+                "EVALUATION_RESULT",
+                name="artifact_type",
+            ),
+            nullable=False,
         ),
         sa.Column("uri", sa.String(), nullable=False),
         sa.Column("size_bytes", sa.Integer(), nullable=True),

@@ -17,17 +17,25 @@ class AdapterType(str, enum.Enum):
 class ExecutionStatus(str, enum.Enum):
     DRAFT = "DRAFT"
     QUEUED = "QUEUED"
+    SCHEDULED = "SCHEDULED"
+    STARTING = "STARTING"
     RUNNING = "RUNNING"
+    EVALUATING = "EVALUATING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
+    RETRYING = "RETRYING"
+    CANCELLING = "CANCELLING"
     CANCELLED = "CANCELLED"
     TIMED_OUT = "TIMED_OUT"
 
 
 class ArtifactType(str, enum.Enum):
     LOG = "log"
+    LOGS = "LOGS"
     WEIGHTS = "weights"
     FILE = "file"
+    MODEL_OUTPUT = "MODEL_OUTPUT"
+    EVALUATION_RESULT = "EVALUATION_RESULT"
 
 
 class ExecutionAdapter(Base, BaseMixin):
