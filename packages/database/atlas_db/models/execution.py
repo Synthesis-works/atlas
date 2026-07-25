@@ -68,7 +68,10 @@ class ExecutionAdapterVersion(Base):
 
 class Execution(Base, BaseMixin):
     __tablename__ = "executions"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = (
+        Index("ix_executions_status_created_at", "status", "created_at"),
+        {"extend_existing": True},
+    )
 
     project_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("projects.id"), nullable=False, index=True
@@ -107,8 +110,6 @@ class Execution(Base, BaseMixin):
         "ModelOutput", back_populates="execution"
     )
     artifacts: Mapped[list["Artifact"]] = relationship("Artifact", back_populates="execution")
-
-    __table_args__ = (Index("ix_executions_status_created_at", "status", "created_at"),)
 
 
 class ModelOutput(Base, BaseMixin):
