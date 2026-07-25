@@ -1,6 +1,7 @@
 from .base import BaseModelAdapter
 from .mock import MockModelAdapter
 
+
 class AdapterFactory:
     @staticmethod
     def get_adapter(target_model: str) -> BaseModelAdapter:

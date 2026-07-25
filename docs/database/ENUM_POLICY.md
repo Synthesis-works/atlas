@@ -18,14 +18,16 @@ When adding a new value to an existing Enum (e.g., adding `TIMEOUT` to `RunStatu
    from alembic import op
 
    # Define the ENUM name and the new value
-   enum_name = 'run_status'
-   new_value = 'TIMEOUT'
+   enum_name = "run_status"
+   new_value = "TIMEOUT"
+
 
    def upgrade() -> None:
-       # Safe addition in PostgreSQL (Cannot be executed inside a transaction block in older PG versions, 
+       # Safe addition in PostgreSQL (Cannot be executed inside a transaction block in older PG versions,
        # but safe via op.execute in modern versions if isolation level is set)
        with op.get_context().autocommit_block():
            op.execute(f"ALTER TYPE {enum_name} ADD VALUE '{new_value}'")
+
 
    def downgrade() -> None:
        # PostgreSQL does NOT support dropping an ENUM value easily.

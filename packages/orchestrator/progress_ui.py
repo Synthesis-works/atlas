@@ -2,6 +2,7 @@ import os
 import sys
 import time
 
+
 class ProgressUI:
     def __init__(self, job_id, dataset, model, prompt_version, total_tasks):
         self.job_id = job_id
@@ -17,34 +18,34 @@ class ProgressUI:
         self.runtimes = []
         self.repair_attempts = 0
         self.repair_successes = 0
-        
+
     def update(self, result):
         self.completed += 1
-        
+
         if result.status == "PASS":
             self.passed += 1
             if hasattr(result, "repair_retries") and result.repair_retries > 0:
                 self.repair_successes += 1
         else:
             self.failed += 1
-            
+
         if hasattr(result, "repair_retries") and result.repair_retries > 0:
             self.repair_attempts += result.repair_retries
-            
+
         if hasattr(result, "generation_latency_ms") and result.generation_latency_ms is not None:
             self.latencies.append(result.generation_latency_ms)
-            
+
         if hasattr(result, "execution_time_ms") and result.execution_time_ms is not None:
             self.runtimes.append(result.execution_time_ms)
-            
+
     def render(self):
         os.system("cls" if os.name == "nt" else "clear")
-        
+
         pass_at_1 = (self.passed / self.completed * 100) if self.completed > 0 else 0
-        
+
         avg_lat_s = (sum(self.latencies) / len(self.latencies) / 1000.0) if self.latencies else 0
         avg_runtime_ms = (sum(self.runtimes) / len(self.runtimes)) if self.runtimes else 0
-        
+
         # ETA calculation
         elapsed = time.time() - self.start_time
         if self.completed > 0:
@@ -56,12 +57,16 @@ class ProgressUI:
             eta_str = f"{int(hours)}h {int(minutes)}m"
         else:
             eta_str = "Calculating..."
-            
+
         # Progress bar
         bar_length = 30
-        filled_length = int(bar_length * self.completed // self.total_tasks) if self.total_tasks > 0 else bar_length
+        filled_length = (
+            int(bar_length * self.completed // self.total_tasks)
+            if self.total_tasks > 0
+            else bar_length
+        )
         bar = "#" * filled_length + "-" * (bar_length - filled_length)
-        
+
         output = f"""=====================================================
 Atlas Experiment
 =====================================================

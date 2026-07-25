@@ -1,22 +1,26 @@
-from pydantic import BaseModel, Field
 import uuid
-from typing import List, Optional
 from datetime import datetime
-from packages.execution_engine.domain.models import ExecutionState, AttemptStatus, ArtifactType
+
+from pydantic import BaseModel
+
+from packages.execution_engine.domain.models import ArtifactType, AttemptStatus, ExecutionState
+
 
 class ArtifactResponse(BaseModel):
     id: uuid.UUID
     type: ArtifactType
     storage_uri: str
 
+
 class ExecutionAttemptResponse(BaseModel):
     id: uuid.UUID
     attempt_number: int
     status: AttemptStatus
     started_at: datetime
-    finished_at: Optional[datetime]
-    error_message: Optional[str]
-    artifacts: List[ArtifactResponse]
+    finished_at: datetime | None
+    error_message: str | None
+    artifacts: list[ArtifactResponse]
+
 
 class ExecutionResponse(BaseModel):
     id: uuid.UUID
@@ -26,15 +30,17 @@ class ExecutionResponse(BaseModel):
     updated_at: datetime
     created_by: uuid.UUID
     max_retries: int
-    attempts: List[ExecutionAttemptResponse]
+    attempts: list[ExecutionAttemptResponse]
+
 
 class ExecutionCreateRequest(BaseModel):
     # Benchmark version ID goes in the path usually, but this is the request body?
-    # Actually, path is /benchmarks/{id}/executions. No body is strictly required, 
+    # Actually, path is /benchmarks/{id}/executions. No body is strictly required,
     # but maybe we can allow passing config here.
     # We will just use an empty body for now.
     pass
 
+
 class ExecutionListResponse(BaseModel):
-    items: List[ExecutionResponse]
+    items: list[ExecutionResponse]
     total: int

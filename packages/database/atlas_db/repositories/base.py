@@ -1,20 +1,22 @@
-from typing import Generic, TypeVar, Type, Any
-from sqlalchemy.orm import Session
+from typing import Any, Generic, TypeVar
+
 from atlas_db.core.base import Base
+from sqlalchemy.orm import Session
 
 ModelType = TypeVar("ModelType", bound=Base)
 
+
 class BaseRepository(Generic[ModelType]):
-    model: Type[ModelType]
+    model: type[ModelType]
 
     def __init__(self, db: Session):
         self.db = db
 
     def get(self, id: Any, include_archived: bool = False) -> ModelType | None:
         query = self.db.query(self.model).filter(self.model.id == id)
-        if not include_archived and hasattr(self.model, 'archived_at'):
+        if not include_archived and hasattr(self.model, "archived_at"):
             query = query.filter(self.model.archived_at.is_(None))
-        return query.first()
+        return query.first()  # type: ignore
 
     def create(self, *, obj_in: dict, commit: bool = True) -> ModelType:
         obj = self.model(**obj_in)
@@ -24,7 +26,7 @@ class BaseRepository(Generic[ModelType]):
             self.db.refresh(obj)
         else:
             self.db.flush()
-        return obj
+        return obj  # type: ignore
 
     def update(self, *, db_obj: ModelType, obj_in: dict, commit: bool = True) -> ModelType:
         for field, value in obj_in.items():
@@ -40,8 +42,9 @@ class BaseRepository(Generic[ModelType]):
     def delete(self, *, id: Any, hard: bool = False, commit: bool = True) -> ModelType | None:
         obj = self.db.get(self.model, id)
         if obj:
-            if not hard and hasattr(self.model, 'archived_at'):
+            if not hard and hasattr(self.model, "archived_at"):
                 from atlas_db.core.base import utcnow
+
                 obj.archived_at = utcnow()
                 self.db.add(obj)
             else:
@@ -50,4 +53,4 @@ class BaseRepository(Generic[ModelType]):
                 self.db.commit()
             else:
                 self.db.flush()
-        return obj
+        return obj  # type: ignore

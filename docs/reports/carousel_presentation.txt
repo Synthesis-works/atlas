@@ -1,0 +1,24 @@
+# Atlas Contribution Audit
+
+**Sujal** | Core Contributor to Atlas
+
+<!-- slide -->
+
+# The Journey Timeline
+- Started on **2026-07-02**
+- **84** commits to date
+- **46521** lines of code added
+- **670** files modified
+
+<!-- slide -->
+
+# Major Accomplishments
+
+- **feat(frontend): initialize Next.js application**\n- **release: Atlas Backend v1.0.0**\n- **chore: Finalize and freeze Evaluation Core (v0.6)**
+
+<!-- slide -->
+
+# Future Roadmap
+- Continue scaling the Execution Engine
+- Enhance Benchmark Authoring APIs
+- Expand Test Coverage

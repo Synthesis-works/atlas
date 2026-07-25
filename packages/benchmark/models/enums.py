@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class TaskState(str, Enum):
     IMPORTED = "imported"
     VALIDATED = "validated"
@@ -12,17 +13,20 @@ class TaskState(str, Enum):
     COMPLETED = "completed"
     FAILED = "failed"
 
+
 class TaskStatus(str, Enum):
     DRAFT = "draft"
     VALIDATED = "validated"
     PUBLISHED = "published"
     ARCHIVED = "archived"
 
+
 class Difficulty(str, Enum):
     EASY = "easy"
     MEDIUM = "medium"
     HIGH = "high"
     EXPERT = "expert"
+
 
 class BenchmarkCategory(str, Enum):
     CODING = "coding"
@@ -37,6 +41,7 @@ class BenchmarkCategory(str, Enum):
     MULTIMODAL = "multimodal"
     AGENTIC = "agentic"
 
+
 class Language(str, Enum):
     PYTHON = "python"
     JAVASCRIPT = "javascript"
@@ -48,10 +53,12 @@ class Language(str, Enum):
     ENGLISH = "english"
     OTHER = "other"
 
+
 class ExecutionMode(str, Enum):
     LOCAL = "local"
     DOCKER = "docker"
     REMOTE = "remote"
+
 
 class LicenseType(str, Enum):
     MIT = "MIT"
@@ -61,15 +68,18 @@ class LicenseType(str, Enum):
     PROPRIETARY = "proprietary"
     OTHER = "other"
 
+
 class Visibility(str, Enum):
     PUBLIC = "public"
     PRIVATE = "private"
     INTERNAL = "internal"
 
+
 class BenchmarkType(str, Enum):
     STANDARD = "standard"
     ADAPTIVE = "adaptive"
     SYNTHETIC = "synthetic"
+
 
 class EvaluationStrategy(str, Enum):
     HIDDEN_TESTS = "hidden_tests"

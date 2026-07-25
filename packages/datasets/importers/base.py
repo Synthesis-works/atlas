@@ -1,16 +1,19 @@
 import hashlib
 from abc import ABC, abstractmethod
-from typing import List, Any
-from ..models import DatasetPack, DatasetManifest, ImportStats
-from ..mapper import BaseMapper
+from typing import Any
+
 from packages.benchmark.models.task import Task
+
+from ..mapper import BaseMapper
+from ..models import DatasetManifest, DatasetPack, ImportStats
+
 
 class BaseImporter(ABC):
     def __init__(self, mapper: BaseMapper):
         self.mapper = mapper
 
     @abstractmethod
-    def fetch_dataset(self) -> List[Any]:
+    def fetch_dataset(self) -> list[Any]:
         """Downloads or loads the raw dataset records."""
         pass
 
@@ -19,9 +22,9 @@ class BaseImporter(ABC):
         """Returns the manifest for this dataset."""
         pass
 
-    def compute_checksum(self, tasks: List[Task]) -> str:
+    def compute_checksum(self, tasks: list[Task]) -> str:
         content = "".join([f"{t.task_id}:{t.input}" for t in tasks])
-        return hashlib.sha256(content.encode('utf-8')).hexdigest()
+        return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
     def import_pack(self) -> DatasetPack:
         raw_records = self.fetch_dataset()
@@ -39,7 +42,7 @@ class BaseImporter(ABC):
                     seen_ids.add(task.task_id)
                     tasks.append(task)
                     stats.valid += 1
-                    
+
                     lang = manifest.language
                     stats.languages[lang] = stats.languages.get(lang, 0) + 1
             except Exception as e:

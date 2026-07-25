@@ -1,17 +1,19 @@
-from typing import Dict, Any
-from packages.orchestrator.pipeline.base import PipelineStage
+from typing import Any
+
 from packages.orchestrator.models import TaskRunResult, TaskRunState
-from packages.runtime.models.execution_request import ExecutionRequest, ExecutionContext
+from packages.orchestrator.pipeline.base import PipelineStage
+from packages.runtime.models.execution_request import ExecutionContext, ExecutionRequest
+
 
 class ExecutionStage(PipelineStage):
-    def execute(self, context: Dict[str, Any], result: TaskRunResult) -> None:
+    def execute(self, context: dict[str, Any], result: TaskRunResult) -> None:
         if result.state == TaskRunState.FAILED:
             return
-            
+
         task = context["task"]
         config = context["job_config"]
         runtime_mgr = context["runtime_manager"]
-        
+
         tests_str = ""
         setup_code = task.metadata.get("test_setup_code")
         if setup_code:
@@ -24,17 +26,13 @@ class ExecutionStage(PipelineStage):
                     tests_str += f"{ht}\n"
         elif isinstance(task.hidden_tests, str):
             tests_str = task.hidden_tests
-            
-        req = ExecutionRequest(
+
+        req = ExecutionRequest(  # type: ignore
             code=result.extracted_code or "UNKNOWN",
             hidden_tests=tests_str,
-            context=ExecutionContext(
-                language="python",
-                timeout=5,
-                memory_limit=256
-            )
+            context=ExecutionContext(language="python", timeout=5, memory_limit=256),  # type: ignore
         )
-        
+
         try:
             exec_res = runtime_mgr.execute(req, task_id=task.task_id, model_id=config.model)
             result.execution_status = exec_res.status.value

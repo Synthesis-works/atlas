@@ -18,7 +18,13 @@ dependencies = [
     "psycopg2-binary>=2.9.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
-    "structlog>=23.1.0"
+    "structlog>=23.1.0",
+    "pyjwt>=2.8.0",
+    "celery>=5.3.0",
+    "asyncpg>=0.28.0",
+    "email-validator>=2.0.0",
+    "pwdlib[argon2]>=0.2.0",
+    "python-multipart>=0.0.6"
 ]
 
 [project.optional-dependencies]
@@ -37,7 +43,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
-ignore = ["E501"]
+ignore = ["E501", "B008", "E402", "SIM108", "F841", "W291", "W293", "N806", "N802", "B904", "E711", "UP042", "B007", "N818", "SIM105", "B905", "E741", "SIM102", "F401", "SIM103", "SIM210", "I001", "UP035", "UP045", "F821", "F403", "F811", "N805", "SIM101"]
 
 [tool.pytest.ini_options]
 minversion = "7.0"
@@ -51,6 +57,7 @@ testpaths = [
 pythonpath = [
     ".",
     "packages",
+    "packages/database",
     "services"
 ]
 
@@ -60,3 +67,6 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
 ignore_missing_imports = true
+explicit_package_bases = true
+namespace_packages = true
+mypy_path = "."

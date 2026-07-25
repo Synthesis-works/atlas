@@ -1,6 +1,8 @@
-from typing import Protocol, Any, Dict, List, Optional
-from pydantic import BaseModel, ConfigDict
+from typing import Any, Protocol
 from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict
+
 
 class MetricValueModel(BaseModel):
     name: str
@@ -10,44 +12,49 @@ class MetricValueModel(BaseModel):
     unit: str
     source: str
     aggregation: str
-    normalized_value: Optional[float] = None
-    confidence: Optional[float] = None
-    metadata: Optional[Dict[str, Any]] = None
+    normalized_value: float | None = None
+    confidence: float | None = None
+    metadata: dict[str, Any] | None = None
+
 
 class ArtifactModel(BaseModel):
     artifact_hash: str
-    target_output: Dict[str, Any]
-    reference_data: Optional[Dict[str, Any]] = None
-    context: Optional[Dict[str, Any]] = None
+    target_output: dict[str, Any]
+    reference_data: dict[str, Any] | None = None
+    context: dict[str, Any] | None = None
+
 
 class JudgeTraceModel(BaseModel):
     prompt: str
     response: str
     rubric: str
     reasoning: str
-    latency_ms: Optional[float] = None
-    cost: Optional[float] = None
-    metadata: Optional[Dict[str, Any]] = None
+    latency_ms: float | None = None
+    cost: float | None = None
+    metadata: dict[str, Any] | None = None
+
 
 class EvaluationResultBundle(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    
-    metrics: List[MetricValueModel] = []
-    artifacts: List[ArtifactModel] = []
-    judge_traces: List[JudgeTraceModel] = []
-    warnings: Optional[Dict[str, Any]] = None
-    metadata: Optional[Dict[str, Any]] = None
+
+    metrics: list[MetricValueModel] = []
+    artifacts: list[ArtifactModel] = []
+    judge_traces: list[JudgeTraceModel] = []
+    warnings: dict[str, Any] | None = None
+    metadata: dict[str, Any] | None = None
+
 
 class PipelineContext(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    
+
     evaluation_attempt_id: UUID
-    execution_outputs: List[Dict[str, Any]]
-    benchmark: Dict[str, Any]
-    dataset: Optional[Dict[str, Any]] = None
-    configuration: Dict[str, Any]
-    artifacts: List[Dict[str, Any]] = []
-    metadata: Dict[str, Any] = {}
+    execution_outputs: list[dict[str, Any]]
+    benchmark: dict[str, Any]
+    dataset: dict[str, Any] | None = None
+    configuration: dict[str, Any]
+    artifacts: list[dict[str, Any]] = []
+    metadata: dict[str, Any] = {}
+
 
 class EvaluationPipeline(Protocol):
     def evaluate(self, context: PipelineContext) -> EvaluationResultBundle:

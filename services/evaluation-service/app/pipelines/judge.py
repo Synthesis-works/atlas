@@ -1,7 +1,13 @@
-from typing import Any, Dict
-from .base import EvaluationPipeline, PipelineContext, EvaluationResultBundle, MetricValueModel, JudgeTraceModel
-from .registry import PipelineRegistry
 from app.judges.base import JudgeProvider
+
+from .base import (
+    EvaluationPipeline,
+    EvaluationResultBundle,
+    JudgeTraceModel,
+    MetricValueModel,
+    PipelineContext,
+)
+
 
 class JudgePipeline(EvaluationPipeline):
     def __init__(self, provider: JudgeProvider):
@@ -25,9 +31,9 @@ class JudgePipeline(EvaluationPipeline):
         for output in outputs:
             text = output.get("text", "")
             prompt = prompt_template.format(output=text)
-            
+
             response = self.provider.evaluate(prompt=prompt, rubric=rubric)
-            
+
             trace = JudgeTraceModel(
                 prompt=prompt,
                 response=response.reasoning,
@@ -35,7 +41,7 @@ class JudgePipeline(EvaluationPipeline):
                 reasoning=response.reasoning,
                 latency_ms=response.metadata.get("latency_ms") if response.metadata else None,
                 cost=response.metadata.get("cost") if response.metadata else None,
-                metadata=response.metadata
+                metadata=response.metadata,
             )
             traces.append(trace)
             total_score += response.score
@@ -50,7 +56,7 @@ class JudgePipeline(EvaluationPipeline):
                 direction="HIGHER_IS_BETTER",
                 unit="score",
                 source="JudgePipeline",
-                aggregation="mean"
+                aggregation="mean",
             )
         )
 
@@ -59,8 +65,9 @@ class JudgePipeline(EvaluationPipeline):
             artifacts=[],
             judge_traces=traces,
             warnings={},
-            metadata={"evaluated_count": len(outputs)}
+            metadata={"evaluated_count": len(outputs)},
         )
 
-# Cannot automatically register without knowing the provider, 
+
+# Cannot automatically register without knowing the provider,
 # but we can register a factory or depend on dependency injection for real pipelines.

@@ -1,11 +1,13 @@
+from pydantic import ValidationError
+
+from ..exceptions import BenchmarkValidationError
 from ..interfaces.validation import BaseValidator
 from ..models import Benchmark
-from ..exceptions import BenchmarkValidationError
-from pydantic import ValidationError
+
 
 class SchemaValidator(BaseValidator):
     """Validates the structure and types of the benchmark using Pydantic."""
-    
+
     def validate(self, benchmark: Benchmark) -> bool:
         try:
             # Re-validate to ensure deep integrity

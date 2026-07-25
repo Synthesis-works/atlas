@@ -1,9 +1,7 @@
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -14,25 +12,29 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from atlas_db.core.base import Base
-import atlas_db.models  # Import all models here so that they are registered with Base.metadata
-from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.dialects.postgresql import JSONB
-
-@compiles(JSONB, 'sqlite')
-def compile_jsonb_sqlite(type_, compiler, **kw):
-    return 'TEXT'
-
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.dialects.postgresql import JSONB
+
 
 @compiles(JSONB, "sqlite")
 def compile_jsonb_sqlite(type_, compiler, **kw):
+    return "TEXT"
+
+
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.compiler import compiles
+
+
+@compiles(JSONB, "sqlite")  # type: ignore
+def compile_jsonb_sqlite(type_, compiler, **kw):
     return "JSON"
+
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -59,7 +61,8 @@ def run_migrations_offline() -> None:
 
     """
     url = config.get_main_option("sqlalchemy.url")
-    context.configure(render_as_batch=True, 
+    context.configure(
+        render_as_batch=True,
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
@@ -84,8 +87,8 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(render_as_batch=True, 
-            connection=connection, target_metadata=target_metadata
+        context.configure(
+            render_as_batch=True, connection=connection, target_metadata=target_metadata
         )
 
         with context.begin_transaction():

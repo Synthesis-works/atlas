@@ -1,29 +1,30 @@
 import argparse
-import sys
-import os
 import datetime
+import os
+import sys
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from packages.experiments.registry import ExperimentRegistry
 from packages.research.insights.generator import InsightGenerator
 
+
 def generate_report(exp_id: str, output_file: str):
     registry = ExperimentRegistry()
     all_exps = registry.get_all()
-    
+
     exp_data = next((e for e in all_exps if e["id"] == exp_id), None)
     if not exp_data:
         print(f"Experiment {exp_id} not found in registry.")
         return
-        
+
     config = exp_data.get("config", {})
     metrics = exp_data.get("metrics", {})
-    
+
     print(f"Generating insights for {exp_id}...")
     insight_gen = InsightGenerator()
     insights = insight_gen.generate({"config": config, "metrics": metrics})
-    
+
     report_md = f"""# Research Report: {exp_id}
 Generated on: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
 
@@ -51,16 +52,18 @@ See clustering and logic analysis tools for detailed failure distributions.
 
     with open(output_file, "w", encoding="utf-8") as f:
         f.write(report_md)
-        
+
     print(f"Report saved to {output_file}")
+
 
 def main():
     parser = argparse.ArgumentParser(description="Generate Research Report")
     parser.add_argument("--exp", type=str, required=True, help="Experiment ID to report on")
     parser.add_argument("--out", type=str, default="report.md", help="Output file path")
     args = parser.parse_args()
-    
+
     generate_report(args.exp, args.out)
+
 
 if __name__ == "__main__":
     main()

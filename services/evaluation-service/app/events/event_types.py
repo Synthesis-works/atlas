@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class EvaluationEventType(str, Enum):
     EVALUATION_JOB_CREATED = "EVALUATION_JOB_CREATED"
     EVALUATION_STARTED = "EVALUATION_STARTED"

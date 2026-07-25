@@ -1,16 +1,18 @@
-from typing import Dict, Any
-from packages.orchestrator.pipeline.base import PipelineStage
-from packages.orchestrator.models import TaskRunResult, TaskRunState
+from typing import Any
+
 from packages.evaluation.extractors.code_block import CodeBlockExtractor
+from packages.orchestrator.models import TaskRunResult, TaskRunState
+from packages.orchestrator.pipeline.base import PipelineStage
+
 
 class ExtractionStage(PipelineStage):
-    def execute(self, context: Dict[str, Any], result: TaskRunResult) -> None:
+    def execute(self, context: dict[str, Any], result: TaskRunResult) -> None:
         if result.state == TaskRunState.FAILED:
             return
-            
+
         extractor = CodeBlockExtractor()
         try:
-            code = extractor.extract(result.raw_response)
+            code = extractor.extract(result.raw_response)  # type: ignore
             result.extracted_code = code
         except Exception as e:
             result.state = TaskRunState.FAILED

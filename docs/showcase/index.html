@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Atlas: Engineering Journey</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Mermaid -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <canvas id="particles"></canvas>
+    
+    <nav class="glass-nav">
+        <div class="logo">ATLAS</div>
+        <div class="nav-links">
+            <a href="#hero">Overview</a>
+            <a href="#timeline">Timeline</a>
+            <a href="#architecture">Architecture</a>
+            <a href="#achievements">Achievements</a>
+        </div>
+    </nav>
+
+    <section id="hero" class="hero-section hidden">
+        <div class="hero-content">
+            <h2 class="subtitle">My Engineering Journey</h2>
+            <h1 class="title glow-text">ATLAS</h1>
+            <p class="date-range">July 2 &rarr; Today</p>
+            
+            <div class="stats-grid" id="statsGrid">
+                <!-- Injected via JS -->
+            </div>
+            
+            <div class="scroll-indicator">
+                <p>Scroll &darr;</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="before-after" class="section hidden">
+        <div class="container">
+            <h2 class="section-title">The Transformation</h2>
+            <div class="comparison">
+                <div class="glass-card before">
+                    <h3>Before</h3>
+                    <ul>
+                        <li class="empty">&#9744; empty repository</li>
+                        <li class="empty">&#9744; no backend</li>
+                        <li class="empty">&#9744; no benchmark framework</li>
+                        <li class="empty">&#9744; no execution engine</li>
+                    </ul>
+                </div>
+                <div class="glass-card after">
+                    <h3>After</h3>
+                    <ul>
+                        <li class="checked">&#10004; backend</li>
+                        <li class="checked">&#10004; database</li>
+                        <li class="checked">&#10004; benchmark APIs</li>
+                        <li class="checked">&#10004; execution engine</li>
+                        <li class="checked">&#10004; scheduler</li>
+                        <li class="checked">&#10004; architecture docs</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="timeline" class="section hidden">
+        <div class="container">
+            <h2 class="section-title">Timeline</h2>
+            <div class="timeline-container" id="timelineContainer">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+    </section>
+
+    <section id="architecture" class="section hidden">
+        <div class="container">
+            <h2 class="section-title">Architecture Flow</h2>
+            <div class="glass-card mermaid-container">
+                <div class="mermaid">
+                    graph TD
+                    A[Benchmark API] -->|Triggers| B(Execution Engine)
+                    B --> C{Scheduler}
+                    C -->|Assigns Lease| D[Worker]
+                    D -->|Executes| E[Evaluation Core]
+                    E -->|Result| F[(Database)]
+                    F -->|Reads| G[Reports UI]
+                    
+                    classDef default fill:rgba(255,255,255,0.05),stroke:#4f46e5,stroke-width:2px,color:#fff;
+                    classDef special fill:rgba(79,70,229,0.2),stroke:#8b5cf6,stroke-width:2px,color:#fff;
+                    class B,C,E special;
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="achievements" class="section hidden">
+        <div class="container">
+            <h2 class="section-title">🏆 Top Milestones</h2>
+            <div class="milestones-grid" id="milestonesGrid">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+    </section>
+
+    <section id="tech-stack" class="section hidden">
+        <div class="container">
+            <h2 class="section-title">Tech Stack</h2>
+            <div class="stack-icons">
+                <span class="glass-pill">FastAPI</span>
+                <span class="glass-pill">SQLAlchemy</span>
+                <span class="glass-pill">Alembic</span>
+                <span class="glass-pill">Postgres</span>
+                <span class="glass-pill">Python</span>
+                <span class="glass-pill">Next.js</span>
+                <span class="glass-pill">React</span>
+                <span class="glass-pill">DDD</span>
+                <span class="glass-pill">Docker</span>
+                <span class="glass-pill">GitHub Actions</span>
+            </div>
+        </div>
+    </section>
+
+    <section id="future" class="section hidden">
+        <div class="hero-content">
+            <h2 class="section-title">The Future</h2>
+            <div class="future-flow">
+                <div class="node">Observability</div>
+                <div class="arrow">&darr;</div>
+                <div class="node">Outbox Pattern</div>
+                <div class="arrow">&darr;</div>
+                <div class="node">Metrics</div>
+                <div class="arrow">&darr;</div>
+                <div class="node">Leaderboards</div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>Built for the Atlas Engineering Team</p>
+    </footer>
+
+    <!-- Load data first, then scripts -->
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

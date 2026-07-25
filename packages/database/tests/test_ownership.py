@@ -1,7 +1,18 @@
+from datetime import UTC, datetime, timedelta
+
 import pytest
-from datetime import datetime, timezone, timedelta
+from atlas_db.models.core import (
+    Invitation,
+    InvitationStatus,
+    MembershipStatus,
+    Organization,
+    OrganizationMember,
+    OrganizationRole,
+    Project,
+    User,
+)
 from sqlalchemy.exc import IntegrityError
-from atlas_db.models.core import User, Organization, OrganizationMember, OrganizationRole, MembershipStatus, Project, Invitation, InvitationStatus
+
 
 def test_organization_member_creation(session):
     # Create org
@@ -19,7 +30,7 @@ def test_organization_member_creation(session):
         user_id=user.id,
         organization_id=org.id,
         role=OrganizationRole.OWNER,
-        status=MembershipStatus.ACTIVE
+        status=MembershipStatus.ACTIVE,
     )
     session.add(member)
     session.commit()
@@ -29,8 +40,9 @@ def test_organization_member_creation(session):
     assert member.user.email == "test@acme.com"
     assert member.organization.slug == "acme-corp"
 
+
 def test_project_ownership_and_unique_constraint(session):
-    org = Organization(name="Test Org", slug="test-org")
+    org = Organization(name="Test Org Ownership", slug="test-org-ownership")
     session.add(org)
     session.commit()
 
@@ -39,14 +51,14 @@ def test_project_ownership_and_unique_constraint(session):
     session.commit()
 
     member = OrganizationMember(
-        user_id=user.id,
-        organization_id=org.id,
-        role=OrganizationRole.ADMIN
+        user_id=user.id, organization_id=org.id, role=OrganizationRole.ADMIN
     )
     session.add(member)
     session.commit()
 
-    project1 = Project(name="Project Alpha", slug="project-alpha", org_id=org.id, created_by_member_id=member.id)
+    project1 = Project(
+        name="Project Alpha", slug="project-alpha", org_id=org.id, created_by_member_id=member.id
+    )
     session.add(project1)
     session.commit()
 
@@ -60,6 +72,7 @@ def test_project_ownership_and_unique_constraint(session):
         session.commit()
     session.rollback()
 
+
 def test_invitation_lifecycle(session):
     org = Organization(name="Invite Org", slug="invite-org")
     session.add(org)
@@ -71,16 +84,16 @@ def test_invitation_lifecycle(session):
         role=OrganizationRole.MEMBER,
         token="secure-token-123",
         status=InvitationStatus.PENDING,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=7)
+        expires_at=datetime.now(UTC) + timedelta(days=7),
     )
     session.add(invite)
     session.commit()
 
     assert invite.id is not None
     assert invite.status == InvitationStatus.PENDING
-    
+
     invite.status = InvitationStatus.ACCEPTED
-    invite.accepted_at = datetime.now(timezone.utc)
+    invite.accepted_at = datetime.now(UTC)
     session.commit()
 
     assert invite.status == InvitationStatus.ACCEPTED

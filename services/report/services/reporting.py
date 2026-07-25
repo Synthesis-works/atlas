@@ -1,20 +1,24 @@
-from typing import Optional, List
 from ..core.cache import ReportCache
-from ..services.queries import CapabilityQueryService, LeaderboardQueryService, HistoryQueryService
-from ..models.read_models import CapabilityDashboardRead, LeaderboardRead, HistoryEntryRead
-from ..strategies.leaderboard import LeaderboardStrategy, OverallLeaderboardStrategy, CapabilityLeaderboardStrategy
+from ..models.read_models import CapabilityDashboardRead, HistoryEntryRead, LeaderboardRead
+from ..services.queries import CapabilityQueryService, HistoryQueryService, LeaderboardQueryService
+from ..strategies.leaderboard import (
+    CapabilityLeaderboardStrategy,
+    OverallLeaderboardStrategy,
+)
+
 
 class ReportingService:
     """
     The central business logic layer for reporting.
     Coordinates Query Services, Caching, and Strategies.
     """
+
     def __init__(
-        self, 
-        cache: ReportCache, 
+        self,
+        cache: ReportCache,
         capability_query: CapabilityQueryService,
         leaderboard_query: LeaderboardQueryService,
-        history_query: HistoryQueryService
+        history_query: HistoryQueryService,
     ):
         self.cache = cache
         self.capability_query = capability_query
@@ -26,12 +30,12 @@ class ReportingService:
             "capability": CapabilityLeaderboardStrategy(),
         }
 
-    def get_capability_dashboard(self, model_identifier: str) -> Optional[CapabilityDashboardRead]:
+    def get_capability_dashboard(self, model_identifier: str) -> CapabilityDashboardRead | None:
         cache_key = f"capability_dashboard:{model_identifier}"
         cached = self.cache.get(cache_key)
         if cached:
-            return cached
-            
+            return cached  # type: ignore
+
         data = self.capability_query.get_capability_dashboard(model_identifier)
         if data:
             self.cache.set(cache_key, data)
@@ -41,13 +45,13 @@ class ReportingService:
         cache_key = f"leaderboard:{strategy_name}:{limit}"
         cached = self.cache.get(cache_key)
         if cached:
-            return cached
-            
+            return cached  # type: ignore
+
         strategy = self.leaderboard_strategies.get(strategy_name, OverallLeaderboardStrategy())
         data = strategy.execute(self.leaderboard_query, limit=limit)
-        
+
         self.cache.set(cache_key, data)
         return data
-        
-    def get_history(self, limit: int = 50, offset: int = 0) -> tuple[List[HistoryEntryRead], int]:
+
+    def get_history(self, limit: int = 50, offset: int = 0) -> tuple[list[HistoryEntryRead], int]:
         return self.history_query.get_paginated_history(limit, offset)

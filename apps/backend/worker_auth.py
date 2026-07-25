@@ -1,10 +1,12 @@
-from fastapi import HTTPException, Security, Request
-from fastapi.security import HTTPBearer
 import logging
+
+from fastapi import Request, Security
+from fastapi.security import HTTPBearer
 
 logger = logging.getLogger(__name__)
 
 auth_scheme = HTTPBearer(auto_error=False)
+
 
 def require_worker_auth(request: Request, token=Security(auth_scheme)):
     """

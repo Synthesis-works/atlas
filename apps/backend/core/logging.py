@@ -1,7 +1,10 @@
 import logging
 import sys
+
 import structlog
+
 from apps.backend.config import settings
+
 
 def setup_logging():
     """
@@ -10,14 +13,22 @@ def setup_logging():
     logging.basicConfig(
         format="%(message)s",
         stream=sys.stdout,
-        level=getattr(logging, settings.log_level.upper(), logging.INFO)
+        level=getattr(logging, settings.log_level.upper(), logging.INFO),
+    )
+
+    from apps.backend.core.telemetry.logging import (
+        inject_context_ids,
+        redact_sensitive_data,
+        sample_debug_logs,
     )
 
     shared_processors = [
-        structlog.contextvars.merge_contextvars,
         structlog.stdlib.add_log_level,
         structlog.stdlib.add_logger_name,
         structlog.processors.TimeStamper(fmt="iso"),
+        inject_context_ids,
+        redact_sensitive_data,
+        sample_debug_logs,
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
     ]
@@ -28,9 +39,7 @@ def setup_logging():
             structlog.processors.JSONRenderer(),
         ]
     else:
-        processors = shared_processors + [
-            structlog.dev.ConsoleRenderer()
-        ]
+        processors = shared_processors + [structlog.dev.ConsoleRenderer()]
 
     structlog.configure(
         processors=processors,

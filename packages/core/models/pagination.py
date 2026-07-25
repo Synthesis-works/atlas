@@ -1,12 +1,14 @@
-from pydantic import BaseModel, ConfigDict
-from typing import List, TypeVar, Generic
+from typing import Generic, TypeVar
 
-T = TypeVar('T')
+from pydantic import BaseModel, ConfigDict
+
+T = TypeVar("T")
+
 
 class PaginatedResponseDTO(BaseModel, Generic[T]):
-    items: List[T]
+    items: list[T]
     total: int
     page: int
     size: int
-    
+
     model_config = ConfigDict(from_attributes=True)

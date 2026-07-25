@@ -1,15 +1,16 @@
 import os
-import uuid
-import tempfile
 import shutil
-from typing import Optional
+import tempfile
+import uuid
+
 from ..exceptions import SandboxException
 
+
 class TemporarySandbox:
-    def __init__(self, base_dir: Optional[str] = None):
+    def __init__(self, base_dir: str | None = None):
         self.base_dir = base_dir
         self.run_id = str(uuid.uuid4())
-        self.sandbox_dir: Optional[str] = None
+        self.sandbox_dir: str | None = None
 
     def __enter__(self) -> str:
         try:

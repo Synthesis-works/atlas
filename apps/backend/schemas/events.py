@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional, Any
+from typing import Any
 from uuid import UUID
+
+from pydantic import BaseModel
+
 
 class AuditEvent(BaseModel):
     event_id: UUID
@@ -10,4 +12,4 @@ class AuditEvent(BaseModel):
     resource_type: str
     resource_id: UUID
     action: str
-    changes: Optional[dict[str, Any]] = None
+    changes: dict[str, Any] | None = None

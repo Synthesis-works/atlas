@@ -42,7 +42,12 @@ jobs:
       run: ruff check . && ruff format --check .
       
     - name: Run Mypy
-      run: mypy packages services
+      run: |
+        mypy packages
+        mypy services/dataset
+        MYPYPATH=services/evaluation-service mypy services/evaluation-service
+        MYPYPATH=services/execution-service mypy services/execution-service
+        mypy services/report
       
     - name: Run tests with Pytest
       env:

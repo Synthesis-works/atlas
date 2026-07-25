@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import List
-from ..models.types import ModelInfo
+
 from ..models.prompt import Prompt
 from ..models.response import LLMResponse
+from ..models.model_types import ModelInfo
+
 
 class BaseLLMClient(ABC):
     """Abstract base class for LLM providers."""
@@ -13,7 +14,7 @@ class BaseLLMClient(ABC):
         pass
 
     @abstractmethod
-    def list_models(self) -> List[ModelInfo]:
+    def list_models(self) -> list[ModelInfo]:
         """List available models."""
         pass
 

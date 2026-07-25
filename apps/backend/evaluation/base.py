@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Tuple
+from typing import Any
+
 
 class BaseEvaluator(ABC):
     """
@@ -9,14 +10,14 @@ class BaseEvaluator(ABC):
     """
 
     @abstractmethod
-    def evaluate(self, reference: Any, prediction: Any) -> Tuple[bool, float, Dict[str, Any]]:
+    def evaluate(self, reference: Any, prediction: Any) -> tuple[bool, float, dict[str, Any]]:
         """
         Evaluates a prediction against a reference.
-        
+
         Args:
             reference: The ground truth / expected answer from the test case.
             prediction: The actual output from the model.
-            
+
         Returns:
             Tuple containing:
             - passed (bool): Whether the test case passed.

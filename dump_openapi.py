@@ -1,4 +1,5 @@
 import json
+
 from apps.backend.main import app
 
 openapi_schema = app.openapi()
