@@ -17,8 +17,11 @@ from packages.execution_engine.domain.models import (
     ExecutionState,
 )
 from packages.execution_engine.persistence.repository import SqlAlchemyExecutionRepository
-import atlas_db.models  # noqa: F401  # Load all models for Base.metadata
-from atlas_db.models.core import User  # explicit load
+
+# Load all models for Base.metadata
+import atlas_db.models  # noqa: F401
+from atlas_db.models.authoring import Benchmark, BenchmarkVersion
+from atlas_db.models.core import Organization, Project, User
 
 # Try connecting to Postgres if available, else SQLite
 import os
@@ -52,18 +55,45 @@ def db_session(setup_database):
         session.close()
 
 
+def create_parent_records(session: Session) -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
+    """Creates Organization, Project, User, Benchmark, and BenchmarkVersion rows required for FK constraints."""
+    org = Organization(name="Test Org", slug=f"test-org-{uuid.uuid4().hex[:8]}")
+    session.add(org)
+    session.flush()
+
+    project = Project(
+        name="Test Project", slug=f"test-project-{uuid.uuid4().hex[:8]}", org_id=org.id
+    )
+    user = User(
+        email=f"test-{uuid.uuid4().hex[:8]}@example.com", full_name="Test User", org_id=org.id
+    )
+    session.add_all([project, user])
+    session.flush()
+
+    benchmark = Benchmark(name="Test Benchmark", project_id=project.id, author_id=user.id)
+    session.add(benchmark)
+    session.flush()
+
+    bv = BenchmarkVersion(benchmark_id=benchmark.id, version_string="1.0.0", created_by_id=user.id)
+    session.add(bv)
+    session.commit()
+
+    return project.id, bv.id, user.id
+
+
 def test_persistence_roundtrip(db_session: Session):
     clock = TestClock(datetime.now(UTC))
     repo = SqlAlchemyExecutionRepository(db_session)
 
+    project_id, bv_id, user_id = create_parent_records(db_session)
+
     # 1. Create pure domain aggregate
     exec_id = uuid.uuid4()
-    bv_id = uuid.uuid4()
-    user_id = uuid.uuid4()
     worker_id = uuid.uuid4()
 
     execution = Execution(
         id=exec_id,
+        project_id=project_id,
         benchmark_version_id=bv_id,
         created_by=user_id,
         status=ExecutionState.QUEUED,
@@ -117,10 +147,13 @@ def test_concurrency_skip_locked(setup_database):
     session_setup = SessionLocal()
     repo_setup = SqlAlchemyExecutionRepository(session_setup)
     clock = TestClock(datetime.now(UTC))
+    project_id, bv_id, user_id = create_parent_records(session_setup)
     exec_id = uuid.uuid4()
     execution = Execution(
         id=exec_id,
-        benchmark_version_id=uuid.uuid4(),
+        project_id=project_id,
+        benchmark_version_id=bv_id,
+        created_by=user_id,
         status=ExecutionState.QUEUED,
         created_at=clock.now(),
         updated_at=clock.now(),

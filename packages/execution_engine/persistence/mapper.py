@@ -45,6 +45,7 @@ class ExecutionMapper:
 
         return Execution.rehydrate(
             id=model.id,
+            project_id=model.project_id,
             benchmark_version_id=model.benchmark_version_id,
             status=model.status,
             created_by=model.created_by_id,  # type: ignore
@@ -114,6 +115,7 @@ class ExecutionMapper:
         """Creates a brand new SQLAlchemy model from the domain aggregate."""
         model = ExecutionModel(
             id=execution.id,
+            project_id=execution.project_id,
             benchmark_version_id=execution.benchmark_version_id,
             status=execution.status,
             created_by_id=execution.created_by,

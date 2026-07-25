@@ -75,6 +75,7 @@ class ExecutionAttempt:
 class Execution:
     id: uuid.UUID
     benchmark_version_id: uuid.UUID
+    project_id: uuid.UUID = field(default_factory=uuid.uuid4)
     status: ExecutionState = ExecutionState.QUEUED
     created_by: uuid.UUID = field(default_factory=uuid.uuid4)
     created_at: datetime = field(default_factory=Clock.now)
@@ -88,6 +89,7 @@ class Execution:
         cls,
         id: uuid.UUID,
         benchmark_version_id: uuid.UUID,
+        project_id: uuid.UUID,
         status: ExecutionState,
         created_by: uuid.UUID,
         created_at: datetime,
@@ -99,6 +101,7 @@ class Execution:
         instance = cls(
             id=id,
             benchmark_version_id=benchmark_version_id,
+            project_id=project_id,
             status=status,
             created_by=created_by,
             created_at=created_at,
