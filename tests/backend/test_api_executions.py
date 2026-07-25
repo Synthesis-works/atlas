@@ -1,135 +1,70 @@
 import uuid
 from datetime import datetime
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
-from atlas_db.models.execution import ExecutionStatus
 from fastapi.testclient import TestClient
 
-from apps.backend.authz import ProjectAuthorizationService, get_project_authz_service
-from apps.backend.dependencies import get_current_user
+from apps.backend.authz import require_permission
 from apps.backend.main import app
-from apps.backend.schemas.executions import ExecutionResponse
-from apps.backend.services.executions import ExecutionService
-
-
-# Setup basic mocks
-@pytest.fixture
-def mock_authz_service():
-    return Mock(spec=ProjectAuthorizationService)
-
+from apps.backend.routers.executions import get_execution_service
+from packages.execution_engine.api.dtos import (
+    ExecutionAttemptResponse,
+    ExecutionListResponse,
+    ExecutionResponse,
+)
+from packages.execution_engine.application.execution_app_service import ExecutionApplicationService
+from packages.execution_engine.domain.models import Execution, ExecutionState
 
 @pytest.fixture
 def mock_execution_service():
-    return Mock(spec=ExecutionService)
-
+    return Mock(spec=ExecutionApplicationService)
 
 @pytest.fixture
-def test_client(mock_authz_service):
-    app.dependency_overrides[get_project_authz_service] = lambda: mock_authz_service
-    # Mock current user for endpoints
-    from atlas_db.models.core import User
-
-    mock_user = User(
-        id=uuid.uuid4(),
-        email="test@example.com",
-        is_active=True,
-        is_verified=True,
-        full_name="Test User",
+def test_client(mock_execution_service):
+    app.dependency_overrides[get_execution_service] = lambda: mock_execution_service
+    
+    from apps.backend.dependencies import require_authenticated
+    from apps.backend.schemas.auth import TokenClaims
+    app.dependency_overrides[require_authenticated] = lambda: TokenClaims(
+        sub=uuid.uuid4(), exp=9999999999, iat=1000000000, jti=uuid.uuid4()
     )
-    app.dependency_overrides[get_current_user] = lambda: mock_user
     yield TestClient(app)
     app.dependency_overrides.clear()
 
-
-def test_create_execution(test_client):
-    project_id = uuid.uuid4()
+def test_create_execution(test_client, mock_execution_service):
     benchmark_id = uuid.uuid4()
     exec_id = uuid.uuid4()
+    
+    execution = Execution(
+        id=exec_id,
+        benchmark_version_id=benchmark_id,
+        status=ExecutionState.QUEUED,
+        max_retries=3
+    )
+    mock_execution_service.submit_execution.return_value = execution
 
-    with patch("apps.backend.routers.executions.ExecutionService.create_execution") as mock_create:
-        mock_create.return_value = ExecutionResponse(
-            id=exec_id,
-            project_id=project_id,
-            benchmark_version_id=benchmark_id,
-            submitted_by_id=uuid.uuid4(),
-            status=ExecutionStatus.QUEUED,
-            target_model="gpt-4",
-            execution_config={},
-            benchmark_hash="hash",
-            cancellation_requested=False,
-            total_items=0,
-            completed_items=0,
-            started_at=None,
-            completed_at=None,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
-        )
-        with patch(
-            "apps.backend.routers.executions.ProjectAuthorizationService.authorize_project_access"
-        ) as mock_authz:
-            mock_authz.return_value = Mock(id=uuid.uuid4())
+    response = test_client.post(f"/api/v1/benchmarks/{benchmark_id}/executions")
 
-            response = test_client.post(
-                f"/api/v1/projects/{project_id}/executions",
-                json={
-                    "benchmark_version_id": str(benchmark_id),
-                    "target_model": "gpt-4",
-                    "execution_config": {},
-                },
-            )
-
-            assert response.status_code == 201
-            assert response.json()["status"] == "QUEUED"
-            assert response.json()["id"] == str(exec_id)
-
+    assert response.status_code == 201
+    assert response.json()["id"] == str(exec_id)
+    assert response.json()["status"] == "QUEUED"
 
 def test_list_executions(test_client):
-    project_id = uuid.uuid4()
+    response = test_client.get("/api/v1/executions")
+    assert response.status_code == 200
+    assert response.json()["items"] == []
 
-    with patch(
-        "apps.backend.routers.executions.ExecutionService.list_executions_for_project"
-    ) as mock_list:
-        mock_list.return_value = []
-        with patch(
-            "apps.backend.routers.executions.ProjectAuthorizationService.authorize_project_access"
-        ) as mock_authz:
-            response = test_client.get(f"/api/v1/projects/{project_id}/executions")
-            assert response.status_code == 200
-            assert response.json() == []
-
-
-def test_cancel_execution(test_client):
-    project_id = uuid.uuid4()
+def test_cancel_execution(test_client, mock_execution_service):
     exec_id = uuid.uuid4()
-
-    with patch("apps.backend.routers.executions.ExecutionService.get_execution") as mock_get:
-        mock_get.return_value = Mock(project_id=project_id)
-
-        with patch("apps.backend.routers.executions.ExecutionService.update_status") as mock_update:
-            mock_update.return_value = ExecutionResponse(
-                id=exec_id,
-                project_id=project_id,
-                benchmark_version_id=uuid.uuid4(),
-                submitted_by_id=uuid.uuid4(),
-                status=ExecutionStatus.CANCELLED,
-                target_model="gpt-4",
-                execution_config={},
-                benchmark_hash="hash",
-                cancellation_requested=True,
-                total_items=0,
-                completed_items=0,
-                started_at=None,
-                completed_at=None,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-            )
-
-            with patch(
-                "apps.backend.routers.executions.ProjectAuthorizationService.authorize_project_access"
-            ) as mock_authz:
-                response = test_client.post(
-                    f"/api/v1/projects/{project_id}/executions/{exec_id}/cancel"
-                )
-                assert response.status_code == 200
-                assert response.json()["status"] == "CANCELLED"
+    execution = Execution(
+        id=exec_id,
+        benchmark_version_id=uuid.uuid4(),
+        status=ExecutionState.CANCELLED,
+        max_retries=3
+    )
+    mock_execution_service.cancel_execution.return_value = execution
+    
+    response = test_client.post(f"/api/v1/executions/{exec_id}/cancel")
+    assert response.status_code == 200
+    assert response.json()["status"] == "CANCELLED"

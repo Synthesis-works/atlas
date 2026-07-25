@@ -42,7 +42,7 @@ def test_organization_member_creation(session):
 
 
 def test_project_ownership_and_unique_constraint(session):
-    org = Organization(name="Test Org", slug="test-org")
+    org = Organization(name="Test Org Ownership", slug="test-org-ownership")
     session.add(org)
     session.commit()
 

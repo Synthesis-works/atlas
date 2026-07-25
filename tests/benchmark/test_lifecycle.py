@@ -21,14 +21,11 @@ def service():
     mock_benchmark_repo = MagicMock()
     mock_lifecycle_repo = MagicMock()
     mock_version_repo = MagicMock()
-    mock_category_repo = MagicMock()
-    mock_capability_repo = MagicMock()
+
     service = BenchmarkService(
         benchmark_repo=mock_benchmark_repo,
         lifecycle_repo=mock_lifecycle_repo,
         version_repo=mock_version_repo,
-        category_repo=mock_category_repo,
-        capability_repo=mock_capability_repo,
     )
     return service
 
@@ -38,6 +35,7 @@ def create_valid_benchmark(state):
     # Give it categories/capabilities to pass invariant checks
     b.categories = [BenchmarkCategory(id=uuid.uuid4(), name="Test")]
     b.capabilities = [Capability(id=uuid.uuid4(), name="Test")]
+    b.versions = [MagicMock()]
     return b
 
 
@@ -46,9 +44,10 @@ def create_valid_version(benchmark_id):
         id=uuid.uuid4(),
         benchmark_id=benchmark_id,
         version_string="v1.0",
-        dataset_version_ids=[uuid.uuid4()],
+        primary_dataset_version_id=uuid.uuid4(),
         evaluation_strategy_id=uuid.uuid4(),
     )
+    v.dataset_versions = [MagicMock()]
     return v
 
 
@@ -91,7 +90,7 @@ def test_exhaustive_transitions(service):
                 updated, events = service.transition_state(
                     b.id, to_state, b.author_id, "project_write"
                 )
-                assert events[0].changes["to_state"] == str(to_state)
+                assert events[0].to_state == to_state
             else:
                 # Negative test
                 with pytest.raises(InvalidStateTransitionError):
@@ -106,13 +105,13 @@ def test_validation_action_positive(service):
     service.benchmark_repo.get_for_update.return_value = b
 
     updated_v, events = service.validate_version(v.id, b.author_id, "project_write")
-    assert events[0].changes["to_state"] == BenchmarkState.VALIDATION
+    assert events[0].to_state == BenchmarkState.VALIDATION
 
 
 def test_validation_action_negative_missing_datasets(service):
     b = create_valid_benchmark(BenchmarkState.DRAFT)
     v = create_valid_version(b.id)
-    v.dataset_version_ids = None  # Missing dataset
+    v.dataset_versions = []  # Missing dataset
     service.version_repo.get.return_value = v
     service.benchmark_repo.get.return_value = b
 
@@ -129,7 +128,7 @@ def test_publish_action_positive(service):
     service.can_publish = MagicMock(return_value=True)
 
     updated_v, events = service.publish_version(v.id, b.author_id, "project_admin")
-    assert events[0].changes["to_state"] == BenchmarkState.PUBLISHED
+    assert events[0].to_state == BenchmarkState.PUBLISHED
 
 
 def test_archive_action_positive(service):
@@ -141,4 +140,4 @@ def test_archive_action_positive(service):
     service.can_archive = MagicMock(return_value=True)
 
     updated_v, events = service.archive_version(v.id, b.author_id, "org_admin")
-    assert events[0].changes["to_state"] == BenchmarkState.ARCHIVE
+    assert events[0].to_state == BenchmarkState.ARCHIVE

@@ -12,8 +12,13 @@ from packages.execution_engine.domain.exceptions import LeaseOwnershipError
 
 client = TestClient(app)
 
+
 # Stub out the worker auth dependency
-app.dependency_overrides[require_worker_auth] = lambda: {"worker_authenticated": True}
+@pytest.fixture(autouse=True)
+def apply_dependency_overrides():
+    app.dependency_overrides[require_worker_auth] = lambda: {"worker_authenticated": True}
+    yield
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture

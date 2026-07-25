@@ -29,12 +29,16 @@ def override_get_project_authz_service():
 
 
 def override_require_authenticated():
-    return TokenClaims(sub=uuid4(), email="test@example.com", membership_id=uuid4())
+    return TokenClaims(sub=uuid4(), exp=0, iat=0, jti=uuid4(), membership_id=uuid4())
 
 
-app.dependency_overrides[get_benchmark_app_service] = override_get_benchmark_app_service
-app.dependency_overrides[get_project_authz_service] = override_get_project_authz_service
-app.dependency_overrides[require_authenticated] = override_require_authenticated
+@pytest.fixture(autouse=True)
+def apply_dependency_overrides():
+    app.dependency_overrides[get_benchmark_app_service] = override_get_benchmark_app_service
+    app.dependency_overrides[get_project_authz_service] = override_get_project_authz_service
+    app.dependency_overrides[require_authenticated] = override_require_authenticated
+    yield
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture(autouse=True)
@@ -45,7 +49,7 @@ def reset_mocks():
     mock_authz_service.authorize_project_access.return_value = OrganizationMember(
         id=uuid4(),
         user_id=uuid4(),
-        org_id=uuid4(),
+        organization_id=uuid4(),
         role=OrganizationRole.MEMBER,
         status=MembershipStatus.ACTIVE,
     )

@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 
 
 def test_organization_creation(session):
-    org = Organization(name="Test Org")
+    org = Organization(name="Test Org", slug="test-org")
     session.add(org)
     session.commit()
     assert org.id is not None
@@ -19,11 +19,11 @@ def test_project_requires_name(session):
 
 
 def test_configuration_scope_constraint(session):
-    org = Organization(name="Test Org 2")
+    org = Organization(name="Test Org 2", slug="test-org-2")
     session.add(org)
     session.commit()
 
-    project = Project(name="Project 1", org_id=org.id)
+    project = Project(name="Project 1", slug="project-1", org_id=org.id)
     session.add(project)
     session.commit()
 
@@ -41,14 +41,14 @@ def test_configuration_scope_constraint(session):
 
 
 def test_fk_constraint(session):
-    project = Project(name="Project FK", org_id=None)
+    project = Project(name="Project FK", slug="project-fk", org_id=None)
     session.add(project)
     session.commit()
 
     # Invalid organization ID
     import uuid
 
-    invalid_project = Project(name="Invalid FK", org_id=uuid.uuid4())
+    invalid_project = Project(name="Invalid FK", slug="invalid-fk", org_id=uuid.uuid4())
     session.add(invalid_project)
     with pytest.raises(IntegrityError):
         session.commit()
@@ -56,11 +56,11 @@ def test_fk_constraint(session):
 
 
 def test_cascade_delete(session):
-    org = Organization(name="Cascade Org")
+    org = Organization(name="Cascade Org", slug="cascade-org")
     session.add(org)
     session.commit()
 
-    project = Project(name="Cascade Project", org_id=org.id)
+    project = Project(name="Cascade Project", slug="cascade-project", org_id=org.id)
     session.add(project)
     session.commit()
 
@@ -92,7 +92,7 @@ def test_uniqueness_constraint(session):
 
 
 def test_optimistic_locking(session):
-    org = Organization(name="Versioned Org")
+    org = Organization(name="Test Org 6", slug="test-org-6")
     session.add(org)
     session.commit()
 

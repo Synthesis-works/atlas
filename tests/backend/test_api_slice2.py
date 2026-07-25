@@ -13,7 +13,7 @@ from atlas_db.models.core import (
 )
 from fastapi.testclient import TestClient
 
-from apps.backend.dependencies import get_current_member, get_org_service, get_project_service
+from apps.backend.dependencies import get_org_service, get_project_service
 from apps.backend.main import app
 from apps.backend.schemas.organizations import OrganizationMemberRead
 
@@ -58,12 +58,22 @@ def override_get_current_user():
     )
 
 
-app.dependency_overrides[get_org_service] = override_get_org_service
-app.dependency_overrides[get_project_service] = override_get_project_service
-app.dependency_overrides[get_current_member] = override_get_current_member
 from apps.backend.dependencies import get_current_user
 
-app.dependency_overrides[get_current_user] = override_get_current_user
+
+@pytest.fixture(autouse=True)
+def apply_dependency_overrides():
+    app.dependency_overrides[get_org_service] = override_get_org_service
+    app.dependency_overrides[get_project_service] = override_get_project_service
+    from apps.backend.authz import require_org_member
+    app.dependency_overrides[require_org_member] = override_get_current_member
+    from apps.backend.dependencies import require_authenticated
+    from apps.backend.schemas.auth import TokenClaims
+    def override_require_authenticated():
+        return TokenClaims(sub=uuid4(), exp=9999999999, iat=1000000000, jti=uuid4())
+    app.dependency_overrides[require_authenticated] = override_require_authenticated
+    yield
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture(autouse=True)

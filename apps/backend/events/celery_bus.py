@@ -21,11 +21,8 @@ class CeleryExecutionEventBus(ExecutionEventBus):
         logger.info(f"Event emitted: {event.__class__.__name__} for execution {event.execution_id}")
 
         if isinstance(event, ExecutionCompleted):
-            # Enqueue the evaluation service downstream
-            from apps.backend.worker.tasks import run_evaluation_task
-
-            logger.info(f"Dispatching Evaluation Task for execution {event.execution_id}")
-            run_evaluation_task.delay(str(event.execution_id), correlation_id=event.correlation_id)
+            # Evaluation is now outbox-driven via EvaluationSubscriber
+            pass
 
         elif isinstance(event, ExecutionStarted):
             pass  # Hook for future notifications/dashboards

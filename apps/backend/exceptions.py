@@ -11,6 +11,7 @@ from packages.execution_engine.domain.exceptions import (
     ExecutionNotFoundError,
     ImmutableExecutionError,
     InvalidStateTransitionError,
+    LeaseOwnershipError,
 )
 
 

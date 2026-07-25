@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from packages.database.atlas_db.core.base import Base
+from atlas_db.core.base import Base
 from packages.execution_engine.domain.clock import TestClock
 from packages.execution_engine.domain.models import (
     Artifact,
@@ -17,9 +17,13 @@ from packages.execution_engine.domain.models import (
     ExecutionState,
 )
 from packages.execution_engine.persistence.repository import SqlAlchemyExecutionRepository
+import atlas_db.models  # noqa: Load all models for Base.metadata
+from atlas_db.models.core import User  # explicit load
 
 # Try connecting to Postgres if available, else SQLite
-DB_URL = "postgresql://postgres:postgres@localhost:5432/atlas"
+import os
+
+DB_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/atlas")
 try:
     engine = create_engine(DB_URL)
     with engine.connect() as conn:

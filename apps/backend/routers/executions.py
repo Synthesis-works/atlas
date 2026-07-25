@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from apps.backend.authz import require_permission
 from apps.backend.dependencies import get_db_session
-from packages.database.atlas_db.repositories.authoring import BenchmarkRepository
+from atlas_db.repositories.authoring import BenchmarkRepository
 from packages.execution_engine.api.dtos import (
     ArtifactResponse,
     ExecutionAttemptResponse,

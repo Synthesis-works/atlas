@@ -2,14 +2,14 @@ import uuid
 from datetime import datetime
 from unittest.mock import Mock
 
-from atlas_db.models.authoring import Benchmark, BenchmarkVersion
 from atlas_db.models.core import OrganizationRole
 from fastapi.testclient import TestClient
 
 from apps.backend.authz import get_project_authz_service
-from apps.backend.dependencies import get_benchmark_service, require_authenticated
+from apps.backend.dependencies import get_benchmark_app_service, require_authenticated
 from apps.backend.main import app
 from apps.backend.schemas.auth import TokenClaims
+from apps.backend.schemas.benchmarks import BenchmarkRead, BenchmarkVersionRead
 
 
 def test_list_benchmarks_success():
@@ -21,10 +21,10 @@ def test_list_benchmarks_success():
     mock_authz.authorize_project_access.return_value = True
 
     mock_benchmark_service = Mock()
-    benchmark1 = Benchmark(
-        id=uuid.uuid4(), project_id=project_id, name="Benchmark 1", created_at=datetime.utcnow()
+    benchmark1 = BenchmarkRead(
+        id=uuid.uuid4(), project_id=project_id, name="Benchmark 1", state="draft"
     )
-    mock_benchmark_service.list_benchmarks.return_value = [benchmark1]
+    mock_benchmark_service.get_benchmarks.return_value = [benchmark1]
 
     def override_claims():
         return TokenClaims(
@@ -37,7 +37,7 @@ def test_list_benchmarks_success():
         )
 
     app.dependency_overrides[get_project_authz_service] = lambda: mock_authz
-    app.dependency_overrides[get_benchmark_service] = lambda: mock_benchmark_service
+    app.dependency_overrides[get_benchmark_app_service] = lambda: mock_benchmark_service
     app.dependency_overrides[require_authenticated] = override_claims
 
     client = TestClient(app)
@@ -46,7 +46,8 @@ def test_list_benchmarks_success():
     app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    data = response.json()
+    body = response.json()
+    data = body["data"]
     assert len(data) == 1
     assert data[0]["name"] == "Benchmark 1"
 
@@ -66,14 +67,12 @@ def test_create_benchmark_success():
     mock_authz.authorize_project_access.return_value = True
 
     mock_benchmark_service = Mock()
-    benchmark = Benchmark(
+    benchmark = BenchmarkRead(
         id=benchmark_id,
         project_id=project_id,
         name="New Benchmark",
-        objective="Test",
-        created_at=datetime.utcnow(),
+        state="draft",
     )
-    # The real service returns the Benchmark object
     mock_benchmark_service.create_benchmark.return_value = benchmark
 
     def override_claims():
@@ -87,7 +86,7 @@ def test_create_benchmark_success():
         )
 
     app.dependency_overrides[get_project_authz_service] = lambda: mock_authz
-    app.dependency_overrides[get_benchmark_service] = lambda: mock_benchmark_service
+    app.dependency_overrides[get_benchmark_app_service] = lambda: mock_benchmark_service
     app.dependency_overrides[require_authenticated] = override_claims
 
     client = TestClient(app)
@@ -101,7 +100,8 @@ def test_create_benchmark_success():
     app.dependency_overrides.clear()
 
     assert response.status_code == 201
-    data = response.json()
+    body = response.json()
+    data = body["data"]
     assert data["name"] == "New Benchmark"
 
     # Verify VIEWER is NOT allowed to create
@@ -118,21 +118,21 @@ def test_create_benchmark_version():
     ds_version_id = uuid.uuid4()
 
     mock_authz = Mock()
-    mock_authz.authorize_project_access.return_value = True
+    mock_authz.authorize_project_access.return_value = Mock(role=OrganizationRole.MEMBER)
 
     mock_benchmark_service = Mock()
     # Need to return a non-archived benchmark so the router allows it
-    benchmark = Benchmark(id=benchmark_id, project_id=project_id, name="BM")
+    benchmark = BenchmarkRead(id=benchmark_id, project_id=project_id, name="BM", state="draft")
     mock_benchmark_service.get_benchmark.return_value = benchmark
 
-    new_ver = BenchmarkVersion(
+    new_ver = BenchmarkVersionRead(
         id=uuid.uuid4(),
         benchmark_id=benchmark_id,
         version_string="v2.0",
-        primary_dataset_version_id=ds_version_id,
-        created_at=datetime.utcnow(),
+        state="DRAFT",
+        dataset_version_ids=[ds_version_id],
     )
-    mock_benchmark_service.create_benchmark_version.return_value = new_ver
+    mock_benchmark_service.create_version.return_value = new_ver
 
     def override_claims():
         return TokenClaims(
@@ -145,22 +145,22 @@ def test_create_benchmark_version():
         )
 
     app.dependency_overrides[get_project_authz_service] = lambda: mock_authz
-    app.dependency_overrides[get_benchmark_service] = lambda: mock_benchmark_service
+    app.dependency_overrides[get_benchmark_app_service] = lambda: mock_benchmark_service
     app.dependency_overrides[require_authenticated] = override_claims
 
     client = TestClient(app)
     payload = {
         "version_string": "v2.0",
-        "primary_dataset_version_id": str(ds_version_id),
-        "evaluation_config": {"metric": "accuracy"},
+        "dataset_version_ids": [str(ds_version_id)],
     }
     response = client.post(
-        f"/api/v1/projects/{project_id}/benchmarks/{benchmark_id}/versions", json=payload
+        f"/api/v1/benchmarks/{benchmark_id}/versions", json=payload
     )
 
     app.dependency_overrides.clear()
 
     assert response.status_code == 201
-    data = response.json()
+    body = response.json()
+    data = body["data"]
     assert data["version_string"] == "v2.0"
-    assert data["primary_dataset_version_id"] == str(ds_version_id)
+    assert data["dataset_version_ids"] == [str(ds_version_id)]

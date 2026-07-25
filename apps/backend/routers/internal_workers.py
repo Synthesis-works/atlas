@@ -34,8 +34,7 @@ def acquire_work(
 ):
     grant = service.acquire_work(request.worker_id)
     if not grant:
-        response.status_code = status.HTTP_204_NO_CONTENT
-        return None
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     return grant
 
 

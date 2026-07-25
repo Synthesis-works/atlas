@@ -9,6 +9,7 @@ from atlas_db.services.benchmark_service import (
     InvariantViolationError,
     PermissionDeniedError,
 )
+from atlas_db.models.authoring import BenchmarkCategory, Capability
 
 
 class TestBenchmarkService(unittest.TestCase):
@@ -37,7 +38,7 @@ class TestBenchmarkService(unittest.TestCase):
         )
         self.benchmark_repo.create.return_value = fake_benchmark
 
-        bench = self.service.create_benchmark(
+        bench, events = self.service.create_benchmark(
             project_id=self.project_id, author_id=self.author_id, name="Test Bench"
         )
         self.assertEqual(bench.project_id, self.project_id)
@@ -56,7 +57,7 @@ class TestBenchmarkService(unittest.TestCase):
         self.benchmark_repo.update.return_value = updated_bench
 
         # Author with project write access
-        updated = self.service.transition_state(
+        updated, events = self.service.transition_state(
             benchmark_id=bench.id,
             target_state=BenchmarkState.DESIGN,
             user_id=self.author_id,
@@ -81,8 +82,8 @@ class TestBenchmarkService(unittest.TestCase):
         bench = Benchmark(id=uuid.uuid4(), status=BenchmarkState.REVIEW, author_id=self.author_id)
 
         # Fake invariant validation
-        bench.categories = ["cat"]
-        bench.capabilities = ["cap"]
+        bench.categories = [BenchmarkCategory(id=uuid.uuid4(), name="cat")]
+        bench.capabilities = [Capability(id=uuid.uuid4(), name="cap")]
 
         version = BenchmarkVersion()
         version._has_datasets = True
@@ -97,7 +98,7 @@ class TestBenchmarkService(unittest.TestCase):
         )
         self.benchmark_repo.update.return_value = updated_bench
 
-        updated = self.service.transition_state(
+        updated, events = self.service.transition_state(
             benchmark_id=bench.id,
             target_state=BenchmarkState.PUBLISHED,
             user_id=self.author_id,
@@ -120,7 +121,7 @@ class TestBenchmarkService(unittest.TestCase):
     def test_invariants_missing_category(self):
         bench = Benchmark(id=uuid.uuid4(), status=BenchmarkState.DRAFT, author_id=self.author_id)
         bench.categories = []  # missing category
-        bench.capabilities = ["cap"]
+        bench.capabilities = [Capability(id=uuid.uuid4(), name="cap")]
         self.benchmark_repo.get_for_update.return_value = bench
 
         with self.assertRaises(InvariantViolationError):

@@ -16,7 +16,11 @@ def override_get_auth_service():
     return mock_auth_service
 
 
-app.dependency_overrides[get_auth_service] = override_get_auth_service
+@pytest.fixture(autouse=True)
+def apply_dependency_overrides():
+    app.dependency_overrides[get_auth_service] = override_get_auth_service
+    yield
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture(autouse=True)

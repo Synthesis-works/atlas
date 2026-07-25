@@ -6,7 +6,7 @@ from packages.execution_engine.domain.services import ExecutionService
 from packages.execution_engine.persistence.interfaces import ExecutionRepository
 from packages.execution_engine.domain.models import Execution
 from packages.execution_engine.domain.exceptions import ExecutionNotFoundError
-from packages.database.atlas_db.repositories.authoring import BenchmarkRepository
+from atlas_db.repositories.authoring import BenchmarkRepository
 
 logger = logging.getLogger(__name__)
 

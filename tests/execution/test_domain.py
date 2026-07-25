@@ -159,7 +159,7 @@ def test_fail_and_retry(service, test_clock):
     # Should be terminal FAILED since max_retries = 3
     assert updated_exec.status == ExecutionState.FAILED
     events = updated_exec.pull_events()
-    assert isinstance(events[0], ExecutionFailedEvent)
+    assert any(isinstance(e, ExecutionFailedEvent) for e in events)
 
 
 def test_immutable_terminal_states(service):

@@ -8,6 +8,8 @@ class Clock:
 
 
 class TestClock(Clock):
+    __test__ = False
+
     def __init__(self, fixed_time: datetime):
         self._fixed_time = fixed_time
 
@@ -16,3 +18,6 @@ class TestClock(Clock):
 
     def advance(self, delta):
         self._fixed_time += delta
+
+    def set_time(self, new_time: datetime):
+        self._fixed_time = new_time

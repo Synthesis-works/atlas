@@ -24,18 +24,12 @@ def mock_execution_repo():
 
 
 @pytest.fixture
-def mock_event_publisher():
-    publisher = MagicMock()
-    return publisher
-
-
-@pytest.fixture
-def scheduler(mock_domain_service, mock_execution_repo, mock_event_publisher):
-    return SchedulerService(mock_domain_service, mock_execution_repo, mock_event_publisher)
+def scheduler(mock_domain_service, mock_execution_repo):
+    return SchedulerService(mock_domain_service, mock_execution_repo)
 
 
 def test_scheduler_sweeps_expired_leases(
-    scheduler, mock_execution_repo, mock_domain_service, mock_event_publisher
+    scheduler, mock_execution_repo, mock_domain_service
 ):
     mock_execution = MagicMock()
     mock_execution.id = uuid.uuid4()
@@ -64,11 +58,6 @@ def test_scheduler_sweeps_expired_leases(
     mock_execution_repo.find_expired_active_attempts.assert_called_once()
     mock_domain_service.expire_lease.assert_called_once_with(mock_execution)
     mock_execution_repo.save.assert_called_once_with(mock_execution)
-    mock_event_publisher.publish.assert_called_once()
-    events_published = mock_event_publisher.publish.call_args[0][0]
-    assert len(events_published) == 2
-    assert isinstance(events_published[0], LeaseExpiredEvent)
-    assert isinstance(events_published[1], ExecutionRetryEvent)
 
 
 def test_scheduler_best_effort_batching(scheduler, mock_execution_repo, mock_domain_service):
@@ -94,16 +83,17 @@ def test_scheduler_best_effort_batching(scheduler, mock_execution_repo, mock_dom
     mock_execution_repo.save.assert_any_call(exec_3)
 
 
-def test_scheduler_publish_failure_does_not_rollback_batch(
-    scheduler, mock_execution_repo, mock_event_publisher
+def test_scheduler_save_failure_does_not_rollback_batch(
+    scheduler, mock_execution_repo
 ):
     exec_1 = MagicMock()
+    exec_2 = MagicMock()
 
-    mock_execution_repo.find_expired_active_attempts.return_value = [exec_1]
-    mock_event_publisher.publish.side_effect = Exception("Simulated publish failure")
+    mock_execution_repo.find_expired_active_attempts.return_value = [exec_1, exec_2]
+    mock_execution_repo.save.side_effect = [Exception("Simulated save failure"), None]
 
     count = scheduler.sweep_expired_leases()
 
-    # Event publish failure is caught and logged, the sweep is considered successful in terms of persistence
+    # Save failure for exec_1 is caught and logged, exec_2 succeeds
     assert count == 1
-    mock_execution_repo.save.assert_called_once_with(exec_1)
+    assert mock_execution_repo.save.call_count == 2

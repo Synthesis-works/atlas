@@ -178,7 +178,7 @@ class Execution:
 
     def has_active_lease(self, clock: Clock) -> bool:
         attempt = self.current_attempt
-        if not attempt or not attempt.lease:
+        if not attempt or not attempt.lease or attempt.status != AttemptStatus.IN_PROGRESS:
             return False
         return attempt.lease.expires_at > clock.now()
 

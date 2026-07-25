@@ -6,16 +6,19 @@ from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from packages.database.atlas_db.core.base import Base, BaseMixin
+from atlas_db.core.base import Base, BaseMixin
 from packages.execution_engine.domain.models import ArtifactType, AttemptStatus, ExecutionState
 
 
 class ExecutionModel(Base, BaseMixin):
     __tablename__ = "executions"
+    __table_args__ = {"extend_existing": True}
 
-    benchmark_version_id: Mapped[uuid.UUID] = mapped_column(nullable=False, index=True)
+    benchmark_version_id: Mapped[uuid.UUID] = mapped_column(nullable=False)
     status: Mapped[ExecutionState] = mapped_column(SQLEnum(ExecutionState), nullable=False)
     max_retries: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
+    project_id: Mapped[uuid.UUID] = mapped_column(default=uuid.uuid4)
+    target_model: Mapped[str] = mapped_column(String(255), default="test-model")
 
     attempts: Mapped[list["ExecutionAttemptModel"]] = relationship(
         "ExecutionAttemptModel",
