@@ -68,8 +68,7 @@ class RecoveryManager:
     def _detect_expired_leases(self, now: datetime):
         # Find tasks that are RUNNING but their lease has expired
         tasks = (
-            self.db
-            .query(AtlasTask)
+            self.db.query(AtlasTask)
             .filter(
                 AtlasTask.status == TaskStatus.RUNNING,
                 AtlasTask.lease_expires_at != None,
@@ -96,8 +95,7 @@ class RecoveryManager:
         offline_time = now - self.offline_threshold
 
         workers = (
-            self.db
-            .query(ExecutionWorker)
+            self.db.query(ExecutionWorker)
             .filter(
                 ExecutionWorker.status.in_([WorkerStatus.READY, WorkerStatus.BUSY]),
                 ExecutionWorker.last_heartbeat_at != None,
@@ -118,14 +116,15 @@ class RecoveryManager:
         offline_time = now - self.offline_threshold
 
         workers = (
-            self.db
-            .query(ExecutionWorker)
+            self.db.query(ExecutionWorker)
             .filter(
-                ExecutionWorker.status.in_([
-                    WorkerStatus.READY,
-                    WorkerStatus.BUSY,
-                    WorkerStatus.UNHEALTHY,
-                ]),
+                ExecutionWorker.status.in_(
+                    [
+                        WorkerStatus.READY,
+                        WorkerStatus.BUSY,
+                        WorkerStatus.UNHEALTHY,
+                    ]
+                ),
                 ExecutionWorker.last_heartbeat_at != None,
                 ExecutionWorker.last_heartbeat_at < offline_time,
             )

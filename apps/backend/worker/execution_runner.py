@@ -25,8 +25,7 @@ class ExecutionRunner:
 
         # Load tasks for the benchmark version
         tasks = (
-            self.db
-            .query(Task)
+            self.db.query(Task)
             .filter(Task.benchmark_version_id == execution.benchmark_version_id)
             .all()
         )

@@ -43,8 +43,7 @@ class WorkerController:
         """Handles HeartbeatWorkerCommand"""
         # Pessimistic lock on worker
         worker = (
-            self.db
-            .query(ExecutionWorker)
+            self.db.query(ExecutionWorker)
             .filter_by(id=cmd.worker_id)
             .with_for_update()
             .one_or_none()

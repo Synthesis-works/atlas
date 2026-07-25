@@ -66,8 +66,7 @@ class EvaluationOrchestrator:
             self.db.flush()
 
         pipeline_version = (
-            self.db
-            .query(EvaluationPipelineVersion)
+            self.db.query(EvaluationPipelineVersion)
             .filter_by(pipeline_id=pipeline.id)
             .order_by(EvaluationPipelineVersion.version.desc())
             .first()
@@ -129,8 +128,7 @@ class EvaluationOrchestrator:
 
             for score_model in profile_model.scores:
                 cap_def = (
-                    self.db
-                    .query(CapabilityDefinition)
+                    self.db.query(CapabilityDefinition)
                     .filter_by(name=score_model.capability_name)
                     .first()
                 )

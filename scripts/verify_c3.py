@@ -66,8 +66,7 @@ def verify():
     # Verify all in one transaction
     with SessionLocal() as session:
         result = (
-            session
-            .query(EvaluationResult)
+            session.query(EvaluationResult)
             .filter(EvaluationResult.model_output_id == model_output_id)
             .first()
         )
@@ -75,8 +74,7 @@ def verify():
         print(f"✅ EvaluationResult stored (evaluation_id={result.id})")
 
         profile = (
-            session
-            .query(CapabilityProfile)
+            session.query(CapabilityProfile)
             .filter(CapabilityProfile.evaluation_id == result.id)
             .first()
         )
@@ -91,8 +89,7 @@ def verify():
         )
 
         artifacts = (
-            session
-            .query(EvaluationArtifact)
+            session.query(EvaluationArtifact)
             .filter(EvaluationArtifact.evaluation_result_id == result.id)
             .all()
         )

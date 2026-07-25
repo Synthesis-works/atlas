@@ -166,8 +166,7 @@ class BenchmarkService:
                 from atlas_db.models.dataset import DatasetVersion
 
                 dataset_versions = (
-                    self.version_repo.db
-                    .query(DatasetVersion)
+                    self.version_repo.db.query(DatasetVersion)
                     .filter(DatasetVersion.id.in_(dataset_version_ids))
                     .all()
                 )
@@ -238,8 +237,7 @@ class BenchmarkService:
                 from atlas_db.models.dataset import DatasetVersion
 
                 dataset_versions = (
-                    self.version_repo.db
-                    .query(DatasetVersion)
+                    self.version_repo.db.query(DatasetVersion)
                     .filter(DatasetVersion.id.in_(dataset_version_ids))
                     .all()
                 )

@@ -35,8 +35,7 @@ class OrganizationService:
         # For now, we fetch memberships and return the orgs
         # (A custom query in repo would be better, but this works for mocked flow)
         memberships = (
-            self.member_repo.db
-            .query(OrganizationMember)
+            self.member_repo.db.query(OrganizationMember)
             .filter(
                 OrganizationMember.user_id == user_id,
                 OrganizationMember.status == MembershipStatus.ACTIVE,
@@ -67,8 +66,7 @@ class OrganizationService:
 
     def list_members(self, org_id: UUID) -> list[OrganizationMember]:
         return (
-            self.member_repo.db
-            .query(OrganizationMember)
+            self.member_repo.db.query(OrganizationMember)
             .filter(OrganizationMember.organization_id == org_id)
             .all()
         )
@@ -78,8 +76,7 @@ class OrganizationService:
     ) -> Invitation:
         # Check if invite already exists and is pending
         existing = (
-            self.invite_repo.db
-            .query(Invitation)
+            self.invite_repo.db.query(Invitation)
             .filter(
                 Invitation.organization_id == org_id,
                 Invitation.email == data.email,

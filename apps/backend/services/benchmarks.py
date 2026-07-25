@@ -103,8 +103,7 @@ class BenchmarkApplicationService:
 
     def get_benchmarks(self, project_id: uuid.UUID) -> list[BenchmarkRead]:
         benchmarks = (
-            self.benchmark_repo.db
-            .query(self.benchmark_repo.model)
+            self.benchmark_repo.db.query(self.benchmark_repo.model)
             .filter(self.benchmark_repo.model.project_id == project_id)
             .all()
         )
@@ -239,8 +238,7 @@ class BenchmarkApplicationService:
             raise HTTPException(status_code=404, detail="Benchmark not found")
 
         versions = (
-            self.benchmark_repo.db
-            .query(self.domain_service.version_repo.model)
+            self.benchmark_repo.db.query(self.domain_service.version_repo.model)
             .filter_by(benchmark_id=benchmark_id)
             .all()
         )
