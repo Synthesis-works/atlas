@@ -65,7 +65,8 @@ class EvaluationController:
 
         # Check for concurrent running attempts to prevent race conditions
         running_attempts = (
-            self.db.query(EvaluationAttempt)
+            self.db
+            .query(EvaluationAttempt)
             .filter_by(job_id=cmd.job_id, status=AttemptStatus.RUNNING)
             .count()
         )
@@ -111,7 +112,8 @@ class EvaluationController:
     def execute_complete_evaluation_attempt(self, cmd: CompleteEvaluationAttemptCommand) -> None:
         """Handles CompleteEvaluationAttemptCommand"""
         attempt = (
-            self.db.query(EvaluationAttempt)
+            self.db
+            .query(EvaluationAttempt)
             .filter_by(id=cmd.attempt_id)
             .with_for_update()
             .one_or_none()
@@ -140,7 +142,8 @@ class EvaluationController:
         for metric_model in cmd.result_bundle.metrics:
             # Upsert/Find MetricDefinition
             metric_def = (
-                self.db.query(MetricDefinition)
+                self.db
+                .query(MetricDefinition)
                 .filter_by(name=metric_model.name, version="1.0")
                 .first()
             )
@@ -208,7 +211,8 @@ class EvaluationController:
     def execute_fail_evaluation_attempt(self, cmd: FailEvaluationAttemptCommand) -> None:
         """Handles FailEvaluationAttemptCommand"""
         attempt = (
-            self.db.query(EvaluationAttempt)
+            self.db
+            .query(EvaluationAttempt)
             .filter_by(id=cmd.attempt_id)
             .with_for_update()
             .one_or_none()
@@ -252,7 +256,8 @@ class EvaluationController:
 
         # Cancel any running attempts
         running_attempts = (
-            self.db.query(EvaluationAttempt)
+            self.db
+            .query(EvaluationAttempt)
             .filter_by(job_id=job.id, status=AttemptStatus.RUNNING)
             .all()
         )

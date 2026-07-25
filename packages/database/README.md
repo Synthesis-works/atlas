@@ -34,6 +34,7 @@ Uses `pydantic-settings` via environment variables:
 from atlas_db.core.session import get_db, get_async_db
 from atlas_db.repositories import benchmark_repo
 
+
 # FastAPI dependency injection
 @app.get("/benchmarks")
 def list_benchmarks(db: Session = Depends(get_db)):

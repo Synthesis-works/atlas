@@ -17,7 +17,8 @@ class HealthService:
     def snapshot(self) -> dict:
         # Worker counts
         worker_counts = (
-            self.db.query(ExecutionWorker.status, func.count(ExecutionWorker.id))
+            self.db
+            .query(ExecutionWorker.status, func.count(ExecutionWorker.id))
             .group_by(ExecutionWorker.status)
             .all()
         )
@@ -30,7 +31,8 @@ class HealthService:
 
         # Queue counts
         task_counts = (
-            self.db.query(AtlasTask.status, func.count(AtlasTask.id))
+            self.db
+            .query(AtlasTask.status, func.count(AtlasTask.id))
             .group_by(AtlasTask.status)
             .all()
         )

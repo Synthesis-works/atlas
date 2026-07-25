@@ -41,7 +41,8 @@ class AtlasScheduler:
         """
         # Fetch all queued tasks
         tasks = (
-            self.db.query(AtlasTask)
+            self.db
+            .query(AtlasTask)
             .join(AtlasRun)
             .filter(
                 and_(
@@ -58,7 +59,8 @@ class AtlasScheduler:
 
         # Fetch global running counts for policies
         global_running = (
-            self.db.query(func.count(AtlasTask.id))
+            self.db
+            .query(func.count(AtlasTask.id))
             .filter(AtlasTask.status == TaskStatus.RUNNING)
             .scalar()
         )
@@ -68,7 +70,8 @@ class AtlasScheduler:
 
             # Fetch model-specific running counts
             model_running = (
-                self.db.query(func.count(AtlasTask.id))
+                self.db
+                .query(func.count(AtlasTask.id))
                 .join(AtlasRun)
                 .filter(
                     and_(
@@ -81,7 +84,8 @@ class AtlasScheduler:
 
             # Find an available worker (Ordered by load ASC for simple load balancing)
             workers = (
-                self.db.query(ExecutionWorker)
+                self.db
+                .query(ExecutionWorker)
                 .filter(ExecutionWorker.status == WorkerStatus.READY)
                 .order_by(ExecutionWorker.current_load.asc())
                 .all()
@@ -96,7 +100,8 @@ class AtlasScheduler:
 
             # Fetch worker-specific running counts
             worker_running = (
-                self.db.query(func.count(AtlasTask.id))
+                self.db
+                .query(func.count(AtlasTask.id))
                 .filter(
                     and_(
                         AtlasTask.status == TaskStatus.RUNNING,

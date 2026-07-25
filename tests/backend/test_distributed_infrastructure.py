@@ -21,4 +21,6 @@ def test_run_execution_task(mock_session_local, mock_execution_worker):
     run_execution_task(str(execution_id))
 
     # Verify it delegates
-    mock_execution_worker.return_value.process.assert_called_once_with(execution_id, correlation_id=None)
+    mock_execution_worker.return_value.process.assert_called_once_with(
+        execution_id, correlation_id=None
+    )

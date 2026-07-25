@@ -49,15 +49,13 @@ def get_evaluation_report(job_id: UUID, db: Session = Depends(get_db)):
         results = db.query(EvaluationResult).filter_by(attempt_id=attempt.id).all()
         for res in results:
             metrics = db.query(MetricValue).filter_by(result_id=res.id).all()
-            attempt_data["results"].append(
-                {
-                    "result_id": res.id,
-                    "metrics": [
-                        {"name": m.metric_name, "value": m.value, "normalized": m.normalized_value}
-                        for m in metrics
-                    ],
-                }
-            )
+            attempt_data["results"].append({
+                "result_id": res.id,
+                "metrics": [
+                    {"name": m.metric_name, "value": m.value, "normalized": m.normalized_value}
+                    for m in metrics
+                ],
+            })
 
         report["attempts"].append(attempt_data)
 

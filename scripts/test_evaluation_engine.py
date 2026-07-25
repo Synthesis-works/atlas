@@ -71,7 +71,8 @@ def test_evaluation_pipeline():
     with SessionLocal() as session:
         # Check EvaluationResult
         result = (
-            session.query(EvaluationResult)
+            session
+            .query(EvaluationResult)
             .filter(EvaluationResult.model_output_id == model_output_id)
             .first()
         )
@@ -84,7 +85,8 @@ def test_evaluation_pipeline():
 
         # Check CapabilityProfile
         profile = (
-            session.query(CapabilityProfile)
+            session
+            .query(CapabilityProfile)
             .filter(CapabilityProfile.execution_id == exec_id)
             .first()
         )

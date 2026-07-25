@@ -16,7 +16,8 @@ class OrganizationMemberRepository(BaseRepository[OrganizationMember]):
 
     def get_by_user_and_org(self, user_id, org_id) -> OrganizationMember | None:
         return (
-            self.db.query(self.model)
+            self.db
+            .query(self.model)
             .filter(self.model.user_id == user_id, self.model.organization_id == org_id)
             .first()
         )

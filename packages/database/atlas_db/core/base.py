@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
 
+
 @compiles(JSONB, "sqlite")
 def compile_jsonb_sqlite(type_, compiler, **kw):
     return "JSON"

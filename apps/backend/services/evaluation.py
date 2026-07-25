@@ -88,7 +88,8 @@ class EvaluationService:
             output_ids = [mo.id for mo in model_outputs]
             if output_ids:
                 old_results = (
-                    self.db.query(EvaluationResult)
+                    self.db
+                    .query(EvaluationResult)
                     .filter(EvaluationResult.model_output_id.in_(output_ids))
                     .all()
                 )

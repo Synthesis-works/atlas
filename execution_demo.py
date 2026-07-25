@@ -164,12 +164,10 @@ def demo_happy_path(db_session):
     print("[*] Run Validated & Queued.")
 
     # 6. Initialize Scheduler
-    policy = CompositePolicy(
-        [
-            GlobalConcurrencyPolicy(max_running=100),
-            PerWorkerConcurrencyPolicy(max_running=2),  # Max 2 tasks per worker concurrently
-        ]
-    )
+    policy = CompositePolicy([
+        GlobalConcurrencyPolicy(max_running=100),
+        PerWorkerConcurrencyPolicy(max_running=2),  # Max 2 tasks per worker concurrently
+    ])
     scheduler = AtlasScheduler(db_session, task_ctrl, publisher, policy)
 
     # 7. Run Scheduler Tick (Simulating background loop)
@@ -180,7 +178,8 @@ def demo_happy_path(db_session):
     # 8. Execute Tasks (Worker discovers claimed tasks and completes them)
     # The worker would normally pull its assigned tasks from an endpoint, but we mock it here.
     running_tasks = (
-        db_session.query(AtlasTask)
+        db_session
+        .query(AtlasTask)
         .filter_by(assigned_worker_id=worker_id, status=TaskStatus.RUNNING)
         .all()
     )

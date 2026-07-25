@@ -61,7 +61,8 @@ def print_health(health_service):
 def print_timeline(db_session, run_id):
     print("\n--- Event Timeline ---")
     events = (
-        db_session.query(RunEvent)
+        db_session
+        .query(RunEvent)
         .filter(RunEvent.atlas_run_id == run_id)
         .order_by(RunEvent.timestamp.asc())
         .all()

@@ -28,9 +28,7 @@ def scheduler(mock_domain_service, mock_execution_repo):
     return SchedulerService(mock_domain_service, mock_execution_repo)
 
 
-def test_scheduler_sweeps_expired_leases(
-    scheduler, mock_execution_repo, mock_domain_service
-):
+def test_scheduler_sweeps_expired_leases(scheduler, mock_execution_repo, mock_domain_service):
     mock_execution = MagicMock()
     mock_execution.id = uuid.uuid4()
     mock_execution.status = ExecutionState.RETRYING
@@ -83,9 +81,7 @@ def test_scheduler_best_effort_batching(scheduler, mock_execution_repo, mock_dom
     mock_execution_repo.save.assert_any_call(exec_3)
 
 
-def test_scheduler_save_failure_does_not_rollback_batch(
-    scheduler, mock_execution_repo
-):
+def test_scheduler_save_failure_does_not_rollback_batch(scheduler, mock_execution_repo):
     exec_1 = MagicMock()
     exec_2 = MagicMock()
 

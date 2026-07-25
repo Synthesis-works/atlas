@@ -18,7 +18,8 @@ class ProjectService:
     def create(self, org_id: UUID, member_id: UUID, data: ProjectCreate) -> Project:
         # We handle unique constraint explicitly for clear error messages, or rely on IntegrityError
         existing = (
-            self.project_repo.db.query(Project)
+            self.project_repo.db
+            .query(Project)
             .filter(Project.org_id == org_id, Project.name == data.name)
             .first()
         )

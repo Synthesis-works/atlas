@@ -46,9 +46,12 @@ class InMemoryEventPublisher:
         self.events = []
 
     def publish_event(self, job_id, event_type, message=None, metadata=None):
-        self.events.append(
-            {"job_id": job_id, "event_type": event_type, "message": message, "metadata": metadata}
-        )
+        self.events.append({
+            "job_id": job_id,
+            "event_type": event_type,
+            "message": message,
+            "metadata": metadata,
+        })
 
 
 @pytest.fixture(scope="session")

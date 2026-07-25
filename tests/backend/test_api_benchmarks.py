@@ -153,9 +153,7 @@ def test_create_benchmark_version():
         "version_string": "v2.0",
         "dataset_version_ids": [str(ds_version_id)],
     }
-    response = client.post(
-        f"/api/v1/benchmarks/{benchmark_id}/versions", json=payload
-    )
+    response = client.post(f"/api/v1/benchmarks/{benchmark_id}/versions", json=payload)
 
     app.dependency_overrides.clear()
 

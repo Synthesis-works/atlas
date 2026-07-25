@@ -24,7 +24,8 @@ class ExecutionService:
         """
         # Fetch BenchmarkVersion to validate it exists and snapshot hash
         benchmark_version = (
-            db.query(BenchmarkVersion)
+            db
+            .query(BenchmarkVersion)
             .filter(BenchmarkVersion.id == execution_in.benchmark_version_id)
             .first()
         )
@@ -149,7 +150,8 @@ class ExecutionService:
         db: Session, project_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> list[Execution]:
         return (
-            db.query(Execution)
+            db
+            .query(Execution)
             .filter(Execution.project_id == project_id)
             .offset(skip)
             .limit(limit)

@@ -24,7 +24,9 @@ We need to track heartbeats, errors, and configuration to support fault toleranc
 # Added to AtlasRun
 last_heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 error_message: Mapped[str | None] = mapped_column(String, nullable=True)
-config: Mapped[dict | None] = mapped_column(JSONB, nullable=True) # stores max_retries, fail_fast, priority
+config: Mapped[dict | None] = mapped_column(
+    JSONB, nullable=True
+)  # stores max_retries, fail_fast, priority
 ```
 
 ## 3. Introducing `AtlasTask`
@@ -38,20 +40,25 @@ class TaskStatus(str, enum.Enum):
     FAILED = "failed"
     TIMEOUT = "timeout"
 
+
 class AtlasTask(Base, BaseMixin):
     __tablename__ = "atlas_tasks"
 
-    atlas_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("atlas_runs.id", ondelete="CASCADE"), index=True)
+    atlas_run_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("atlas_runs.id", ondelete="CASCADE"), index=True
+    )
     test_case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("test_cases.id"), index=True)
-    
-    status: Mapped[TaskStatus] = mapped_column(ENUM(TaskStatus, name="task_status"), default=TaskStatus.QUEUED)
+
+    status: Mapped[TaskStatus] = mapped_column(
+        ENUM(TaskStatus, name="task_status"), default=TaskStatus.QUEUED
+    )
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
-    
+
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    
+
     error_message: Mapped[str | None] = mapped_column(String, nullable=True)
-    
+
     run: Mapped["AtlasRun"] = relationship("AtlasRun", back_populates="tasks")
 ```
 

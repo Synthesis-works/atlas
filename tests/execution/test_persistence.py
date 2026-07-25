@@ -17,7 +17,7 @@ from packages.execution_engine.domain.models import (
     ExecutionState,
 )
 from packages.execution_engine.persistence.repository import SqlAlchemyExecutionRepository
-import atlas_db.models  # noqa: Load all models for Base.metadata
+import atlas_db.models  # noqa: F401  # Load all models for Base.metadata
 from atlas_db.models.core import User  # explicit load
 
 # Try connecting to Postgres if available, else SQLite
