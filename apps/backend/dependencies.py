@@ -150,3 +150,25 @@ def get_current_member(
     if not member or member.status != MembershipStatus.ACTIVE:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid membership")
     return OrganizationMemberRead.model_validate(member)
+
+
+from services.report.core.cache import NoopReportCache
+from services.report.repositories.reporting_repo import ReportingRepository
+from services.report.services.queries import (
+    CapabilityQueryService,
+    HistoryQueryService,
+    LeaderboardQueryService,
+    RunQueryService,
+)
+from services.report.services.reporting import ReportingService
+
+
+def get_reporting_service(db: Session = Depends(get_db_session)) -> ReportingService:
+    repo = ReportingRepository(db)
+    return ReportingService(
+        cache=NoopReportCache(),
+        capability_query=CapabilityQueryService(repo),
+        leaderboard_query=LeaderboardQueryService(repo),
+        history_query=HistoryQueryService(repo),
+        run_query=RunQueryService(repo),
+    )
