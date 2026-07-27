@@ -1,6 +1,19 @@
+import uuid
 from ..core.cache import ReportCache
-from ..models.read_models import CapabilityDashboardRead, HistoryEntryRead, LeaderboardRead
-from ..services.queries import CapabilityQueryService, HistoryQueryService, LeaderboardQueryService
+from ..models.read_models import (
+    CapabilityDashboardRead,
+    HistoryEntryRead,
+    LeaderboardRead,
+    PaginatedReportRunsRead,
+    ReportRunsFilter,
+    ReportSummaryRead,
+)
+from ..services.queries import (
+    CapabilityQueryService,
+    HistoryQueryService,
+    LeaderboardQueryService,
+    RunQueryService,
+)
 from ..strategies.leaderboard import (
     CapabilityLeaderboardStrategy,
     OverallLeaderboardStrategy,
@@ -19,16 +32,38 @@ class ReportingService:
         capability_query: CapabilityQueryService,
         leaderboard_query: LeaderboardQueryService,
         history_query: HistoryQueryService,
+        run_query: RunQueryService | None = None,
     ):
         self.cache = cache
         self.capability_query = capability_query
         self.leaderboard_query = leaderboard_query
         self.history_query = history_query
+        if run_query is None:
+            # Fallback if not injected explicitly in old callers
+            from ..repositories.reporting_repo import ReportingRepository
+
+            self.run_query = RunQueryService(ReportingRepository(capability_query.repo.db))
+        else:
+            self.run_query = run_query
 
         self.leaderboard_strategies = {
             "overall": OverallLeaderboardStrategy(),
             "capability": CapabilityLeaderboardStrategy(),
         }
+
+    def get_run_summary(self, run_id: uuid.UUID) -> ReportSummaryRead | None:
+        cache_key = f"run_summary:{run_id}"
+        cached = self.cache.get(cache_key)
+        if cached:
+            return cached  # type: ignore
+
+        data = self.run_query.get_run_summary(run_id)
+        if data and data.evaluation_status in ("COMPLETED", "FAILED", "CANCELLED"):
+            self.cache.set(cache_key, data)
+        return data
+
+    def get_runs_filtered(self, filter_obj: ReportRunsFilter) -> PaginatedReportRunsRead:
+        return self.run_query.get_runs_filtered(filter_obj)
 
     def get_capability_dashboard(self, model_identifier: str) -> CapabilityDashboardRead | None:
         cache_key = f"capability_dashboard:{model_identifier}"

@@ -1,13 +1,24 @@
+import enum
 from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 #
 # Read Models
 # Internal representations of aggregated data from the DB.
 #
+
+
+class ReportRunStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    EVALUATING = "EVALUATING"
+    COMPLETED = "COMPLETED"
+    PARTIAL_SUCCESS = "PARTIAL_SUCCESS"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
 
 
 class CapabilityScoreRead(BaseModel):
@@ -18,7 +29,47 @@ class CapabilityScoreRead(BaseModel):
 class CapabilityDashboardRead(BaseModel):
     model_identifier: str
     overall_score: float
-    scores: list[CapabilityScoreRead]
+    scores: list[CapabilityScoreRead] = Field(default_factory=list)
+
+
+class ReportSummaryRead(BaseModel):
+    run_id: UUID
+    benchmark_id: UUID
+    benchmark_name: str
+    benchmark_version: str
+    target_model: str
+    evaluation_status: ReportRunStatus
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    overall_score: float | None = None
+    scores: list[CapabilityScoreRead] = Field(default_factory=list)
+
+
+class ReportRunEntryRead(BaseModel):
+    run_id: UUID
+    benchmark_id: UUID
+    benchmark_version: str
+    target_model: str
+    evaluation_status: ReportRunStatus
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    overall_score: float | None = None
+
+
+class PaginatedReportRunsRead(BaseModel):
+    items: list[ReportRunEntryRead]
+    total: int
+    page: int
+    size: int
+
+
+class ReportRunsFilter(BaseModel):
+    status: ReportRunStatus | None = None
+    benchmark_id: UUID | None = None
+    benchmark_version: str | None = None
+    target_model: str | None = None
+    limit: int = Field(default=50, ge=1, le=100)
+    offset: int = Field(default=0, ge=0)
 
 
 class LeaderboardEntryRead(BaseModel):
@@ -56,6 +107,6 @@ class HistoryEntryRead(BaseModel):
     run_id: UUID
     target_model: str
     status: str
-    started_at: datetime | None
-    completed_at: datetime | None
-    passed: bool | None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    passed: bool | None = None
