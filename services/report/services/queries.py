@@ -13,6 +13,7 @@ from ..models.read_models import (
     ReportRunsFilter,
     ReportRunStatus,
     ReportSummaryRead,
+    RunExportRowRead,
 )
 from ..repositories.reporting_repo import ReportingRepository
 
@@ -150,6 +151,49 @@ class RunQueryService:
             page=page_num,
             size=filter_obj.limit,
         )
+
+    def get_run_export_data(
+        self,
+        run_id: uuid.UUID,
+        include_prompt: bool = False,
+        include_expected_output: bool = False,
+    ) -> list[RunExportRowRead]:
+        rows = self.repo.get_run_export_data(run_id)
+        results = []
+        for run_obj, bv_obj, mo_obj, eval_obj, tc_obj in rows:
+            eval_status = map_execution_to_report_status(run_obj.status, eval_obj is not None).value
+            b_id = bv_obj.benchmark_id if bv_obj else uuid.UUID(int=0)
+            b_version = bv_obj.version_string if bv_obj else "unknown"
+
+            row = RunExportRowRead(
+                run_id=run_obj.id,
+                benchmark_id=b_id,
+                benchmark_version=b_version,
+                model_identifier=run_obj.target_model,
+                execution_status=run_obj.status.value,
+                evaluation_status=eval_status,
+                started_at=run_obj.started_at,
+                completed_at=run_obj.completed_at,
+                test_case_id=mo_obj.test_case_id,
+                category=None,
+                difficulty=None,
+                raw_output=mo_obj.raw_output,
+                tokens_used=mo_obj.tokens_used,
+                latency_ms=mo_obj.duration_ms,
+                passed=eval_obj.passed if eval_obj else False,
+                confidence=eval_obj.confidence if eval_obj else None,
+                failure_reasons=eval_obj.failure_reasons if eval_obj else None,
+            )
+
+            if include_prompt and tc_obj:
+                row.prompt = tc_obj.input_data
+
+            if include_expected_output and tc_obj:
+                row.expected_output = tc_obj.expected_output
+
+            results.append(row)
+
+        return results
 
 
 class LeaderboardQueryService:

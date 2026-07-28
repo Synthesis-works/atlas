@@ -1,5 +1,6 @@
 import uuid
 from ..core.cache import ReportCache
+from ..exporters import ExportResult, get_exporter
 from ..models.read_models import (
     CapabilityDashboardRead,
     HistoryEntryRead,
@@ -90,3 +91,21 @@ class ReportingService:
 
     def get_history(self, limit: int = 50, offset: int = 0) -> tuple[list[HistoryEntryRead], int]:
         return self.history_query.get_paginated_history(limit, offset)
+
+    def export_run_results(
+        self,
+        run_id: uuid.UUID,
+        format_type: str,
+        include_prompt: bool = False,
+        include_expected_output: bool = False,
+    ) -> ExportResult:
+        exporter = get_exporter(format_type)
+        if not exporter:
+            raise ValueError(f"Export format '{format_type}' is not supported.")
+
+        data = self.run_query.get_run_export_data(
+            run_id,
+            include_prompt=include_prompt,
+            include_expected_output=include_expected_output,
+        )
+        return exporter.export(data)

@@ -83,6 +83,64 @@ def test_get_run_summary_not_found(test_client, mock_reporting_service):
     mock_reporting_service.get_run_summary.assert_called_once_with(run_id)
 
 
+def test_get_runs_filtered_empty(test_client, mock_reporting_service):
+    empty_runs = PaginatedReportRunsRead(items=[], total=0, page=1, size=50)
+    mock_reporting_service.get_runs_filtered.return_value = empty_runs
+
+    response = test_client.get("/api/v1/reports/runs?limit=50&offset=100")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 0
+    assert len(data["items"]) == 0
+    assert data["page"] == 1
+
+
+def test_export_run_results_json(test_client, mock_reporting_service):
+    run_id = uuid.uuid4()
+    from services.report.exporters import ExportResult
+
+    mock_reporting_service.export_run_results.return_value = ExportResult(
+        content=b'[{"test": 1}]', mime_type="application/json", filename_extension="json"
+    )
+
+    response = test_client.get(f"/api/v1/reports/runs/{run_id}/export?format=json")
+    assert response.status_code == 200
+    assert response.headers["Content-Type"] == "application/json"
+    assert "attachment; filename=" in response.headers["Content-Disposition"]
+    assert "json" in response.headers["Content-Disposition"]
+    assert response.content == b'[{"test": 1}]'
+    mock_reporting_service.export_run_results.assert_called_once_with(
+        run_id=run_id, format_type="json", include_prompt=False, include_expected_output=False
+    )
+
+
+def test_export_run_results_csv(test_client, mock_reporting_service):
+    run_id = uuid.uuid4()
+    from services.report.exporters import ExportResult
+
+    mock_reporting_service.export_run_results.return_value = ExportResult(
+        content=b"test\n1", mime_type="text/csv", filename_extension="csv"
+    )
+
+    response = test_client.get(
+        f"/api/v1/reports/runs/{run_id}/export?format=csv&include_prompt=true"
+    )
+    assert response.status_code == 200
+    assert "text/csv" in response.headers["Content-Type"]
+    assert "csv" in response.headers["Content-Disposition"]
+    assert response.content == b"test\n1"
+    mock_reporting_service.export_run_results.assert_called_once_with(
+        run_id=run_id, format_type="csv", include_prompt=True, include_expected_output=False
+    )
+
+
+def test_export_run_results_invalid_format(test_client, mock_reporting_service):
+    run_id = uuid.uuid4()
+    # Pydantic validation should block invalid formats because of the regex pattern
+    response = test_client.get(f"/api/v1/reports/runs/{run_id}/export?format=pdf")
+    assert response.status_code == 422
+
+
 def test_get_model_capabilities_success(test_client, mock_reporting_service):
     mock_dashboard = CapabilityDashboardRead(
         model_identifier="gpt-4o",
