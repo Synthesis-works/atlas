@@ -48,6 +48,7 @@ class BenchmarkSortField(str, Enum):
     UPDATED_AT = "updated_at"
     NAME = "name"
 
+
 class SortRequest(BaseModel, Generic[SortFieldT]):
     sort: SortFieldT | None = None
     order: Literal["asc", "desc"] = "desc"
@@ -85,7 +86,9 @@ A unified endpoint for omnibar and global search across the platform, abstractin
 ```python
 class SearchRequest(BaseModel):
     q: str = Field(..., description="String query")
-    entity_types: list[str] | None = Field(None, description="List of entities to search (e.g., benchmark, dataset, model)")
+    entity_types: list[str] | None = Field(
+        None, description="List of entities to search (e.g., benchmark, dataset, model)"
+    )
     limit: int = Field(20, ge=1, le=100)
     cursor: str | None = None
 ```
