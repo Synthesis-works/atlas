@@ -24,4 +24,4 @@ class SearchService:
         results.sort(key=lambda x: x.score, reverse=True)
 
         # Trim last
-        return results[:request.limit]
+        return results[: request.limit]

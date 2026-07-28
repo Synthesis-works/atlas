@@ -24,11 +24,11 @@ class ExecutionSearchProvider(SearchProvider):
             # Wait, Execution.id is UUID. Using ilike on UUID might crash in Postgres if not casted to string.
             # Safe strategy: match on target_model or cast ID to string.
             from sqlalchemy import cast, String
-            
+
             query = query.filter(
                 or_(
                     cast(Execution.id, String).ilike(search_term),
-                    Execution.target_model.ilike(search_term)
+                    Execution.target_model.ilike(search_term),
                 )
             )
 
@@ -46,7 +46,7 @@ class ExecutionSearchProvider(SearchProvider):
                     score = 1.0
                 elif id_str.startswith(q_lower) or target_lower.startswith(q_lower):
                     score = 0.8
-                    
+
             results.append(
                 SearchResult(
                     id=str(e.id),
@@ -60,9 +60,9 @@ class ExecutionSearchProvider(SearchProvider):
                         "target_model": e.target_model,
                         "status": e.status.value,
                         "project_id": str(e.project_id),
-                        "benchmark_version_id": str(e.benchmark_version_id)
-                    }
+                        "benchmark_version_id": str(e.benchmark_version_id),
+                    },
                 )
             )
-            
+
         return results

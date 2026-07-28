@@ -13,6 +13,7 @@ class PageRequest(BaseModel):
     Standard pagination request parameters.
     Prefers cursor-based pagination for large datasets, falls back to offset.
     """
+
     model_config = ConfigDict(extra="forbid")
 
     limit: int = Field(50, ge=1, le=100, description="Maximum number of items to return")
@@ -24,6 +25,7 @@ class PageResponse(BaseModel, Generic[T]):
     """
     Standard paginated response envelope.
     """
+
     items: list[T]
     total: int
     limit: int
@@ -35,6 +37,7 @@ class SortRequest(BaseModel, Generic[SortFieldT]):
     """
     Standard sorting request parameters.
     """
+
     model_config = ConfigDict(extra="forbid")
 
     sort: SortFieldT | None = Field(None, description="Field to sort by")
@@ -46,7 +49,10 @@ class BaseFilterRequest(BaseModel):
     Universally applicable filters.
     Domain-specific filters should inherit from this class.
     """
+
     model_config = ConfigDict(extra="forbid")
 
     created_after: datetime | None = Field(None, description="Filter items created after this time")
-    created_before: datetime | None = Field(None, description="Filter items created before this time")
+    created_before: datetime | None = Field(
+        None, description="Filter items created before this time"
+    )

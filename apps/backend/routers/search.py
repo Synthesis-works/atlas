@@ -10,8 +10,7 @@ router = APIRouter(tags=["Search"])
 
 @router.get("/search", response_model=PageResponse[SearchResult])
 def global_search(
-    request: SearchRequest = Depends(),
-    search_service: SearchService = Depends(get_search_service)
+    request: SearchRequest = Depends(), search_service: SearchService = Depends(get_search_service)
 ):
     """
     Unified global search across all domains.
@@ -20,7 +19,9 @@ def global_search(
     results = search_service.search_all(request)
     return PageResponse(
         items=results,
-        total=len(results), # We don't have global total easily, so we can just return the returned length for now, or adapt PageResponse
+        total=len(
+            results
+        ),  # We don't have global total easily, so we can just return the returned length for now, or adapt PageResponse
         limit=request.limit,
-        offset=0
+        offset=0,
     )

@@ -14,6 +14,7 @@ class MockModelMetaclass(type):
             return mock_col
         raise AttributeError(f"type object 'MockModel' has no attribute '{item}'")
 
+
 class MockModel(metaclass=MockModelMetaclass):
     pass
 
@@ -47,12 +48,16 @@ class TestQueryUtils(unittest.TestCase):
         self.assertEqual(result, self.mock_query)
 
     def test_apply_sorting_desc(self):
-        result = apply_sorting(self.mock_query, model=MockModel, sort_field="created_at", order="desc")
+        result = apply_sorting(
+            self.mock_query, model=MockModel, sort_field="created_at", order="desc"
+        )
         self.assertTrue(self.mock_query.order_by.called)
         self.assertEqual(result, self.mock_query)
 
     def test_apply_sorting_invalid_field(self):
-        result = apply_sorting(self.mock_query, model=MockModel, sort_field="invalid_field", order="asc")
+        result = apply_sorting(
+            self.mock_query, model=MockModel, sort_field="invalid_field", order="asc"
+        )
         self.mock_query.order_by.assert_not_called()
         self.assertEqual(result, self.mock_query)
 
@@ -63,11 +68,11 @@ class TestQueryUtils(unittest.TestCase):
 
     def test_get_paginated_results(self):
         items, total = get_paginated_results(self.mock_query, limit=5, offset=2)
-        
+
         self.mock_query.count.assert_called_once()
         self.mock_query.limit.assert_called_with(5)
         self.mock_query.offset.assert_called_with(2)
         self.mock_query.all.assert_called_once()
-        
+
         self.assertEqual(total, 10)
         self.assertEqual(items, ["item1", "item2"])

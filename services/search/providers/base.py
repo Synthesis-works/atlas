@@ -9,6 +9,7 @@ class SearchProvider(Protocol):
     Providers should not handle HTTP parsing or pagination semantics
     beyond the requested limit/cursor.
     """
+
     @property
     def entity_type(self) -> str:
         """The type of entity this provider handles (e.g., 'benchmark')."""
