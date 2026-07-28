@@ -1,7 +1,7 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 
 from apps.backend.authz import require_permission
 from apps.backend.dependencies import get_reporting_service
@@ -66,6 +66,40 @@ def get_run_summary(
             detail=f"Report summary for execution run '{run_id}' not found.",
         )
     return ReportSummaryRead.model_validate(summary, from_attributes=True)
+
+
+@router.get(
+    "/runs/{run_id}/export",
+    summary="Export execution run report",
+    description="Export detailed execution run results in JSON or CSV format.",
+)
+def export_run_results(
+    run_id: uuid.UUID = Path(..., description="Unique ID of the execution run"),
+    format: str = Query("json", pattern="^(json|csv)$", description="Export format (json or csv)"),
+    include_prompt: bool = Query(False, description="Include original prompts in the export"),
+    include_expected_output: bool = Query(False, description="Include expected outputs in the export"),
+    service: ReportingService = Depends(get_reporting_service),
+    current_user: dict[str, Any] = Depends(require_permission("report:read")),
+) -> Response:
+    try:
+        export_result = service.export_run_results(
+            run_id=run_id,
+            format_type=format,
+            include_prompt=include_prompt,
+            include_expected_output=include_expected_output,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        
+    headers = {
+        "Content-Disposition": f'attachment; filename="run_{run_id}.{export_result.filename_extension}"'
+    }
+    
+    return Response(
+        content=export_result.content,
+        media_type=export_result.mime_type,
+        headers=headers,
+    )
 
 
 @router.get(

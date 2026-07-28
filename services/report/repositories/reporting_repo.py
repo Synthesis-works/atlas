@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from atlas_db.models.authoring import Benchmark, BenchmarkVersion
+from atlas_db.models.tasks import TestCase
 from atlas_db.models.evaluation import CapabilityProfile, EvaluationResult
 from atlas_db.models.execution import Execution as AtlasRun, ExecutionStatus, ModelOutput
 from sqlalchemy import desc, func, select
@@ -218,3 +219,16 @@ class ReportingRepository:
         total = self.db.scalar(count_stmt) or 0
 
         return items, total
+
+    def get_run_export_data(
+        self, run_id: UUID
+    ) -> list[tuple[AtlasRun, BenchmarkVersion | None, ModelOutput, EvaluationResult | None, TestCase]]:
+        stmt = (
+            select(AtlasRun, BenchmarkVersion, ModelOutput, EvaluationResult, TestCase)
+            .join(ModelOutput, ModelOutput.execution_id == AtlasRun.id)
+            .join(TestCase, TestCase.id == ModelOutput.test_case_id)
+            .outerjoin(EvaluationResult, EvaluationResult.model_output_id == ModelOutput.id)
+            .outerjoin(BenchmarkVersion, AtlasRun.benchmark_version_id == BenchmarkVersion.id)
+            .where(AtlasRun.id == run_id)
+        )
+        return list(self.db.execute(stmt))  # type: ignore
