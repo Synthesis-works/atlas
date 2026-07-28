@@ -13,6 +13,7 @@ from ..models.read_models import (
     ReportRunsFilter,
     ReportRunStatus,
     ReportSummaryRead,
+    RunExportRowRead,
 )
 from ..repositories.reporting_repo import ReportingRepository
 
@@ -156,9 +157,7 @@ class RunQueryService:
         run_id: uuid.UUID,
         include_prompt: bool = False,
         include_expected_output: bool = False,
-    ) -> list["RunExportRowRead"]:
-        from ..models.read_models import RunExportRowRead
-
+    ) -> list[RunExportRowRead]:
         rows = self.repo.get_run_export_data(run_id)
         results = []
         for run_obj, bv_obj, mo_obj, eval_obj, tc_obj in rows:
