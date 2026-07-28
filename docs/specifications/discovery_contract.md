@@ -77,14 +77,18 @@ class BenchmarkFilterRequest(BaseFilterRequest):
 
 ## 3. Global Search
 
-A unified endpoint for omnibar and global search across the platform.
+A unified endpoint for omnibar and global search across the platform, abstracting over individual `SearchProvider` implementations.
 
 **Endpoint:** `GET /api/v1/search`
 
-**Parameters:**
-- `q`: String query.
-- `entity_types`: Comma-separated list of entities to search (e.g., `benchmark,dataset,model`). Defaults to all.
-- Inherits `PageRequest`.
+**SearchRequest:**
+```python
+class SearchRequest(BaseModel):
+    q: str = Field(..., description="String query")
+    entity_types: list[str] | None = Field(None, description="List of entities to search (e.g., benchmark, dataset, model)")
+    limit: int = Field(20, ge=1, le=100)
+    cursor: str | None = None
+```
 
 **Response (Standardized Shape):**
 ```json
@@ -97,11 +101,30 @@ A unified endpoint for omnibar and global search across the platform.
       "subtitle": "Python coding benchmark",
       "description": "Standard benchmark for python generation",
       "url": "/benchmarks/uuid",
-      "score": 0.91
+      "score": 0.91,
+      "metadata": {
+        "author": "OpenAI",
+        "difficulty": "Hard"
+      }
     }
   ]
 }
 ```
+
+### 3.1 Search Ranking Rules
+Every `SearchProvider` must normalize its relevance into a scale between `0.0` and `1.0`. The `SearchService` aggregates results across all providers, ranks globally by score, and then trims to the requested limit.
+
+**Current Ranking Logic (V1):**
+1. Exact Match (Score `1.0`)
+2. Prefix Match (Score `0.8`)
+3. Substring Match (Score `0.5`)
+4. Provider Score (Normalized)
+
+**Future Ranking Roadmap:**
+1. BM25 (Term Frequency / Inverse Document Frequency)
+2. Hybrid Lexical Search
+3. Embeddings
+4. Vector Search
 
 ---
 
