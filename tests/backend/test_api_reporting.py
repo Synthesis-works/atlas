@@ -98,10 +98,9 @@ def test_get_runs_filtered_empty(test_client, mock_reporting_service):
 def test_export_run_results_json(test_client, mock_reporting_service):
     run_id = uuid.uuid4()
     from services.report.exporters import ExportResult
+
     mock_reporting_service.export_run_results.return_value = ExportResult(
-        content=b'[{"test": 1}]',
-        mime_type="application/json",
-        filename_extension="json"
+        content=b'[{"test": 1}]', mime_type="application/json", filename_extension="json"
     )
 
     response = test_client.get(f"/api/v1/reports/runs/{run_id}/export?format=json")
@@ -111,32 +110,27 @@ def test_export_run_results_json(test_client, mock_reporting_service):
     assert "json" in response.headers["Content-Disposition"]
     assert response.content == b'[{"test": 1}]'
     mock_reporting_service.export_run_results.assert_called_once_with(
-        run_id=run_id,
-        format_type="json",
-        include_prompt=False,
-        include_expected_output=False
+        run_id=run_id, format_type="json", include_prompt=False, include_expected_output=False
     )
 
 
 def test_export_run_results_csv(test_client, mock_reporting_service):
     run_id = uuid.uuid4()
     from services.report.exporters import ExportResult
+
     mock_reporting_service.export_run_results.return_value = ExportResult(
-        content=b'test\n1',
-        mime_type="text/csv",
-        filename_extension="csv"
+        content=b"test\n1", mime_type="text/csv", filename_extension="csv"
     )
 
-    response = test_client.get(f"/api/v1/reports/runs/{run_id}/export?format=csv&include_prompt=true")
+    response = test_client.get(
+        f"/api/v1/reports/runs/{run_id}/export?format=csv&include_prompt=true"
+    )
     assert response.status_code == 200
     assert "text/csv" in response.headers["Content-Type"]
     assert "csv" in response.headers["Content-Disposition"]
-    assert response.content == b'test\n1'
+    assert response.content == b"test\n1"
     mock_reporting_service.export_run_results.assert_called_once_with(
-        run_id=run_id,
-        format_type="csv",
-        include_prompt=True,
-        include_expected_output=False
+        run_id=run_id, format_type="csv", include_prompt=True, include_expected_output=False
     )
 
 

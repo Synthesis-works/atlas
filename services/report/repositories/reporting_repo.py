@@ -222,7 +222,9 @@ class ReportingRepository:
 
     def get_run_export_data(
         self, run_id: UUID
-    ) -> list[tuple[AtlasRun, BenchmarkVersion | None, ModelOutput, EvaluationResult | None, TestCase]]:
+    ) -> list[
+        tuple[AtlasRun, BenchmarkVersion | None, ModelOutput, EvaluationResult | None, TestCase]
+    ]:
         stmt = (
             select(AtlasRun, BenchmarkVersion, ModelOutput, EvaluationResult, TestCase)
             .join(ModelOutput, ModelOutput.execution_id == AtlasRun.id)

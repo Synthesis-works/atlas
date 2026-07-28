@@ -77,7 +77,9 @@ def export_run_results(
     run_id: uuid.UUID = Path(..., description="Unique ID of the execution run"),
     format: str = Query("json", pattern="^(json|csv)$", description="Export format (json or csv)"),
     include_prompt: bool = Query(False, description="Include original prompts in the export"),
-    include_expected_output: bool = Query(False, description="Include expected outputs in the export"),
+    include_expected_output: bool = Query(
+        False, description="Include expected outputs in the export"
+    ),
     service: ReportingService = Depends(get_reporting_service),
     current_user: dict[str, Any] = Depends(require_permission("report:read")),
 ) -> Response:
@@ -90,11 +92,11 @@ def export_run_results(
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-        
+
     headers = {
         "Content-Disposition": f'attachment; filename="run_{run_id}.{export_result.filename_extension}"'
     }
-    
+
     return Response(
         content=export_result.content,
         media_type=export_result.mime_type,
