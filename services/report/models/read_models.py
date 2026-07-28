@@ -110,3 +110,25 @@ class HistoryEntryRead(BaseModel):
     started_at: datetime | None = None
     completed_at: datetime | None = None
     passed: bool | None = None
+
+
+class RunExportRowRead(BaseModel):
+    run_id: UUID
+    benchmark_id: UUID
+    benchmark_version: str
+    model_identifier: str
+    execution_status: str
+    evaluation_status: str
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    test_case_id: UUID | None = None
+    category: str | None = None
+    difficulty: str | None = None
+    prompt: dict | list | str | None = None
+    expected_output: dict | list | str | None = None
+    raw_output: dict | list | str | None = None
+    tokens_used: int | None = None
+    latency_ms: float | None = None
+    passed: bool = False
+    confidence: float | None = None
+    failure_reasons: list[str] | None = None
