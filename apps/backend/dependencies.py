@@ -172,3 +172,16 @@ def get_reporting_service(db: Session = Depends(get_db_session)) -> ReportingSer
         history_query=HistoryQueryService(repo),
         run_query=RunQueryService(repo),
     )
+
+
+from services.search.providers.benchmark import BenchmarkSearchProvider
+from services.search.providers.execution import ExecutionSearchProvider
+from services.search.registry import SearchRegistry
+from services.search.service import SearchService
+
+
+def get_search_service(db: Session = Depends(get_db_session)) -> SearchService:
+    registry = SearchRegistry()
+    registry.register(BenchmarkSearchProvider(db))
+    registry.register(ExecutionSearchProvider(db))
+    return SearchService(registry)
