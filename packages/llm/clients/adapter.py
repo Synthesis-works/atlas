@@ -100,6 +100,24 @@ class ProviderAdapter:
                     api_key_env=conf.get("api_key_env", "MISTRAL_API_KEY"),
                 )
 
+            if "groq" in providers:
+                from .groq import GroqClient
+
+                conf = providers["groq"]
+                self.clients["groq"] = GroqClient(
+                    base_url=conf.get("base_url", "https://api.groq.com/openai/v1"),
+                    api_key_env=conf.get("api_key_env", "GROQ_API_KEY"),
+                )
+
+            if "nvidia" in providers:
+                from .nvidia import NvidiaClient
+
+                conf = providers["nvidia"]
+                self.clients["nvidia"] = NvidiaClient(
+                    base_url=conf.get("base_url", "https://integrate.api.nvidia.com/v1"),
+                    api_key_env=conf.get("api_key_env", "NVIDIA_API_KEY"),
+                )
+
     def register_client(self, provider: str, client: BaseLLMClient):
         """Register a new provider client."""
         self.clients[provider] = client
