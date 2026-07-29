@@ -50,6 +50,7 @@ class ExecutionRepository(BaseRepository[Execution]):
 
     def get_recent_models(self, limit: int = 10) -> list[tuple[str, datetime, int]]:
         from typing import cast
+
         query = (
             self.db.query(
                 self.model.target_model,
