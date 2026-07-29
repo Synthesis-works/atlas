@@ -37,6 +37,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Poetry for developer convenience
+RUN pip install --no-cache-dir poetry
+
 # Create a non-root user
 RUN addgroup --system atlas && adduser --system --group atlas
 
