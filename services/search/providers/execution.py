@@ -2,8 +2,8 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from apps.backend.schemas.search import SearchRequest, SearchResult
-from packages.database.atlas_db.models.execution import Execution
-from packages.database.atlas_db.repositories.query_utils import apply_pagination
+from atlas_db.models.execution import Execution
+from atlas_db.repositories.query_utils import apply_pagination
 from services.search.providers.base import SearchProvider
 
 
