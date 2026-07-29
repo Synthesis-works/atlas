@@ -3,49 +3,57 @@ FROM python:3.11-slim as builder
 
 WORKDIR /app
 
-# Install build dependencies required for psycopg2 and others
+# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip
-RUN pip install --upgrade pip
+# Install uv to respect uv.lock for deterministic builds
+COPY --from=ghcr.io/astral-sh/uv:0.1 /uv /uvx /bin/
 
-# Copy project specification files first to cache dependencies
-COPY pyproject.toml requirements.txt README.md ./
+# Copy project specification files to cache dependencies
+COPY pyproject.toml uv.lock ./
+COPY requirements.txt ./
 
-# We will install dependencies into the system site-packages of the builder,
-# or we can build wheels. Building wheels is cleaner.
-RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt || true
-# Install all dependencies required by pyproject.toml
-RUN pip wheel --no-cache-dir --wheel-dir /app/wheels .
+# Install dependencies into a virtual environment
+RUN uv venv /app/.venv
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
 
+# Sync dependencies (excluding the app itself to maximize layer caching)
+RUN uv pip install -r requirements.txt || true
+RUN uv sync --no-install-project --no-dev
 
 # Final runtime stage
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install runtime library for psycopg2
+# Install runtime library for psycopg2 and curl for healthchecks
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user
 RUN addgroup --system atlas && adduser --system --group atlas
 
-# Copy built wheels from builder and install
-COPY --from=builder /app/wheels /wheels
-RUN pip install --no-cache /wheels/* && rm -rf /wheels
+# Copy the virtual environment from the builder
+COPY --from=builder /app/.venv /app/.venv
 
 # Copy application source code
 COPY . /app/
 
-# Install the application package
+# Setup virtual environment variables
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+
+# Install the application package using pip to link local modules
 RUN pip install --no-cache-dir .
 
-# Change ownership
+# Change ownership to non-root
 RUN chown -R atlas:atlas /app
 
 # Switch to non-root user
