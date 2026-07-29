@@ -61,6 +61,8 @@ The backend provides a RESTful API mounted at `/api/v1`:
 
 ## Local Setup
 
+The recommended way to run Atlas is using Docker. For full details on the container architecture, see the [Docker Setup Guide](docs/docker_setup.md).
+
 ### 1. Requirements
 - Python 3.10+
 - Redis Server (running on `localhost:6379`)
