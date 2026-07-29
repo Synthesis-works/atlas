@@ -155,3 +155,73 @@ class ExecutionService:
             .limit(limit)
             .all()
         )
+
+
+class ExecutionApplicationService:
+    def __init__(
+        self,
+        execution_repo,  # type: ExecutionRepository
+    ):
+        self.execution_repo = execution_repo
+
+    def get_recent_executions(self, limit: int = 10):
+        from apps.backend.schemas.executions import ExecutionHistoryRead
+        from atlas_db.models.authoring import BenchmarkVersion, Benchmark
+
+        executions, _ = self.execution_repo.get_executions_paginated(
+            limit=limit,
+            offset=0,
+            sort_field="created_at",
+            sort_order="desc",
+        )
+
+        if not executions:
+            return []
+
+        benchmark_version_ids = [exec.benchmark_version_id for exec in executions]
+
+        # Fetch benchmark names in one query
+        query = (
+            self.execution_repo.db.query(BenchmarkVersion.id, Benchmark.name)
+            .join(Benchmark, Benchmark.id == BenchmarkVersion.benchmark_id)
+            .filter(BenchmarkVersion.id.in_(benchmark_version_ids))
+        )
+        version_id_to_name = {row.id: row.name for row in query.all()}
+
+        results = []
+        for exec in executions:
+            duration = None
+            if exec.started_at and exec.completed_at:
+                duration = int((exec.completed_at - exec.started_at).total_seconds() * 1000)
+
+            benchmark_name = version_id_to_name.get(exec.benchmark_version_id, "Unknown")
+
+            results.append(
+                ExecutionHistoryRead(
+                    id=exec.id,
+                    benchmark_name=benchmark_name,
+                    target_model=exec.target_model,
+                    status=exec.status,
+                    started_at=exec.started_at,
+                    completed_at=exec.completed_at,
+                    duration=duration,
+                    project_id=exec.project_id,
+                )
+            )
+        return results
+
+    def get_recent_models(self, limit: int = 10):
+        from apps.backend.schemas.executions import ModelActivityRead
+
+        models_data = self.execution_repo.get_recent_models(limit=limit)
+
+        results = []
+        for target_model, last_executed_at, execution_count in models_data:
+            results.append(
+                ModelActivityRead(
+                    name=target_model,
+                    last_executed_at=last_executed_at,
+                    execution_count=execution_count,
+                )
+            )
+        return results

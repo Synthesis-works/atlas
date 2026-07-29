@@ -1,6 +1,25 @@
+from datetime import datetime
+from enum import Enum
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+from apps.backend.schemas.query import BaseFilterRequest
+from atlas_db.models.authoring import BenchmarkState
+from fastapi import Query
+
+
+class BenchmarkSortField(str, Enum):
+    CREATED_AT = "created_at"
+    UPDATED_AT = "updated_at"
+    NAME = "name"
+
+
+class BenchmarkFilterRequest(BaseFilterRequest):
+    category_ids: list[UUID] | None = Query(None, description="Filter by category IDs")
+    capability_ids: list[UUID] | None = Query(None, description="Filter by capability IDs")
+    owner_id: UUID | None = Field(None, description="Filter by owner ID")
+    status: BenchmarkState | None = Field(None, description="Filter by benchmark status")
 
 
 class BenchmarkCreate(BaseModel):

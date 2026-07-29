@@ -25,10 +25,17 @@ def apply_sorting(query: Query, model: type, sort_field: str | None, order: str)
     if field_attr is None:
         return query
 
+    id_attr = getattr(model, "id", None)
+
     if order.lower() == "asc":
-        return query.order_by(field_attr.asc())
+        query = query.order_by(field_attr.asc())
     else:
-        return query.order_by(field_attr.desc())
+        query = query.order_by(field_attr.desc())
+
+    if id_attr is not None:
+        query = query.order_by(id_attr.asc())
+
+    return query
 
 
 def get_paginated_results(

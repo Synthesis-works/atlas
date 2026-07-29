@@ -17,12 +17,15 @@ from fastapi import HTTPException, status
 
 from apps.backend.schemas.benchmarks import (
     BenchmarkCreate,
+    BenchmarkFilterRequest,
     BenchmarkRead,
+    BenchmarkSortField,
     BenchmarkUpdate,
     BenchmarkVersionCreate,
     BenchmarkVersionRead,
     BenchmarkVersionUpdate,
 )
+from apps.backend.schemas.query import PageRequest, PageResponse, SortRequest
 
 
 def map_domain_error(e: Exception):
@@ -101,14 +104,57 @@ class BenchmarkApplicationService:
             self.benchmark_repo.db.rollback()
             map_domain_error(e)
 
-    def get_benchmarks(self, project_id: uuid.UUID) -> list[BenchmarkRead]:
-        benchmarks = (
-            self.benchmark_repo.db.query(self.benchmark_repo.model)
-            .filter(self.benchmark_repo.model.project_id == project_id)
-            .all()
+    def get_benchmarks_paginated(
+        self,
+        page_req: PageRequest,
+        sort_req: SortRequest[BenchmarkSortField],
+        filter_req: BenchmarkFilterRequest,
+        project_id: uuid.UUID | None = None,
+    ) -> PageResponse[BenchmarkRead]:
+        status_val = filter_req.status.value if filter_req.status else None
+
+        # Consistent authorization: Global discovery only shows published benchmarks
+        if project_id is None:
+            status_val = "published"
+
+        benchmarks, total = self.benchmark_repo.get_benchmarks_paginated(
+            limit=page_req.limit,
+            offset=page_req.offset or 0,
+            sort_field=sort_req.sort.value if sort_req.sort else None,
+            sort_order=sort_req.order,
+            project_id=project_id,
+            owner_id=filter_req.owner_id,
+            status=status_val,
+            category_ids=filter_req.category_ids,
+            capability_ids=filter_req.capability_ids,
+        )
+        items = [
+            BenchmarkRead(
+                id=b.id, project_id=b.project_id, state=b.status or "unknown", name=b.name
+            )
+            for b in benchmarks
+        ]
+        return PageResponse(
+            items=items,
+            total=total,
+            limit=page_req.limit,
+            offset=page_req.offset,
+        )
+
+    def get_recent_benchmarks(self, limit: int = 10) -> list[BenchmarkRead]:
+        # A convenience method for the recent history endpoint
+        # Fetches published benchmarks globally, ordered by updated_at desc
+        benchmarks, _ = self.benchmark_repo.get_benchmarks_paginated(
+            limit=limit,
+            offset=0,
+            sort_field="updated_at",
+            sort_order="desc",
+            status="published",  # assuming published is a valid state
         )
         return [
-            BenchmarkRead(id=b.id, project_id=b.project_id, state=b.status, name=b.name)
+            BenchmarkRead(
+                id=b.id, project_id=b.project_id, state=b.status or "unknown", name=b.name
+            )
             for b in benchmarks
         ]
 

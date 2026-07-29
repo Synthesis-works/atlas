@@ -55,3 +55,26 @@ class ExecutionResponse(BaseModel):
 class ExecutionUpdate(BaseModel):
     # Only internal services should transition statuses typically, but this is a stub for API
     pass
+
+
+class ExecutionHistoryRead(BaseModel):
+    id: UUID
+    benchmark_name: str
+    target_model: str
+    status: ExecutionStatus
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    duration: int | None = (
+        None  # in milliseconds or seconds, depending on how we calculate it (or we could omit and let the client calculate)
+    )
+    project_id: UUID
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ModelActivityRead(BaseModel):
+    name: str
+    last_executed_at: datetime
+    execution_count: int
+
+    model_config = ConfigDict(from_attributes=True)
