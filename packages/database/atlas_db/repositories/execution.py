@@ -37,6 +37,7 @@ class ExecutionRepository(BaseRepository[Execution]):
             apply_sorting,
             get_paginated_results,
         )
+        from typing import cast
 
         query = self.db.query(self.model)
 
@@ -45,9 +46,10 @@ class ExecutionRepository(BaseRepository[Execution]):
         else:
             query = apply_sorting(query, self.model, "created_at", "desc")
 
-        return get_paginated_results(query, limit, offset)
+        return cast(tuple[list[Execution], int], get_paginated_results(query, limit, offset))
 
     def get_recent_models(self, limit: int = 10) -> list[tuple[str, datetime, int]]:
+        from typing import cast
         query = (
             self.db.query(
                 self.model.target_model,
@@ -58,7 +60,7 @@ class ExecutionRepository(BaseRepository[Execution]):
             .order_by(func.max(self.model.created_at).desc())
             .limit(limit)
         )
-        return query.all()
+        return cast(list[tuple[str, datetime, int]], query.all())
 
 
 class ModelOutputRepository(BaseRepository[ModelOutput]):
