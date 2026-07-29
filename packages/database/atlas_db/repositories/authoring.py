@@ -1,3 +1,4 @@
+import uuid
 from typing import Any
 
 from atlas_db.models.authoring import (
@@ -48,6 +49,7 @@ class BenchmarkRepository(BaseRepository[Benchmark]):
             apply_sorting,
             get_paginated_results,
         )
+        from typing import cast
 
         query = self.db.query(self.model)
 
@@ -70,7 +72,7 @@ class BenchmarkRepository(BaseRepository[Benchmark]):
             # Default sort
             query = apply_sorting(query, self.model, "updated_at", "desc")
 
-        return get_paginated_results(query, limit, offset)
+        return cast(tuple[list[Benchmark], int], get_paginated_results(query, limit, offset))
 
 
 class BenchmarkVersionRepository(BaseRepository[BenchmarkVersion]):
