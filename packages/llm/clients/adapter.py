@@ -99,7 +99,7 @@ class ProviderAdapter:
                     base_url=conf.get("base_url", "https://api.mistral.ai/v1"),
                     api_key_env=conf.get("api_key_env", "MISTRAL_API_KEY"),
                 )
-                
+
             if "groq" in providers:
                 from .groq import GroqClient
 
@@ -108,7 +108,7 @@ class ProviderAdapter:
                     base_url=conf.get("base_url", "https://api.groq.com/openai/v1"),
                     api_key_env=conf.get("api_key_env", "GROQ_API_KEY"),
                 )
-                
+
             if "nvidia" in providers:
                 from .nvidia import NvidiaClient
 
