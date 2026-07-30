@@ -185,3 +185,12 @@ def get_search_service(db: Session = Depends(get_db_session)) -> SearchService:
     registry.register(BenchmarkSearchProvider(db))
     registry.register(ExecutionSearchProvider(db))
     return SearchService(registry)
+
+
+from apps.backend.services.executions import ExecutionApplicationService
+from atlas_db.repositories.execution import ExecutionRepository
+
+
+def get_execution_app_service(db: Session = Depends(get_db_session)) -> ExecutionApplicationService:
+    repo = ExecutionRepository(db)
+    return ExecutionApplicationService(execution_repo=repo)

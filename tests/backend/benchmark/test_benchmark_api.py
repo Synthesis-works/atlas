@@ -67,15 +67,23 @@ def test_create_benchmark():
     assert response.json()["data"]["name"] == "Test Bench"
 
 
+from apps.backend.schemas.query import PageResponse
+
+
 def test_list_benchmarks():
     project_id = uuid4()
-    mock_app_service.get_benchmarks.return_value = [
-        BenchmarkRead(id=uuid4(), project_id=project_id, state="PROPOSAL", name="Test Bench")
-    ]
+    mock_app_service.get_benchmarks_paginated.return_value = PageResponse(
+        items=[
+            BenchmarkRead(id=uuid4(), project_id=project_id, state="PROPOSAL", name="Test Bench")
+        ],
+        total=1,
+        limit=50,
+        offset=0,
+    )
 
     response = client.get(f"/api/v1/projects/{project_id}/benchmarks")
     assert response.status_code == 200
-    assert len(response.json()["data"]) == 1
+    assert len(response.json()["data"]["items"]) == 1
 
 
 def test_get_benchmark():

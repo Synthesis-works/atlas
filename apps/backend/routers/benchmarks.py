@@ -5,7 +5,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from apps.backend.authz import ProjectAuthorizationService, get_project_authz_service
 from apps.backend.dependencies import TokenClaims, get_benchmark_app_service, require_authenticated
-from apps.backend.schemas.benchmarks import BenchmarkCreate, BenchmarkRead, BenchmarkUpdate
+from apps.backend.schemas.benchmarks import (
+    BenchmarkCreate,
+    BenchmarkFilterRequest,
+    BenchmarkRead,
+    BenchmarkSortField,
+    BenchmarkUpdate,
+)
+from apps.backend.schemas.query import PageRequest, PageResponse, SortRequest
 from apps.backend.schemas.responses import APIResponse
 from apps.backend.services.benchmarks import BenchmarkApplicationService
 
@@ -47,9 +54,12 @@ def create_benchmark(
     return APIResponse.success_response(data=benchmark)
 
 
-@project_benchmarks_router.get("", response_model=APIResponse[list[BenchmarkRead]])
+@project_benchmarks_router.get("", response_model=APIResponse[PageResponse[BenchmarkRead]])
 def list_benchmarks(
     project_id: UUID,
+    page_req: PageRequest = Depends(),
+    sort_req: SortRequest[BenchmarkSortField] = Depends(),
+    filter_req: BenchmarkFilterRequest = Depends(),
     claims: TokenClaims = Depends(require_authenticated),
     project_authz: ProjectAuthorizationService = Depends(get_project_authz_service),
     app_service: BenchmarkApplicationService = Depends(get_benchmark_app_service),
@@ -65,8 +75,25 @@ def list_benchmarks(
         ],
     )
 
-    benchmarks = app_service.get_benchmarks(project_id)
-    return APIResponse.success_response(data=benchmarks)
+    benchmarks_page = app_service.get_benchmarks_paginated(
+        page_req=page_req, sort_req=sort_req, filter_req=filter_req, project_id=project_id
+    )
+    return APIResponse.success_response(data=benchmarks_page)
+
+
+@benchmarks_router.get("", response_model=APIResponse[PageResponse[BenchmarkRead]])
+def list_global_benchmarks(
+    page_req: PageRequest = Depends(),
+    sort_req: SortRequest[BenchmarkSortField] = Depends(),
+    filter_req: BenchmarkFilterRequest = Depends(),
+    claims: TokenClaims = Depends(require_authenticated),
+    app_service: BenchmarkApplicationService = Depends(get_benchmark_app_service),
+):
+    # Global discovery endpoint (requires auth but no specific project role)
+    benchmarks_page = app_service.get_benchmarks_paginated(
+        page_req=page_req, sort_req=sort_req, filter_req=filter_req, project_id=None
+    )
+    return APIResponse.success_response(data=benchmarks_page)
 
 
 @benchmarks_router.get("/{benchmark_id}", response_model=APIResponse[BenchmarkRead])

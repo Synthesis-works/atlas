@@ -20,11 +20,15 @@ def test_list_benchmarks_success():
     mock_authz = Mock()
     mock_authz.authorize_project_access.return_value = True
 
+    from apps.backend.schemas.query import PageResponse
+
     mock_benchmark_service = Mock()
     benchmark1 = BenchmarkRead(
         id=uuid.uuid4(), project_id=project_id, name="Benchmark 1", state="draft"
     )
-    mock_benchmark_service.get_benchmarks.return_value = [benchmark1]
+    mock_benchmark_service.get_benchmarks_paginated.return_value = PageResponse(
+        items=[benchmark1], total=1, limit=50, offset=0
+    )
 
     def override_claims():
         return TokenClaims(
@@ -48,8 +52,8 @@ def test_list_benchmarks_success():
     assert response.status_code == 200
     body = response.json()
     data = body["data"]
-    assert len(data) == 1
-    assert data[0]["name"] == "Benchmark 1"
+    assert len(data["items"]) == 1
+    assert data["items"][0]["name"] == "Benchmark 1"
 
     # Verify authz was called with VIEWER allowed
     mock_authz.authorize_project_access.assert_called_once()

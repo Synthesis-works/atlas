@@ -13,6 +13,7 @@ These engineering guardrails apply to all Atlas backend code:
 - **Version creation is explicit**: Never implicit. Users must call the versioning API.
 - **All state transitions are validated through the lifecycle contract**: Transitions bypass validation.
 - **API contracts are backward compatible** within a major version.
+- **Cross-boundary read endpoints compose data manually**: Timeline endpoints intentionally resolve related benchmark metadata through explicit query composition instead of ORM relationships because execution persistence and atlas persistence maintain separate mapping boundaries.
 
 ## 2. Aggregate Roots & Ownership Boundaries
 

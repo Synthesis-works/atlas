@@ -41,3 +41,46 @@ from .tasks import (
     TaskRepository,
     TestCaseRepository,
 )
+from .leaderboard import LeaderboardRepository
+
+__all__ = [
+    # authoring
+    "BenchmarkCategoryRepository",
+    "BenchmarkLifecycleRepository",
+    "BenchmarkRepository",
+    "BenchmarkVersionRepository",
+    "CapabilityRepository",
+    # core
+    "ConfigurationRepository",
+    "ConfigurationVersionRepository",
+    "OrganizationRepository",
+    "ProjectRepository",
+    "UserRepository",
+    # dataset
+    "DatasetLicenseRepository",
+    "DatasetRegistryRepository",
+    "DatasetRepository",
+    "DatasetSourceRepository",
+    "DatasetVersionRepository",
+    # evaluation
+    "CapabilityProfileRepository",
+    "CapabilityScoreRepository",
+    "EvaluationResultDetailRepository",
+    "EvaluationResultRepository",
+    "EvaluationStrategyRepository",
+    "EvaluationStrategyVersionRepository",
+    "JudgeRepository",
+    # execution
+    "ArtifactRepository",
+    "ExecutionAdapterRepository",
+    "ExecutionAdapterVersionRepository",
+    "ModelOutputRepository",
+    # tasks
+    "ConstraintRepository",
+    "EvaluationRuleRepository",
+    "PromptRepository",
+    "TaskRepository",
+    "TestCaseRepository",
+    # leaderboard
+    "LeaderboardRepository",
+]
