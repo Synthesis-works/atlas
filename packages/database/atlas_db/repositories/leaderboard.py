@@ -105,8 +105,6 @@ class LeaderboardRepository(BaseRepository[Execution]):
             .subquery()
         )
 
-
-
         # To avoid window function in group_by which can be complex, let's use a simpler total count query
         # Actually, let's do standard separate count to be safe.
         count_query = (
