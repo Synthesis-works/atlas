@@ -51,22 +51,22 @@ services:
 
   api:
     <<: *backend-base
-    command: bash -c "python -m alembic -c packages/database/alembic.ini upgrade head && uvicorn apps.backend.main:app --host 0.0.0.0 --port 8000 --reload"
+    command: bash -c "python -m alembic -c packages/database/alembic.ini upgrade head && python -m uvicorn apps.backend.main:app --host 0.0.0.0 --port 8000 --reload"
     ports:
       - "8000:8000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   worker:
     <<: *backend-base
-    command: celery -A apps.backend.worker.celery_app worker --loglevel=INFO
+    command: python -m celery -A apps.backend.worker.celery_app worker --loglevel=INFO
 
   scheduler:
     <<: *backend-base
-    command: celery -A apps.backend.worker.celery_app beat --loglevel=INFO
+    command: python -m celery -A apps.backend.worker.celery_app beat --loglevel=INFO
 
 
 

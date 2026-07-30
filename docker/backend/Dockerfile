@@ -11,19 +11,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv to respect uv.lock for deterministic builds
-COPY --from=ghcr.io/astral-sh/uv:0.1 /uv /uvx /bin/
+RUN pip install --no-cache-dir uv
 
 # Copy project specification files to cache dependencies
 COPY pyproject.toml uv.lock ./
-COPY requirements.txt ./
-
-# Install dependencies into a virtual environment
-RUN uv venv /app/.venv
-ENV VIRTUAL_ENV=/app/.venv
-ENV PATH="/app/.venv/bin:$PATH"
 
 # Sync dependencies (excluding the app itself to maximize layer caching)
-RUN uv pip install -r requirements.txt || true
+# This creates /app/.venv by default
 RUN uv sync --no-install-project --no-dev
 
 # Final runtime stage
@@ -43,18 +37,21 @@ RUN pip install --no-cache-dir poetry
 # Create a non-root user
 RUN addgroup --system atlas && adduser --system --group atlas
 
+# Copy uv from builder
+COPY --from=builder /usr/local/bin/uv /usr/local/bin/uv
+
 # Copy the virtual environment from the builder
-COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app/.venv /opt/venv
+
+# Setup virtual environment variables
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 # Copy application source code
 COPY . /app/
 
-# Setup virtual environment variables
-ENV VIRTUAL_ENV=/app/.venv
-ENV PATH="/app/.venv/bin:$PATH"
-
-# Install the application package using pip to link local modules
-RUN pip install --no-cache-dir .
+# Install the application package using uv to link local modules
+RUN uv pip install --no-cache-dir .
 
 # Change ownership to non-root
 RUN chown -R atlas:atlas /app
@@ -65,7 +62,8 @@ USER atlas
 # Environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONPATH=/app
+# Add packages/database to PYTHONPATH so it can be found at runtime since we mount .:/app
+ENV PYTHONPATH=/app:/app/packages/database:/app/packages:/app/services
 
 # Default command (can be overridden by compose)
 CMD ["uvicorn", "apps.backend.main:app", "--host", "0.0.0.0", "--port", "8000"]

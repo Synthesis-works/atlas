@@ -86,8 +86,43 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_executions")),
     )
-    op.drop_table("evaluation_sessions")
+    # Handle report_versions dependencies
+    with op.batch_alter_table("report_versions") as batch_op:
+        batch_op.drop_constraint(
+            "fk_report_versions_evaluation_session_id_evaluation_sessions", type_="foreignkey"
+        )
+        batch_op.drop_column("evaluation_session_id")
+        batch_op.add_column(sa.Column("execution_id", sa.Uuid(), nullable=True))
+        batch_op.create_foreign_key(
+            op.f("fk_report_versions_execution_id_executions"),
+            "executions",
+            ["execution_id"],
+            ["id"],
+            ondelete="SET NULL",
+        )
+
+    # [HISTORICAL MIGRATION REWRITE - Dockerization Fix]
+    # Why this edit was necessary:
+    # Alembic autogenerate missed dropping these incoming foreign key constraints from
+    # tables created in parallel branches (`atlas_tasks`, etc.) and earlier branches.
+    # Postgres forbids dropping a table that is referenced by FKs. We explicitly
+    # drop them here before dropping `atlas_runs`.
+
+    with op.batch_alter_table("model_outputs", schema=None) as batch_op:
+        batch_op.drop_constraint("fk_model_outputs_atlas_run_id_atlas_runs", type_="foreignkey")
+    with op.batch_alter_table("artifacts", schema=None) as batch_op:
+        batch_op.drop_constraint("fk_artifacts_atlas_run_id_atlas_runs", type_="foreignkey")
+    with op.batch_alter_table("capability_profiles", schema=None) as batch_op:
+        batch_op.drop_constraint(
+            "fk_capability_profiles_atlas_run_id_atlas_runs", type_="foreignkey"
+        )
+    with op.batch_alter_table("atlas_tasks", schema=None) as batch_op:
+        batch_op.drop_constraint("fk_atlas_tasks_atlas_run_id_atlas_runs", type_="foreignkey")
+    with op.batch_alter_table("run_events", schema=None) as batch_op:
+        batch_op.drop_constraint("fk_run_events_atlas_run_id_atlas_runs", type_="foreignkey")
+
     op.drop_table("atlas_runs")
+    op.drop_table("evaluation_sessions")
     # ### end Alembic commands ###
 
 
@@ -145,5 +180,49 @@ def downgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_evaluation_sessions")),
     )
+    # [HISTORICAL MIGRATION REWRITE - Dockerization Fix]
+    # Recreate the constraints we dropped in upgrade()
+    with op.batch_alter_table("model_outputs", schema=None) as batch_op:
+        batch_op.create_foreign_key(
+            "fk_model_outputs_atlas_run_id_atlas_runs", "atlas_runs", ["atlas_run_id"], ["id"]
+        )
+    with op.batch_alter_table("artifacts", schema=None) as batch_op:
+        batch_op.create_foreign_key(
+            "fk_artifacts_atlas_run_id_atlas_runs", "atlas_runs", ["atlas_run_id"], ["id"]
+        )
+    with op.batch_alter_table("capability_profiles", schema=None) as batch_op:
+        batch_op.create_foreign_key(
+            "fk_capability_profiles_atlas_run_id_atlas_runs", "atlas_runs", ["atlas_run_id"], ["id"]
+        )
+    with op.batch_alter_table("atlas_tasks", schema=None) as batch_op:
+        batch_op.create_foreign_key(
+            "fk_atlas_tasks_atlas_run_id_atlas_runs",
+            "atlas_runs",
+            ["atlas_run_id"],
+            ["id"],
+            ondelete="CASCADE",
+        )
+    with op.batch_alter_table("run_events", schema=None) as batch_op:
+        batch_op.create_foreign_key(
+            "fk_run_events_atlas_run_id_atlas_runs",
+            "atlas_runs",
+            ["atlas_run_id"],
+            ["id"],
+            ondelete="CASCADE",
+        )
+
     op.drop_table("executions")
+
+    with op.batch_alter_table("report_versions") as batch_op:
+        batch_op.drop_constraint(
+            op.f("fk_report_versions_execution_id_executions"), type_="foreignkey"
+        )
+        batch_op.drop_column("execution_id")
+        batch_op.add_column(sa.Column("evaluation_session_id", sa.NUMERIC(), nullable=True))
+        batch_op.create_foreign_key(
+            "fk_report_versions_evaluation_session_id_evaluation_sessions",
+            "evaluation_sessions",
+            ["evaluation_session_id"],
+            ["id"],
+        )
     # ### end Alembic commands ###

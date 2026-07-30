@@ -30,12 +30,10 @@ def upgrade() -> None:
     task_status_enum = postgresql.ENUM(
         "PENDING", "RUNNING", "COMPLETED", "FAILED", "CANCELLED", name="task_status"
     )
-    task_status_enum.create(op.get_bind())
 
     worker_status_enum = postgresql.ENUM(
         "REGISTERED", "READY", "BUSY", "OFFLINE", name="worker_status"
     )
-    worker_status_enum.create(op.get_bind())
 
     event_type_enum = postgresql.ENUM(
         "RUN_CREATED",
@@ -57,7 +55,6 @@ def upgrade() -> None:
         "WORKER_OFFLINE",
         name="event_type",
     )
-    event_type_enum.create(op.get_bind())
 
     # 3. Create execution_workers table
     op.create_table(

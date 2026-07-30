@@ -135,7 +135,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["evaluation_result_id"],
             ["evaluation_results.id"],
-            name="fk_evaluation_result_details_evaluation_result_id_evaluation_results",
+            name="fk_eval_res_details_eval_res_id_eval_results",
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name="pk_evaluation_result_details"),
