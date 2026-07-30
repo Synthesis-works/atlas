@@ -9,3 +9,4 @@ from atlas_db.models.outbox import *
 from atlas_db.models.reporting import *
 from atlas_db.models.system import *
 from atlas_db.models.tasks import *
+from atlas_db.models.leaderboard import *
