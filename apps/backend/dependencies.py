@@ -194,3 +194,20 @@ from atlas_db.repositories.execution import ExecutionRepository
 def get_execution_app_service(db: Session = Depends(get_db_session)) -> ExecutionApplicationService:
     repo = ExecutionRepository(db)
     return ExecutionApplicationService(execution_repo=repo)
+
+
+from apps.backend.services.leaderboard import LeaderboardApplicationService
+from packages.database.atlas_db.repositories.leaderboard import LeaderboardRepository
+
+
+def get_leaderboard_app_service(
+    db: Session = Depends(get_db_session),
+) -> LeaderboardApplicationService:
+    leaderboard_repo = LeaderboardRepository(db)
+    benchmark_version_repo = BenchmarkVersionRepository(db)
+    capability_repo = CapabilityRepository(db)
+    return LeaderboardApplicationService(
+        leaderboard_repo=leaderboard_repo,
+        benchmark_version_repo=benchmark_version_repo,
+        capability_repo=capability_repo,
+    )
