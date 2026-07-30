@@ -16,6 +16,7 @@ from atlas_db.models.authoring import BenchmarkVersion, Capability
 from apps.backend.dependencies import get_leaderboard_app_service, require_authenticated
 from apps.backend.schemas.auth import TokenClaims
 
+
 @pytest.fixture
 def mock_leaderboard_service():
     return MagicMock(spec=LeaderboardApplicationService)
@@ -34,18 +35,13 @@ def client(mock_leaderboard_service):
 def test_get_benchmark_leaderboard(client, mock_leaderboard_service):
     # Arrange
     benchmark_version_id = uuid.uuid4()
-    
+
     mock_leaderboard_service.get_benchmark_leaderboard.return_value = LeaderboardRead(
         leaderboard_type=LeaderboardType.BENCHMARK,
         title="Benchmark Version 1.0.0",
         description="Leaderboard for Benchmark Version 1.0.0",
         benchmark_version_id=str(benchmark_version_id),
-        entries=PageResponse(
-            items=[],
-            total=0,
-            limit=50,
-            offset=0
-        )
+        entries=PageResponse(items=[], total=0, limit=50, offset=0),
     )
 
     # Act
@@ -59,27 +55,20 @@ def test_get_benchmark_leaderboard(client, mock_leaderboard_service):
     assert data["benchmark_version_id"] == str(benchmark_version_id)
     assert data["entries"]["total"] == 0
     mock_leaderboard_service.get_benchmark_leaderboard.assert_called_once_with(
-        benchmark_version_id=benchmark_version_id,
-        limit=50,
-        offset=0
+        benchmark_version_id=benchmark_version_id, limit=50, offset=0
     )
 
 
 def test_get_capability_leaderboard(client, mock_leaderboard_service):
     # Arrange
     capability_id = uuid.uuid4()
-    
+
     mock_leaderboard_service.get_capability_leaderboard.return_value = LeaderboardRead(
         leaderboard_type=LeaderboardType.CAPABILITY,
         title="Reasoning",
         description="Reasoning tasks",
         capability_id=str(capability_id),
-        entries=PageResponse(
-            items=[],
-            total=0,
-            limit=50,
-            offset=0
-        )
+        entries=PageResponse(items=[], total=0, limit=50, offset=0),
     )
 
     # Act
@@ -92,7 +81,5 @@ def test_get_capability_leaderboard(client, mock_leaderboard_service):
     assert data["leaderboard_type"] == "CAPABILITY"
     assert data["capability_id"] == str(capability_id)
     mock_leaderboard_service.get_capability_leaderboard.assert_called_once_with(
-        capability_id=capability_id,
-        limit=10,
-        offset=10
+        capability_id=capability_id, limit=10, offset=10
     )

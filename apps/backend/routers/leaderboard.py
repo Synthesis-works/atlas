@@ -29,7 +29,7 @@ def get_benchmark_leaderboard(
     """
     # Lightweight cache header, per PR21 spec
     response.headers["Cache-Control"] = "max-age=60"
-    
+
     return service.get_benchmark_leaderboard(
         benchmark_version_id=benchmark_version_id,
         limit=limit,
@@ -54,7 +54,7 @@ def get_capability_leaderboard(
     Retrieves the global leaderboard for a specific capability, aggregating scores across all its underlying benchmarks.
     """
     response.headers["Cache-Control"] = "max-age=60"
-    
+
     return service.get_capability_leaderboard(
         capability_id=capability_id,
         limit=limit,

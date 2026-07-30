@@ -37,7 +37,7 @@ class LeaderboardApplicationService:
         if not bv:
             raise HTTPException(status_code=404, detail="Benchmark Version not found")
 
-        # In a real system we'd join to Benchmark to get the name, but for now we'll 
+        # In a real system we'd join to Benchmark to get the name, but for now we'll
         # just construct it from the version string or fetch the benchmark if we want.
         # But this is fine for metadata.
         benchmark_name = f"Benchmark Version {bv.version_string}"

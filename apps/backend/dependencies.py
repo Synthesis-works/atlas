@@ -200,7 +200,9 @@ from apps.backend.services.leaderboard import LeaderboardApplicationService
 from packages.database.atlas_db.repositories.leaderboard import LeaderboardRepository
 
 
-def get_leaderboard_app_service(db: Session = Depends(get_db_session)) -> LeaderboardApplicationService:
+def get_leaderboard_app_service(
+    db: Session = Depends(get_db_session),
+) -> LeaderboardApplicationService:
     leaderboard_repo = LeaderboardRepository(db)
     benchmark_version_repo = BenchmarkVersionRepository(db)
     capability_repo = CapabilityRepository(db)
