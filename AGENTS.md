@@ -54,3 +54,8 @@ Before proposing or writing any code, you must read:
 4. `docs/docker_setup.md`
 
 If documentation conflicts with source code, identify the conflict, explain it, and propose a resolution before acting blindly.
+
+> **Migration Policy:** Once a migration has been committed to `main`, treat it as immutable unless it is the latest unpublished migration. Fix forward by creating new migrations whenever possible. Editing historical migrations should only be done when they have never been deployed outside local development.  
+
+> [!WARNING]
+> During the Dockerization effort (July 2026), migrations `3a1cf533642c` and `2256bd2b7c2c` were historically rewritten to fix a fatal dependency collision before the first production deployment. Do not attempt to revert these fixes.

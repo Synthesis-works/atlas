@@ -20,17 +20,17 @@ depends_on = None
 def upgrade():
     # Enums
     organization_role = postgresql.ENUM(
-        "OWNER", "ADMIN", "MEMBER", "VIEWER", name="organization_role"
+        "OWNER", "ADMIN", "MEMBER", "VIEWER", name="organization_role", create_type=False
     )
     organization_role.create(op.get_bind(), checkfirst=True)
 
     membership_status = postgresql.ENUM(
-        "ACTIVE", "PENDING", "SUSPENDED", "LEFT", name="membership_status"
+        "ACTIVE", "PENDING", "SUSPENDED", "LEFT", name="membership_status", create_type=False
     )
     membership_status.create(op.get_bind(), checkfirst=True)
 
     invitation_status = postgresql.ENUM(
-        "PENDING", "ACCEPTED", "EXPIRED", "REVOKED", name="invitation_status"
+        "PENDING", "ACCEPTED", "EXPIRED", "REVOKED", name="invitation_status", create_type=False
     )
     invitation_status.create(op.get_bind(), checkfirst=True)
 

@@ -20,11 +20,14 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # Create dummy atlas_runs table so SQLAlchemy reflection doesn't fail on the dangling FK
-    op.create_table("atlas_runs", sa.Column("id", sa.Uuid(), primary_key=True))
+    # [HISTORICAL MIGRATION REWRITE - Dockerization Fix]
+    # Removed the creation of a dummy `atlas_runs` table and the redundant
+    # `drop_constraint` call. The dangling foreign key constraint was properly
+    # dropped in the earlier `3a1cf533642c_execution_models.py` migration to
+    # prevent Postgres from crashing when `atlas_runs` was dropped.
+
     with op.batch_alter_table("model_outputs", schema=None) as batch_op:
         batch_op.drop_index("ix_model_outputs_atlas_run_id")
-        batch_op.drop_constraint("fk_model_outputs_atlas_run_id_atlas_runs", type_="foreignkey")
         batch_op.alter_column("atlas_run_id", new_column_name="execution_id")
         batch_op.create_foreign_key(
             "fk_model_outputs_execution_id_executions",
@@ -36,23 +39,17 @@ def upgrade() -> None:
 
     with op.batch_alter_table("model_outputs", schema=None) as batch_op:
         batch_op.create_index("ix_model_outputs_execution_id", ["execution_id"])
-    op.drop_table("atlas_runs")
 
 
 def downgrade() -> None:
-    op.create_table("executions", sa.Column("id", sa.Uuid(), primary_key=True))
+    # [HISTORICAL MIGRATION REWRITE - Dockerization Fix]
+    # Removed the creation of a dummy `executions` table and the redundant
+    # `drop_constraint` call. The dangling foreign key constraint will be recreated
+    # in the earlier `3a1cf533642c_execution_models.py` migration.
+
     with op.batch_alter_table("model_outputs", schema=None) as batch_op:
         batch_op.drop_index("ix_model_outputs_execution_id")
-        batch_op.drop_constraint("fk_model_outputs_execution_id_executions", type_="foreignkey")
         batch_op.alter_column("execution_id", new_column_name="atlas_run_id")
-        batch_op.create_foreign_key(
-            "fk_model_outputs_atlas_run_id_atlas_runs",
-            "atlas_runs",
-            ["atlas_run_id"],
-            ["id"],
-            ondelete="CASCADE",
-        )
 
     with op.batch_alter_table("model_outputs", schema=None) as batch_op:
         batch_op.create_index("ix_model_outputs_atlas_run_id", ["atlas_run_id"])
-    op.drop_table("executions")
