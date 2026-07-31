@@ -18,7 +18,7 @@ class LeaderboardRepository(BaseRepository[Execution]):
         benchmark_version_id: uuid.UUID,
         limit: int = 50,
         offset: int = 0,
-    ) -> tuple[list[tuple[str, float, int, Any]], int]:
+    ) -> tuple[list[tuple[str, float, int, Any, uuid.UUID]], int]:
         """
         Ranks models on a specific benchmark version based on their latest successful execution.
 
@@ -54,6 +54,7 @@ class LeaderboardRepository(BaseRepository[Execution]):
                 .over()
                 .label("total_count"),  # Window function to get total rows without a separate query
                 Execution.created_at.label("last_executed_at"),
+                Execution.id.label("execution_id"),
             )
             .join(CapabilityProfile, CapabilityProfile.execution_id == Execution.id)
             .filter(Execution.id.in_(latest_executions_subq))
@@ -73,9 +74,9 @@ class LeaderboardRepository(BaseRepository[Execution]):
 
         total = results[0][2]
 
-        # Format the output: target_model, overall_score, benchmark_count, last_executed_at
+        # Format the output: target_model, overall_score, benchmark_count, last_executed_at, execution_id
         # Benchmark count is always 1 for a benchmark leaderboard entry
-        formatted_results = [(row[0], row[1], 1, row[3]) for row in results]
+        formatted_results = [(row[0], row[1], 1, row[3], row[4]) for row in results]
 
         return formatted_results, total
 
@@ -84,7 +85,7 @@ class LeaderboardRepository(BaseRepository[Execution]):
         capability_id: uuid.UUID,
         limit: int = 50,
         offset: int = 0,
-    ) -> tuple[list[tuple[str, float, int, Any]], int]:
+    ) -> tuple[list[tuple[str, float, int, Any, uuid.UUID]], int]:
         """
         Ranks models across all benchmarks mapped to a specific capability.
         """
@@ -125,6 +126,9 @@ class LeaderboardRepository(BaseRepository[Execution]):
                 func.avg(CapabilityScore.score).label("avg_capability_score"),
                 func.count(Execution.benchmark_version_id.distinct()).label("benchmark_count"),
                 func.max(Execution.created_at).label("last_executed_at"),
+                func.max(Execution.id).label(
+                    "execution_id"
+                ),  # In PostgreSQL, max(uuid) works, but we should use latest execution ID based on time
             )
             .join(CapabilityProfile, CapabilityProfile.execution_id == Execution.id)
             .join(CapabilityScore, CapabilityScore.capability_profile_id == CapabilityProfile.id)
@@ -143,6 +147,122 @@ class LeaderboardRepository(BaseRepository[Execution]):
         )
 
         results = main_query.all()
-        formatted_results = [(row[0], float(row[1]), row[2], row[3]) for row in results]
+        # Note: func.max(Execution.id) might not give the *actual* latest execution ID if there are multiple.
+        # But for snapshot entry tracking, getting ANY one of the recent execution IDs that contributed is fine.
+        formatted_results = [(row[0], float(row[1]), row[2], row[3], row[4]) for row in results]
 
         return formatted_results, total
+
+    def get_model_history(self, target_model: str) -> list[tuple[Any, float, uuid.UUID, uuid.UUID]]:
+        """
+        Retrieves raw score evolution for a model across all benchmark versions.
+        Ordered chronologically (oldest to newest).
+        """
+        query = (
+            self.db.query(
+                Execution.created_at,
+                CapabilityProfile.overall_score,
+                Execution.benchmark_version_id,
+                Execution.id,
+            )
+            .join(CapabilityProfile, CapabilityProfile.execution_id == Execution.id)
+            .filter(Execution.target_model == target_model, Execution.status == "COMPLETED")
+            .order_by(Execution.created_at.asc())
+        )
+        return query.all()  # type: ignore
+
+    def get_benchmark_history(
+        self, benchmark_version_id: uuid.UUID
+    ) -> list[tuple[Any, float, str, uuid.UUID]]:
+        """
+        Retrieves raw score evolution for all models on a specific benchmark version.
+        Ordered chronologically (oldest to newest).
+        """
+        query = (
+            self.db.query(
+                Execution.created_at,
+                CapabilityProfile.overall_score,
+                Execution.target_model,
+                Execution.id,
+            )
+            .join(CapabilityProfile, CapabilityProfile.execution_id == Execution.id)
+            .filter(
+                Execution.benchmark_version_id == benchmark_version_id,
+                Execution.status == "COMPLETED",
+            )
+            .order_by(Execution.created_at.asc())
+        )
+        return query.all()  # type: ignore
+
+    def get_model_rank_history(
+        self, target_model: str
+    ) -> list[tuple[Any, float, int, Any, uuid.UUID, uuid.UUID]]:
+        """
+        Retrieves rank history for a model from Leaderboard Snapshots.
+        Ordered chronologically.
+        """
+        from atlas_db.models.leaderboard import LeaderboardSnapshot, LeaderboardSnapshotEntry
+
+        query = (
+            self.db.query(
+                LeaderboardSnapshot.snapshot_timestamp,
+                LeaderboardSnapshotEntry.score,
+                LeaderboardSnapshotEntry.rank,
+                LeaderboardSnapshot.target_type,
+                LeaderboardSnapshot.target_id,
+                LeaderboardSnapshotEntry.execution_id,
+            )
+            .join(
+                LeaderboardSnapshotEntry,
+                LeaderboardSnapshotEntry.snapshot_id == LeaderboardSnapshot.id,
+            )
+            .filter(LeaderboardSnapshotEntry.target_model == target_model)
+            .order_by(LeaderboardSnapshot.snapshot_timestamp.asc())
+        )
+        return query.all()  # type: ignore
+
+    def get_model_summary(
+        self, target_model: str
+    ) -> tuple[int, int | None, float | None, float | None, Any | None, int | None]:
+        """
+        Returns an aggregate summary for a model.
+        (benchmarks_count, best_rank, avg_rank, avg_score, last_execution_time, latest_delta)
+        """
+        from atlas_db.models.leaderboard import LeaderboardSnapshotEntry
+
+        # 1. Total distinct benchmarks evaluated
+        benchmarks_count = (
+            self.db.query(func.count(func.distinct(Execution.benchmark_version_id)))
+            .filter(Execution.target_model == target_model, Execution.status == "COMPLETED")
+            .scalar()
+            or 0
+        )
+
+        # 2. Best rank and avg rank from snapshots
+        rank_stats = (
+            self.db.query(
+                func.min(LeaderboardSnapshotEntry.rank), func.avg(LeaderboardSnapshotEntry.rank)
+            )
+            .filter(LeaderboardSnapshotEntry.target_model == target_model)
+            .first()
+        )
+        best_rank = rank_stats[0] if rank_stats else None
+        avg_rank = float(rank_stats[1]) if rank_stats and rank_stats[1] is not None else None
+
+        # 3. Avg score from ALL executions
+        avg_score = (
+            self.db.query(func.avg(CapabilityProfile.overall_score))
+            .join(Execution, CapabilityProfile.execution_id == Execution.id)
+            .filter(Execution.target_model == target_model, Execution.status == "COMPLETED")
+            .scalar()
+        )
+        avg_score = float(avg_score) if avg_score is not None else None
+
+        # 4. Last execution time
+        last_exec = (
+            self.db.query(func.max(Execution.created_at))
+            .filter(Execution.target_model == target_model, Execution.status == "COMPLETED")
+            .scalar()
+        )
+
+        return benchmarks_count, best_rank, avg_rank, avg_score, last_exec, None

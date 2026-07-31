@@ -23,8 +23,8 @@ def test_get_benchmark_leaderboard(leaderboard_repo, mock_db_session):
     # Mock the return of the final .all() query
     mock_query = MagicMock()
     mock_query.offset.return_value.limit.return_value.all.return_value = [
-        ("model_a", 95.5, 10, "2023-01-01T00:00:00Z"),
-        ("model_b", 92.0, 10, "2023-01-02T00:00:00Z"),
+        ("model_a", 95.5, 10, "2023-01-01T00:00:00Z", uuid.uuid4()),
+        ("model_b", 92.0, 10, "2023-01-02T00:00:00Z", uuid.uuid4()),
     ]
 
     # Set up the chain
@@ -67,7 +67,7 @@ def test_get_capability_leaderboard(leaderboard_repo, mock_db_session):
     # Mock the all() for results
     mock_main_query = MagicMock()
     mock_main_query.join.return_value.join.return_value.filter.return_value.group_by.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = [
-        ("model_c", 88.0, 3, "2023-01-01T00:00:00Z")
+        ("model_c", 88.0, 3, "2023-01-01T00:00:00Z", uuid.uuid4())
     ]
 
     # We need to configure the db.query mock to return the count query for the first call

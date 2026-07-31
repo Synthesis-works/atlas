@@ -11,7 +11,15 @@ The platform supports four distinct types of leaderboards:
 3. **Global Leaderboard**: A weighted average ranking of models across all capabilities and benchmarks on the platform.
 4. **Organization Leaderboard** *(Future)*: Ranks models evaluated strictly within the boundaries of a single organization's private datasets and benchmarks.
 
-## 2. Eligibility Rules
+## 2. Capability Aggregation Rules
+
+When aggregating performance across a capability (e.g., Coding, Reasoning), the following mathematical contract applies:
+
+- **Aggregation Method**: Simple unweighted average of the underlying benchmark scores.
+- **Missing Benchmarks**: Benchmarks without successful executions for a given model are ignored (they do not penalize the model as zeroes).
+- **Benchmark Versioning**: The aggregation takes the latest execution per distinct *benchmark version*. If a model is evaluated on multiple versions of the same benchmark (e.g., MMLU v1 and MMLU v2), both contribute to the capability average.
+
+## 3. Eligibility Rules
 
 A result is only eligible for leaderboard ranking if it meets all the following criteria:
 
