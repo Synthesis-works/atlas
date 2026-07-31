@@ -42,7 +42,10 @@ SessionLocal = sessionmaker(bind=engine)
 def setup_database():
     Base.metadata.create_all(bind=engine)
     yield
-    Base.metadata.drop_all(bind=engine)
+    try:
+        Base.metadata.drop_all(bind=engine)
+    except Exception as e:
+        print(f"Warning: Failed to drop tables cleanly during teardown: {e}")
 
 
 @pytest.fixture
@@ -145,6 +148,13 @@ def test_concurrency_skip_locked(setup_database):
     """
     # Setup record
     session_setup = SessionLocal()
+    
+    # Clear out any executions from previous tests to ensure we only have ONE queued execution.
+    from sqlalchemy import text
+    session_setup.execute(text("DELETE FROM execution_attempts"))
+    session_setup.execute(text("DELETE FROM executions"))
+    session_setup.commit()
+    
     repo_setup = SqlAlchemyExecutionRepository(session_setup)
     clock = TestClock(datetime.now(UTC))
     project_id, bv_id, user_id = create_parent_records(session_setup)

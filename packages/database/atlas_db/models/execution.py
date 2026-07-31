@@ -104,6 +104,7 @@ class Execution(Base, BaseMixin):
     # Worker Tracking
     celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     cancellation_requested: Mapped[bool] = mapped_column(default=False)
+    max_retries: Mapped[int] = mapped_column(Integer, nullable=False, server_default="3")
 
     # Progress Tracking
     total_items: Mapped[int] = mapped_column(default=0)
