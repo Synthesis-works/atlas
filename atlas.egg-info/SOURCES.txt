@@ -75,6 +75,7 @@ apps/backend/worker/execution_worker.py
 apps/backend/worker/prompt_resolver.py
 apps/backend/worker/snapshot_tasks.py
 apps/backend/worker/tasks.py
+apps/web/node_modules/flatted/python/flatted.py
 atlas.egg-info/PKG-INFO
 atlas.egg-info/SOURCES.txt
 atlas.egg-info/dependency_links.txt
@@ -129,6 +130,7 @@ packages/database/alembic/versions/d2e3f4g5h6i7_update_capability_profile_schema
 packages/database/alembic/versions/e5842a639de0_merge_multiple_heads.py
 packages/database/alembic/versions/e837053abeb8_add_celery_task_id_and_cancellation_.py
 packages/database/alembic/versions/f1f2f3f4f5f6_merge_heads.py
+packages/database/alembic/versions/f20ab7bfab93_add_missing_evaluation_strategy_id_and_.py
 packages/database/atlas_db/events.py
 packages/database/atlas_db/core/base.py
 packages/database/atlas_db/core/config.py
@@ -234,7 +236,9 @@ packages/llm/clients/adapter.py
 packages/llm/clients/base.py
 packages/llm/clients/gemini.py
 packages/llm/clients/grok.py
+packages/llm/clients/groq.py
 packages/llm/clients/mistral.py
+packages/llm/clients/nvidia.py
 packages/llm/clients/ollama.py
 packages/llm/models/__init__.py
 packages/llm/models/model_types.py
