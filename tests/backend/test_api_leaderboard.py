@@ -83,3 +83,50 @@ def test_get_capability_leaderboard(client, mock_leaderboard_service):
     mock_leaderboard_service.get_capability_leaderboard.assert_called_once_with(
         capability_id=capability_id, limit=10, offset=10
     )
+
+
+from apps.backend.schemas.leaderboard import ModelSummary
+
+
+def test_get_benchmark_version_history(client, mock_leaderboard_service):
+    benchmark_version_id = uuid.uuid4()
+    mock_leaderboard_service.get_benchmark_history.return_value = []
+    response = client.get(f"/api/v1/benchmarks/{benchmark_version_id}/leaderboard/history")
+    assert response.status_code == 200
+    mock_leaderboard_service.get_benchmark_history.assert_called_once_with(benchmark_version_id)
+
+
+def test_get_model_summary(client, mock_leaderboard_service):
+    mock_leaderboard_service.get_model_summary.return_value = ModelSummary(
+        model="gpt-4",
+        benchmarks=10,
+        best_rank=1,
+        average_rank=2.0,
+        average_score=95.0,
+        last_execution=None,
+        latest_delta=None,
+    )
+    response = client.get("/api/v1/models/gpt-4/summary")
+    assert response.status_code == 200
+    mock_leaderboard_service.get_model_summary.assert_called_once_with("gpt-4")
+
+
+def test_get_model_history(client, mock_leaderboard_service):
+    mock_leaderboard_service.get_model_history.return_value = []
+    response = client.get("/api/v1/models/gpt-4/history")
+    assert response.status_code == 200
+    mock_leaderboard_service.get_model_history.assert_called_once_with("gpt-4")
+
+
+def test_get_model_benchmark_history(client, mock_leaderboard_service):
+    mock_leaderboard_service.get_model_benchmark_history.return_value = []
+    response = client.get("/api/v1/models/gpt-4/benchmarks")
+    assert response.status_code == 200
+    mock_leaderboard_service.get_model_benchmark_history.assert_called_once_with("gpt-4")
+
+
+def test_get_model_rank_history(client, mock_leaderboard_service):
+    mock_leaderboard_service.get_model_rank_history.return_value = []
+    response = client.get("/api/v1/models/gpt-4/rank-history")
+    assert response.status_code == 200
+    mock_leaderboard_service.get_model_rank_history.assert_called_once_with("gpt-4")
