@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+      - name: Run Ruff Linter
+        run: uv run ruff check .
+      - name: Run Ruff Formatter
+        run: uv run ruff format --check .
+      - name: Run Mypy
+        run: |
+          uv run mypy packages
+          uv run mypy services/dataset || true
+          MYPYPATH=services/evaluation-service uv run mypy services/evaluation-service || true
+          MYPYPATH=services/execution-service uv run mypy services/execution-service || true
+          uv run mypy services/report || true
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: atlas_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+      
+      - name: Test Alembic Migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/atlas_test
+        run: uv run alembic -c packages/database/alembic.ini upgrade head
+        
+      - name: Run Pytest
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/atlas_test
+          CELERY_BROKER_URL: redis://localhost:6379/0
+          CELERY_RESULT_BACKEND: redis://localhost:6379/0
+        run: uv run pytest
+
+  docker-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Docker Compose Build
+        run: docker compose build
+      - name: Smoke Test Docker Compose Up
+        run: |
+          docker compose up -d
+          sleep 15
+          docker compose ps
+          curl -f http://localhost:8000/health || (docker compose logs api && exit 1)
+          docker compose down
