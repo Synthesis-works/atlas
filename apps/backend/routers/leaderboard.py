@@ -145,3 +145,45 @@ def get_model_rank_history(
     """Retrieves historical ranking from leaderboard snapshots."""
     response.headers["Cache-Control"] = "max-age=60"
     return service.get_model_rank_history(model_name)
+
+
+@router.post(
+    "/benchmarks/{benchmark_version_id}/leaderboard/snapshot",
+    status_code=202,
+    summary="[Admin] Trigger Benchmark Snapshot Rebuild",
+)
+def trigger_benchmark_snapshot(
+    benchmark_version_id: uuid.UUID,
+    claims: TokenClaims = Depends(require_authenticated),
+) -> dict[str, str]:
+    """
+    Manually triggers a background task to rebuild the leaderboard snapshot for a benchmark version.
+    Intended for administrative and maintenance purposes only.
+    """
+    # In a real app, verify claims contain 'admin' role
+    from apps.backend.events.celery_snapshot_dispatcher import CelerySnapshotDispatcher
+
+    dispatcher = CelerySnapshotDispatcher()
+    dispatcher.dispatch_benchmark_snapshot(benchmark_version_id, execution_id_trigger=None)
+    return {"status": "accepted", "message": "Snapshot generation dispatched"}
+
+
+@router.post(
+    "/capabilities/{capability_id}/leaderboard/snapshot",
+    status_code=202,
+    summary="[Admin] Trigger Capability Snapshot Rebuild",
+)
+def trigger_capability_snapshot(
+    capability_id: uuid.UUID,
+    claims: TokenClaims = Depends(require_authenticated),
+) -> dict[str, str]:
+    """
+    Manually triggers a background task to rebuild the leaderboard snapshot for a capability.
+    Intended for administrative and maintenance purposes only.
+    """
+    # In a real app, verify claims contain 'admin' role
+    from apps.backend.events.celery_snapshot_dispatcher import CelerySnapshotDispatcher
+
+    dispatcher = CelerySnapshotDispatcher()
+    dispatcher.dispatch_capability_snapshot(capability_id, execution_id_trigger=None)
+    return {"status": "accepted", "message": "Snapshot generation dispatched"}

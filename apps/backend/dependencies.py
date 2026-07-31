@@ -197,7 +197,7 @@ def get_execution_app_service(db: Session = Depends(get_db_session)) -> Executio
 
 
 from apps.backend.services.leaderboard import LeaderboardApplicationService
-from packages.database.atlas_db.repositories.leaderboard import LeaderboardRepository
+from atlas_db.repositories.leaderboard import LeaderboardRepository
 
 
 def get_leaderboard_app_service(

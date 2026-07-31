@@ -12,11 +12,11 @@ from apps.backend.schemas.leaderboard import (
     ModelBenchmarkVersionHistory,
 )
 from apps.backend.schemas.query import PageResponse
-from packages.database.atlas_db.repositories.authoring import (
+from atlas_db.repositories.authoring import (
     BenchmarkVersionRepository,
     CapabilityRepository,
 )
-from packages.database.atlas_db.repositories.leaderboard import LeaderboardRepository
+from atlas_db.repositories.leaderboard import LeaderboardRepository
 
 
 class LeaderboardApplicationService:
@@ -51,7 +51,9 @@ class LeaderboardApplicationService:
         )
 
         entries = []
-        for i, (model_name, overall_score, count, last_executed_at) in enumerate(raw_entries):
+        for i, (model_name, overall_score, count, last_executed_at, execution_id) in enumerate(
+            raw_entries
+        ):
             entries.append(
                 LeaderboardEntryRead(
                     rank=offset + i + 1,
@@ -95,7 +97,9 @@ class LeaderboardApplicationService:
         )
 
         entries = []
-        for i, (model_name, overall_score, count, last_executed_at) in enumerate(raw_entries):
+        for i, (model_name, overall_score, count, last_executed_at, execution_id) in enumerate(
+            raw_entries
+        ):
             entries.append(
                 LeaderboardEntryRead(
                     rank=offset + i + 1,
@@ -156,12 +160,12 @@ class LeaderboardApplicationService:
                     score=score,
                     rank=None,
                     benchmark_version=None,
-                    execution_id=str(execution_id)
+                    execution_id=str(execution_id),
                 )
             )
 
         bv_ids = list(bv_points.keys())
-        from packages.database.atlas_db.models.authoring import Benchmark, BenchmarkVersion
+        from atlas_db.models.authoring import Benchmark, BenchmarkVersion
 
         # Fetch names and group by benchmark
         bvs = (
@@ -189,7 +193,11 @@ class LeaderboardApplicationService:
         for timestamp, score, rank, target_type, target_id, execution_id in raw_history:
             points.append(
                 TrendPoint(
-                    timestamp=timestamp, score=score, rank=rank, benchmark_version=None, execution_id=str(execution_id)
+                    timestamp=timestamp,
+                    score=score,
+                    rank=rank,
+                    benchmark_version=None,
+                    execution_id=str(execution_id),
                 )
             )
         return points
