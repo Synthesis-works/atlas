@@ -1,0 +1,15 @@
+export const GlassPhysics = {
+  stiffness: 0.12,
+  damping: 0.72,
+  maxSquash: 0.08,
+  speedDivisor: 120,
+  hoverScale: 1.01,
+  liftScale: 1.04,
+  hoverY: -2,
+  magneticGridSize: 40,
+  magneticStrength: 0.15,
+  edgePadding: 24,
+  snapThreshold: 18,
+  maxRotation: 8,
+  shadowLift: 28,
+};
