@@ -5,3 +5,14 @@ node_modules/
 .next/
 pnpm-lock.yaml
 poetry.lock
+
+results/
+logs/
+analysis/
+*.log
+report.md
+.pytest_cache/
+*.pdf
+*.db
+*.db-journal
+.ruff_cache/

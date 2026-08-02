@@ -1,0 +1,15 @@
+id: mbpp
+name: Mostly Basic Python Problems
+version: "1.0"
+source: Google Research
+license: CC-BY-4.0
+citation: "Program Synthesis with Large Language Models (Austin et al. 2021)"
+language: python
+evaluation: execution
+metric: pass@1
+tasks: 974
+tags:
+  - coding
+  - python
+  - generation
+  - basic

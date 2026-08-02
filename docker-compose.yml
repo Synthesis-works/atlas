@@ -1,0 +1,75 @@
+version: '3.8'
+
+x-backend-base: &backend-base
+  build:
+    context: .
+    dockerfile: docker/backend/Dockerfile
+  volumes:
+    - .:/app
+  environment:
+    - ENVIRONMENT=development
+    - DEBUG=true
+    - DATABASE_URL=postgresql://postgres:postgres@db:5432/atlas
+    - CELERY_BROKER_URL=redis://redis:6379/0
+    - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    - JWT_SECRET=dev-secret-key-do-not-use-in-production
+    - LOG_LEVEL=DEBUG
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: atlas
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d atlas"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    <<: *backend-base
+    command: bash -c "python -m alembic -c packages/database/alembic.ini upgrade head && python -m uvicorn apps.backend.main:app --host 0.0.0.0 --port 8000 --reload"
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  worker:
+    <<: *backend-base
+    command: python -m celery -A apps.backend.worker.celery_app worker --loglevel=INFO
+
+  scheduler:
+    <<: *backend-base
+    command: python -m celery -A apps.backend.worker.celery_app beat --loglevel=INFO
+
+
+
+volumes:
+  postgres_data:
+  redis_data:

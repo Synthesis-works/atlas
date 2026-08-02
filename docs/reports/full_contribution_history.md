@@ -1,0 +1,498 @@
+# Full Contribution History: Sujal on Atlas
+
+## Overview Statistics
+- **Total Commits:** 84
+- **Merged PRs (approx):** 11
+- **Lines Added:** 46521
+- **Lines Removed:** 2534
+- **Files Modified:** 670
+- **Documentation Created:** 0
+- **Tests Created:** 0
+- **Routers Added:** 14
+- **Services Added:** 116
+- **Repositories Added:** 16
+- **Database Models Added:** 40
+
+## Top 10 Contributions
+### 1. feat(frontend): initialize Next.js application
+- **Commit:** `13da991` (Date: 2026-07-06)
+- **Technical Difficulty:** High
+- **Estimated Effort:** 7430 lines changed across 32 files.
+- **Architecture Impact:** Affected areas including apps, apps, apps
+- **Why it mattered:** feat(layout): implement responsive sidebar and top navigation feat(theme): configure next-themes and dark mode feat(pages): add dashboard, projects, benchmarks, and settings placeholders
+- **Key Files Changed:**
+  - `apps/web/.gitignore`
+  - `apps/web/.gitkeep`
+  - `apps/web/AGENTS.md`
+  - `apps/web/CLAUDE.md`
+  - `apps/web/README.md`
+
+### 2. release: Atlas Backend v1.0.0
+- **Commit:** `3e5ad30` (Date: 2026-07-17)
+- **Technical Difficulty:** High
+- **Estimated Effort:** 2150 lines changed across 101 files.
+- **Architecture Impact:** Affected areas including .gitignore, README.md, apps
+- **Why it mattered:** Core implementation step.
+- **Key Files Changed:**
+  - `.gitignore`
+  - `README.md`
+  - `apps/backend/adapters/__init__.py`
+  - `apps/backend/adapters/base.py`
+  - `apps/backend/adapters/factory.py`
+
+### 3. chore: Finalize and freeze Evaluation Core (v0.6)
+- **Commit:** `0947b1f` (Date: 2026-07-14)
+- **Technical Difficulty:** High
+- **Estimated Effort:** 3656 lines changed across 63 files.
+- **Architecture Impact:** Affected areas including ARCHITECTURE_DECISIONS.md, CHANGELOG.md, EVALUATION_API_CONTRACT.md
+- **Why it mattered:** Core implementation step.
+- **Key Files Changed:**
+  - `ARCHITECTURE_DECISIONS.md`
+  - `CHANGELOG.md`
+  - `EVALUATION_API_CONTRACT.md`
+  - `FINAL_EVALUATION_REVIEW.md`
+  - `README.md`
+
+### 4. feat: finalize Atlas benchmark framework v1.0
+- **Commit:** `888d251` (Date: 2026-07-11)
+- **Technical Difficulty:** High
+- **Estimated Effort:** 2915 lines changed across 64 files.
+- **Architecture Impact:** Affected areas including .gitignore, docs, docs
+- **Why it mattered:** - HumanEval pipeline - MBPP pipeline - Resumable experiments - Checkpoint system - Experiment registry - Research toolkit - Reports - Prompt genealogy - Repair pipeline
+- **Key Files Changed:**
+  - `.gitignore`
+  - `docs/BENCHMARKS.md`
+  - `docs/RESEARCH_GUIDE.md`
+  - `packages/datasets/importers/humaneval.py`
+  - `packages/datasets/importers/mbpp.py`
+
+### 5. chore: platform review and engineering cleanup (v0.9)
+- **Commit:** `d03b858` (Date: 2026-07-14)
+- **Technical Difficulty:** High
+- **Estimated Effort:** 270 lines changed across 99 files.
+- **Architecture Impact:** Affected areas including .env.example, .github, .github
+- **Why it mattered:** Core implementation step.
+- **Key Files Changed:**
+  - `.env.example`
+  - `.github/.gitkeep`
+  - `.github/ISSUE_TEMPLATE/.gitkeep`
+  - `.github/workflows/.gitkeep`
+  - `.github/workflows/test.yml`
+
+### 6. docs: establish Phase C execution engine architecture baseline
+- **Commit:** `7cdf12d` (Date: 2026-07-20)
+- **Technical Difficulty:** High
+- **Estimated Effort:** 3017 lines changed across 41 files.
+- **Architecture Impact:** Affected areas including apps, apps, apps
+- **Why it mattered:** - Add execution_engine_overview.md - Add Mermaid context/component/sequence diagrams - Document aggregate responsibilities - Document event catalog - Document extension points - Capture ADRs and archi
+- **Key Files Changed:**
+  - `apps/backend/exceptions.py`
+  - `apps/backend/main.py`
+  - `apps/backend/routers/executions.py`
+  - `apps/backend/routers/internal_workers.py`
+  - `apps/backend/worker_auth.py`
+
+### 7. chore: refine platform review based on architectural intent
+- **Commit:** `88c7fc3` (Date: 2026-07-14)
+- **Technical Difficulty:** High
+- **Estimated Effort:** 85 lines changed across 92 files.
+- **Architecture Impact:** Affected areas including .github, .github, .github
+- **Why it mattered:** Core implementation step.
+- **Key Files Changed:**
+  - `.github/.gitkeep`
+  - `.github/ISSUE_TEMPLATE/.gitkeep`
+  - `.github/workflows/.gitkeep`
+  - `IMPACT_REPORT.md`
+  - `apps/admin/.gitkeep`
+
+### 8. feat(ui): implement all frontend interactions, Radix primitives, and centralized mock data
+- **Commit:** `1025577` (Date: 2026-07-06)
+- **Technical Difficulty:** High
+- **Estimated Effort:** 2861 lines changed across 16 files.
+- **Architecture Impact:** Affected areas including apps, apps, apps
+- **Why it mattered:** Core implementation step.
+- **Key Files Changed:**
+  - `apps/web/app/(dashboard)/benchmarks/new/page.tsx`
+  - `apps/web/app/(dashboard)/dashboard/page.tsx`
+  - `apps/web/app/(dashboard)/evaluations/page.tsx`
+  - `apps/web/app/(dashboard)/leaderboards/page.tsx`
+  - `apps/web/app/(dashboard)/projects/page.tsx`
+
+### 9. feat: Implement Benchmark Foundation and LLM Integration (Phase 1 & 2)
+- **Commit:** `7769606` (Date: 2026-07-08)
+- **Technical Difficulty:** High
+- **Estimated Effort:** 1194 lines changed across 49 files.
+- **Architecture Impact:** Affected areas including benchmarks, benchmarks, benchmarks
+- **Why it mattered:** Core implementation step.
+- **Key Files Changed:**
+  - `benchmarks/coding/custom/binary_search.yaml`
+  - `benchmarks/coding/custom/fibonacci.yaml`
+  - `benchmarks/coding/custom/fizzbuzz.yaml`
+  - `benchmarks/coding/custom/palindrome.yaml`
+  - `benchmarks/coding/custom/reverse_string.yaml`
+
+### 10. feat: Implement Benchmark Foundation and LLM Integration (Phase 1 & 2)
+- **Commit:** `f09d387` (Date: 2026-07-08)
+- **Technical Difficulty:** High
+- **Estimated Effort:** 1194 lines changed across 49 files.
+- **Architecture Impact:** Affected areas including benchmarks, benchmarks, benchmarks
+- **Why it mattered:** Core implementation step.
+- **Key Files Changed:**
+  - `benchmarks/coding/custom/binary_search.yaml`
+  - `benchmarks/coding/custom/fibonacci.yaml`
+  - `benchmarks/coding/custom/fizzbuzz.yaml`
+  - `benchmarks/coding/custom/palindrome.yaml`
+  - `benchmarks/coding/custom/reverse_string.yaml`
+
+## Timeline
+- **2026-07-02** | Commit `537e9e2`: Initial commit *(Changed 1 files)*
+- **2026-07-05** | Commit `bb98b5f`: chore: initialize monorepo directory structure for Atlas V1 *(Changed 18 files)*
+- **2026-07-05** | Commit `1e6f03c`: chore: scaffold all remaining subdirectories according to Atlas V1 architecture document *(Changed 39 files)*
+- **2026-07-05** | Commit `8d5cb99`: chore: strict compliance audit and fix missing directories *(Changed 15 files)*
+- **2026-07-05** | Commit `34b0508`: chore: scaffold deep subdirectories found in page 4 of the architectural blueprint *(Changed 21 files)*
+- **2026-07-05** | Commit `90f5004`: Merge branch 'main' of https://github.com/Synthesis-works/atlas into feat/initial-setup *(Changed 0 files)*
+- **2026-07-05** | Commit `4556839`: Merge pull request #1 from Synthesis-works/feat/initial-setup *(Changed 0 files)*
+- **2026-07-06** | Commit `13da991`: feat(frontend): initialize Next.js application *(Changed 32 files)*
+- **2026-07-06** | Commit `e8aa847`: feat(frontend): implement premium Silicon Valley aesthetic and mock data *(Changed 15 files)*
+- **2026-07-06** | Commit `05a78d5`: untracked files on feature/frontend-interaction-audit: 4556839 Merge pull request #1 from Synthesis-works/feat/initial-setup *(Changed 10 files)*
+- **2026-07-06** | Commit `d494e55`: index on feature/frontend-interaction-audit: 4556839 Merge pull request #1 from Synthesis-works/feat/initial-setup *(Changed 0 files)*
+- **2026-07-06** | Commit `c0f82fe`: WIP on feature/frontend-interaction-audit: 4556839 Merge pull request #1 from Synthesis-works/feat/initial-setup *(Changed 0 files)*
+- **2026-07-06** | Commit `1025577`: feat(ui): implement all frontend interactions, Radix primitives, and centralized mock data *(Changed 16 files)*
+- **2026-07-06** | Commit `1e02878`: fix(ui): correct import paths for radix primitives in top-nav *(Changed 1 files)*
+- **2026-07-07** | Commit `3b613ee`: refactor(services): consolidate backend services and remove -service suffix *(Changed 3 files)*
+- **2026-07-07** | Commit `52ee78d`: refactor(apps): remove admin app and add landing, docs-site *(Changed 2 files)*
+- **2026-07-07** | Commit `7820532`: chore(apps/web): scaffold frontend architecture directories *(Changed 22 files)*
+- **2026-07-07** | Commit `ab2e5f0`: docs: expand design and api documentation structure *(Changed 12 files)*
+- **2026-07-07** | Commit `a8261e7`: chore(.github): add missing collaboration templates and files *(Changed 3 files)*
+- **2026-07-07** | Commit `94b2243`: docs: update README paths to reflect Phase 1 restructuring *(Changed 1 files)*
+- **2026-07-07** | Commit `ae1c3ef`: chore: validate and finalize Phase 1 repository structure *(Changed 3 files)*
+- **2026-07-07** | Commit `6274656`: feat(database): implement SQLAlchemy domain models and repository pattern *(Changed 11 files)*
+- **2026-07-07** | Commit `64ed9b1`: feat(database): establish database architecture *(Changed 5 files)*
+- **2026-07-07** | Commit `9216af3`: feat(database): add Alembic migration foundation *(Changed 5 files)*
+- **2026-07-07** | Commit `edf5982`: docs(database): add architecture and ADR documentation *(Changed 2 files)*
+- **2026-07-07** | Commit `cb27dc5`: chore(database): finalize tooling, tests, and documentation *(Changed 17 files)*
+- **2026-07-08** | Commit `7504070`: Merge pull request #2 from Synthesis-works/feature/core-database-foundation *(Changed 0 files)*
+- **2026-07-08** | Commit `7769606`: feat: Implement Benchmark Foundation and LLM Integration (Phase 1 & 2) *(Changed 49 files)*
+- **2026-07-08** | Commit `f926ab5`: feat: Implement Phase 3 Evaluation Pipeline with Plugin Architecture *(Changed 39 files)*
+- **2026-07-09** | Commit `6f89b49`: feat: Implement Phase 4 Dataset Import Layer and Embeddings *(Changed 11 files)*
+- **2026-07-09** | Commit `b3d34d9`: fix: Store raw datasets locally and update importers *(Changed 8 files)*
+- **2026-07-08** | Commit `f09d387`: feat: Implement Benchmark Foundation and LLM Integration (Phase 1 & 2) *(Changed 49 files)*
+- **2026-07-08** | Commit `a4acf06`: feat: Implement Phase 3 Evaluation Pipeline with Plugin Architecture *(Changed 39 files)*
+- **2026-07-09** | Commit `67dffb7`: feat: Implement Phase 4 Dataset Import Layer and Embeddings *(Changed 11 files)*
+- **2026-07-09** | Commit `988c594`: fix: Store raw datasets locally and update importers *(Changed 8 files)*
+- **2026-07-09** | Commit `27ebe3b`: feat: Add TaskState lifecycle to benchmark models *(Changed 2 files)*
+- **2026-07-09** | Commit `6972f2b`: feat: Implement Runtime Models *(Changed 5 files)*
+- **2026-07-09** | Commit `83173b9`: feat: Implement Runtime Exceptions *(Changed 1 files)*
+- **2026-07-09** | Commit `149b037`: feat: Implement modular AST security validators *(Changed 5 files)*
+- **2026-07-09** | Commit `f26d8d9`: feat: Implement Sandbox and Process Monitor *(Changed 4 files)*
+- **2026-07-09** | Commit `f0d7dc4`: feat: Implement Python Runtime and Code Runner *(Changed 5 files)*
+- **2026-07-09** | Commit `1c5cd25`: feat: Implement Runtime Manager and Logging *(Changed 4 files)*
+- **2026-07-09** | Commit `1ff4a88`: feat: Add runtime integration test script *(Changed 1 files)*
+- **2026-07-09** | Commit `2c0d129`: fix: Update test_runtime.py task retrieval and fallback logic *(Changed 1 files)*
+- **2026-07-11** | Commit `888d251`: feat: finalize Atlas benchmark framework v1.0 *(Changed 64 files)*
+- **2026-07-11** | Commit `c9e3b79`: feat: release Atlas Benchmark Framework v1.0 *(Changed 15 files)*
+- **2026-07-11** | Commit `14c2563`: feat: complete v1.0 milestone with Mistral and MBPP monitors *(Changed 6 files)*
+- **2026-07-11** | Commit `ca3a4a5`: fix: monitor_mbpp NoneType crash *(Changed 1 files)*
+- **2026-07-11** | Commit `e8d96ef`: fix: correct pass rate calculation in monitor script *(Changed 1 files)*
+- **2026-07-11** | Commit `309c584`: Merge pull request #5 from Synthesis-works/feature/benchmark-framework-v1 *(Changed 0 files)*
+- **2026-07-11** | Commit `4e21eea`: fix: mbpp test_setup_code injection and unicode progress bar *(Changed 2 files)*
+- **2026-07-11** | Commit `7ea8733`: feat(db): establish stable database foundation architecture v1 *(Changed 17 files)*
+- **2026-07-11** | Commit `3e8f246`: feat(db): apply readiness review architectural refinements *(Changed 10 files)*
+- **2026-07-12** | Commit `12cf89f`: feat: complete Execution Service Core v0.1 *(Changed 26 files)*
+- **2026-07-13** | Commit `f21db9a`: feat(database): add Evaluation schema models and alembic migration *(Changed 2 files)*
+- **2026-07-14** | Commit `0947b1f`: chore: Finalize and freeze Evaluation Core (v0.6) *(Changed 63 files)*
+- **2026-07-14** | Commit `95404c4`: Merge pull request #6 from Synthesis-works/init-execution-service-arch *(Changed 0 files)*
+- **2026-07-14** | Commit `ffa61e2`: feat: complete Reporting subsystem for v0.7 *(Changed 24 files)*
+- **2026-07-14** | Commit `e5dd01d`: Merge pull request #7 from Synthesis-works/init-atlas-reporting-service *(Changed 0 files)*
+- **2026-07-14** | Commit `9199c3e`: feat: complete Dataset subsystem for v0.8 *(Changed 25 files)*
+- **2026-07-14** | Commit `c51c46b`: Merge pull request #8 from Synthesis-works/feature/dataset-service *(Changed 0 files)*
+- **2026-07-14** | Commit `5f9a3dd`: docs: update roadmap for product development phase *(Changed 1 files)*
+- **2026-07-14** | Commit `d03b858`: chore: platform review and engineering cleanup (v0.9) *(Changed 99 files)*
+- **2026-07-14** | Commit `88c7fc3`: chore: refine platform review based on architectural intent *(Changed 92 files)*
+- **2026-07-14** | Commit `a2ae555`: Merge pull request #9 from Synthesis-works/feature/platform-review *(Changed 0 files)*
+- **2026-07-16** | Commit `1801aaa`: feat: complete Slice 2 and Slice 3A (Identity & Authentication) *(Changed 37 files)*
+- **2026-07-16** | Commit `6d631e3`: feat: complete Slice 3 Authz and tests *(Changed 8 files)*
+- **2026-07-17** | Commit `5363dec`: feat: complete Slice 4 Dataset API implementation *(Changed 12 files)*
+- **2026-07-17** | Commit `c1e7715`: feat: complete Slice 5 Benchmark API *(Changed 9 files)*
+- **2026-07-17** | Commit `3e5ad30`: release: Atlas Backend v1.0.0 *(Changed 101 files)*
+- **2026-07-17** | Commit `d0ebfb6`: Merge main into slice-6-execution to resolve conflicts *(Changed 0 files)*
+- **2026-07-17** | Commit `dff60c1`: fix(config): use lowercase booleans in pyproject.toml *(Changed 1 files)*
+- **2026-07-17** | Commit `bafb080`: Merge pull request #10 from Synthesis-works/slice-6-execution *(Changed 0 files)*
+- **2026-07-19** | Commit `6c4c649`: feat(benchmark): implement benchmark service domain layer for slice 1A *(Changed 3 files)*
+- **2026-07-19** | Commit `bfb5845`: feat(benchmark): implement persistence layer for slice 1B *(Changed 6 files)*
+- **2026-07-19** | Commit `6d311c0`: feat(benchmark): implement benchmark CRUD APIs for slice 2 *(Changed 6 files)*
+- **2026-07-19** | Commit `d157c17`: feat(benchmark): implement benchmark versioning for slice 3 *(Changed 8 files)*
+- **2026-07-19** | Commit `4f58095`: feat(benchmark): refactor to Domain Events and implement Lifecycle Actions for Slice 4 *(Changed 5 files)*
+- **2026-07-19** | Commit `0d6bf70`: feat(benchmark): Typed domain events, Dataset relationship integration, RC1 compliance *(Changed 5 files)*
+- **2026-07-20** | Commit `c84415e`: docs: finalize Phase A RC1 release and specs *(Changed 2 files)*
+- **2026-07-20** | Commit `60ab500`: docs: define Phase B Execution product specifications *(Changed 6 files)*
+- **2026-07-20** | Commit `7cdf12d`: docs: establish Phase C execution engine architecture baseline *(Changed 41 files)*
+- **2026-07-20** | Commit `ace7a95`: Merge main into audit-atlas-backend-v1-1 *(Changed 0 files)*
+- **2026-07-20** | Commit `be97d29`: fix(build): configure setuptools package discovery for editable install *(Changed 1 files)*
+
+## Contributions by Category
+### Architecture
+- `1e6f03c`: chore: scaffold all remaining subdirectories according to Atlas V1 architecture document
+- `edf5982`: docs(database): add architecture and ADR documentation
+- `12cf89f`: feat: complete Execution Service Core v0.1
+- `0947b1f`: chore: Finalize and freeze Evaluation Core (v0.6)
+- `ffa61e2`: feat: complete Reporting subsystem for v0.7
+- `9199c3e`: feat: complete Dataset subsystem for v0.8
+- `d03b858`: chore: platform review and engineering cleanup (v0.9)
+- `88c7fc3`: chore: refine platform review based on architectural intent
+- `1801aaa`: feat: complete Slice 2 and Slice 3A (Identity & Authentication)
+- `6d631e3`: feat: complete Slice 3 Authz and tests
+- `7cdf12d`: docs: establish Phase C execution engine architecture baseline
+
+### Database
+- `1e6f03c`: chore: scaffold all remaining subdirectories according to Atlas V1 architecture document
+- `8d5cb99`: chore: strict compliance audit and fix missing directories
+- `34b0508`: chore: scaffold deep subdirectories found in page 4 of the architectural blueprint
+- `13da991`: feat(frontend): initialize Next.js application
+- `e8aa847`: feat(frontend): implement premium Silicon Valley aesthetic and mock data
+- `05a78d5`: untracked files on feature/frontend-interaction-audit: 4556839 Merge pull request #1 from Synthesis-works/feat/initial-setup
+- `1025577`: feat(ui): implement all frontend interactions, Radix primitives, and centralized mock data
+- `ab2e5f0`: docs: expand design and api documentation structure
+- `ae1c3ef`: chore: validate and finalize Phase 1 repository structure
+- `6274656`: feat(database): implement SQLAlchemy domain models and repository pattern
+- `64ed9b1`: feat(database): establish database architecture
+- `9216af3`: feat(database): add Alembic migration foundation
+- `cb27dc5`: chore(database): finalize tooling, tests, and documentation
+- `7769606`: feat: Implement Benchmark Foundation and LLM Integration (Phase 1 & 2)
+- `f926ab5`: feat: Implement Phase 3 Evaluation Pipeline with Plugin Architecture
+- `6f89b49`: feat: Implement Phase 4 Dataset Import Layer and Embeddings
+- `f09d387`: feat: Implement Benchmark Foundation and LLM Integration (Phase 1 & 2)
+- `a4acf06`: feat: Implement Phase 3 Evaluation Pipeline with Plugin Architecture
+- `67dffb7`: feat: Implement Phase 4 Dataset Import Layer and Embeddings
+- `27ebe3b`: feat: Add TaskState lifecycle to benchmark models
+- `6972f2b`: feat: Implement Runtime Models
+- `f26d8d9`: feat: Implement Sandbox and Process Monitor
+- `888d251`: feat: finalize Atlas benchmark framework v1.0
+- `7ea8733`: feat(db): establish stable database foundation architecture v1
+- `3e8f246`: feat(db): apply readiness review architectural refinements
+- `12cf89f`: feat: complete Execution Service Core v0.1
+- `f21db9a`: feat(database): add Evaluation schema models and alembic migration
+- `0947b1f`: chore: Finalize and freeze Evaluation Core (v0.6)
+- `ffa61e2`: feat: complete Reporting subsystem for v0.7
+- `9199c3e`: feat: complete Dataset subsystem for v0.8
+- `d03b858`: chore: platform review and engineering cleanup (v0.9)
+- `88c7fc3`: chore: refine platform review based on architectural intent
+- `1801aaa`: feat: complete Slice 2 and Slice 3A (Identity & Authentication)
+- `6d631e3`: feat: complete Slice 3 Authz and tests
+- `5363dec`: feat: complete Slice 4 Dataset API implementation
+- `c1e7715`: feat: complete Slice 5 Benchmark API
+- `3e5ad30`: release: Atlas Backend v1.0.0
+- `6c4c649`: feat(benchmark): implement benchmark service domain layer for slice 1A
+- `bfb5845`: feat(benchmark): implement persistence layer for slice 1B
+- `6d311c0`: feat(benchmark): implement benchmark CRUD APIs for slice 2
+- `d157c17`: feat(benchmark): implement benchmark versioning for slice 3
+- `4f58095`: feat(benchmark): refactor to Domain Events and implement Lifecycle Actions for Slice 4
+- `0d6bf70`: feat(benchmark): Typed domain events, Dataset relationship integration, RC1 compliance
+- `60ab500`: docs: define Phase B Execution product specifications
+- `7cdf12d`: docs: establish Phase C execution engine architecture baseline
+
+### Backend
+- `bb98b5f`: chore: initialize monorepo directory structure for Atlas V1
+- `1e6f03c`: chore: scaffold all remaining subdirectories according to Atlas V1 architecture document
+- `8d5cb99`: chore: strict compliance audit and fix missing directories
+- `34b0508`: chore: scaffold deep subdirectories found in page 4 of the architectural blueprint
+- `3b613ee`: refactor(services): consolidate backend services and remove -service suffix
+- `7820532`: chore(apps/web): scaffold frontend architecture directories
+- `ab2e5f0`: docs: expand design and api documentation structure
+- `6274656`: feat(database): implement SQLAlchemy domain models and repository pattern
+- `cb27dc5`: chore(database): finalize tooling, tests, and documentation
+- `7769606`: feat: Implement Benchmark Foundation and LLM Integration (Phase 1 & 2)
+- `f09d387`: feat: Implement Benchmark Foundation and LLM Integration (Phase 1 & 2)
+- `149b037`: feat: Implement modular AST security validators
+- `c9e3b79`: feat: release Atlas Benchmark Framework v1.0
+- `14c2563`: feat: complete v1.0 milestone with Mistral and MBPP monitors
+- `7ea8733`: feat(db): establish stable database foundation architecture v1
+- `3e8f246`: feat(db): apply readiness review architectural refinements
+- `12cf89f`: feat: complete Execution Service Core v0.1
+- `0947b1f`: chore: Finalize and freeze Evaluation Core (v0.6)
+- `ffa61e2`: feat: complete Reporting subsystem for v0.7
+- `9199c3e`: feat: complete Dataset subsystem for v0.8
+- `d03b858`: chore: platform review and engineering cleanup (v0.9)
+- `88c7fc3`: chore: refine platform review based on architectural intent
+- `1801aaa`: feat: complete Slice 2 and Slice 3A (Identity & Authentication)
+- `6d631e3`: feat: complete Slice 3 Authz and tests
+- `5363dec`: feat: complete Slice 4 Dataset API implementation
+- `c1e7715`: feat: complete Slice 5 Benchmark API
+- `3e5ad30`: release: Atlas Backend v1.0.0
+- `6c4c649`: feat(benchmark): implement benchmark service domain layer for slice 1A
+- `bfb5845`: feat(benchmark): implement persistence layer for slice 1B
+- `6d311c0`: feat(benchmark): implement benchmark CRUD APIs for slice 2
+- `d157c17`: feat(benchmark): implement benchmark versioning for slice 3
+- `4f58095`: feat(benchmark): refactor to Domain Events and implement Lifecycle Actions for Slice 4
+- `0d6bf70`: feat(benchmark): Typed domain events, Dataset relationship integration, RC1 compliance
+- `60ab500`: docs: define Phase B Execution product specifications
+- `7cdf12d`: docs: establish Phase C execution engine architecture baseline
+
+### Benchmarks
+- `bb98b5f`: chore: initialize monorepo directory structure for Atlas V1
+- `1e6f03c`: chore: scaffold all remaining subdirectories according to Atlas V1 architecture document
+- `8d5cb99`: chore: strict compliance audit and fix missing directories
+- `34b0508`: chore: scaffold deep subdirectories found in page 4 of the architectural blueprint
+- `13da991`: feat(frontend): initialize Next.js application
+- `e8aa847`: feat(frontend): implement premium Silicon Valley aesthetic and mock data
+- `1025577`: feat(ui): implement all frontend interactions, Radix primitives, and centralized mock data
+- `3b613ee`: refactor(services): consolidate backend services and remove -service suffix
+- `7820532`: chore(apps/web): scaffold frontend architecture directories
+- `6274656`: feat(database): implement SQLAlchemy domain models and repository pattern
+- `cb27dc5`: chore(database): finalize tooling, tests, and documentation
+- `7769606`: feat: Implement Benchmark Foundation and LLM Integration (Phase 1 & 2)
+- `f926ab5`: feat: Implement Phase 3 Evaluation Pipeline with Plugin Architecture
+- `6f89b49`: feat: Implement Phase 4 Dataset Import Layer and Embeddings
+- `b3d34d9`: fix: Store raw datasets locally and update importers
+- `f09d387`: feat: Implement Benchmark Foundation and LLM Integration (Phase 1 & 2)
+- `a4acf06`: feat: Implement Phase 3 Evaluation Pipeline with Plugin Architecture
+- `67dffb7`: feat: Implement Phase 4 Dataset Import Layer and Embeddings
+- `988c594`: fix: Store raw datasets locally and update importers
+- `27ebe3b`: feat: Add TaskState lifecycle to benchmark models
+- `888d251`: feat: finalize Atlas benchmark framework v1.0
+- `c9e3b79`: feat: release Atlas Benchmark Framework v1.0
+- `14c2563`: feat: complete v1.0 milestone with Mistral and MBPP monitors
+- `7ea8733`: feat(db): establish stable database foundation architecture v1
+- `3e8f246`: feat(db): apply readiness review architectural refinements
+- `f21db9a`: feat(database): add Evaluation schema models and alembic migration
+- `0947b1f`: chore: Finalize and freeze Evaluation Core (v0.6)
+- `9199c3e`: feat: complete Dataset subsystem for v0.8
+- `d03b858`: chore: platform review and engineering cleanup (v0.9)
+- `88c7fc3`: chore: refine platform review based on architectural intent
+- `5363dec`: feat: complete Slice 4 Dataset API implementation
+- `c1e7715`: feat: complete Slice 5 Benchmark API
+- `3e5ad30`: release: Atlas Backend v1.0.0
+- `6c4c649`: feat(benchmark): implement benchmark service domain layer for slice 1A
+- `bfb5845`: feat(benchmark): implement persistence layer for slice 1B
+- `6d311c0`: feat(benchmark): implement benchmark CRUD APIs for slice 2
+- `d157c17`: feat(benchmark): implement benchmark versioning for slice 3
+- `4f58095`: feat(benchmark): refactor to Domain Events and implement Lifecycle Actions for Slice 4
+- `0d6bf70`: feat(benchmark): Typed domain events, Dataset relationship integration, RC1 compliance
+- `7cdf12d`: docs: establish Phase C execution engine architecture baseline
+
+### Execution Engine
+- `bb98b5f`: chore: initialize monorepo directory structure for Atlas V1
+- `3b613ee`: refactor(services): consolidate backend services and remove -service suffix
+- `6274656`: feat(database): implement SQLAlchemy domain models and repository pattern
+- `cb27dc5`: chore(database): finalize tooling, tests, and documentation
+- `6972f2b`: feat: Implement Runtime Models
+- `888d251`: feat: finalize Atlas benchmark framework v1.0
+- `4e21eea`: fix: mbpp test_setup_code injection and unicode progress bar
+- `7ea8733`: feat(db): establish stable database foundation architecture v1
+- `3e8f246`: feat(db): apply readiness review architectural refinements
+- `12cf89f`: feat: complete Execution Service Core v0.1
+- `0947b1f`: chore: Finalize and freeze Evaluation Core (v0.6)
+- `ffa61e2`: feat: complete Reporting subsystem for v0.7
+- `d03b858`: chore: platform review and engineering cleanup (v0.9)
+- `88c7fc3`: chore: refine platform review based on architectural intent
+- `3e5ad30`: release: Atlas Backend v1.0.0
+- `d157c17`: feat(benchmark): implement benchmark versioning for slice 3
+- `4f58095`: feat(benchmark): refactor to Domain Events and implement Lifecycle Actions for Slice 4
+- `0d6bf70`: feat(benchmark): Typed domain events, Dataset relationship integration, RC1 compliance
+- `c84415e`: docs: finalize Phase A RC1 release and specs
+- `60ab500`: docs: define Phase B Execution product specifications
+- `7cdf12d`: docs: establish Phase C execution engine architecture baseline
+
+### Documentation
+- `537e9e2`: Initial commit
+- `bb98b5f`: chore: initialize monorepo directory structure for Atlas V1
+- `1e6f03c`: chore: scaffold all remaining subdirectories according to Atlas V1 architecture document
+- `8d5cb99`: chore: strict compliance audit and fix missing directories
+- `13da991`: feat(frontend): initialize Next.js application
+- `ab2e5f0`: docs: expand design and api documentation structure
+- `a8261e7`: chore(.github): add missing collaboration templates and files
+- `94b2243`: docs: update README paths to reflect Phase 1 restructuring
+- `ae1c3ef`: chore: validate and finalize Phase 1 repository structure
+- `edf5982`: docs(database): add architecture and ADR documentation
+- `cb27dc5`: chore(database): finalize tooling, tests, and documentation
+- `b3d34d9`: fix: Store raw datasets locally and update importers
+- `988c594`: fix: Store raw datasets locally and update importers
+- `888d251`: feat: finalize Atlas benchmark framework v1.0
+- `c9e3b79`: feat: release Atlas Benchmark Framework v1.0
+- `7ea8733`: feat(db): establish stable database foundation architecture v1
+- `3e8f246`: feat(db): apply readiness review architectural refinements
+- `12cf89f`: feat: complete Execution Service Core v0.1
+- `0947b1f`: chore: Finalize and freeze Evaluation Core (v0.6)
+- `ffa61e2`: feat: complete Reporting subsystem for v0.7
+- `9199c3e`: feat: complete Dataset subsystem for v0.8
+- `5f9a3dd`: docs: update roadmap for product development phase
+- `d03b858`: chore: platform review and engineering cleanup (v0.9)
+- `88c7fc3`: chore: refine platform review based on architectural intent
+- `1801aaa`: feat: complete Slice 2 and Slice 3A (Identity & Authentication)
+- `6d631e3`: feat: complete Slice 3 Authz and tests
+- `3e5ad30`: release: Atlas Backend v1.0.0
+- `c84415e`: docs: finalize Phase A RC1 release and specs
+- `60ab500`: docs: define Phase B Execution product specifications
+- `7cdf12d`: docs: establish Phase C execution engine architecture baseline
+
+### Testing
+- `bb98b5f`: chore: initialize monorepo directory structure for Atlas V1
+- `8d5cb99`: chore: strict compliance audit and fix missing directories
+- `34b0508`: chore: scaffold deep subdirectories found in page 4 of the architectural blueprint
+- `cb27dc5`: chore(database): finalize tooling, tests, and documentation
+- `7769606`: feat: Implement Benchmark Foundation and LLM Integration (Phase 1 & 2)
+- `f926ab5`: feat: Implement Phase 3 Evaluation Pipeline with Plugin Architecture
+- `6f89b49`: feat: Implement Phase 4 Dataset Import Layer and Embeddings
+- `f09d387`: feat: Implement Benchmark Foundation and LLM Integration (Phase 1 & 2)
+- `a4acf06`: feat: Implement Phase 3 Evaluation Pipeline with Plugin Architecture
+- `67dffb7`: feat: Implement Phase 4 Dataset Import Layer and Embeddings
+- `f0d7dc4`: feat: Implement Python Runtime and Code Runner
+- `1ff4a88`: feat: Add runtime integration test script
+- `2c0d129`: fix: Update test_runtime.py task retrieval and fallback logic
+- `888d251`: feat: finalize Atlas benchmark framework v1.0
+- `7ea8733`: feat(db): establish stable database foundation architecture v1
+- `12cf89f`: feat: complete Execution Service Core v0.1
+- `0947b1f`: chore: Finalize and freeze Evaluation Core (v0.6)
+- `ffa61e2`: feat: complete Reporting subsystem for v0.7
+- `9199c3e`: feat: complete Dataset subsystem for v0.8
+- `d03b858`: chore: platform review and engineering cleanup (v0.9)
+- `88c7fc3`: chore: refine platform review based on architectural intent
+- `1801aaa`: feat: complete Slice 2 and Slice 3A (Identity & Authentication)
+- `6d631e3`: feat: complete Slice 3 Authz and tests
+- `5363dec`: feat: complete Slice 4 Dataset API implementation
+- `c1e7715`: feat: complete Slice 5 Benchmark API
+- `3e5ad30`: release: Atlas Backend v1.0.0
+- `6c4c649`: feat(benchmark): implement benchmark service domain layer for slice 1A
+- `bfb5845`: feat(benchmark): implement persistence layer for slice 1B
+- `6d311c0`: feat(benchmark): implement benchmark CRUD APIs for slice 2
+- `d157c17`: feat(benchmark): implement benchmark versioning for slice 3
+- `4f58095`: feat(benchmark): refactor to Domain Events and implement Lifecycle Actions for Slice 4
+- `7cdf12d`: docs: establish Phase C execution engine architecture baseline
+
+### Refactoring
+- `3b613ee`: refactor(services): consolidate backend services and remove -service suffix
+- `52ee78d`: refactor(apps): remove admin app and add landing, docs-site
+- `d03b858`: chore: platform review and engineering cleanup (v0.9)
+- `4f58095`: feat(benchmark): refactor to Domain Events and implement Lifecycle Actions for Slice 4
+
+### DevOps
+- `bb98b5f`: chore: initialize monorepo directory structure for Atlas V1
+- `8d5cb99`: chore: strict compliance audit and fix missing directories
+- `34b0508`: chore: scaffold deep subdirectories found in page 4 of the architectural blueprint
+- `a8261e7`: chore(.github): add missing collaboration templates and files
+- `ae1c3ef`: chore: validate and finalize Phase 1 repository structure
+- `d03b858`: chore: platform review and engineering cleanup (v0.9)
+- `88c7fc3`: chore: refine platform review based on architectural intent
+- `dff60c1`: fix(config): use lowercase booleans in pyproject.toml
+- `be97d29`: fix(build): configure setuptools package discovery for editable install
+
+### Other
+- `90f5004`: Merge branch 'main' of https://github.com/Synthesis-works/atlas into feat/initial-setup
+- `4556839`: Merge pull request #1 from Synthesis-works/feat/initial-setup
+- `d494e55`: index on feature/frontend-interaction-audit: 4556839 Merge pull request #1 from Synthesis-works/feat/initial-setup
+- `c0f82fe`: WIP on feature/frontend-interaction-audit: 4556839 Merge pull request #1 from Synthesis-works/feat/initial-setup
+- `1e02878`: fix(ui): correct import paths for radix primitives in top-nav
+- `7504070`: Merge pull request #2 from Synthesis-works/feature/core-database-foundation
+- `83173b9`: feat: Implement Runtime Exceptions
+- `1c5cd25`: feat: Implement Runtime Manager and Logging
+- `ca3a4a5`: fix: monitor_mbpp NoneType crash
+- `e8d96ef`: fix: correct pass rate calculation in monitor script
+- `309c584`: Merge pull request #5 from Synthesis-works/feature/benchmark-framework-v1
+- `95404c4`: Merge pull request #6 from Synthesis-works/init-execution-service-arch
+- `e5dd01d`: Merge pull request #7 from Synthesis-works/init-atlas-reporting-service
+- `c51c46b`: Merge pull request #8 from Synthesis-works/feature/dataset-service
+- `a2ae555`: Merge pull request #9 from Synthesis-works/feature/platform-review
+- `d0ebfb6`: Merge main into slice-6-execution to resolve conflicts
+- `bafb080`: Merge pull request #10 from Synthesis-works/slice-6-execution
+- `ace7a95`: Merge main into audit-atlas-backend-v1-1
+

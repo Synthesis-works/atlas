@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["apps*", "packages*", "services*", "sdk*", "cli*"]
+
+[project]
+name = "atlas"
+version = "0.9.0"
+description = "Atlas Evaluation Platform"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.11.0",
+    "psycopg2-binary>=2.9.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "structlog>=23.1.0",
+    "pyjwt>=2.8.0",
+    "celery>=5.3.0",
+    "asyncpg>=0.28.0",
+    "email-validator>=2.0.0",
+    "pwdlib[argon2]>=0.2.0",
+    "python-multipart>=0.0.6",
+    "redis>=8.0.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    "httpx>=0.25.0"
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
+ignore = ["E501", "B008", "E402", "SIM108", "F841", "W291", "W293", "N806", "N802", "B904", "E711", "UP042", "B007", "N818", "SIM105", "B905", "E741", "SIM102", "F401", "SIM103", "SIM210", "I001", "UP035", "UP045", "F821", "F403", "F811", "N805", "SIM101"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --cov=packages --cov=services"
+testpaths = [
+    "tests",
+    "packages/database/tests",
+    "services/dataset/tests",
+    "services/report/tests"
+]
+pythonpath = [
+    ".",
+    "packages",
+    "packages/database",
+    "services"
+]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+explicit_package_bases = true
+namespace_packages = true
+mypy_path = "."

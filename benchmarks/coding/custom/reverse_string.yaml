@@ -1,0 +1,34 @@
+metadata:
+  benchmark_id: coding-reverse-string-001
+  name: Reverse String
+  description: A benchmark to test string reversal capability.
+  author: Atlas Foundation Team
+  version: 1.0.0
+  license: MIT
+  difficulty: easy
+  category: coding
+  tags:
+  - string
+  - basics
+config:
+  timeout: 5
+tasks:
+- task_id: task-reverse-1
+  title: Reverse basic string
+  description: Write a function to reverse a string.
+  input: hello
+  expected_output: olleh
+  hidden_tests:
+  - input: world
+    expected_output: dlrow
+  constraints:
+    time_limit: 1
+    memory_limit: 128
+  visibility: public
+  evaluation:
+    extractor: noop
+    normalizer: lowercase
+    judge: exact_match
+    metrics:
+    - accuracy
+    - latency

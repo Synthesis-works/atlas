@@ -1,0 +1,16 @@
+{
+  "id": "4abf0b7b-6f95-4f43-8180-e20dbd5f88d3",
+  "benchmark_id": "coding-palindrome-001",
+  "task_id": "task-palindrome-1",
+  "provider": "ollama",
+  "model": "qwen2.5-coder:1.5b",
+  "judge": "exact_match",
+  "status": "PASS",
+  "expected": "True",
+  "actual": "true",
+  "normalized_output": "true",
+  "latency_ms": 1993,
+  "score": 1.0,
+  "confidence": 1.0,
+  "timestamp": "2026-07-08T20:33:38.700434"
+}
