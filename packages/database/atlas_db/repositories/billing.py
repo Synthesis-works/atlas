@@ -34,7 +34,7 @@ class BillingRepository:
     def list_active_products_with_prices(self) -> Sequence[Product]:
         stmt = (
             select(Product)
-            .where(Product.is_active == True)
+            .where(Product.is_active)
         )
         return self.session.scalars(stmt).all()
 

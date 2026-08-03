@@ -40,7 +40,7 @@ class ProductResponse(BaseModel):
     name: str
     description: Optional[str]
     is_active: bool
-    plans: List[PlanResponse] = Field(default_factory=list)
+    plans: list[PlanResponse] = Field(default_factory=list)
 
     class Config:
         from_attributes = True

@@ -23,7 +23,7 @@ from services.billing.service import BillingService
 router = APIRouter(prefix="/billing", tags=["Billing"])
 
 
-@router.get("/plans", response_model=List[ProductResponse])
+@router.get("/plans", response_model=list[ProductResponse])
 def get_plans(db: Session = Depends(get_db)):
     """
     List all active products and their prices/plans.
@@ -116,21 +116,21 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/subscriptions", response_model=List[SubscriptionResponse])
+@router.get("/subscriptions", response_model=list[SubscriptionResponse])
 def get_subscriptions(db: Session = Depends(get_db)):
     repo = BillingRepository(db)
     org_id = uuid.uuid4() # Mock org id
     return repo.get_active_subscriptions_for_org(org_id)
 
 
-@router.get("/invoices", response_model=List[InvoiceResponse])
+@router.get("/invoices", response_model=list[InvoiceResponse])
 def get_invoices(db: Session = Depends(get_db)):
     repo = BillingRepository(db)
     org_id = uuid.uuid4() # Mock org id
     return repo.list_invoices_for_org(org_id)
 
 
-@router.get("/payments", response_model=List[PaymentResponse])
+@router.get("/payments", response_model=list[PaymentResponse])
 def get_payments(db: Session = Depends(get_db)):
     repo = BillingRepository(db)
     org_id = uuid.uuid4() # Mock org id

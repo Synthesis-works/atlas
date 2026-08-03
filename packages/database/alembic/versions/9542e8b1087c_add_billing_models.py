@@ -14,9 +14,9 @@ from sqlalchemy.dialects import sqlite
 
 # revision identifiers, used by Alembic.
 revision: str = '9542e8b1087c'
-down_revision: Union[str, Sequence[str], None] = '52ff82792e6a'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = '52ff82792e6a'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
