@@ -40,6 +40,7 @@ def compile_jsonb_sqlite(type_, compiler, **kw):
 # for 'autogenerate' support
 # from myapp import mymodel
 from atlas_db.models import *
+
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 

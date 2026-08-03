@@ -4,9 +4,11 @@ from pydantic import BaseModel
 import uuid
 from decimal import Decimal
 
+
 class CheckoutSessionResult(BaseModel):
     session_id: str
     url: str
+
 
 class PaymentGateway(abc.ABC):
     """

@@ -4,6 +4,7 @@ from services.billing.gateways.base import PaymentGateway
 from services.billing.gateways.stripe_provider import StripeGateway
 from services.billing.gateways.razorpay_provider import RazorpayGateway
 
+
 class GatewayRegistry:
     """
     Registry to manage active payment gateways.

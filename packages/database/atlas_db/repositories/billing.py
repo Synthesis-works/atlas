@@ -19,6 +19,7 @@ from atlas_db.models.billing import (
     UsageRecord,
 )
 
+
 class BillingRepository:
     """
     Repository for all billing related data access operations.
@@ -32,10 +33,7 @@ class BillingRepository:
         return self.session.get(Product, product_id)
 
     def list_active_products_with_prices(self) -> Sequence[Product]:
-        stmt = (
-            select(Product)
-            .where(Product.is_active)
-        )
+        stmt = select(Product).where(Product.is_active)
         return self.session.scalars(stmt).all()
 
     def get_price(self, price_id: uuid.UUID) -> Price | None:
@@ -55,13 +53,14 @@ class BillingRepository:
         return self.session.get(Subscription, subscription_id)
 
     def get_subscription_by_provider_id(self, provider_subscription_id: str) -> Subscription | None:
-        stmt = select(Subscription).where(Subscription.provider_subscription_id == provider_subscription_id)
+        stmt = select(Subscription).where(
+            Subscription.provider_subscription_id == provider_subscription_id
+        )
         return self.session.scalars(stmt).first()
 
     def get_active_subscriptions_for_org(self, org_id: uuid.UUID) -> Sequence[Subscription]:
         stmt = select(Subscription).where(
-            Subscription.org_id == org_id,
-            Subscription.status.in_(["active", "trialing"])
+            Subscription.org_id == org_id, Subscription.status.in_(["active", "trialing"])
         )
         return self.session.scalars(stmt).all()
 
@@ -70,7 +69,7 @@ class BillingRepository:
         self.session.add(invoice)
         self.session.flush()
         return invoice
-        
+
     def get_invoice_by_provider_id(self, provider_invoice_id: str) -> Invoice | None:
         stmt = select(Invoice).where(Invoice.provider_invoice_id == provider_invoice_id)
         return self.session.scalars(stmt).first()

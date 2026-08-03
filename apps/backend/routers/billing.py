@@ -11,7 +11,7 @@ from apps.backend.schemas.billing import (
     ProductResponse,
     SubscriptionResponse,
     InvoiceResponse,
-    PaymentResponse
+    PaymentResponse,
 )
 from atlas_db.models.billing import PaymentProvider
 from atlas_db.repositories.billing import BillingRepository
@@ -31,19 +31,21 @@ def get_plans(db: Session = Depends(get_db)):
     repo = BillingRepository(db)
     # Note: SQLAlchemy returns mapped instances. Using Pydantic from_attributes works easily.
     products = repo.list_active_products_with_prices()
-    
-    # We need to map products and their nested prices correctly. 
+
+    # We need to map products and their nested prices correctly.
     # Because of the relationship, Pydantic will extract `prices` but the schema calls it `plans`.
     # Let's map it manually or adjust the schema. We'll map manually for simplicity.
     results = []
     for prod in products:
-        results.append(ProductResponse(
-            id=prod.id,
-            name=prod.name,
-            description=prod.description,
-            is_active=prod.is_active,
-            plans=prod.prices
-        ))
+        results.append(
+            ProductResponse(
+                id=prod.id,
+                name=prod.name,
+                description=prod.description,
+                is_active=prod.is_active,
+                plans=prod.prices,
+            )
+        )
     return results
 
 
@@ -55,8 +57,8 @@ def checkout(request: CheckoutRequest, db: Session = Depends(get_db)):
     For this scaffold, we will mock the org_id if not present in context.
     """
     # Mocking org_id for compilation. In production: org_id = current_user.org_id
-    org_id = uuid.uuid4() 
-    
+    org_id = uuid.uuid4()
+
     try:
         service = BillingService(db)
         result = service.create_checkout_session(
@@ -65,7 +67,7 @@ def checkout(request: CheckoutRequest, db: Session = Depends(get_db)):
             provider=request.provider,
             success_url=request.success_url,
             cancel_url=request.cancel_url,
-            idempotency_key=request.idempotency_key
+            idempotency_key=request.idempotency_key,
         )
         return result
     except NotImplementedError as e:
@@ -81,10 +83,10 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     """
     payload = await request.body()
     signature = request.headers.get("stripe-signature")
-    
+
     if not signature:
         raise HTTPException(status_code=400, detail="Missing signature")
-        
+
     try:
         service = BillingService(db)
         service.process_webhook(PaymentProvider.STRIPE, payload, signature)
@@ -102,10 +104,10 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
     """
     payload = await request.body()
     signature = request.headers.get("X-Razorpay-Signature")
-    
+
     if not signature:
         raise HTTPException(status_code=400, detail="Missing signature")
-        
+
     try:
         service = BillingService(db)
         service.process_webhook(PaymentProvider.RAZORPAY, payload, signature)
@@ -119,19 +121,19 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
 @router.get("/subscriptions", response_model=list[SubscriptionResponse])
 def get_subscriptions(db: Session = Depends(get_db)):
     repo = BillingRepository(db)
-    org_id = uuid.uuid4() # Mock org id
+    org_id = uuid.uuid4()  # Mock org id
     return repo.get_active_subscriptions_for_org(org_id)
 
 
 @router.get("/invoices", response_model=list[InvoiceResponse])
 def get_invoices(db: Session = Depends(get_db)):
     repo = BillingRepository(db)
-    org_id = uuid.uuid4() # Mock org id
+    org_id = uuid.uuid4()  # Mock org id
     return repo.list_invoices_for_org(org_id)
 
 
 @router.get("/payments", response_model=list[PaymentResponse])
 def get_payments(db: Session = Depends(get_db)):
     repo = BillingRepository(db)
-    org_id = uuid.uuid4() # Mock org id
+    org_id = uuid.uuid4()  # Mock org id
     return repo.list_payments_for_org(org_id)

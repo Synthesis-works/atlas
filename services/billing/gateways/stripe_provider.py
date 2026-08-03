@@ -11,6 +11,7 @@ from services.billing.gateways.base import CheckoutSessionResult, PaymentGateway
 
 stripe.api_key = settings.stripe_api_key
 
+
 class StripeGateway(PaymentGateway):
     def create_checkout_session(
         self,
@@ -23,7 +24,7 @@ class StripeGateway(PaymentGateway):
     ) -> CheckoutSessionResult:
         # If price_id exists on Stripe, we use it directly (e.g. for subscriptions).
         # Otherwise, we create a one-time price dynamically or use line_items.
-        
+
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             line_items=[
@@ -32,18 +33,13 @@ class StripeGateway(PaymentGateway):
                     "quantity": 1,
                 }
             ],
-            mode="subscription" if "recurring" in price_id else "payment", # simplified logic
+            mode="subscription" if "recurring" in price_id else "payment",  # simplified logic
             success_url=success_url,
             cancel_url=cancel_url,
             client_reference_id=str(org_id),
-            metadata={
-                "org_id": str(org_id)
-            }
+            metadata={"org_id": str(org_id)},
         )
-        return CheckoutSessionResult(
-            session_id=session.id,
-            url=session.url
-        )
+        return CheckoutSessionResult(session_id=session.id, url=session.url)
 
     def verify_webhook_signature(
         self,
@@ -52,9 +48,7 @@ class StripeGateway(PaymentGateway):
     ) -> dict[str, Any]:
         webhook_secret = settings.stripe_webhook_secret
         try:
-            event = stripe.Webhook.construct_event(
-                payload, signature, webhook_secret
-            )
+            event = stripe.Webhook.construct_event(payload, signature, webhook_secret)
             return event
         except ValueError as e:
             raise ValueError("Invalid payload") from e
@@ -72,10 +66,7 @@ class StripeGateway(PaymentGateway):
         try:
             # Stripe amounts are in cents
             amount_cents = int(amount * 100)
-            stripe.Refund.create(
-                payment_intent=payment_id,
-                amount=amount_cents
-            )
+            stripe.Refund.create(payment_intent=payment_id, amount=amount_cents)
             return True
         except Exception:
             return False

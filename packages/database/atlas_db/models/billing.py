@@ -92,9 +92,7 @@ class Price(Base, BaseMixin):
     billing_cycle: Mapped[BillingCycle] = mapped_column(
         Enum(BillingCycle, name="billing_cycle"), nullable=False
     )
-    provider_price_id: Mapped[str | None] = mapped_column(
-        String(255), nullable=True, index=True
-    )
+    provider_price_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     product: Mapped["Product"] = relationship("Product", back_populates="prices")
@@ -174,9 +172,7 @@ class Invoice(Base, BaseMixin):
     provider: Mapped[PaymentProvider | None] = mapped_column(
         Enum(PaymentProvider, name="payment_provider"), nullable=True
     )
-    provider_invoice_id: Mapped[str | None] = mapped_column(
-        String(255), nullable=True, index=True
-    )
+    provider_invoice_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     issued_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, nullable=False
     )
@@ -207,13 +203,9 @@ class Payment(Base, BaseMixin):
     provider: Mapped[PaymentProvider] = mapped_column(
         Enum(PaymentProvider, name="payment_provider"), nullable=False
     )
-    provider_payment_id: Mapped[str | None] = mapped_column(
-        String(255), nullable=True, index=True
-    )
+    provider_payment_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     provider_order_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
-    provider_customer_id: Mapped[str | None] = mapped_column(
-        String(255), nullable=True, index=True
-    )
+    provider_customer_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     metadata_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True)
 
@@ -283,7 +275,9 @@ class WebhookEvent(Base, BaseMixin):
     __tablename__ = "webhook_events"
 
     __table_args__ = (
-        UniqueConstraint("provider", "provider_event_id", name="uq_webhook_event_provider_event_id"),
+        UniqueConstraint(
+            "provider", "provider_event_id", name="uq_webhook_event_provider_event_id"
+        ),
     )
 
     provider: Mapped[PaymentProvider] = mapped_column(
