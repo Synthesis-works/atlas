@@ -4,7 +4,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
-from apps.backend.core.dependencies import get_db
+from apps.backend.dependencies import get_db_session as get_db
 from apps.backend.schemas.billing import (
     CheckoutRequest,
     CheckoutResponse,
