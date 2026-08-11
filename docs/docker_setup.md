@@ -52,8 +52,12 @@ docker-compose -f docker-compose.prod.yml up -d --build
 - **Migrations Not Running**: The API container attempts to run `python -m alembic upgrade head` on startup. If this fails, view the `api` logs to diagnose syntax errors in models.
 - **Code Changes Not Reflecting**: Ensure you are using `docker-compose.yml` (and not `prod.yml`) as it contains the `volumes: - .:/app` binding.
 
-## Development Workflow
-1. Start the stack: `docker-compose up`
-2. Access the API Docs: `http://localhost:8000/docs`
-3. Access the Frontend: `http://localhost:3000`
-4. Code edits to Python files will auto-reload the API via `uvicorn --reload`.
+## Canonical Local Frontend Development
+
+**Canonical Repository:** `C:\Users\Sujal\.gemini\antigravity\worktrees\atlas\wire_real_llm_adapter`
+**Frontend Directory:** `apps/landing`
+**Dev Command:** `npm --prefix apps/landing run dev`
+**Canonical Dev URL:** `http://127.0.0.1:5173`
+**Diagnostic Endpoint:** `http://127.0.0.1:5173/__atlas_dev`
+
+> **IMPORTANT:** Do not use `localhost` or launch secondary Atlas checkouts on port `5173`. Port 5173 conflict checks automatically block secondary servers from starting on conflicting paths.
