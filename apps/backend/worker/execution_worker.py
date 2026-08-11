@@ -43,20 +43,32 @@ class ExecutionWorker:
             )
 
     def process(self, execution_id: uuid.UUID, correlation_id: str = None):
-        execution = self.db.query(Execution).filter(Execution.id == execution_id).first()
+        from packages.execution_engine.persistence.models import ExecutionModel
+        from packages.execution_engine.domain.models import ExecutionState
+
+        core_exec = self.db.query(Execution).filter(Execution.id == execution_id).first()
+        ee_exec = self.db.query(ExecutionModel).filter(ExecutionModel.id == execution_id).first()
+        execution = core_exec or ee_exec
+
         if not execution:
             logger.error(f"Execution {execution_id} not found.")
             return
 
+        def update_both_status(status_str: str):
+            if core_exec:
+                core_exec.status = getattr(ExecutionStatus, status_str, status_str)
+            if ee_exec:
+                ee_exec.status = getattr(ExecutionState, status_str, status_str)
+            self.db.commit()
+
         # Status transition to RUNNING
-        if execution.status != ExecutionStatus.QUEUED:
+        if str(execution.status) not in ("QUEUED", "ExecutionState.QUEUED", "ExecutionStatus.QUEUED"):
             logger.warning(
                 f"Execution {execution_id} is not QUEUED. Current status: {execution.status}"
             )
             return
 
-        execution.status = ExecutionStatus.RUNNING
-        self.db.commit()
+        update_both_status("RUNNING")
 
         self.event_bus.emit(
             ExecutionStarted(
@@ -73,9 +85,8 @@ class ExecutionWorker:
 
             # Check for cooperative cancellation
             self.db.refresh(execution)
-            if execution.cancellation_requested:
-                execution.status = ExecutionStatus.CANCELLED
-                self.db.commit()
+            if getattr(execution, "cancellation_requested", False):
+                update_both_status("CANCELLED")
                 self.event_bus.emit(
                     ExecutionCancelled(
                         execution_id=execution_id,
@@ -91,26 +102,22 @@ class ExecutionWorker:
             self.db.commit()
 
             # 3. Transition to COMPLETED
-            execution.status = ExecutionStatus.COMPLETED
-            self.db.commit()
+            update_both_status("COMPLETED")
 
         except Exception as e:
             logger.exception(f"Execution {execution_id} failed: {e}")
             self.db.rollback()
-            execution = self.db.query(Execution).filter(Execution.id == execution_id).first()
-            if execution:
-                execution.status = ExecutionStatus.FAILED
-                self.db.commit()
-                self.event_bus.emit(
-                    ExecutionFailed(
-                        execution_id=execution_id,
-                        aggregate_id=execution_id,
-                        correlation_id=correlation_id,
-                        event_time=datetime.now(UTC),
-                        error_message=str(e),
-                    )
+            update_both_status("FAILED")
+            self.event_bus.emit(
+                ExecutionFailed(
+                    execution_id=execution_id,
+                    aggregate_id=execution_id,
+                    correlation_id=correlation_id,
+                    event_time=datetime.now(UTC),
+                    error_message=str(e),
                 )
-            return  # Skip completion logic
+            )
+            return
 
         # 4. Trigger completion event downstream
         self.event_bus.emit(

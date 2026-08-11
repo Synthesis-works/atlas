@@ -17,6 +17,14 @@ class Settings(BaseSettings):
 
     # API configuration
     api_v1_prefix: str = Field(default="/api/v1")
+    cors_origins: list[str] = Field(
+        default_factory=lambda: [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ]
+    )
 
     # Authentication
     jwt_secret: str = Field(default="dev-secret-key-do-not-use-in-production")

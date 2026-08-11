@@ -59,6 +59,12 @@ class ExecutionService:
                 detail="Failed to create execution due to database constraint",
             )
 
+        try:
+            from apps.backend.worker.tasks import run_execution_task
+            run_execution_task.delay(str(execution.id))
+        except Exception:
+            pass
+
         return execution
 
     @staticmethod

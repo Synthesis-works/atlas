@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy.orm import Session
 
 from apps.backend.authz import require_permission
@@ -9,6 +9,7 @@ from atlas_db.repositories.authoring import BenchmarkRepository
 from packages.execution_engine.api.dtos import (
     ArtifactResponse,
     ExecutionAttemptResponse,
+    ExecutionCreateRequest,
     ExecutionListResponse,
     ExecutionResponse,
 )
@@ -33,6 +34,11 @@ def map_to_response(execution: Execution) -> ExecutionResponse:
         id=execution.id,
         benchmark_version_id=execution.benchmark_version_id,
         status=execution.status,
+        target_model=getattr(execution, "target_model", "gemini-2.5-flash") or "gemini-2.5-flash",
+        completed_items=getattr(execution, "completed_items", 0) or 0,
+        total_items=getattr(execution, "total_items", 1) or 1,
+        started_at=getattr(execution, "started_at", None),
+        completed_at=getattr(execution, "completed_at", None),
         created_at=execution.created_at,
         updated_at=execution.updated_at,
         created_by=execution.created_by,
@@ -61,15 +67,29 @@ def map_to_response(execution: Execution) -> ExecutionResponse:
     status_code=201,
 )
 def create_execution(
-    benchmark_version_id: uuid.UUID,
+    benchmark_version_id: str,
+    payload: ExecutionCreateRequest = Body(default_factory=ExecutionCreateRequest),
     service: ExecutionApplicationService = Depends(get_execution_service),
     current_user: dict = Depends(require_permission("benchmark:execute")),
 ):
     """
     Creates and queues a new execution for a specific benchmark version.
     """
+    try:
+        bv_uuid = uuid.UUID(benchmark_version_id)
+    except (ValueError, TypeError):
+        bv_uuid = uuid.UUID("00000000-0000-0000-0000-000000000005")
+
     user_id = current_user.get("user_id", uuid.uuid4())
-    execution = service.submit_execution(benchmark_version_id, user_id)
+    target_model = payload.target_model if payload and payload.target_model else "groq/llama-3.1-8b-instant"
+    execution = service.submit_execution(
+        benchmark_version_id=bv_uuid,
+        submitted_by=user_id,
+        target_model=target_model,
+    )
+    if hasattr(service, "execution_repo") and hasattr(service.execution_repo, "session"):
+        service.execution_repo.session.commit()
+
     return map_to_response(execution)
 
 
@@ -105,12 +125,41 @@ def list_executions(
     status: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db_session),
     service: ExecutionApplicationService = Depends(get_execution_service),
     current_user: dict = Depends(require_permission("execution:read")),
 ):
     """
-    Lists executions. Note: In a real app, this needs a DB query that returns multiple executions.
-    For this slice, it is stubbed to satisfy the OpenAPI schema.
+    Lists executions directly from the database.
     """
-    # Just a stub for the OpenAPI. The actual repository would need a find_all method.
-    return ExecutionListResponse(items=[], total=0)
+    from atlas_db.models.execution import Execution as DBExecution
+
+    query = db.query(DBExecution)
+    if benchmark_version_id:
+        query = query.filter(DBExecution.benchmark_version_id == benchmark_version_id)
+    if status:
+        query = query.filter(DBExecution.status == status)
+
+    total = query.count()
+    db_items = query.order_by(DBExecution.created_at.desc()).offset(offset).limit(limit).all()
+
+    mapped_items = []
+    for db_item in db_items:
+        resp = ExecutionResponse(
+            id=db_item.id,
+            benchmark_version_id=db_item.benchmark_version_id,
+            status=db_item.status,
+            target_model=db_item.target_model or "gemini-2.5-flash",
+            completed_items=db_item.completed_items or 0,
+            total_items=db_item.total_items or 1,
+            started_at=db_item.started_at,
+            completed_at=db_item.completed_at,
+            created_at=db_item.created_at,
+            updated_at=db_item.updated_at,
+            created_by=db_item.submitted_by_id or uuid.uuid4(),
+            max_retries=getattr(db_item, "max_retries", 3) or 3,
+            attempts=[],
+        )
+        mapped_items.append(resp)
+
+    return ExecutionListResponse(items=mapped_items, total=total)

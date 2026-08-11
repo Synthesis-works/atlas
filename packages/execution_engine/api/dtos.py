@@ -26,19 +26,21 @@ class ExecutionResponse(BaseModel):
     id: uuid.UUID
     benchmark_version_id: uuid.UUID
     status: ExecutionState
+    target_model: str = "gemini-2.5-flash"
+    completed_items: int = 0
+    total_items: int = 1
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
     created_by: uuid.UUID
     max_retries: int
-    attempts: list[ExecutionAttemptResponse]
+    attempts: list[ExecutionAttemptResponse] = []
 
 
 class ExecutionCreateRequest(BaseModel):
-    # Benchmark version ID goes in the path usually, but this is the request body?
-    # Actually, path is /benchmarks/{id}/executions. No body is strictly required,
-    # but maybe we can allow passing config here.
-    # We will just use an empty body for now.
-    pass
+    target_model: str = "gemini-2.5-flash"
+    execution_config: dict | None = None
 
 
 class ExecutionListResponse(BaseModel):
