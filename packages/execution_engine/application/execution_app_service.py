@@ -66,8 +66,10 @@ class ExecutionApplicationService:
                 status=ExecutionStatus.QUEUED,
                 queued_at=datetime.now(UTC),
             )
-            self.execution_repo.session.add(db_exec)
-            self.execution_repo.session.commit()
+            session = getattr(self.execution_repo, "session", None)
+            if session:
+                session.add(db_exec)
+                session.commit()
         except Exception as err:
             logger.warning(f"DBExecution creation warning: {err}")
 

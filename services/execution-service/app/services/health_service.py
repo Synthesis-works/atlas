@@ -8,7 +8,12 @@ from sqlalchemy.orm import Session
 
 
 class HealthService:
-    def __init__(self, db: Session, scheduler: AtlasScheduler, recovery: RecoveryManager):
+    def __init__(
+        self,
+        db: Session | None = None,
+        scheduler: AtlasScheduler | None = None,
+        recovery: RecoveryManager | None = None,
+    ):
         self.db = db
         self.scheduler = scheduler
         self.recovery = recovery
@@ -20,6 +25,8 @@ class HealthService:
             self.db.query(ExecutionWorker.status, func.count(ExecutionWorker.id))
             .group_by(ExecutionWorker.status)
             .all()
+            if self.db
+            else []
         )
         workers = {status.value: count for status, count in worker_counts}
 
@@ -33,6 +40,8 @@ class HealthService:
             self.db.query(AtlasTask.status, func.count(AtlasTask.id))
             .group_by(AtlasTask.status)
             .all()
+            if self.db
+            else []
         )
         tasks = {status.value: count for status, count in task_counts}
 
@@ -49,15 +58,15 @@ class HealthService:
             "status": "healthy",
             "scheduler": {
                 "status": "healthy",
-                "tasks_examined": self.scheduler.metrics.tasks_examined,
-                "tasks_scheduled": self.scheduler.metrics.tasks_scheduled,
-                "policy_rejections": self.scheduler.metrics.policy_rejections,
+                "tasks_examined": self.scheduler.metrics.tasks_examined if self.scheduler else 0,
+                "tasks_scheduled": self.scheduler.metrics.tasks_scheduled if self.scheduler else 0,
+                "policy_rejections": self.scheduler.metrics.policy_rejections if self.scheduler else 0,
             },
             "recovery": {
                 "status": "healthy",
-                "leases_expired": self.recovery.metrics.leases_expired,
-                "workers_unhealthy": self.recovery.metrics.workers_unhealthy,
-                "workers_offline": self.recovery.metrics.workers_offline,
+                "leases_expired": self.recovery.metrics.leases_expired if self.recovery else 0,
+                "workers_unhealthy": self.recovery.metrics.workers_unhealthy if self.recovery else 0,
+                "workers_offline": self.recovery.metrics.workers_offline if self.recovery else 0,
             },
             "workers": {"ready": ready, "busy": busy, "offline": offline, "unhealthy": unhealthy},
             "queue": {"queued": queued, "running": running},

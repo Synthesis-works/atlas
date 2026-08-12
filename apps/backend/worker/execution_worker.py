@@ -27,7 +27,7 @@ class ExecutionWorker:
         self.runner = ExecutionRunner(db)
         self.event_bus = CeleryExecutionEventBus()
 
-    def mark_timed_out(self, execution_id: uuid.UUID, correlation_id: str = None):
+    def mark_timed_out(self, execution_id: uuid.UUID, correlation_id: str | None = None):
         execution = self.db.query(Execution).filter(Execution.id == execution_id).first()
         if execution and execution.status in (ExecutionStatus.QUEUED, ExecutionStatus.RUNNING):
             execution.status = ExecutionStatus.TIMED_OUT
@@ -42,7 +42,7 @@ class ExecutionWorker:
                 )
             )
 
-    def process(self, execution_id: uuid.UUID, correlation_id: str = None):
+    def process(self, execution_id: uuid.UUID, correlation_id: str | None = None):
         from packages.execution_engine.persistence.models import ExecutionModel
         from packages.execution_engine.domain.models import ExecutionState
 
@@ -58,7 +58,7 @@ class ExecutionWorker:
             if core_exec:
                 core_exec.status = getattr(ExecutionStatus, status_str, status_str)
             if ee_exec:
-                ee_exec.status = getattr(ExecutionState, status_str, status_str)
+                ee_exec.status = getattr(ExecutionState, status_str, status_str)  # type: ignore[arg-type,assignment]
             self.db.commit()
 
         # Status transition to RUNNING

@@ -5,6 +5,7 @@ import httpx
 from ..exceptions import LLMError
 from ..models.prompt import Prompt
 from ..models.response import LLMResponse
+from ..models.model_types import ModelInfo
 from .base import BaseLLMClient
 
 
@@ -24,11 +25,20 @@ class NvidiaClient(BaseLLMClient):
     def health(self) -> bool:
         return bool(self.api_key)
 
-    def list_models(self) -> list[str]:
+    def list_models(self) -> list[ModelInfo]:
         return [
-            "meta/llama-3.1-405b-instruct",
-            "meta/llama-3.1-70b-instruct",
-            "nvidia/neva-22b",
+            ModelInfo(
+                name=m,
+                size=0,
+                family="nvidia",
+                parameter_size="unknown",
+                quantization="none",
+            )
+            for m in [
+                "meta/llama-3.1-405b-instruct",
+                "meta/llama-3.1-70b-instruct",
+                "nvidia/neva-22b",
+            ]
         ]
 
     def generate(self, model: str, prompt: Prompt, **kwargs) -> LLMResponse:

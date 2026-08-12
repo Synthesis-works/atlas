@@ -5,6 +5,7 @@ import httpx
 from ..exceptions import LLMError
 from ..models.prompt import Prompt
 from ..models.response import LLMResponse
+from ..models.model_types import ModelInfo
 from .base import BaseLLMClient
 
 
@@ -24,11 +25,20 @@ class GroqClient(BaseLLMClient):
     def health(self) -> bool:
         return bool(self.api_key)
 
-    def list_models(self) -> list[str]:
+    def list_models(self) -> list[ModelInfo]:
         return [
-            "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant",
-            "mixtral-8x7b-32768",
+            ModelInfo(
+                name=m,
+                size=0,
+                family="groq",
+                parameter_size="unknown",
+                quantization="none",
+            )
+            for m in [
+                "llama-3.3-70b-versatile",
+                "llama-3.1-8b-instant",
+                "mixtral-8x7b-32768",
+            ]
         ]
 
     def generate(self, model: str, prompt: Prompt, **kwargs) -> LLMResponse:

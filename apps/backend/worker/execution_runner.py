@@ -43,7 +43,7 @@ class ExecutionRunner:
         execution.completed_items = 0
         self.db.commit()
 
-        outputs = []
+        outputs: list[ModelOutput] = []
         batch_size = 10
         batch_count = 0
         last_commit_time = time.time()
