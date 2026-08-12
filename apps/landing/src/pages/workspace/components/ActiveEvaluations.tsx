@@ -1,57 +1,36 @@
 /**
- * ActiveEvaluations — in-flight evaluation runs from domain/evaluations
+ * ActiveEvaluations — dynamic execution runs powered by getDashboardSummary
  */
 
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Loader2, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import { fadeUp, stagger } from '@/lib/motion';
 import { Card, Badge } from '@/design/primitives';
-import { ACTIVE_EVALUATIONS } from '@/domain/evaluations/mock';
+import { VerificationBadge } from '@/components/badge/VerificationBadge';
 import { ScrambleSectionTitle } from '@/components/motion';
-import type { EvaluationStatus } from '@/domain/evaluations/types';
 
-const STATUS_ICON: Record<EvaluationStatus, typeof Loader2> = {
-  Queued: Clock,
-  Loading: Loader2,
-  Preparing: Loader2,
-  Running: Loader2,
-  Scoring: Loader2,
-  Aggregating: Loader2,
-  Reporting: Loader2,
-  Completed: CheckCircle2,
-  Failed: XCircle,
-  Cancelled: XCircle,
-  Paused: Clock,
-  Retrying: Loader2,
-};
+export interface ActiveExecutionItem {
+  id: string;
+  model: string;
+  benchmark: string;
+  status: string;
+  progress: number;
+  is_verified?: boolean;
+  source?: string;
+}
 
-const STATUS_COLOR: Record<EvaluationStatus, string> = {
-  Queued: 'text-white/30',
-  Loading: 'text-accent',
-  Preparing: 'text-accent',
-  Running: 'text-accent',
-  Scoring: 'text-accent',
-  Aggregating: 'text-accent',
-  Reporting: 'text-accent',
-  Completed: 'text-success',
-  Failed: 'text-error',
-  Cancelled: 'text-orange-400',
-  Paused: 'text-amber-400',
-  Retrying: 'text-sky-400',
-};
-
-export function ActiveEvaluations() {
-  const active = ACTIVE_EVALUATIONS.filter((e) => e.status !== 'Completed' && e.status !== 'Failed');
-  const runs = active.slice(0, 4);
+export function ActiveEvaluations({ items = [], title = "Recent & Active Evaluations" }: { items?: ActiveExecutionItem[]; title?: string }) {
+  const activeRuns = items.slice(0, 4);
 
   return (
     <section>
       <div className="flex items-center justify-between gap-3 mb-3">
         <div>
-          <ScrambleSectionTitle text="Active Evaluations" className="text-xs tracking-[0.18em] uppercase text-white/35" />
-          <p className="text-xs text-white/30 mt-1">{active.length} jobs currently moving through the pipeline</p>
+          <ScrambleSectionTitle text={title} className="text-xs tracking-[0.18em] uppercase text-white/35" />
+          <p className="text-xs text-white/30 mt-1">{items.length} verified executions & active pipeline jobs</p>
         </div>
+
         <Link
           to="/dashboard/evaluations"
           className="shrink-0 text-xs text-accent/80 hover:text-accent transition-colors"
@@ -66,9 +45,13 @@ export function ActiveEvaluations() {
         animate="visible"
         className="grid grid-cols-1 md:grid-cols-2 gap-3"
       >
-        {runs.map((run) => {
-          const Icon = STATUS_ICON[run.status];
-          const isActive = run.status === 'Running' || run.status === 'Scoring' || run.status === 'Loading';
+        {activeRuns.map((run) => {
+          const isCompleted = run.status === 'Completed';
+          const isFailed = run.status === 'Failed' || run.status === 'Cancelled';
+          const isActive = !isCompleted && !isFailed;
+
+          const Icon = isCompleted ? CheckCircle2 : (isFailed ? XCircle : Loader2);
+          const iconColor = isCompleted ? 'text-success' : (isFailed ? 'text-error' : 'text-accent');
 
           return (
             <motion.div key={run.id} variants={fadeUp}>
@@ -76,12 +59,15 @@ export function ActiveEvaluations() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
                     <Icon
-                      className={`w-4 h-4 mt-0.5 shrink-0 ${STATUS_COLOR[run.status]} ${isActive ? 'animate-spin' : ''}`}
+                      className={`w-4 h-4 mt-0.5 shrink-0 ${iconColor} ${isActive ? 'animate-spin' : ''}`}
                     />
                     <div>
-                      <p className="text-sm font-medium text-white truncate">
-                        {run.model} on {run.benchmark}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium text-white truncate">
+                          {run.model} on {run.benchmark}
+                        </p>
+                        <VerificationBadge isVerified={run.is_verified} source={run.source} />
+                      </div>
                       <p className="text-xs text-white/20 font-mono mt-0.5">
                         {run.id}
                       </p>
@@ -91,6 +77,7 @@ export function ActiveEvaluations() {
                     {run.status}
                   </Badge>
                 </div>
+
 
                 {isActive && (
                   <div className="mt-3">
@@ -103,7 +90,6 @@ export function ActiveEvaluations() {
                     <p className="text-[11px] text-white/30 mt-1.5">{run.progress}% complete</p>
                   </div>
                 )}
-
               </Card>
             </motion.div>
           );

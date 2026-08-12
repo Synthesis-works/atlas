@@ -24,11 +24,17 @@ def mock_execution_service():
 
 @pytest.fixture
 def test_client(mock_execution_service):
-    app.dependency_overrides[get_execution_service] = lambda: mock_execution_service
-
-    from apps.backend.dependencies import require_authenticated
+    from apps.backend.dependencies import get_db_session, require_authenticated
     from apps.backend.schemas.auth import TokenClaims
 
+    mock_db = Mock()
+    mock_db.query.return_value.count.return_value = 0
+    mock_db.query.return_value.filter.return_value.count.return_value = 0
+    mock_db.query.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
+    mock_db.query.return_value.filter.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
+
+    app.dependency_overrides[get_execution_service] = lambda: mock_execution_service
+    app.dependency_overrides[get_db_session] = lambda: mock_db
     app.dependency_overrides[require_authenticated] = lambda: TokenClaims(
         sub=uuid.uuid4(), exp=9999999999, iat=1000000000, jti=uuid.uuid4()
     )

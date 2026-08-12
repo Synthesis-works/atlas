@@ -20,10 +20,10 @@ import AtlasRuntimeWidget from './AtlasRuntimeWidget';
 
 export const BenchmarksFeature: React.FC = () => {
   const {
-    benchmarks,
+    benchmarks: _benchmarks,
     kpis,
     searchQuery,
-    selectedCategory,
+    selectedCategory: _selectedCategory,
     activeDrawerBenchmark,
     compareBenchmarkIds,
     compareBenchmarks,
@@ -31,26 +31,18 @@ export const BenchmarksFeature: React.FC = () => {
     queue,
     terminalLogs,
     setSearchQuery,
-    setSelectedCategory,
-    openDrawer,
     closeDrawer,
     toggleCompare,
-    toggleViewMode,
     triggerRun,
+    toggleViewMode,
   } = useBenchmarks();
 
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
 
   return (
-    <motion.div
-      variants={pageCrossfade}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-      className="w-full"
-    >
+    <motion.div variants={pageCrossfade} initial="initial" animate="animate" exit="exit" className="h-full flex flex-col min-h-0">
       <WorkspacePage>
-        {/* 1. Hero Overview */}
+        {/* 1. Header */}
         <WorkspaceHero>
           <BenchmarkHeader
             searchQuery={searchQuery}
@@ -63,30 +55,22 @@ export const BenchmarksFeature: React.FC = () => {
           />
         </WorkspaceHero>
 
-        {/* 2. Critical Enriched KPIs */}
+        {/* 2. Key Metrics KPIs */}
         <BenchmarkKPIs kpis={kpis} />
 
-        {/* 3. Primary Data Analytics */}
+        {/* 3. Analytics Charts Grid */}
         <WorkspaceAnalytics>
           <BenchmarkAnalytics />
         </WorkspaceAnalytics>
 
-        {/* 4. Operational Control Console */}
+        {/* 4. Real-time Console Operations */}
         <WorkspaceOperations>
           <BenchmarkConsole logs={terminalLogs} queue={queue} />
         </WorkspaceOperations>
 
         {/* 5. Benchmark Registry Table */}
         <WorkspaceRegistry>
-          <BenchmarkRegistry
-            benchmarks={benchmarks}
-            selectedCategory={selectedCategory}
-            onSelectCategory={setSelectedCategory}
-            onRowClick={openDrawer}
-            onRunClick={(id) => triggerRun(id, 'GPT-5')}
-            onToggleCompare={toggleCompare}
-            compareIds={compareBenchmarkIds}
-          />
+          <BenchmarkRegistry />
         </WorkspaceRegistry>
 
         {/* Supporting Drawers & Modals */}

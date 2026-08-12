@@ -40,7 +40,7 @@ export interface MockExperimentEntity {
   totalStages: number;
   etaMs?: number;
   
-  startedAt: string;
+  startedAt?: string;
   completedAt?: string;
   queuedAt: string;
   durationMs?: number;

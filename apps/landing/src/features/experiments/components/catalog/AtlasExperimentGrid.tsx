@@ -1,6 +1,6 @@
 import { useId, useEffect } from "react";
-import { Check, Clock, Activity, ArrowRight, AlertTriangle } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Check, Clock } from "lucide-react";
+import { motion } from "framer-motion";
 import type { useExperimentCatalog } from "../../hooks/useExperimentCatalog";
 import type { MockExperimentStatus } from "../../mocks/mock";
 

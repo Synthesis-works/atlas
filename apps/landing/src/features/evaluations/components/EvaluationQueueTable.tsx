@@ -1,6 +1,8 @@
 import React from 'react';
 import type { EvaluationRun } from '@/domain/evaluations/types';
 import { EVALUATION_STATUS_MAP } from '@/domain/evaluations/constants';
+import { VerificationBadge } from '@/components/badge/VerificationBadge';
+
 
 interface Props {
   evaluations: EvaluationRun[];
@@ -86,10 +88,15 @@ export const EvaluationQueueTable: React.FC<Props> = ({
                 </td>
 
                 {/* Name */}
+
                 <td className="py-3 px-3">
-                  <div className="text-white/90 truncate max-w-[220px]">{ev.name}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-white/90 truncate max-w-[200px]">{ev.name}</div>
+                    <VerificationBadge isVerified={ev.isVerified} source={ev.source} />
+                  </div>
                   <div className="text-[10px] text-white/30 mt-0.5">{ev.id}</div>
                 </td>
+
 
                 {/* Model */}
                 <td className="py-3 px-3 text-white/70 whitespace-nowrap">

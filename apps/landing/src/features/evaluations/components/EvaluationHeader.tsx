@@ -27,6 +27,7 @@ interface Props {
   onStatusFilter: (s: string) => void;
   onOpenCompare: () => void;
   onRefresh: () => void;
+  onOpenNewModal?: () => void;
 }
 
 export const EvaluationHeader: React.FC<Props> = ({
@@ -39,6 +40,7 @@ export const EvaluationHeader: React.FC<Props> = ({
   onStatusFilter,
   onOpenCompare,
   onRefresh,
+  onOpenNewModal,
 }) => {
   return (
     <div className="liquid-glass-card rounded-2xl p-5 sm:p-6 border border-white/10 space-y-5">
@@ -112,7 +114,11 @@ export const EvaluationHeader: React.FC<Props> = ({
             <RotateCw className="w-4 h-4" />
           </button>
 
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-400 text-neutral-950 text-xs font-semibold hover:bg-emerald-300 transition-colors shadow-lg shadow-emerald-400/20 cursor-pointer">
+          <button
+            id="new-evaluation-run-btn"
+            onClick={onOpenNewModal}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-400 text-neutral-950 text-xs font-semibold hover:bg-emerald-300 transition-colors shadow-lg shadow-emerald-400/20 cursor-pointer"
+          >
             <Play className="w-3.5 h-3.5 fill-current" />
             New Evaluation Run
           </button>

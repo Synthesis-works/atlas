@@ -1,22 +1,14 @@
-import { useMemo, useState, useCallback } from 'react';
-import {
-  MOCK_EVALUATIONS,
-  MOCK_RUNTIME_LOGS,
-  MOCK_REPORTS,
-  MOCK_RUNTIME_DISTRIBUTION,
-  MOCK_SUCCESS_RATE_TREND,
-  MOCK_QUEUE_LENGTH_TREND,
-  MOCK_FAILURE_DISTRIBUTION,
-  ACTIVE_EVALUATIONS,
-} from '@/domain/evaluations/mock';
+import { useMemo, useState, useCallback, useEffect } from 'react';
+import { MOCK_RUNTIME_LOGS } from '@/domain/evaluations/mock';
 import type { EvaluationRun, EvaluationReport } from '@/domain/evaluations/types';
 import { filterEvaluations } from '../lib/searchParser';
+import { getEvaluations } from '../services/evaluationService';
 
 type ViewMode = 'queue' | 'analytics';
 
 export function useEvaluations() {
-  const [evaluations] = useState<EvaluationRun[]>(MOCK_EVALUATIONS);
-  const [reports] = useState<EvaluationReport[]>(MOCK_REPORTS);
+  const [evaluations, setEvaluations] = useState<EvaluationRun[]>([]);
+  const [reports] = useState<EvaluationReport[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedEvaluation, setSelectedEvaluation] = useState<EvaluationRun | null>(null);
@@ -25,6 +17,28 @@ export function useEvaluations() {
   const [viewMode, setViewMode] = useState<ViewMode>('queue');
   const [runtimeLogs] = useState<string[]>(MOCK_RUNTIME_LOGS);
   const [terminalPaused, setTerminalPaused] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchEvaluations = async () => {
+      const res = await getEvaluations();
+      if (isMounted && res.data && res.data.length > 0) {
+        setEvaluations(res.data);
+      }
+    };
+    fetchEvaluations();
+    const interval = setInterval(fetchEvaluations, 3000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const addExecutionRun = useCallback((newRun: EvaluationRun) => {
+    setEvaluations((prev) => [newRun, ...prev.filter((e) => e.id !== newRun.id)]);
+    setSelectedEvaluation(newRun);
+  }, []);
+
 
   // Combined filter: status tab + search query (key:value + comparators)
   const filteredEvaluations = useMemo(() => {
@@ -84,14 +98,14 @@ export function useEvaluations() {
       tokensProcessed: Math.round(totalTokens),
       totalCostUsd: totalCost,
       activeWorkers,
-      totalWorkers: 24,
+      totalWorkers: 16,
     };
   }, [evaluations]);
 
-  // Active evaluations (for live panel and timeline)
+  // Derived active evaluations
   const activeEvaluations = useMemo(
-    () => ACTIVE_EVALUATIONS.slice(0, 8),
-    []
+    () => evaluations.filter(e => ['Running', 'Scoring', 'Aggregating', 'Reporting'].includes(e.status)),
+    [evaluations]
   );
 
   // Comparison evaluations
@@ -106,13 +120,36 @@ export function useEvaluations() {
     );
   }, []);
 
-  // Analytics data (static from mock)
-  const analyticsData = {
-    runtimeDistribution: MOCK_RUNTIME_DISTRIBUTION,
-    successRateTrend: MOCK_SUCCESS_RATE_TREND,
-    queueLengthTrend: MOCK_QUEUE_LENGTH_TREND,
-    failureDistribution: MOCK_FAILURE_DISTRIBUTION,
-  };
+  // Analytics data derived dynamically from live evaluations
+  const analyticsData = useMemo(() => {
+    const completed = evaluations.filter(e => e.status === 'Completed');
+    const queuedCount = evaluations.filter(e => e.status === 'Queued').length;
+    const runningCount = evaluations.filter(e => e.status === 'Running').length;
+    const passRate = completed.length > 0 ? (completed.filter(e => (e.metrics?.passAt1 ?? 0) > 50).length / completed.length) * 100 : 0;
+
+    return {
+      runtimeDistribution: [
+        { label: '0-5s', count: completed.filter(e => (e.durationMs ?? 0) <= 5000).length },
+        { label: '5-10s', count: completed.filter(e => (e.durationMs ?? 0) > 5000 && (e.durationMs ?? 0) <= 10000).length },
+        { label: '10-20s', count: completed.filter(e => (e.durationMs ?? 0) > 10000 && (e.durationMs ?? 0) <= 20000).length },
+        { label: '20-60s', count: completed.filter(e => (e.durationMs ?? 0) > 20000 && (e.durationMs ?? 0) <= 60000).length },
+        { label: '60s+', count: completed.filter(e => (e.durationMs ?? 0) > 60000).length },
+      ],
+      successRateTrend: [
+        { day: '30d ago', rate: Math.round(passRate) },
+        { day: '15d ago', rate: Math.round(passRate) },
+        { day: 'Today', rate: Math.round(passRate) },
+      ],
+      queueLengthTrend: [
+        { hour: '00:00', length: queuedCount },
+        { hour: '12:00', length: runningCount },
+        { hour: '24:00', length: queuedCount },
+      ],
+      failureDistribution: evaluations.filter(e => e.status === 'Failed').length > 0
+        ? [{ reason: 'Execution Failed', count: evaluations.filter(e => e.status === 'Failed').length }]
+        : [{ reason: 'No Failures', count: 0 }],
+    };
+  }, [evaluations]);
 
   return {
     evaluations: filteredEvaluations,
@@ -140,6 +177,7 @@ export function useEvaluations() {
     toggleCompare,
     openCompare: () => setIsCompareOpen(true),
     closeCompare: () => setIsCompareOpen(false),
+    addExecutionRun,
   };
 }
 

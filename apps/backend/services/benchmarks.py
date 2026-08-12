@@ -28,7 +28,10 @@ from apps.backend.schemas.benchmarks import (
 from apps.backend.schemas.query import PageRequest, PageResponse, SortRequest
 
 
-def map_domain_error(e: Exception):
+from typing import NoReturn
+
+
+def map_domain_error(e: Exception) -> NoReturn:
     if isinstance(e, PermissionDeniedError):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
     elif isinstance(e, InvalidStateTransitionError):
@@ -61,14 +64,14 @@ class BenchmarkApplicationService:
     ) -> BenchmarkRead:
         try:
             benchmark, events = self.domain_service.create_benchmark(
-                project_id=data.project_id,
+                project_id=project_id,
                 author_id=author_id,
                 name=data.name,
                 objective=data.objective,
-                difficulty=data.difficulty,
-                domain=data.domain,
-                type=data.type,
-                visibility=data.visibility,
+                difficulty=getattr(data, "difficulty", "medium"),
+                domain=getattr(data, "domain", "general"),
+                type=getattr(data, "type", "standard"),
+                visibility=getattr(data, "visibility", "private"),
             )
 
             for event in events:

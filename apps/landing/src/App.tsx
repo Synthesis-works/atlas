@@ -2,6 +2,7 @@ import { Routes, Route, BrowserRouter } from 'react-router-dom';
 import { ExperienceProvider } from '@/core/ExperienceController';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { WorkspaceLayout } from '@/layouts/WorkspaceLayout';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 import { useExperience } from '@/core/ExperienceController';
 import { MultiStepLoader } from '@/components/ui/multi-step-loader';
@@ -58,6 +59,7 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: bo
 }
 
 function AppRoutes() {
+  console.log('[ATLAS ROUTER] App.tsx routes initialized');
   return (
     <Routes>
       {/* Marketing site — PublicLayout with cinematic Fabric */}
@@ -75,18 +77,48 @@ function AppRoutes() {
       <Route path="login" element={<Suspense fallback={<PageLoader />}><Login /></Suspense>} />
 
       {/* Workspace — WorkspaceLayout with ambient Fabric */}
-      <Route path="dashboard" element={<WorkspaceLayout />}>
-        <Route index element={<Suspense fallback={<PageLoader />}><Workspace /></Suspense>} />
-        <Route path="benchmarks" element={<Suspense fallback={<PageLoader />}><WorkspaceBenchmarks /></Suspense>} />
-        <Route path="datasets" element={<Suspense fallback={<PageLoader />}><DatasetsPage /></Suspense>} />
-        <Route path="evaluations" element={<Suspense fallback={<PageLoader />}><WorkspaceExperiments /></Suspense>} />
-        <Route path="experiments" element={<Suspense fallback={<PageLoader />}><WorkspaceExperiments /></Suspense>} />
-        <Route path="providers" element={<Suspense fallback={<PageLoader />}><WorkspaceProviders /></Suspense>} />
-        <Route path="models" element={<Suspense fallback={<PageLoader />}><WorkspaceModels /></Suspense>} />
-        <Route path="reports" element={<Suspense fallback={<WorkspaceSection title="Reports" description="View and compare evaluation reports." />}><WorkspaceSection title="Reports" description="View and compare evaluation reports." /></Suspense>} />
-        <Route path="leaderboard" element={<Suspense fallback={<WorkspaceSection title="Leaderboard" description="Compare model rankings across capabilities." />}><WorkspaceSection title="Leaderboard" description="Compare model rankings across capabilities." /></Suspense>} />
-        <Route path="settings" element={<Suspense fallback={<WorkspaceSection title="Settings" description="Configure your Workspace preferences." />}><WorkspaceSection title="Settings" description="Configure your Workspace preferences." /></Suspense>} />
+      <Route element={<ProtectedRoute />}>
+        <Route path="dashboard" element={<WorkspaceLayout />}>
+          <Route index element={<Suspense fallback={<PageLoader />}><Workspace /></Suspense>} />
+          <Route path="benchmarks" element={<Suspense fallback={<PageLoader />}><WorkspaceBenchmarks /></Suspense>} />
+          <Route path="datasets" element={<Suspense fallback={<PageLoader />}><DatasetsPage /></Suspense>} />
+          
+          {/* Clean Evaluations Route Group */}
+          <Route path="evaluations">
+            <Route index element={<Suspense fallback={<PageLoader />}><WorkspaceExperiments /></Suspense>} />
+            <Route path="new" element={<Suspense fallback={<PageLoader />}><WorkspaceExperiments openNewModal={true} /></Suspense>} />
+            <Route path="*" element={<Suspense fallback={<PageLoader />}><WorkspaceExperiments /></Suspense>} />
+          </Route>
+          
+          <Route path="experiments" element={<Suspense fallback={<PageLoader />}><WorkspaceExperiments /></Suspense>} />
+          <Route path="providers" element={<Suspense fallback={<PageLoader />}><WorkspaceProviders /></Suspense>} />
+          <Route path="models" element={<Suspense fallback={<PageLoader />}><WorkspaceModels /></Suspense>} />
+          <Route path="reports" element={<Suspense fallback={<WorkspaceSection title="Reports" description="View and compare evaluation reports." />}><WorkspaceSection title="Reports" description="View and compare evaluation reports." /></Suspense>} />
+          <Route path="leaderboard" element={<Suspense fallback={<WorkspaceSection title="Leaderboard" description="Compare model rankings across capabilities." />}><WorkspaceSection title="Leaderboard" description="Compare model rankings across capabilities." /></Suspense>} />
+          <Route path="settings" element={<Suspense fallback={<WorkspaceSection title="Settings" description="Configure your Workspace preferences." />}><WorkspaceSection title="Settings" description="Configure your Workspace preferences." /></Suspense>} />
+        </Route>
       </Route>
+      
+      {/* Dev Diagnostic Endpoint */}
+      {import.meta.env.DEV && (
+        <Route
+          path="__atlas_dev"
+          element={
+            <div className="min-h-screen bg-black text-emerald-400 font-mono p-8 space-y-4">
+              <h1 className="text-xl font-bold border-b border-emerald-500/20 pb-2">Atlas Frontend Diagnostic</h1>
+              <div className="space-y-1 text-sm text-white/80">
+                <p><span className="text-emerald-400">Environment:</span> development</p>
+                <p><span className="text-emerald-400">Worktree:</span> wire_real_llm_adapter</p>
+                <p><span className="text-emerald-400">Host:</span> 127.0.0.1</p>
+                <p><span className="text-emerald-400">Port:</span> 5173</p>
+              </div>
+            </div>
+          }
+        />
+      )}
+
+      {/* Catch-all fallback */}
+      <Route path="*" element={<Suspense fallback={<PageLoader />}><Landing /></Suspense>} />
     </Routes>
   );
 }

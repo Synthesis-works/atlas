@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, CheckCircle2, Circle, Clock, PlayCircle, XCircle, ChevronRight, Activity, Terminal, AlertTriangle, AlertCircle } from 'lucide-react';
+import { X, CheckCircle2, Circle, Clock, PlayCircle, XCircle, ChevronRight, Activity, Terminal, AlertTriangle } from 'lucide-react';
 import { useWorkspaceInteractionStore } from '@/store/workspace/interaction/store';
 import type { useExperimentCatalog } from '../../hooks/useExperimentCatalog';
 import type { MockExperimentStage, MockExperimentStatus } from '../../mocks/mock';
@@ -140,7 +140,7 @@ export function AtlasExperimentPreview({ catalog }: Props) {
           {activeTab === 'Timeline' && (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="relative border-l border-white/10 ml-2.5 pb-4 space-y-6">
-                {previewModel.stages.map((stage, idx) => {
+                {previewModel.stages.map((stage) => {
                   const isHovered = hoveredStageId === stage.id;
                   const isFailed = stage.status === 'failed';
                   const isSkipped = stage.status === 'skipped';

@@ -134,7 +134,10 @@ export interface EvaluationRun {
   error?: string;
   failureReason?: FailureReason;
   retryCount?: number;
+  isVerified?: boolean;
+  source?: string;
 }
+
 
 export interface EvaluationReport {
   id: string;

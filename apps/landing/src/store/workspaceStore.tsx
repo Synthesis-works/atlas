@@ -3,10 +3,15 @@
  * Synchronizes reactive state across Benchmarks, Evaluations, Queue, Runtime, and UI Preferences.
  */
 
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import type { Benchmark, BenchmarkCategory } from '@/domain/benchmarks/types';
 import { MOCK_BENCHMARKS } from '@/domain/benchmarks/mock';
 import type { WidgetLayoutState } from '@/design/glass/types';
+import { getBenchmarks } from '@/features/benchmarks/services/benchmarkService';
+import { getEvaluations } from '@/features/evaluations/services/evaluationService';
+import { executionPollingService } from '@/features/evaluations/services/executionPollingService';
+
+import { cancelExecution } from '@/features/evaluations/services/evaluationService';
 
 export interface NotificationItem {
   id: string;
@@ -48,6 +53,7 @@ interface WorkspaceStoreContextType {
   toggleViewMode: () => void;
   togglePinBenchmark: (id: string) => void;
   triggerEvaluationRun: (benchmarkId: string, model: string) => void;
+  cancelEvaluationRun: (executionId: string) => Promise<void>;
   addNotification: (title: string, message: string, type?: NotificationItem['type']) => void;
   dismissNotification: (id: string) => void;
   widgetLayouts: Record<string, WidgetLayoutState>;
@@ -87,6 +93,33 @@ export const WorkspaceStoreProvider: React.FC<{ children: React.ReactNode }> = (
     compactMode: false,
     pinnedIds: ['mmlu-pro', 'humaneval'],
   });
+
+  useEffect(() => {
+
+    let isMounted = true;
+    getBenchmarks().then((res) => {
+      if (isMounted && res.data && res.data.length > 0) {
+        setBenchmarks(res.data);
+      }
+    });
+    getEvaluations().then((res) => {
+      if (isMounted && res.data && res.data.length > 0) {
+        const queueMapped: QueueItem[] = res.data.map((ev) => ({
+          id: ev.id,
+          model: ev.model,
+          benchmarkName: ev.benchmark,
+          progress: ev.progress,
+          status: ev.status === 'Completed' ? 'Completed' : (ev.status === 'Failed' ? 'Failed' : (ev.status === 'Queued' ? 'Queued' : 'Running')),
+        }));
+        setQueue(queueMapped);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
 
   const [widgetLayouts, setWidgetLayouts] = useState<Record<string, WidgetLayoutState>>(() => {
     try {
@@ -291,40 +324,114 @@ export const WorkspaceStoreProvider: React.FC<{ children: React.ReactNode }> = (
   }, []);
 
   const triggerEvaluationRun = useCallback(
-    (benchmarkId: string, model: string) => {
+    async (benchmarkId: string, model: string) => {
       const bm = benchmarks.find((b) => b.id === benchmarkId);
       if (!bm) return;
 
-      const newJobId = `q-${Date.now()}`;
+      const timestamp = new Date().toLocaleTimeString();
+      setTerminalLogs((prev) => [
+        `${timestamp} [Job] Dispatching API execution for ${bm.name} on ${model}...`,
+        ...prev,
+      ]);
+
+      const { dispatchExecution } = await import('@/features/evaluations/services/evaluationService');
+      const res = await dispatchExecution(benchmarkId, model);
+
+      const execId = res.data?.id || `q-${Date.now()}`;
+      const initialStatus = (res.data?.status || 'Queued') as any;
+
       const newQueueItem: QueueItem = {
-        id: newJobId,
+        id: execId,
         model,
         benchmarkName: bm.name,
-        progress: 5,
-        status: 'Running',
+        progress: 0,
+        status: initialStatus === 'QUEUED' ? 'Queued' : initialStatus,
       };
 
-      setQueue((prev) => [newQueueItem, ...prev]);
+      setQueue((prev) => [newQueueItem, ...prev.filter((q) => q.id !== execId)]);
 
-      // Update benchmark status to Running in state
       setBenchmarks((prev) =>
         prev.map((b) => (b.id === benchmarkId ? { ...b, status: 'Running' } : b))
       );
 
-      const timestamp = new Date().toLocaleTimeString();
       setTerminalLogs((prev) => [
-        `${timestamp} [Job] Triggered evaluation for ${bm.name} on ${model}...`,
+        `${new Date().toLocaleTimeString()} [Job ${execId}] Dispatched execution task. Status: ${initialStatus}`,
         ...prev,
       ]);
 
       addNotification(
-        'Evaluation Started',
-        `Running ${bm.name} evaluation against ${model}`,
+        'Evaluation Queued',
+        `Dispatched ${bm.name} execution (${execId.substring(0, 8)}) against ${model}`,
         'info'
       );
     },
     [benchmarks, addNotification]
   );
+
+  const cancelEvaluationRun = useCallback(
+    async (executionId: string) => {
+      const timestamp = new Date().toLocaleTimeString();
+      setTerminalLogs((prev) => [
+        `${timestamp} [Job ${executionId}] Sending cancellation request...`,
+        ...prev,
+      ]);
+
+      await cancelExecution(executionId);
+
+      setQueue((prev) =>
+        prev.map((item) =>
+          item.id === executionId ? { ...item, status: 'Failed', progress: item.progress } : item
+        )
+      );
+
+      setTerminalLogs((prev) => [
+        `${new Date().toLocaleTimeString()} [Job ${executionId}] Execution cancelled by user. State: CANCELLED.`,
+        ...prev,
+      ]);
+
+      addNotification('Execution Cancelled', `Execution ${executionId.substring(0, 8)} was cancelled.`, 'warning');
+    },
+    [addNotification]
+  );
+
+  useEffect(() => {
+    const activeIds = queue
+      .filter((q) => q.status === 'Queued' || q.status === 'Running')
+      .map((q) => q.id);
+
+    if (activeIds.length > 0) {
+      executionPollingService.registerActiveExecutions(activeIds);
+    }
+
+    const unsubscribe = executionPollingService.subscribe((updates) => {
+      setQueue((prevQueue) =>
+        prevQueue.map((item) => {
+          const match = updates.find((u) => u.id === item.id);
+          if (!match) return item;
+
+          let mappedStatus: QueueItem['status'] = 'Running';
+          if (match.status === 'QUEUED') mappedStatus = 'Queued';
+          else if (match.status === 'COMPLETED') mappedStatus = 'Completed';
+          else if (['FAILED', 'FAILED_PERMANENT', 'CANCELLED', 'TIMED_OUT'].includes(match.status)) {
+            mappedStatus = 'Failed';
+          }
+
+          const progress =
+            match.total_items && match.total_items > 0
+              ? Math.round(((match.completed_items || 0) / match.total_items) * 100)
+              : item.progress;
+
+          return {
+            ...item,
+            status: mappedStatus,
+            progress,
+          };
+        })
+      );
+    });
+
+    return () => unsubscribe();
+  }, [queue]);
 
   const value = useMemo(
     () => ({
@@ -345,6 +452,7 @@ export const WorkspaceStoreProvider: React.FC<{ children: React.ReactNode }> = (
       toggleViewMode,
       togglePinBenchmark,
       triggerEvaluationRun,
+      cancelEvaluationRun,
       addNotification,
       dismissNotification,
       widgetLayouts,
@@ -366,6 +474,7 @@ export const WorkspaceStoreProvider: React.FC<{ children: React.ReactNode }> = (
       toggleViewMode,
       togglePinBenchmark,
       triggerEvaluationRun,
+      cancelEvaluationRun,
       addNotification,
       dismissNotification,
       widgetLayouts,

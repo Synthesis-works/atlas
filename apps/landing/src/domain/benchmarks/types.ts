@@ -80,6 +80,7 @@ export interface ArtifactItem {
 
 export interface Benchmark {
   id: string;
+  slug?: string;
   name: string;
   description: string;
   category: BenchmarkCategory;

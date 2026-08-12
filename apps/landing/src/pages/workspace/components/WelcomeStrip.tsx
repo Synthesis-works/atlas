@@ -5,7 +5,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { stagger, fadeUp } from '@/lib/motion';
-import { ACTIVE_EVALUATIONS } from '@/domain/evaluations/mock';
 import { ScrambleHeading } from '@/components/motion';
 
 function getGreeting(): string {
@@ -16,11 +15,7 @@ function getGreeting(): string {
   return 'GOOD NIGHT';
 }
 
-export function WelcomeStrip() {
-  const activeCount = ACTIVE_EVALUATIONS.filter(
-    (e) => e.status === 'Running' || e.status === 'Scoring' || e.status === 'Loading' || e.status === 'Preparing',
-  ).length;
-
+export function WelcomeStrip({ activeCount = 0 }: { activeCount?: number }) {
   const [greeting, setGreeting] = useState(getGreeting);
 
   useEffect(() => {

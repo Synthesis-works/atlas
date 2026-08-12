@@ -48,6 +48,7 @@ class ExecutionMapper:
             project_id=model.project_id,
             benchmark_version_id=model.benchmark_version_id,
             status=model.status,
+            target_model=getattr(model, "target_model", "gemini-2.5-flash") or "gemini-2.5-flash",
             created_by=model.created_by_id,  # type: ignore
             created_at=model.created_at,
             updated_at=model.updated_at,
@@ -59,6 +60,7 @@ class ExecutionMapper:
     def update_model(execution: Execution, model: ExecutionModel) -> None:
         """Updates the given SQLAlchemy model with data from the domain aggregate."""
         model.status = execution.status
+        model.target_model = execution.target_model
         model.updated_at = execution.updated_at
         model.max_retries = execution.max_retries
 
@@ -118,6 +120,7 @@ class ExecutionMapper:
             project_id=execution.project_id,
             benchmark_version_id=execution.benchmark_version_id,
             status=execution.status,
+            target_model=execution.target_model,
             created_by_id=execution.created_by,
             created_at=execution.created_at,
             updated_at=execution.updated_at,

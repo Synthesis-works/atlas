@@ -20,7 +20,7 @@ logger = structlog.get_logger(__name__)
     soft_time_limit=3600,  # 1 hour soft limit for executions
     time_limit=3660,  # Hard kill after 1h 1m
 )
-def run_execution_task(self, execution_id_str: str, correlation_id: str = None):
+def run_execution_task(self, execution_id_str: str, correlation_id: str | None = None):
     """
     Celery task to run a benchmark execution.
     Retries on infrastructure/network errors automatically (if configured).

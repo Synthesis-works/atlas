@@ -14,6 +14,7 @@ import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useExperience } from '@/core/ExperienceController';
 import { EnterAtlasTransition } from '@/components/network/EnterAtlasTransition';
 import { Glass, Button, Input } from '@/design/primitives';
+import { loginUser, registerUser } from '@/features/auth/services/authService';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -42,12 +43,7 @@ export default function Login() {
   const validateEmail = (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) {
-      setEmailError('Email is required');
-      return false;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(trimmed)) {
-      setEmailError('Enter a valid email address');
+      setEmailError('Email or username is required');
       return false;
     }
     setEmailError('');
@@ -57,10 +53,6 @@ export default function Login() {
   const validatePassword = (value: string) => {
     if (!value) {
       setPasswordError('Password is required');
-      return false;
-    }
-    if (value.length < 8) {
-      setPasswordError('Password must be at least 8 characters');
       return false;
     }
     setPasswordError('');
@@ -105,9 +97,40 @@ export default function Login() {
 
     setIsSubmitting(true);
 
-    // Simulate network authentication request
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1400));
+      const cleanInput = email.trim();
+      const userEmail = cleanInput.includes('@') ? cleanInput : `${cleanInput}@atlas.local`;
+
+      if (mode === 'signup') {
+        const regRes = await registerUser({
+          email: userEmail,
+          username: cleanInput,
+          password,
+          full_name: name || cleanInput,
+        });
+
+        if (regRes.error) {
+          setPasswordError(regRes.error);
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Auto login after registration
+        const loginRes = await loginUser({ username: cleanInput, password });
+        if (loginRes.error) {
+          setPasswordError(loginRes.error);
+          setIsSubmitting(false);
+          return;
+        }
+      } else {
+        const loginRes = await loginUser({ username: cleanInput, password });
+        if (loginRes.error) {
+          setPasswordError(loginRes.error);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       localStorage.setItem('atlas_logged_in', 'true');
       setIsSuccess(true);
 
@@ -132,18 +155,22 @@ export default function Login() {
     }
   };
 
+
   // Demo fast login bypass
   const handleDemoLogin = async () => {
     if (isSubmitting || isSuccess) return;
     setMode('login');
-    setEmail('demo@atlas.io');
-    setPassword('password123');
+    const demoEmail = 'admin@example.com';
+    const demoPassword = 'Password123!';
+    setEmail(demoEmail);
+    setPassword(demoPassword);
     setEmailError('');
     setPasswordError('');
     setIsSubmitting(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 900));
+      await loginUser({ username: demoEmail, password: demoPassword });
+      // Fallback to demo flag if backend is offline during local preview
       localStorage.setItem('atlas_logged_in', 'true');
       setIsSuccess(true);
 
@@ -320,13 +347,13 @@ export default function Login() {
                   </motion.div>
                 )}
 
-                {/* Email */}
+                {/* Email or Username */}
                 <motion.div variants={itemVariants}>
                   <Input
-                    label="Email"
+                    label="Email or Username"
                     id="email"
-                    type="email"
-                    placeholder="you@company.com"
+                    type="text"
+                    placeholder="you@company.com or username (e.g. xyz)"
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
@@ -337,6 +364,7 @@ export default function Login() {
                     disabled={isSubmitting}
                   />
                 </motion.div>
+
 
                 {/* Password */}
                 <motion.div variants={itemVariants}>

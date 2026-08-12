@@ -6,14 +6,13 @@
  */
 
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useEffect, useRef } from 'react';
 import { WorkspaceStoreProvider } from '@/store/workspaceStore';
 import {
   LayoutDashboard,
   Database,
   FolderKanban,
-  Play,
   FileText,
   BarChart3,
   Settings,
@@ -23,11 +22,12 @@ import {
   FlaskConical,
 } from 'lucide-react';
 import { useExperience } from '@/core/ExperienceController';
-import { pageCrossfade } from '@/lib/motion';
 import { MotionProvider, ScrambleHeading } from '@/components/motion';
 import { FloatingDock } from '@/components/ui/floating-dock';
 import { WorkspaceWidgets } from '@/features/workspace/widgets/WorkspaceWidgets';
 import { WorkspaceLauncher } from '@/components/ui/WorkspaceLauncher';
+
+import { getAuthToken } from '@/core/api/client';
 
 /** Derive page title from pathname for the topbar */
 function getPageTitle(pathname: string): string {
@@ -43,7 +43,8 @@ export function WorkspaceLayout() {
   const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem('atlas_logged_in') === 'true';
+    const token = getAuthToken();
+    const isLoggedIn = Boolean(token) || localStorage.getItem('atlas_logged_in') === 'true';
     if (!isLoggedIn) {
       navigate('/', { replace: true });
     }
@@ -173,20 +174,17 @@ export function WorkspaceLayout() {
       <div className="relative flex-1 z-10 flex flex-col min-h-0 overflow-hidden">
         {/* Page content — crossfade on route change */}
         <main ref={mainRef} className="flex-1 overflow-y-auto pb-28 min-h-0">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              variants={pageCrossfade}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              className="h-full"
-            >
-              <div className="w-full max-w-container-max mx-auto px-page-mobile md:px-page-tablet xl:px-page-desktop h-full">
-                <Outlet />
-              </div>
-            </motion.div>
-          </AnimatePresence>
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25 }}
+            className="h-full"
+          >
+            <div className="w-full max-w-[1600px] mx-auto px-4 md:px-6 xl:px-8 h-full">
+              <Outlet />
+            </div>
+          </motion.div>
         </main>
       </div>
 

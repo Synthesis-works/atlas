@@ -77,6 +77,7 @@ class Execution:
     benchmark_version_id: uuid.UUID
     project_id: uuid.UUID = field(default_factory=uuid.uuid4)
     status: ExecutionState = ExecutionState.QUEUED
+    target_model: str = "gemini-2.5-flash"
     created_by: uuid.UUID = field(default_factory=uuid.uuid4)
     created_at: datetime = field(default_factory=Clock.now)
     updated_at: datetime = field(default_factory=Clock.now)
@@ -96,6 +97,7 @@ class Execution:
         updated_at: datetime,
         max_retries: int,
         attempts: list[ExecutionAttempt],
+        target_model: str = "gemini-2.5-flash",
     ) -> "Execution":
         """Reconstructs the aggregate from persistence without triggering domain invariants."""
         instance = cls(
@@ -103,6 +105,7 @@ class Execution:
             benchmark_version_id=benchmark_version_id,
             project_id=project_id,
             status=status,
+            target_model=target_model,
             created_by=created_by,
             created_at=created_at,
             updated_at=updated_at,

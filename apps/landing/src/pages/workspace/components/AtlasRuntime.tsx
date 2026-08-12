@@ -3,30 +3,45 @@ import { fadeUp } from '@/lib/motion';
 import { Card } from '@/design/primitives';
 import { Cpu, Server, Activity, Terminal } from 'lucide-react';
 
-const RUNTIME_DATA = {
-  engines: [
-    { name: 'Benchmark Engine', status: 'Healthy' },
-    { name: 'Execution Engine', status: 'Healthy' },
-    { name: 'Evaluation Engine', status: 'Healthy' },
-    { name: 'Reporting Engine', status: 'Healthy' },
-  ],
-  adapters: [
+export interface RuntimeMetricsProps {
+  engineStatus?: string;
+  totalBenchmarks?: number;
+  totalEvaluations?: number;
+  totalModels?: number;
+  avgRuntimeSec?: number;
+}
+
+export function AtlasRuntime({
+  engineStatus = 'Healthy',
+  totalBenchmarks = 20,
+  totalEvaluations = 51,
+  totalModels = 15,
+  avgRuntimeSec = 14.8,
+}: RuntimeMetricsProps) {
+  const engines = [
+    { name: 'Benchmark Engine', status: engineStatus },
+    { name: 'Execution Engine', status: engineStatus },
+    { name: 'Evaluation Engine', status: engineStatus },
+    { name: 'Reporting Engine', status: engineStatus },
+  ];
+
+  const adapters = [
     { name: 'Ollama Local', status: 'Active', type: 'Local' },
     { name: 'API Gateway', status: 'Active', type: 'Gateway' },
-  ],
-  metrics: [
-    { label: 'Benchmarks', value: '128' },
-    { label: 'Evaluations', value: '42' },
-    { label: 'Models', value: '18' },
-    { label: 'Avg Runtime', value: '14.8 s' },
-  ],
-  metadata: [
+  ];
+
+  const metrics = [
+    { label: 'Benchmarks', value: String(totalBenchmarks) },
+    { label: 'Evaluations', value: String(totalEvaluations) },
+    { label: 'Models', value: String(totalModels) },
+    { label: 'Avg Runtime', value: `${avgRuntimeSec.toFixed(1)} s` },
+  ];
+
+  const metadata = [
     { label: 'Engine', value: 'Atlas v0.3' },
     { label: 'Schema', value: 'Evaluation v2.1' },
-  ],
-};
+  ];
 
-export function AtlasRuntime() {
   return (
     <motion.section variants={fadeUp} initial="hidden" animate="visible" className="space-y-4">
       <h2 className="text-xs tracking-[0.2em] uppercase text-white/20">
@@ -41,7 +56,7 @@ export function AtlasRuntime() {
             <span>Engine Health</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {RUNTIME_DATA.engines.map((eng) => (
+            {engines.map((eng) => (
               <div
                 key={eng.name}
                 className="p-2.5 rounded-xl border border-white/[0.03] bg-white/[0.01] flex items-center justify-between"
@@ -65,7 +80,7 @@ export function AtlasRuntime() {
             <span>Execution Adapters</span>
           </div>
           <div className="space-y-2">
-            {RUNTIME_DATA.adapters.map((ad) => (
+            {adapters.map((ad) => (
               <div
                 key={ad.name}
                 className="px-3 py-2 rounded-xl border border-white/[0.03] bg-white/[0.01] flex items-center justify-between"
@@ -91,7 +106,7 @@ export function AtlasRuntime() {
             <span>Runtime Metrics</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {RUNTIME_DATA.metrics.map((m) => (
+            {metrics.map((m) => (
               <div
                 key={m.label}
                 className="p-3 rounded-xl border border-white/[0.03] bg-white/[0.01]/50 text-center flex flex-col justify-center"
@@ -112,7 +127,7 @@ export function AtlasRuntime() {
             <span>Engine Version</span>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            {RUNTIME_DATA.metadata.map((meta) => (
+            {metadata.map((meta) => (
               <div key={meta.label} className="flex flex-col">
                 <span className="text-[10px] text-white/20 uppercase tracking-wider">{meta.label}</span>
                 <span className="text-xs font-mono text-white/70 mt-1">{meta.value}</span>

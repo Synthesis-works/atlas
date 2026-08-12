@@ -14,6 +14,7 @@ apps/backend/adapters/__init__.py
 apps/backend/adapters/base.py
 apps/backend/adapters/factory.py
 apps/backend/adapters/mock.py
+apps/backend/adapters/real.py
 apps/backend/core/logging.py
 apps/backend/core/telemetry/__init__.py
 apps/backend/core/telemetry/context.py
@@ -32,6 +33,7 @@ apps/backend/middleware/request_context.py
 apps/backend/routers/__init__.py
 apps/backend/routers/auth.py
 apps/backend/routers/benchmarks.py
+apps/backend/routers/billing.py
 apps/backend/routers/datasets.py
 apps/backend/routers/evaluation.py
 apps/backend/routers/executions.py
@@ -47,6 +49,7 @@ apps/backend/routers/system.py
 apps/backend/schemas/__init__.py
 apps/backend/schemas/auth.py
 apps/backend/schemas/benchmarks.py
+apps/backend/schemas/billing.py
 apps/backend/schemas/datasets.py
 apps/backend/schemas/evaluation.py
 apps/backend/schemas/events.py
@@ -121,12 +124,14 @@ packages/database/alembic/versions/4007056c9559_initial_migration.py
 packages/database/alembic/versions/52ff82792e6a_add_basemixin_to_evaluation_artifacts.py
 packages/database/alembic/versions/7b06ff45e6cd_add_execution_progress_and_queued_at.py
 packages/database/alembic/versions/8c0990ae707b_add_ownership_models.py
+packages/database/alembic/versions/9542e8b1087c_add_billing_models.py
 packages/database/alembic/versions/a1b2c3d4e5f6_execution_service_slice_1_and_2.py
 packages/database/alembic/versions/a5eef4ee78a5_make_datasets_project_scoped.py
 packages/database/alembic/versions/b1c2d3e4f5g6_add_outbox_table.py
 packages/database/alembic/versions/c1d2e3f4g5h6_update_evaluation_schema.py
 packages/database/alembic/versions/d2e3f4g5h6i7_update_capability_profile_schema.py
 packages/database/alembic/versions/e5842a639de0_merge_multiple_heads.py
+packages/database/alembic/versions/e6888663a7d3_add_provider_event_id.py
 packages/database/alembic/versions/e837053abeb8_add_celery_task_id_and_cancellation_.py
 packages/database/alembic/versions/f1f2f3f4f5f6_merge_heads.py
 packages/database/atlas_db/events.py
@@ -136,6 +141,7 @@ packages/database/atlas_db/core/engine.py
 packages/database/atlas_db/core/session.py
 packages/database/atlas_db/models/__init__.py
 packages/database/atlas_db/models/authoring.py
+packages/database/atlas_db/models/billing.py
 packages/database/atlas_db/models/core.py
 packages/database/atlas_db/models/dataset.py
 packages/database/atlas_db/models/evaluation.py
@@ -148,6 +154,7 @@ packages/database/atlas_db/models/tasks.py
 packages/database/atlas_db/repositories/__init__.py
 packages/database/atlas_db/repositories/authoring.py
 packages/database/atlas_db/repositories/base.py
+packages/database/atlas_db/repositories/billing.py
 packages/database/atlas_db/repositories/core.py
 packages/database/atlas_db/repositories/dataset.py
 packages/database/atlas_db/repositories/evaluation.py
@@ -234,7 +241,9 @@ packages/llm/clients/adapter.py
 packages/llm/clients/base.py
 packages/llm/clients/gemini.py
 packages/llm/clients/grok.py
+packages/llm/clients/groq.py
 packages/llm/clients/mistral.py
+packages/llm/clients/nvidia.py
 packages/llm/clients/ollama.py
 packages/llm/models/__init__.py
 packages/llm/models/model_types.py
@@ -294,6 +303,12 @@ packages/runtime/security/import_checker.py
 packages/runtime/security/validator.py
 packages/runtime/utils/__init__.py
 packages/runtime/utils/logger.py
+services/billing/registry.py
+services/billing/service.py
+services/billing/gateways/__init__.py
+services/billing/gateways/base.py
+services/billing/gateways/razorpay_provider.py
+services/billing/gateways/stripe_provider.py
 services/dataset/main.py
 services/dataset/api/dependencies.py
 services/dataset/api/routers/dataset_router.py

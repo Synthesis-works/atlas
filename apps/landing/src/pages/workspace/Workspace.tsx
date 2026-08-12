@@ -1,5 +1,4 @@
-import { motion } from 'framer-motion';
-import { pageCrossfade } from '@/lib/motion';
+import { useEffect, useState } from 'react';
 import { WelcomeStrip } from './components/WelcomeStrip';
 import { ActiveEvaluations } from './components/ActiveEvaluations';
 import { RecentActivity } from './components/RecentActivity';
@@ -21,6 +20,11 @@ import {
   createTimelineStages,
 } from '@/design/charts';
 import { AtlasPieChart } from '@/components/atlas/charts';
+import { WorkspaceStatusBoard } from '@/components/workspace/WorkspaceStatusBoard';
+import {
+  getDashboardSummary,
+  type DashboardSummaryData,
+} from '@/features/dashboard/services/dashboardService';
 
 const healthData = createHeatmapData(
   ['Node 01', 'Node 02', 'Node 03', 'Node 04'],
@@ -28,46 +32,53 @@ const healthData = createHeatmapData(
   (r, c) => (r.charCodeAt(5) * c.charCodeAt(0) * 7) % 100,
 );
 
-const hierarchyData = [
-  { label: 'Models', value: 3 },
-  { label: 'Benchmarks', value: 3 },
-  { label: 'Datasets', value: 4 },
-  { label: 'Evaluations', value: 3 },
-  { label: 'Reports', value: 2 },
-];
-
 const stagesData = createTimelineStages('Running');
 
-import { WorkspaceStatusBoard } from '@/components/workspace/WorkspaceStatusBoard';
-import { ACTIVE_EVALUATIONS } from '@/domain/evaluations/mock';
-import { AI_MODELS } from '@/domain/models/types';
-
 export default function Workspace() {
-  const activeCount = ACTIVE_EVALUATIONS.filter(
-    (e) => e.status === 'Running' || e.status === 'Scoring' || e.status === 'Loading' || e.status === 'Preparing',
-  ).length;
+  const [dashboard, setDashboard] = useState<DashboardSummaryData | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    getDashboardSummary().then((res) => {
+      if (isMounted && res) {
+        setDashboard(res);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const activeCount = dashboard?.summary.active_runs_count ?? 0;
+  const modelsCount = dashboard?.hierarchy.models ?? 15;
+
+  const hierarchyData = [
+    { label: 'Models', value: dashboard?.hierarchy.models ?? 15 },
+    { label: 'Benchmarks', value: dashboard?.hierarchy.benchmarks ?? 20 },
+    { label: 'Datasets', value: dashboard?.hierarchy.datasets ?? 10 },
+    { label: 'Evaluations', value: dashboard?.hierarchy.evaluations ?? 31 },
+    { label: 'Reports', value: dashboard?.hierarchy.reports ?? 36 },
+  ];
+
+
+  const totalModules = hierarchyData.reduce((acc, curr) => acc + curr.value, 0);
 
   return (
-    <motion.div
-      variants={pageCrossfade}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-    >
+    <div className="w-full text-white">
       <WorkspacePage>
         <WorkspaceHero>
           <div className="flex flex-col xl:flex-row gap-6 items-start w-full">
             <div className="flex-1 flex flex-col min-w-0 w-full gap-4">
-              <WelcomeStrip />
+              <WelcomeStrip activeCount={activeCount} />
               <WorkspaceStatusBoard 
                 activeBenchmarkCount={activeCount} 
-                modelsCount={AI_MODELS.length} 
+                modelsCount={modelsCount} 
                 duration={1.2}
                 className="my-0 w-full justify-start max-w-full"
               />
             </div>
             <div className="w-full xl:w-[400px] shrink-0">
-              <RecentActivity />
+              <RecentActivity events={dashboard?.activity} />
             </div>
           </div>
         </WorkspaceHero>
@@ -80,7 +91,7 @@ export default function Workspace() {
         <WorkspaceOperations className={cn(LayoutTokens.grid, LayoutTokens.gridGap, "items-stretch")}>
           {/* Main column */}
           <div className="col-span-4 md:col-span-8 xl:col-span-8 flex flex-col gap-6 min-w-0 h-full justify-between">
-            <ActiveEvaluations />
+            <ActiveEvaluations items={dashboard?.active_executions} />
             <div className="flex flex-col gap-6 flex-1 min-h-0">
               <HeatmapCard
                 title="System Health Matrix"
@@ -90,7 +101,13 @@ export default function Workspace() {
               />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start w-full">
                 <div className="min-w-0">
-                  <AtlasRuntime />
+                  <AtlasRuntime
+                    engineStatus={dashboard?.runtime.engine_status}
+                    totalBenchmarks={dashboard?.runtime.total_benchmarks}
+                    totalEvaluations={dashboard?.runtime.total_evaluations}
+                    totalModels={dashboard?.runtime.total_models}
+                    avgRuntimeSec={dashboard?.runtime.avg_runtime_sec}
+                  />
                 </div>
                 <div className="min-w-0">
                   <QuickActions />
@@ -107,15 +124,15 @@ export default function Workspace() {
               data={hierarchyData}
               size={240}
               innerRadius={70}
-              centerLabel="11 Modules"
+              centerLabel={`${totalModules} Items`}
               showLegend={true}
               hoverEffect="grow"
               className="liquid-glass-card rounded-2xl p-5 border border-white/10 w-full"
             />
-            <CapabilitySnapshot />
+            <CapabilitySnapshot capability={dashboard?.capability} />
           </aside>
         </WorkspaceOperations>
       </WorkspacePage>
-    </motion.div>
+    </div>
   );
 }

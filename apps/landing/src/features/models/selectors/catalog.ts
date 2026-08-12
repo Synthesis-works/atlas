@@ -46,7 +46,7 @@ export function filterModels(models: RegistryModel[], filters: FilterState): Reg
   });
 }
 
-export function sortModels(models: RegistryModel[], sort: SortState, healthMap: Record<string, ModelHealth>): RegistryModel[] {
+export function sortModels(models: RegistryModel[], sort: SortState, _healthMap: Record<string, ModelHealth>): RegistryModel[] {
   return [...models].sort((a, b) => {
     let aVal: any = a[sort.field as keyof RegistryModel];
     let bVal: any = b[sort.field as keyof RegistryModel];
