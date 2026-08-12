@@ -60,12 +60,16 @@ class HealthService:
                 "status": "healthy",
                 "tasks_examined": self.scheduler.metrics.tasks_examined if self.scheduler else 0,
                 "tasks_scheduled": self.scheduler.metrics.tasks_scheduled if self.scheduler else 0,
-                "policy_rejections": self.scheduler.metrics.policy_rejections if self.scheduler else 0,
+                "policy_rejections": self.scheduler.metrics.policy_rejections
+                if self.scheduler
+                else 0,
             },
             "recovery": {
                 "status": "healthy",
                 "leases_expired": self.recovery.metrics.leases_expired if self.recovery else 0,
-                "workers_unhealthy": self.recovery.metrics.workers_unhealthy if self.recovery else 0,
+                "workers_unhealthy": self.recovery.metrics.workers_unhealthy
+                if self.recovery
+                else 0,
                 "workers_offline": self.recovery.metrics.workers_offline if self.recovery else 0,
             },
             "workers": {"ready": ready, "busy": busy, "offline": offline, "unhealthy": unhealthy},
