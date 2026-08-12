@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Any
 
 from atlas_db.models.authoring import BenchmarkVersion
 from atlas_db.models.execution import Execution, ExecutionStatus
@@ -155,7 +156,7 @@ class ExecutionService:
     def list_executions_for_project(
         db: Session, project_id: uuid.UUID, skip: int = 0, limit: int = 100
     ) -> list[Execution]:
-        return (
+        return list(
             db.query(Execution)
             .filter(Execution.project_id == project_id)
             .offset(skip)
@@ -167,7 +168,7 @@ class ExecutionService:
 class ExecutionApplicationService:
     def __init__(
         self,
-        execution_repo,  # type: ExecutionRepository
+        execution_repo: Any,
     ):
         self.execution_repo = execution_repo
 
