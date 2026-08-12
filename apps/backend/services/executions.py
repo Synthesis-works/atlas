@@ -61,6 +61,7 @@ class ExecutionService:
 
         try:
             from apps.backend.worker.tasks import run_execution_task
+
             run_execution_task.delay(str(execution.id))
         except Exception:
             pass

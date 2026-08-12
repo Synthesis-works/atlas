@@ -56,6 +56,7 @@ class ExecutionApplicationService:
         try:
             from atlas_db.models.execution import Execution as DBExecution, ExecutionStatus
             from datetime import datetime, UTC
+
             db_exec = DBExecution(
                 id=execution.id,
                 project_id=uuid.UUID("00000000-0000-0000-0000-000000000003"),
@@ -72,6 +73,7 @@ class ExecutionApplicationService:
 
         try:
             from apps.backend.worker.tasks import run_execution_task
+
             run_execution_task.delay(str(execution.id))
         except Exception:
             pass

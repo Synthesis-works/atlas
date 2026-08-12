@@ -53,7 +53,14 @@ def test_execution_worker_success():
     execution.cancellation_requested = False
 
     # Mock db queries (called for Execution then ExecutionModel)
-    db.query.return_value.filter.return_value.first.side_effect = [execution, None, execution, None, execution, None]
+    db.query.return_value.filter.return_value.first.side_effect = [
+        execution,
+        None,
+        execution,
+        None,
+        execution,
+        None,
+    ]
 
     with patch.object(ExecutionRunner, "run") as mock_run:
         mock_output = Mock()
@@ -88,7 +95,14 @@ def test_execution_worker_failure_skips_evaluation():
     execution.cancellation_requested = False
 
     # db returns execution correctly
-    db.query.return_value.filter.return_value.first.side_effect = [execution, None, execution, None, execution, None]
+    db.query.return_value.filter.return_value.first.side_effect = [
+        execution,
+        None,
+        execution,
+        None,
+        execution,
+        None,
+    ]
 
     with patch.object(ExecutionRunner, "run") as mock_run:
         mock_run.side_effect = Exception("Runner crashed")

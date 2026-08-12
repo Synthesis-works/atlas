@@ -33,19 +33,33 @@ def db_session():
 
 @pytest.mark.skipif(
     not os.getenv("GROQ_API_KEY") and not os.getenv("MISTRAL_API_KEY"),
-    reason="Live provider API key required in environment"
+    reason="Live provider API key required in environment",
 )
 def test_live_provider_e2e_execution(db_session):
     """
     Tests complete end-to-end execution against a live external LLM API
     (Groq/Mistral) through RealModelAdapter without mocking HTTP responses.
     """
-    target_model = "groq/llama-3.1-8b-instant" if os.getenv("GROQ_API_KEY") else "mistral-small-latest"
-    
+    target_model = (
+        "groq/llama-3.1-8b-instant" if os.getenv("GROQ_API_KEY") else "mistral-small-latest"
+    )
+
     # 1. Setup DB Entities
-    org = Organization(id=uuid.uuid4(), name="Live Test Org", slug=f"live-org-{uuid.uuid4().hex[:6]}")
-    user = User(id=uuid.uuid4(), email=f"live-{uuid.uuid4().hex[:6]}@example.com", full_name="Live User", organization=org)
-    project = Project(id=uuid.uuid4(), name="Live Project", slug=f"live-proj-{uuid.uuid4().hex[:6]}", organization=org)
+    org = Organization(
+        id=uuid.uuid4(), name="Live Test Org", slug=f"live-org-{uuid.uuid4().hex[:6]}"
+    )
+    user = User(
+        id=uuid.uuid4(),
+        email=f"live-{uuid.uuid4().hex[:6]}@example.com",
+        full_name="Live User",
+        organization=org,
+    )
+    project = Project(
+        id=uuid.uuid4(),
+        name="Live Project",
+        slug=f"live-proj-{uuid.uuid4().hex[:6]}",
+        organization=org,
+    )
     db_session.add_all([org, user, project])
     db_session.commit()
 
@@ -53,7 +67,9 @@ def test_live_provider_e2e_execution(db_session):
     db_session.add(benchmark)
     db_session.commit()
 
-    benchmark_version = BenchmarkVersion(id=uuid.uuid4(), benchmark_id=benchmark.id, version_string="1.0.0")
+    benchmark_version = BenchmarkVersion(
+        id=uuid.uuid4(), benchmark_id=benchmark.id, version_string="1.0.0"
+    )
     db_session.add(benchmark_version)
     db_session.commit()
 
@@ -61,8 +77,14 @@ def test_live_provider_e2e_execution(db_session):
     db_session.add(task)
     db_session.commit()
 
-    test_case = DBTestCase(id=uuid.uuid4(), task_id=task.id, input_data={"a": 2, "b": 3}, expected_output={"result": 5})
-    task_prompt = DBTaskPrompt(id=uuid.uuid4(), task_id=task.id, template="Write a python function def add(a, b): returning the sum of a and b.")
+    test_case = DBTestCase(
+        id=uuid.uuid4(), task_id=task.id, input_data={"a": 2, "b": 3}, expected_output={"result": 5}
+    )
+    task_prompt = DBTaskPrompt(
+        id=uuid.uuid4(),
+        task_id=task.id,
+        template="Write a python function def add(a, b): returning the sum of a and b.",
+    )
     db_session.add_all([test_case, task_prompt])
     db_session.commit()
 
@@ -100,7 +122,9 @@ def test_live_provider_e2e_execution(db_session):
     execution_id = execution.id
 
     # 6. Run EvaluationSubscriber for ExecutionCompletedEvent against real LLM output
-    with patch("packages.evaluation_engine.application.subscriber.SessionLocal", return_value=db_session):
+    with patch(
+        "packages.evaluation_engine.application.subscriber.SessionLocal", return_value=db_session
+    ):
         subscriber = EvaluationSubscriber()
         subscriber.handle(
             ExecutionCompletedEvent(
@@ -110,10 +134,18 @@ def test_live_provider_e2e_execution(db_session):
             )
         )
 
-    eval_result = db_session.query(EvaluationResult).filter(EvaluationResult.model_output_id == output_id).first()
+    eval_result = (
+        db_session.query(EvaluationResult)
+        .filter(EvaluationResult.model_output_id == output_id)
+        .first()
+    )
     assert eval_result is not None
     assert eval_result.status == EvaluationStatus.COMPLETED
 
-    cap_profile = db_session.query(CapabilityProfile).filter(CapabilityProfile.execution_id == execution_id).first()
+    cap_profile = (
+        db_session.query(CapabilityProfile)
+        .filter(CapabilityProfile.execution_id == execution_id)
+        .first()
+    )
     assert cap_profile is not None
     assert cap_profile.overall_score is not None

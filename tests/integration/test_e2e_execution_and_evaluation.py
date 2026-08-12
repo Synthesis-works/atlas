@@ -102,11 +102,12 @@ def test_e2e_real_adapter_execution_to_evaluation_flow(db_session):
         created_at=str(datetime.utcnow().timestamp()),
     )
 
-    with patch(
-        "packages.llm.clients.groq.GroqClient.health", return_value=True
-    ), patch(
-        "packages.llm.clients.groq.GroqClient.generate",
-        return_value=mock_llm_response,
+    with (
+        patch("packages.llm.clients.groq.GroqClient.health", return_value=True),
+        patch(
+            "packages.llm.clients.groq.GroqClient.generate",
+            return_value=mock_llm_response,
+        ),
     ):
         # 5. Run worker execution loop directly with test db session
         worker = ExecutionWorker(db_session)
@@ -127,7 +128,9 @@ def test_e2e_real_adapter_execution_to_evaluation_flow(db_session):
     output_id = outputs[0].id
 
     # 7. Trigger EvaluationSubscriber for ExecutionCompletedEvent
-    with patch("packages.evaluation_engine.application.subscriber.SessionLocal", return_value=db_session):
+    with patch(
+        "packages.evaluation_engine.application.subscriber.SessionLocal", return_value=db_session
+    ):
         subscriber = EvaluationSubscriber()
         subscriber.handle(
             ExecutionCompletedEvent(
@@ -138,10 +141,18 @@ def test_e2e_real_adapter_execution_to_evaluation_flow(db_session):
         )
 
     # 8. Verify EvaluationResult & CapabilityProfile state in DB
-    eval_result = db_session.query(EvaluationResult).filter(EvaluationResult.model_output_id == output_id).first()
+    eval_result = (
+        db_session.query(EvaluationResult)
+        .filter(EvaluationResult.model_output_id == output_id)
+        .first()
+    )
     assert eval_result is not None
     assert eval_result.status == EvaluationStatus.COMPLETED
 
-    cap_profile = db_session.query(CapabilityProfile).filter(CapabilityProfile.execution_id == execution_id).first()
+    cap_profile = (
+        db_session.query(CapabilityProfile)
+        .filter(CapabilityProfile.execution_id == execution_id)
+        .first()
+    )
     assert cap_profile is not None
     assert cap_profile.overall_score == 100.0

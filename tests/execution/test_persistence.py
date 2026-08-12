@@ -30,7 +30,7 @@ DB_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:543
 try:
     engine = create_engine(DB_URL)
     with engine.connect() as conn:
-        has_postgres = (engine.dialect.name == "postgresql")
+        has_postgres = engine.dialect.name == "postgresql"
 except Exception:
     has_postgres = False
     engine = create_engine("sqlite:///:memory:")

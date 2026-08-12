@@ -28,15 +28,12 @@ class ExecutionRunner:
         if isinstance(bv_id, str):
             try:
                 import uuid
+
                 bv_id = uuid.UUID(bv_id)
             except ValueError:
                 pass
 
-        tasks = (
-            self.db.query(Task)
-            .filter(Task.benchmark_version_id == bv_id)
-            .all()
-        )
+        tasks = self.db.query(Task).filter(Task.benchmark_version_id == bv_id).all()
         if not tasks:
             # Fallback for slug or all tasks if specific BV has no tasks
             tasks = self.db.query(Task).all()

@@ -111,14 +111,18 @@ def test_transient_error_retry_and_eventual_success():
 
 
 def test_exceeding_max_retries_raises_llm_error():
-    adapter = RealModelAdapter(target_model="mistral-large-latest", max_retries=1, backoff_factor=0.01)
+    adapter = RealModelAdapter(
+        target_model="mistral-large-latest", max_retries=1, backoff_factor=0.01
+    )
     mock_client = MagicMock()
     mock_client.health.return_value = True
     mock_client.generate.side_effect = LLMError("504 Gateway Timeout")
 
     with (
         patch.object(
-            adapter.provider_adapter, "resolve_provider_and_model", return_value=("mistral", "mistral-large-latest")
+            adapter.provider_adapter,
+            "resolve_provider_and_model",
+            return_value=("mistral", "mistral-large-latest"),
         ),
         patch.object(adapter.provider_adapter, "get_client", return_value=mock_client),
     ):

@@ -51,7 +51,12 @@ class RealModelAdapter(BaseModelAdapter):
             except LLMError as e:
                 # Do not retry auth errors or missing keys
                 error_msg = str(e)
-                if "API key" in error_msg or "401" in error_msg or "403" in error_msg or "not found" in error_msg:
+                if (
+                    "API key" in error_msg
+                    or "401" in error_msg
+                    or "403" in error_msg
+                    or "not found" in error_msg
+                ):
                     raise
 
                 last_exception = e

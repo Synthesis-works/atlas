@@ -62,7 +62,11 @@ class ExecutionWorker:
             self.db.commit()
 
         # Status transition to RUNNING
-        if str(execution.status) not in ("QUEUED", "ExecutionState.QUEUED", "ExecutionStatus.QUEUED"):
+        if str(execution.status) not in (
+            "QUEUED",
+            "ExecutionState.QUEUED",
+            "ExecutionStatus.QUEUED",
+        ):
             logger.warning(
                 f"Execution {execution_id} is not QUEUED. Current status: {execution.status}"
             )

@@ -81,7 +81,9 @@ def create_execution(
         bv_uuid = uuid.UUID("00000000-0000-0000-0000-000000000005")
 
     user_id = current_user.get("user_id", uuid.uuid4())
-    target_model = payload.target_model if payload and payload.target_model else "groq/llama-3.1-8b-instant"
+    target_model = (
+        payload.target_model if payload and payload.target_model else "groq/llama-3.1-8b-instant"
+    )
     execution = service.submit_execution(
         benchmark_version_id=bv_uuid,
         submitted_by=user_id,
