@@ -70,6 +70,7 @@ def create_app() -> FastAPI:
         search,
         system,
         leaderboard,
+        billing,
     )
 
     # We will mount these under /api/v1 for the actual domain routes
@@ -91,6 +92,7 @@ def create_app() -> FastAPI:
     app.include_router(search.router, prefix="/api/v1")
     app.include_router(system.router, prefix="/api/v1")
     app.include_router(leaderboard.router, prefix="/api/v1")
+    app.include_router(billing.router, prefix="/api/v1")
 
     return app
 

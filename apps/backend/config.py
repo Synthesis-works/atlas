@@ -45,6 +45,21 @@ class Settings(BaseSettings):
     outbox_batch_size: int = Field(default=100)
     outbox_poll_interval: int = Field(default=5)
 
+    # Billing Configuration (Stripe & Razorpay)
+    stripe_api_key: str = Field(default="")
+    stripe_webhook_secret: str = Field(default="")
+    razorpay_key_id: str = Field(default="")
+    razorpay_key_secret: str = Field(default="")
+    razorpay_webhook_secret: str = Field(default="")
+
+    @property
+    def stripe_enabled(self) -> bool:
+        return bool(self.stripe_api_key)
+
+    @property
+    def razorpay_enabled(self) -> bool:
+        return bool(self.razorpay_key_id and self.razorpay_key_secret)
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
