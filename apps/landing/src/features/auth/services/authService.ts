@@ -90,7 +90,13 @@ export async function loginUser(payload: UserLoginPayload): Promise<ServiceResul
 
   // 1. Try backend authentication if server is online
   try {
-    const data = await apiClient.post<any>('/api/v1/auth/login', payload);
+    const backendPayload = {
+      username: identifier,
+      email: identifier.includes('@') ? identifier : undefined,
+      identifier: identifier,
+      password: password,
+    };
+    const data = await apiClient.post<any>('/api/v1/auth/login', backendPayload);
     const token = data?.access_token || data?.data?.access_token;
     if (token) {
       setAuthToken(token);
