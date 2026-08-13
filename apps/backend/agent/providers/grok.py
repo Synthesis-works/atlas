@@ -26,64 +26,86 @@ class GrokAgentProvider(BaseLLMProvider):
         self.client = client or GrokClient(api_key_env=api_key_env)
 
     def decide(self, task: AgentTask, prompt_context: str, available_tools: list[dict[str, Any]]) -> AgentDecision:
-        tool_descriptions = []
-        for t in available_tools:
-            name = t.get("name")
-            desc = t.get("description")
-            params = t.get("parameters", {}).get("properties", {})
-            tool_descriptions.append(f"- {name}: {desc}. Parameters: {json.dumps(params)}")
-
-        tools_summary = "\n".join(tool_descriptions)
+        tools_payload = []
+        if available_tools:
+            tools_payload = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": t.get("name"),
+                        "description": t.get("description", ""),
+                        "parameters": t.get("parameters", {"type": "object", "properties": {}}),
+                    },
+                }
+                for t in available_tools
+            ]
 
         system_instruction = (
             "You are the Atlas Agent powered by xAI Grok, an autonomous execution engine for AI benchmarking.\n"
             "Analyze the user's task goal, current plan, and previous tool execution history.\n"
-            "CRITICAL: When the execution plan contains pending unexecuted steps (e.g., benchmark creation, dataset generation, model execution, evaluation, report), tool calls are MANDATORY.\n"
+            "CRITICAL: When the execution plan contains pending unexecuted steps, tool calls are MANDATORY.\n"
             "Do NOT return conversational explanations like 'I will create...' or 'I need to create...'. Actually execute the tool call.\n"
-            "Return ONLY a JSON object formatted as: {\"tool_name\": \"<name>\", \"arguments\": {<args>}}\n"
-            "FINAL_RESPONSE text is permitted ONLY when all required plan steps have ALREADY been executed and completed.\n"
-            f"AVAILABLE TOOLS:\n{tools_summary}"
+            "If the user goal is ambiguous or lacks required information to create or run a benchmark (e.g. 'make a custom benchmark'), you MUST execute the request_clarification tool instead of guessing or failing.\n"
+            "FINAL_RESPONSE text is permitted ONLY when all required plan steps have ALREADY been executed and completed."
         )
 
         prompt = Prompt(user=prompt_context, system=system_instruction)
 
         try:
             start_t = time.time()
-            response = self.client.generate(self.model, prompt)
+            response = self.client.generate(self.model, prompt, tools=tools_payload)
             latency = int((time.time() - start_t) * 1000)
 
-            content = response.response.strip()
+            raw_choice = response.raw.get("choices", [{}])[0]
+            message = raw_choice.get("message", {})
 
-            # Robust JSON extraction from markdown code fences or raw text
-            import re
-            json_str = content
-            if "```" in content:
-                match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", content, re.DOTALL)
-                if match:
-                    json_str = match.group(1)
-            elif "{" in content and "}" in content:
-                match = re.search(r"(\{.*?\})", content, re.DOTALL)
-                if match:
-                    json_str = match.group(1)
+            # 1. Native Tool Calling Response Parsing
+            if "tool_calls" in message and message["tool_calls"]:
+                tool_call = message["tool_calls"][0].get("function", {})
+                tool_name = tool_call.get("name")
+                raw_args = tool_call.get("arguments", {})
+                arguments = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
+                if tool_name:
+                    logger.info(f"Grok selected native tool '{tool_name}' with args: {arguments}")
+                    return AgentDecision(
+                        type=AgentDecisionType.TOOL_CALL,
+                        tool_name=tool_name,
+                        arguments=arguments,
+                        reasoning=f"Grok selected native tool '{tool_name}'",
+                    )
 
-            if "tool_name" in json_str:
-                try:
-                    data = json.loads(json_str)
-                    tool_name = data.get("tool_name")
-                    arguments = data.get("arguments", {})
-                    if tool_name:
-                        return AgentDecision(
-                            type=AgentDecisionType.TOOL_CALL,
-                            tool_name=tool_name,
-                            arguments=arguments,
-                            reasoning=f"Grok selected tool '{tool_name}'",
-                        )
-                except Exception:
-                    pass
+            # 2. Secondary Fallback: Regex JSON extraction from content
+            content = (message.get("content") or "").strip()
+            if content:
+                import re
+                json_str = content
+                if "```" in content:
+                    match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", content, re.DOTALL)
+                    if match:
+                        json_str = match.group(1)
+                elif "{" in content and "}" in content:
+                    match = re.search(r"(\{.*?\})", content, re.DOTALL)
+                    if match:
+                        json_str = match.group(1)
+
+                if "tool_name" in json_str:
+                    try:
+                        data = json.loads(json_str)
+                        tool_name = data.get("tool_name")
+                        arguments = data.get("arguments", {})
+                        if tool_name:
+                            return AgentDecision(
+                                type=AgentDecisionType.TOOL_CALL,
+                                tool_name=tool_name,
+                                arguments=arguments,
+                                reasoning=f"Grok selected tool '{tool_name}' via JSON text",
+                            )
+                    except Exception:
+                        pass
 
             return AgentDecision(
                 type=AgentDecisionType.FINAL_RESPONSE,
-                response=content,
+                response=content or "No response generated.",
                 reasoning="Grok produced text response",
             )
 

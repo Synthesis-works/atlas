@@ -128,6 +128,13 @@ class AtlasAgent:
                 tool_name = decision.tool_name
                 args = decision.arguments
 
+                if tool_name == "request_clarification":
+                    self.executor.execute_tool(task, db, tool_name, args)
+                    task.status = AgentTaskStatus.WAITING_FOR_CLARIFICATION
+                    task.clarification_prompt = args.get("question", "Could you clarify your request?")
+                    task.add_trace("WAITING_FOR_CLARIFICATION", {"question": task.clarification_prompt})
+                    break
+
                 # Permission check
                 if not self.registry.check_permission(tool_name, task.granted_permissions):
                     task.status = AgentTaskStatus.WAITING_FOR_APPROVAL
@@ -207,6 +214,12 @@ class AtlasAgent:
                         task.error_detail = f"All configured providers failed to produce a valid Atlas tool decision. Provider '{current_p}' returned conversational text instead of executable tool call: {reason}"
                         task.add_trace("TASK_FAILED", {"error": task.error_detail})
                         break
+
+            elif decision.type == AgentDecisionType.REQUEST_CLARIFICATION:
+                task.status = AgentTaskStatus.WAITING_FOR_CLARIFICATION
+                task.clarification_prompt = decision.response or "Could you clarify your request?"
+                task.add_trace("WAITING_FOR_CLARIFICATION", {"question": task.clarification_prompt})
+                break
 
             elif decision.type == AgentDecisionType.FAIL:
                 task.status = AgentTaskStatus.FAILED

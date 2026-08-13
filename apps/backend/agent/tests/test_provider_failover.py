@@ -232,3 +232,52 @@ def test_regression_repeated_prose_fails_task_not_completed():
     assert completed_task.status != AgentTaskStatus.COMPLETED
     assert "conversational text instead of executable tool call" in (completed_task.error_detail or "")
 
+
+def test_regression_request_clarification_flow():
+    """
+    Verify request_clarification tool call suspends the task and transitions to WAITING_FOR_CLARIFICATION.
+    """
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    workflow_responses = [
+        {
+            "type": AgentDecisionType.TOOL_CALL,
+            "tool_name": "request_clarification",
+            "arguments": {"question": "Should we test addition or subtraction?"}
+        }
+    ]
+
+    provider = MockProviderScenario("mock_clarify", workflow_responses)
+    agent = AtlasAgent(provider=provider)
+    task = AgentTask(goal="make a custom benchmark", granted_permissions=[AgentPermission.READ, AgentPermission.WRITE])
+
+    suspended_task = agent.run_task(task, db)
+
+    assert suspended_task.status == AgentTaskStatus.WAITING_FOR_CLARIFICATION
+    assert suspended_task.clarification_prompt == "Should we test addition or subtraction?"
+    assert any(getattr(e, "event_type", None) == "WAITING_FOR_CLARIFICATION" for e in suspended_task.execution_trace)
+
+
+def test_adaptive_plan_generation():
+    """
+    Verify plan generation dynamically adapts based on goal string keywords.
+    """
+    agent = AtlasAgent(provider=MockProviderScenario("mock", []))
+    
+    # Creation only benchmark
+    task_create = AgentTask(goal="Create a benchmark for model safety")
+    task_create.plan = agent.planner.generate_initial_plan(task_create.goal)
+    assert len(task_create.plan) == 4
+    assert task_create.plan[0].description == "Define benchmark specification"
+    assert task_create.plan[-1].description == "Validate task formats and completeness"
+
+    # Full evaluation benchmark
+    task_full = AgentTask(goal="Create and run a benchmark comparing models on math")
+    task_full.plan = agent.planner.generate_initial_plan(task_full.goal)
+    assert len(task_full.plan) == 7
+    assert task_full.plan[-1].description == "Publish comparative benchmark report"
+
+

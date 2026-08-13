@@ -60,6 +60,8 @@ def create_agent_task(
     task = AgentTask(
         goal=payload.goal,
         granted_permissions=payload.permissions,
+        primary_provider=payload.provider,
+        model=payload.model,
     )
     _agent_tasks_db[task.task_id] = task
 
@@ -105,6 +107,7 @@ def get_agent_task(task_id: UUID):
         "execution_trace": [t.model_dump() for t in task.execution_trace],
         "pending_tool_call": task.pending_tool_call,
         "approval_token": task.approval_token,
+        "clarification_prompt": task.clarification_prompt,
         "final_result": task.final_result,
         "error_detail": task.error_detail,
         "primary_provider": task.primary_provider,
@@ -194,6 +197,55 @@ def cancel_agent_task(task_id: UUID):
         "task_id": str(task.task_id),
         "status": task.status.value,
         "message": "Task cancelled successfully.",
+    }
+
+
+class TaskClarificationRequest(BaseModel):
+    response: str = Field(description="The user's response answering the clarification prompt.")
+
+
+@router.post("/tasks/{task_id}/clarify", response_model=dict[str, Any])
+def clarify_agent_task(
+    task_id: UUID,
+    payload: TaskClarificationRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db_session),
+):
+    task = _agent_tasks_db.get(task_id)
+    if not task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found.")
+
+    if task.status != AgentTaskStatus.WAITING_FOR_CLARIFICATION:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Task is in status '{task.status}', not WAITING_FOR_CLARIFICATION.")
+
+    # Record clarification answer as an observation
+    from apps.backend.agent.state import ObservationRecord
+    clarify_obs_msg = f"User Clarification: {payload.response}"
+    task.observations.append(
+        ObservationRecord(
+            call_id=f"clarify_{task.step_count}",
+            tool_name="request_clarification",
+            success=True,
+            output={"response": clarify_obs_msg},
+            error=None,
+        )
+    )
+    task.add_trace("CLARIFICATION_RESPONDED", {"response": payload.response})
+
+    # Clear clarification prompt and resume task
+    task.clarification_prompt = None
+    task.status = AgentTaskStatus.EXECUTING
+
+    if task.primary_provider == "mock":
+        agent = AtlasAgent(provider=MockAgentProvider(), registry=_tool_registry)
+        agent.run_task(task, db)
+    else:
+        background_tasks.add_task(_run_agent_task_background, task.task_id, SessionLocal, task.primary_provider, task.model)
+
+    return {
+        "task_id": str(task.task_id),
+        "status": task.status.value,
+        "message": "Clarification submitted successfully, resuming execution.",
     }
 
 

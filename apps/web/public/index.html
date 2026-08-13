@@ -127,6 +127,17 @@
                 </div>
             </div>
 
+            <!-- Clarification Request Card (Conditional) -->
+            <div class="approval-card" id="clarificationCard" style="display: none; background: rgba(59, 130, 246, 0.1); border-color: rgba(59, 130, 246, 0.3);">
+                <div style="font-weight: 600; color: #60a5fa; margin-bottom: 0.4rem;">? Clarification Required</div>
+                <div id="clarificationText" style="font-size: 0.88rem; color: #dbeafe; margin-bottom: 0.75rem;">Atlas Agent needs more details.</div>
+                <textarea id="clarificationInput" placeholder="Type your response..." style="width: 100%; min-height: 60px; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-subtle); border-radius: 8px; color: var(--text-main); padding: 0.5rem; font-size: 0.88rem; margin-bottom: 0.75rem; resize: vertical; outline: none;"></textarea>
+                <div class="approval-actions">
+                    <button class="btn-approve" id="clarifySubmitBtn" style="background: var(--btn-gradient);">Submit Response</button>
+                    <button class="btn-cancel" id="clarifyCancelBtn">Cancel Task</button>
+                </div>
+            </div>
+
             <!-- Failure Card (Conditional) -->
             <div class="failure-card" id="failureCard" style="display: none;">
                 <div style="font-weight: 600; color: var(--danger); margin-bottom: 0.4rem;">✕ Task Execution Failed</div>

@@ -9,6 +9,7 @@ from apps.backend.agent.tools.dataset_tools import CreateDatasetTool, GetDataset
 from apps.backend.agent.tools.evaluation_tools import CompareResultsTool, CreateEvaluationCaseTool, EvaluateRunTool, GenerateReportTool
 from apps.backend.agent.tools.execution_tools import GetAvailableModelsTool, GetRunStatusTool, RunBenchmarkTool
 from apps.backend.agent.tools.memory_tools import SearchMemoryTool
+from apps.backend.agent.tools.clarification_tool import RequestClarificationTool
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,7 @@ class ToolRegistry:
             CompareResultsTool(),
             GenerateReportTool(),
             SearchMemoryTool(),
+            RequestClarificationTool(),
         ]
         for tool in default_tools:
             self.register(tool)

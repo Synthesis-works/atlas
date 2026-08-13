@@ -12,6 +12,7 @@ class AgentTaskStatus(str, Enum):
     EXECUTING = "EXECUTING"
     REPAIRING = "REPAIRING"
     WAITING_FOR_APPROVAL = "WAITING_FOR_APPROVAL"
+    WAITING_FOR_CLARIFICATION = "WAITING_FOR_CLARIFICATION"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
@@ -21,6 +22,7 @@ class AgentDecisionType(str, Enum):
     TOOL_CALL = "TOOL_CALL"
     FINAL_RESPONSE = "FINAL_RESPONSE"
     REQUEST_APPROVAL = "REQUEST_APPROVAL"
+    REQUEST_CLARIFICATION = "REQUEST_CLARIFICATION"
     REPLAN = "REPLAN"
     FAIL = "FAIL"
 
@@ -102,9 +104,10 @@ class AgentTask(BaseModel):
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     
-    # Approval & Output State
+    # Approval, Clarification & Output State
     pending_tool_call: Optional[dict[str, Any]] = None
     approval_token: Optional[str] = None
+    clarification_prompt: Optional[str] = None
     final_result: Optional[dict[str, Any]] = None
     error_detail: Optional[str] = None
 
@@ -119,6 +122,7 @@ class AgentTask(BaseModel):
     # Provider Telemetry
     primary_provider: str = "gemini"
     current_provider: str = "gemini"
+    model: str = "gemini-3.5-flash-lite"
 
     def record_trace(self, step: int, action: str, result: dict[str, Any]) -> None:
         self.add_trace(event_type=action, details={"step": step, **result})

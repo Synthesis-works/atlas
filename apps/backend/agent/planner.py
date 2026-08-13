@@ -13,8 +13,25 @@ class AgentPlanner:
 
     def generate_initial_plan(self, goal: str) -> list[PlanStep]:
         """
-        Creates an initial structured plan based on the goal description.
+        Creates an initial structured plan adaptively based on the goal description.
         """
+        goal_lower = goal.lower()
+
+        # Check if full evaluation pipeline requested (run, evaluate, report)
+        is_full_eval = any(k in goal_lower for k in ["run", "eval", "report", "compare", "test whether", "benchmark models", "solve"])
+        
+        # Check if creation-only benchmark requested
+        is_creation_only = any(k in goal_lower for k in ["create a benchmark", "make a benchmark", "build a benchmark", "generate benchmark"]) and not any(k in goal_lower for k in ["run", "evaluate", "report"])
+
+        if is_creation_only:
+            return [
+                PlanStep(step_number=1, description="Define benchmark specification", status="PENDING"),
+                PlanStep(step_number=2, description="Generate and attach dataset tasks", status="PENDING"),
+                PlanStep(step_number=3, description="Generate evaluation cases and ground truth", status="PENDING"),
+                PlanStep(step_number=4, description="Validate task formats and completeness", status="PENDING"),
+            ]
+
+        # Default full benchmarking pipeline plan
         return [
             PlanStep(step_number=1, description="Define benchmark specification", status="PENDING"),
             PlanStep(step_number=2, description="Generate and attach dataset tasks", status="PENDING"),

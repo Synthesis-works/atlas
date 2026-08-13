@@ -47,6 +47,9 @@ class MistralClient(BaseLLMClient):
             "stream": False,
         }
 
+        if "tools" in kwargs and kwargs["tools"]:
+            payload["tools"] = kwargs["tools"]
+
         start_time = time.time()
 
         try:

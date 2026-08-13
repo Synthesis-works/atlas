@@ -40,6 +40,7 @@ class GeminiAgentProvider(BaseLLMProvider):
             "6. run_benchmark against target models\n"
             "7. evaluate_run to compute metrics using evaluation cases\n"
             "8. generate_report to summarize findings\n"
+            "9. request_clarification: Call this tool if the user's goal is ambiguous, underspecified, or lacks required information to create or run a benchmark (e.g. 'make a custom benchmark'), instead of failing or guessing.\n"
             "When all required steps are completed, return a concise final text response summarizing your actions."
         )
 

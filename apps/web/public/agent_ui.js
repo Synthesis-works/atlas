@@ -26,6 +26,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const approvalText = document.getElementById('approvalText');
     const approveBtn = document.getElementById('approveBtn');
     const cancelBtn = document.getElementById('cancelBtn');
+
+    const clarificationCard = document.getElementById('clarificationCard');
+    const clarificationText = document.getElementById('clarificationText');
+    const clarificationInput = document.getElementById('clarificationInput');
+    const clarifySubmitBtn = document.getElementById('clarifySubmitBtn');
+    const clarifyCancelBtn = document.getElementById('clarifyCancelBtn');
     
     const failureCard = document.getElementById('failureCard');
     const failureText = document.getElementById('failureText');
@@ -171,6 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setDisplay(dataLineageSection, 'none');
             setDisplay(resultArtifactCard, 'none');
             setDisplay(approvalCard, 'none');
+            setDisplay(clarificationCard, 'none');
             setDisplay(failureCard, 'none');
 
             startPolling();
@@ -408,6 +415,14 @@ AgentTask: ${task.task_id}
             setDisplay(approvalCard, 'none');
         }
 
+        // Render Clarification Card
+        if (task.status === 'WAITING_FOR_CLARIFICATION') {
+            if (clarificationText) clarificationText.textContent = task.clarification_prompt || 'Atlas Agent needs more details.';
+            setDisplay(clarificationCard, 'block');
+        } else {
+            setDisplay(clarificationCard, 'none');
+        }
+
         // Render Failure Card
         if (task.status === 'FAILED') {
             if (failureText) failureText.textContent = task.error_detail || 'Task execution failed.';
@@ -623,6 +638,53 @@ AgentTask: ${taskData.task_id}
             try {
                 await fetch(`/api/v1/agent/tasks/${currentTaskId}/cancel`, { method: 'POST' });
                 setDisplay(approvalCard, 'none');
+            } catch (e) {
+                alert(`Cancellation error: ${e.message}`);
+            }
+        });
+    }
+
+    // Clarification Submit Action
+    if (clarifySubmitBtn) {
+        clarifySubmitBtn.addEventListener('click', async () => {
+            if (!currentTaskId || !clarificationInput) return;
+            const userResponse = clarificationInput.value.trim();
+            if (!userResponse) {
+                alert('Please type a response to clarify.');
+                return;
+            }
+            try {
+                clarifySubmitBtn.disabled = true;
+                clarifySubmitBtn.style.opacity = '0.5';
+                const resp = await fetch(`/api/v1/agent/tasks/${currentTaskId}/clarify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ response: userResponse })
+                });
+                if (resp.ok) {
+                    clarificationInput.value = '';
+                    setDisplay(clarificationCard, 'none');
+                    startPolling();
+                } else {
+                    const err = await resp.json();
+                    alert(`Clarification submission failed: ${err.detail || 'Unknown error'}`);
+                }
+            } catch (e) {
+                alert(`Clarification error: ${e.message}`);
+            } finally {
+                clarifySubmitBtn.disabled = false;
+                clarifySubmitBtn.style.opacity = '1';
+            }
+        });
+    }
+
+    // Clarification Cancel Action
+    if (clarifyCancelBtn) {
+        clarifyCancelBtn.addEventListener('click', async () => {
+            if (!currentTaskId) return;
+            try {
+                await fetch(`/api/v1/agent/tasks/${currentTaskId}/cancel`, { method: 'POST' });
+                setDisplay(clarificationCard, 'none');
             } catch (e) {
                 alert(`Cancellation error: ${e.message}`);
             }

@@ -19,6 +19,15 @@ class MockAgentProvider(BaseLLMProvider):
         # Check last observation for dataset validation failure simulation
         last_obs = task.observations[-1] if task.observations else None
         
+        # Mock clarification trigger
+        if "clarif" in task.goal.lower() and "request_clarification" not in called_tools:
+            return AgentDecision(
+                type=AgentDecisionType.TOOL_CALL,
+                tool_name="request_clarification",
+                arguments={"question": "Should we test addition or subtraction?"},
+                reasoning="Goal is ambiguous. Ask for clarification."
+            )
+
         if "create_benchmark" not in called_tools:
             return AgentDecision(
                 type=AgentDecisionType.TOOL_CALL,
