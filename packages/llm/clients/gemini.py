@@ -14,15 +14,17 @@ class GeminiClient(BaseLLMClient):
         self,
         base_url: str = "https://generativelanguage.googleapis.com/v1beta/models",
         api_key_env: str = "GEMINI_API_KEY",
+        timeout: float = 30.0,
     ):
         self.base_url = base_url
         self.api_key = os.getenv(api_key_env)
+        self.timeout = timeout
 
     def health(self) -> bool:
         return bool(self.api_key)
 
     def list_models(self) -> list:
-        return ["gemini-2.5-flash", "gemini-1.5-pro"]
+        return ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
 
     def generate(self, model: str, prompt: Prompt, **kwargs) -> LLMResponse:
         if not self.api_key:
@@ -34,6 +36,7 @@ class GeminiClient(BaseLLMClient):
 
         # Determine temperature from kwargs
         temperature = kwargs.get("temperature", 0.0)
+        request_timeout = kwargs.get("timeout", self.timeout)
 
         # Build contents
         contents = []
@@ -50,11 +53,13 @@ class GeminiClient(BaseLLMClient):
         if system_instruction:
             payload["systemInstruction"] = system_instruction
 
+        if "tools" in kwargs and kwargs["tools"]:
+            payload["tools"] = kwargs["tools"]
+
         start_time = time.time()
 
         try:
-            # Gemini might take a few seconds
-            with httpx.Client(timeout=30.0) as client:
+            with httpx.Client(timeout=request_timeout) as client:
                 response = client.post(url, headers=headers, json=payload)
 
             latency_ms = int((time.time() - start_time) * 1000)
@@ -67,7 +72,11 @@ class GeminiClient(BaseLLMClient):
             if "candidates" not in data or not data["candidates"]:
                 raise LLMError("No candidates returned from Gemini.")
 
-            text = data["candidates"][0]["content"]["parts"][0]["text"]
+            parts = data["candidates"][0].get("content", {}).get("parts", [])
+            text = ""
+            for part in parts:
+                if "text" in part:
+                    text += part["text"]
 
             usage = data.get("usageMetadata", {})
             prompt_tokens = usage.get("promptTokenCount", 0)

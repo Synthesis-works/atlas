@@ -1,3 +1,12 @@
+import os
+import sys
+
+# Ensure packages/database and project root are in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "packages", "database"))
+)
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -70,6 +79,7 @@ def create_app() -> FastAPI:
         search,
         system,
         leaderboard,
+        agent,
         billing,
     )
 
@@ -92,7 +102,15 @@ def create_app() -> FastAPI:
     app.include_router(search.router, prefix="/api/v1")
     app.include_router(system.router, prefix="/api/v1")
     app.include_router(leaderboard.router, prefix="/api/v1")
+    app.include_router(agent.router, prefix="/api/v1")
     app.include_router(billing.router, prefix="/api/v1")
+
+    import os
+    from fastapi.staticfiles import StaticFiles
+
+    web_public_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "web", "public"))
+    if os.path.exists(web_public_dir):
+        app.mount("/agent-ui", StaticFiles(directory=web_public_dir, html=True), name="agent-ui")
 
     return app
 
