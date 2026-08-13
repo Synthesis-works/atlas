@@ -256,9 +256,21 @@ export function logoutUser(): void {
   localStorage.removeItem(CURRENT_USER_KEY);
 }
 
-export async function ensureAuthenticatedSession(): Promise<string | null> {
+function isTokenExpired(token: string): boolean {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    const payload = JSON.parse(atob(parts[1]));
+    if (!payload.exp) return false;
+    return Date.now() >= payload.exp * 1000 - 10000;
+  } catch {
+    return true;
+  }
+}
+
+export async function ensureAuthenticatedSession(forceRefresh = false): Promise<string | null> {
   const existingToken = getAuthToken();
-  if (existingToken && !existingToken.startsWith('local_token_')) {
+  if (!forceRefresh && existingToken && !existingToken.startsWith('local_token_') && !isTokenExpired(existingToken)) {
     return existingToken;
   }
   try {
