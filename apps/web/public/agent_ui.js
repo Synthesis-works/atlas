@@ -267,11 +267,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (task.benchmark_id || task.dataset_id || (task.execution_ids && task.execution_ids.length > 0)) {
             setDisplay(dataLineageSection, 'block');
-            const execCount = task.execution_ids ? task.execution_ids.length : 1;
-            const evalCount = evalObs && evalObs.output && evalObs.output.results ? evalObs.output.results.length : 1;
+            const evalCaseObs = task.observations ? task.observations.find(o => o.tool_name === 'create_evaluation_case' && o.output) : null;
+            const evalCaseCount = evalCaseObs && evalCaseObs.output && evalCaseObs.output.total_cases_created ? evalCaseObs.output.total_cases_created : 1;
+            const execCount = (task.execution_ids && task.execution_ids.length > 0) ? task.execution_ids.length : 0;
+            const evalCount = (evalObs && evalObs.output && evalObs.output.results) ? evalObs.output.results.length : 0;
             const firstRes = evalObs && evalObs.output && evalObs.output.results ? evalObs.output.results[0] : null;
             const evalMethod = firstRes && firstRes.evaluation_method ? firstRes.evaluation_method.toUpperCase() : 'EXACT_MATCH';
-            const expectedAns = firstRes && firstRes.expected_answer ? firstRes.expected_answer : '3';
+            const expectedAns = firstRes && firstRes.expected_answer ? firstRes.expected_answer : 'Expected Answer defined';
 
             const lineageHtml = `DATA LINEAGE
 ────────────────────────────────────────────
@@ -282,7 +284,7 @@ AgentTask: ${task.task_id}
   │
   ├──> Dataset: ${task.dataset_id || 'Pending'}
   │
-  ├──> Evaluation Cases: ${evalCount} case${evalCount === 1 ? '' : 's'} defined (${evalMethod}, Expected: "${expectedAns}")
+  ├──> Evaluation Cases: ${evalCaseCount} case${evalCaseCount === 1 ? '' : 's'} defined (${evalMethod}, Expected: "${expectedAns}")
   │
   ├──> Executions: ${execCount} run${execCount === 1 ? '' : 's'} dispatched
   │

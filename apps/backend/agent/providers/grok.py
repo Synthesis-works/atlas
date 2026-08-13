@@ -18,11 +18,11 @@ class GrokAgentProvider(BaseLLMProvider):
 
     def __init__(
         self,
-        model: str = "grok-beta",
+        model: Optional[str] = None,
         api_key_env: str = "XAI_API_KEY",
         client: Optional[GrokClient] = None,
     ):
-        self.model = model
+        self.model = model or os.getenv("GROK_MODEL", os.getenv("XAI_MODEL", "grok-2"))
         self.client = client or GrokClient(api_key_env=api_key_env)
 
     def decide(self, task: AgentTask, prompt_context: str, available_tools: list[dict[str, Any]]) -> AgentDecision:

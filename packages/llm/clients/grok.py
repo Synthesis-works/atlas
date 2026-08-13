@@ -10,15 +10,16 @@ from .base import BaseLLMClient
 
 
 class GrokClient(BaseLLMClient):
-    def __init__(self, base_url: str = "https://api.x.ai/v1", api_key_env: str = "XAI_API_KEY"):
+    def __init__(self, base_url: str = "https://api.x.ai/v1", api_key_env: str = "XAI_API_KEY", timeout: float = 30.0):
         self.base_url = base_url
         self.api_key = os.getenv(api_key_env)
+        self.timeout = timeout
 
     def health(self) -> bool:
         return bool(self.api_key)
 
     def list_models(self) -> list:
-        return ["grok-2-latest", "grok-beta"]
+        return ["grok-2", "grok-beta"]
 
     def generate(self, model: str, prompt: Prompt, **kwargs) -> LLMResponse:
         if not self.api_key:
@@ -29,6 +30,7 @@ class GrokClient(BaseLLMClient):
         headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
 
         temperature = kwargs.get("temperature", 0.0)
+        request_timeout = kwargs.get("timeout", self.timeout)
 
         messages = []
         if prompt.system:
@@ -46,7 +48,7 @@ class GrokClient(BaseLLMClient):
         start_time = time.time()
 
         try:
-            with httpx.Client(timeout=30.0) as client:
+            with httpx.Client(timeout=request_timeout) as client:
                 response = client.post(url, headers=headers, json=payload)
 
             latency_ms = int((time.time() - start_time) * 1000)
