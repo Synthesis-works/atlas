@@ -25,6 +25,7 @@ async def lifespan(app: FastAPI):
     try:
         from atlas_db.core.base import Base
         from atlas_db.core.session import engine
+        import atlas_db.models
 
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables initialized successfully.")

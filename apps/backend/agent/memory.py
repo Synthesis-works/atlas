@@ -32,16 +32,30 @@ class SemanticMemoryStore:
     Includes health checking, dynamic model name resolution, and graceful fallback.
     """
 
+    _cached_initialized = False
+    _cached_is_available = False
+    _cached_provider = None
+
     def __init__(self, base_url: str = "http://localhost:11434"):
         self.base_url = base_url
-        self.provider: Optional[BaseEmbeddingProvider] = None
-        self.is_available = False
         self.store: list[SemanticMemoryItem] = []
         self._initialize_provider()
 
+    @property
+    def is_available(self) -> bool:
+        return SemanticMemoryStore._cached_is_available
+
+    @property
+    def provider(self) -> Optional[BaseEmbeddingProvider]:
+        return SemanticMemoryStore._cached_provider
+
     def _initialize_provider(self) -> None:
+        if SemanticMemoryStore._cached_initialized:
+            return
+        
         try:
-            with httpx.Client(timeout=2.0) as client:
+            # Quick check with 0.5s timeout for fast process local startup
+            with httpx.Client(timeout=0.5) as client:
                 res = client.get(f"{self.base_url}/api/tags")
                 if res.status_code == 200:
                     models_data = res.json().get("models", [])
@@ -57,10 +71,10 @@ class SemanticMemoryStore:
                         target_model = installed_names[0]
 
                     if target_model:
-                        self.provider = OllamaEmbeddingProvider(
+                        SemanticMemoryStore._cached_provider = OllamaEmbeddingProvider(
                             model=target_model, base_url=self.base_url
                         )
-                        self.is_available = True
+                        SemanticMemoryStore._cached_is_available = True
                         logger.info(
                             f"SemanticMemoryStore initialized with Ollama model: '{target_model}'"
                         )
@@ -68,7 +82,9 @@ class SemanticMemoryStore:
                         logger.warning("No embedding models found in local Ollama instance.")
         except Exception as e:
             logger.info(f"Semantic memory (Ollama) offline: {e}. Graceful fallback active.")
-            self.is_available = False
+            SemanticMemoryStore._cached_is_available = False
+        finally:
+            SemanticMemoryStore._cached_initialized = True
 
     def add_memory(
         self, memory_id: str, memory_type: str, text: str, metadata: dict[str, Any]

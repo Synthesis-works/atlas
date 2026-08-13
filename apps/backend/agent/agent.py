@@ -108,7 +108,8 @@ class AtlasAgent:
         """
         Executes the agent loop until the task completes, fails, pauses for approval, or hits a runtime limit.
         """
-        task.status = AgentTaskStatus.EXECUTING
+        if task.status in (AgentTaskStatus.PENDING, AgentTaskStatus.PLANNING):
+            task.status = AgentTaskStatus.EXECUTING
         task.started_at = datetime.now(UTC)
         task.add_trace(
             "TASK_STARTED", {"goal": task.goal, "primary_provider": task.primary_provider}
@@ -119,7 +120,7 @@ class AtlasAgent:
             task.plan = self.planner.generate_initial_plan(task.goal)
             task.add_trace("PLAN_GENERATED", {"plan_steps_count": len(task.plan)})
 
-        while task.status in (AgentTaskStatus.EXECUTING, AgentTaskStatus.REPAIRING):
+        while task.status in (AgentTaskStatus.EXECUTING, AgentTaskStatus.REPAIRING, AgentTaskStatus.PLANNING):
             # Enforce hard limits
             if task.step_count >= MAX_STEPS:
                 task.status = AgentTaskStatus.FAILED
@@ -177,6 +178,10 @@ class AtlasAgent:
                     if item.get("fingerprint") == fingerprint:
                         previous_answer = item.get("answer")
                         break
+                if previous_answer is None and task.past_clarifications:
+                    # Semantic fallback: if the model asks another framing/safety/proposing check
+                    # but we already answered, reuse the user's primary decision response answer.
+                    previous_answer = task.past_clarifications[-1].get("answer")
 
                 if previous_answer is not None:
                     # Duplicate clarification! The user already answered this.
