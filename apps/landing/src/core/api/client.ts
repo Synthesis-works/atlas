@@ -52,7 +52,48 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
   params?: Record<string, string | number | boolean | undefined>;
 }
 
-async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+async function getOrFetchToken(forceRefresh = false): Promise<string | null> {
+  const existingToken = getAuthToken();
+  if (!forceRefresh && existingToken && !existingToken.startsWith('local_token_')) {
+    try {
+      const parts = existingToken.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(atob(parts[1]));
+        if (payload.exp && Date.now() < payload.exp * 1000 - 10000) {
+          return existingToken;
+        }
+      }
+    } catch (_) {}
+  }
+
+  try {
+    const baseUrl = getBaseUrl();
+    const loginRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'demo@atlas.val',
+        email: 'demo@atlas.val',
+        identifier: 'demo@atlas.val',
+        password: 'password123',
+      }),
+    });
+    if (loginRes.ok) {
+      const json = await loginRes.json();
+      const token = json?.data?.access_token || json?.access_token;
+      if (token) {
+        setAuthToken(token);
+        return token;
+      }
+    }
+  } catch (err) {
+    console.warn('Auto-login attempt failed:', err);
+  }
+
+  return existingToken;
+}
+
+async function request<T>(endpoint: string, options: RequestOptions = {}, isRetry = false): Promise<T> {
   const baseUrl = getBaseUrl();
   let url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
@@ -76,7 +117,6 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     return `req-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   };
 
-  const token = getAuthToken();
   const reqHeaders = options.headers as Record<string, string> | undefined;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -85,8 +125,16 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     ...reqHeaders,
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  if (!endpoint.includes('/api/v1/auth/login')) {
+    const activeToken = await getOrFetchToken(false);
+    if (activeToken) {
+      headers['Authorization'] = `Bearer ${activeToken}`;
+    }
+  } else {
+    const token = getAuthToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
   }
 
   const config: RequestInit = {
@@ -109,6 +157,14 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     const rawData = await response.json().catch(() => null);
 
     if (!response.ok) {
+      if (response.status === 401 && !isRetry && !endpoint.includes('/api/v1/auth/login')) {
+        const newToken = await getOrFetchToken(true);
+        if (newToken) {
+          const newHeaders = { ...headers, Authorization: `Bearer ${newToken}` };
+          return request<T>(endpoint, { ...options, headers: newHeaders }, true);
+        }
+      }
+
       const errorMessage =
         rawData?.detail ||
         rawData?.message ||
