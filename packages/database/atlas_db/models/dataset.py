@@ -118,6 +118,6 @@ class DatasetVersion(Base):
 
     dataset: Mapped["Dataset"] = relationship("Dataset", back_populates="versions")
 
-    __mapper_args__ = {"version_id_col": version_number}
+    __mapper_args__ = {"version_id_col": "version_number"}
 
     __table_args__ = (UniqueConstraint("dataset_id", "version_string", name="uq_dataset_version"),)

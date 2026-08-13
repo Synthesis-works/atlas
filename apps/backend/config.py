@@ -37,7 +37,11 @@ class Settings(BaseSettings):
     outbox_batch_size: int = Field(default=100)
     outbox_poll_interval: int = Field(default=5)
 
+    # LLM & Agent Configuration
+    gemini_api_key: str | None = Field(default=None)
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
 settings = Settings()
+

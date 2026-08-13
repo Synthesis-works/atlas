@@ -68,4 +68,4 @@ class BaseMixin:
 
     @declared_attr
     def __mapper_args__(cls):
-        return {"version_id_col": cls.version_number}
+        return {"version_id_col": "version_number"}

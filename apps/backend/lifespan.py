@@ -1,7 +1,11 @@
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "packages", "database")))
+
 from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
-
 from apps.backend.logger import logger, setup_logging
 
 
@@ -15,7 +19,14 @@ async def lifespan(app: FastAPI):
     setup_logging()
     logger.info("Starting Atlas Backend API...")
 
-    # Optional: We could initialize database connections or pre-load caches here
+    # Initialize database schemas and tables on startup
+    try:
+        from atlas_db.core.base import Base
+        from atlas_db.core.session import engine
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables initialized successfully.")
+    except Exception as e:
+        logger.error(f"Database schema initialization warning: {e}")
 
     yield  # Application is running
 
