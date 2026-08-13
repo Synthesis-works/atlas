@@ -3,12 +3,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-
-def get_db():
-    raise NotImplementedError()
-
-
+from apps.backend.dependencies import get_db_session as get_db
 from atlas_db.models.evaluation import (
+    CapabilityDefinition,
     CapabilityProfile,
     CapabilityScore,
     EvaluationAttempt,
@@ -73,11 +70,6 @@ def get_capability_profile(adapter_version_id: UUID, db: Session = Depends(get_d
 
     scores = db.query(CapabilityScore).filter_by(profile_id=profile.id).all()
 
-    # We'd join with CapabilityDefinition to get the name, but for this slice,
-    # we can fetch definitions manually if needed.
-    # Assuming capability_definition_id links to a name. Let's just fetch it.
-    from atlas_db.models.evaluation import CapabilityDefinition
-
     score_list = []
     for s in scores:
         cap_def = db.query(CapabilityDefinition).filter_by(id=s.capability_definition_id).first()
@@ -90,7 +82,6 @@ def get_capability_profile(adapter_version_id: UUID, db: Session = Depends(get_d
 @router.get("/leaderboard")
 def get_leaderboard(db: Session = Depends(get_db)):
     """Returns an aggregated view of top capability scores."""
-    # Simplified leaderboard: Fetch all profiles, average their scores, and rank them.
     profiles = db.query(CapabilityProfile).all()
     leaderboard = []
 
@@ -100,7 +91,6 @@ def get_leaderboard(db: Session = Depends(get_db)):
             continue
         avg_score = sum(s.score for s in scores) / len(scores)
 
-        # Get adapter name
         adapter_version = (
             db.query(ExecutionAdapterVersion).filter_by(id=profile.adapter_version_id).first()
         )

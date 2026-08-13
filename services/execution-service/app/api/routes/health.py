@@ -3,15 +3,11 @@ from typing import Any
 from app.services.health_service import HealthService
 from fastapi import APIRouter, Depends
 
-# In a real FastAPI app, we'd have a dependency injection method for HealthService here
-# For the sake of the architecture example, we assume it's injected.
-
 router = APIRouter()
 
 
 def get_health_service() -> HealthService:
-    # Dummy dependency for illustration
-    raise NotImplementedError()
+    return HealthService()
 
 
 @router.get("/health")

@@ -46,7 +46,7 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Adjust this in production
+        allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -77,6 +77,7 @@ def create_app() -> FastAPI:
         system,
         leaderboard,
         agent,
+        billing,
     )
 
     # We will mount these under /api/v1 for the actual domain routes
@@ -99,6 +100,7 @@ def create_app() -> FastAPI:
     app.include_router(system.router, prefix="/api/v1")
     app.include_router(leaderboard.router, prefix="/api/v1")
     app.include_router(agent.router, prefix="/api/v1")
+    app.include_router(billing.router, prefix="/api/v1")
 
     import os
     from fastapi.staticfiles import StaticFiles

@@ -17,6 +17,14 @@ class Settings(BaseSettings):
 
     # API configuration
     api_v1_prefix: str = Field(default="/api/v1")
+    cors_origins: list[str] = Field(
+        default_factory=lambda: [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ]
+    )
 
     # Authentication
     jwt_secret: str = Field(default="dev-secret-key-do-not-use-in-production")
@@ -45,6 +53,21 @@ class Settings(BaseSettings):
     mistral_model: str = Field(default="mistral-small-latest", validation_alias="MISTRAL_MODEL")
     gemini_model: str = Field(default="gemini-3.5-flash-lite", validation_alias="GEMINI_MODEL")
     llm_provider_timeout_seconds: float = Field(default=30.0, validation_alias="LLM_PROVIDER_TIMEOUT")
+
+    # Billing Configuration (Stripe & Razorpay)
+    stripe_api_key: str = Field(default="")
+    stripe_webhook_secret: str = Field(default="")
+    razorpay_key_id: str = Field(default="")
+    razorpay_key_secret: str = Field(default="")
+    razorpay_webhook_secret: str = Field(default="")
+
+    @property
+    def stripe_enabled(self) -> bool:
+        return bool(self.stripe_api_key)
+
+    @property
+    def razorpay_enabled(self) -> bool:
+        return bool(self.razorpay_key_id and self.razorpay_key_secret)
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

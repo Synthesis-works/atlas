@@ -69,9 +69,13 @@ class EvaluationAppService:
             evaluator, scorer, _ = self.registry.resolve(strategy_type)
 
             # 2. Extract execution outputs
-            # Assuming execution has a backref to model_output or similar
-            # For now, we mock the outputs
-            mock_execution_output = {"completion": "test output"}
+            real_outputs = [mo.raw_output for mo in (execution.model_outputs or [])]
+            completion_text = real_outputs[0] if real_outputs else ""
+            execution_output = {
+                "completion": completion_text,
+                "outputs": real_outputs,
+                "model_outputs_count": len(real_outputs),
+            }
 
             # 3. Measurement Phase
             context = EvaluatorContext(
@@ -81,7 +85,7 @@ class EvaluationAppService:
                 environment="prod",
             )
             evaluator.prepare(context)
-            raw_measurements = evaluator.evaluate(mock_execution_output)
+            raw_measurements = evaluator.evaluate(execution_output)
             evaluator.postprocess(raw_measurements)
 
             # 4. Scoring Phase

@@ -1,0 +1,530 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ==========================================================================
+   Atlas Design Language — Tokens
+   Every visual decision in Atlas derives from these tokens. The marketing
+   site and the Workspace share one design language.
+   ========================================================================== */
+
+@theme {
+  /* Typography — Instrument Serif is the signature italic accent */
+  --font-sans: 'Geist', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-serif: 'Instrument Serif', serif;
+
+  /* Ink ramp — surfaces, grounded in true black */
+  --color-ink-0: #000000;
+  --color-ink-1: #050507;
+  --color-ink-2: #09090b;
+  --color-ink-3: #111113;
+  --color-ink-4: #18181b;
+  --color-ink-5: #1c1c1f;
+
+  /* Text ramp */
+  --color-text-primary: #fafafa;
+  --color-text-secondary: #a1a1aa;
+  --color-text-tertiary: #71717a;
+  --color-text-quaternary: #52525b;
+
+  /* Borders */
+  --color-border-subtle: #27272a;
+  --color-border: #3f3f46;
+  --color-border-hover: #52525b;
+  --color-border-focus: #71717a;
+
+  /* Accent — the Atlas indigo */
+  --color-accent: #6366f1;
+  --color-accent-hover: #818cf8;
+  --color-accent-active: #4f46e5;
+
+  /* Category palette — used by the Intelligence Fabric + tags */
+  --color-cat-models: #818cf8;       /* indigo */
+  --color-cat-benchmarks: #67e8f9;   /* cyan */
+  --color-cat-capabilities: #a78bfa; /* violet */
+  --color-cat-safety: #f472b6;       /* pink */
+  --color-cat-data: #34d399;         /* emerald */
+  --color-cat-output: #fbbf24;       /* amber */
+
+  /* Status */
+  --color-success: #22c55e;
+  --color-warning: #fbbf24;
+  --color-error: #ef4444;
+
+  /* Radii */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
+  --radius-full: 9999px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 200ms;
+  --dur-base: 400ms;
+  --dur-slow: 700ms;
+
+  /* Spacing */
+  --spacing-hero: 72px;
+  --spacing-section: 56px;
+  --spacing-cards: 32px;
+  --spacing-insights: 24px;
+  --spacing-footer: 16px;
+
+  /* Layout */
+  --spacing-container-max: 1600px;
+  --spacing-page-mobile: 16px;
+  --spacing-page-tablet: 24px;
+  --spacing-page-desktop: 32px;
+}
+
+/* -----------------------------------------------------------------------
+   Base
+   ----------------------------------------------------------------------- */
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  /* Custom Atlas Scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.10);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.22);
+  }
+  ::-webkit-scrollbar-thumb:active {
+    background: rgba(255, 255, 255, 0.30);
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.10) transparent;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: #000;
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background-color: var(--color-accent);
+    color: #fff;
+  }
+
+  input:-webkit-autofill {
+    -webkit-text-fill-color: var(--color-text-primary);
+    -webkit-box-shadow: 0 0 0px 1000px var(--color-ink-3) inset;
+  }
+
+  /* Reduced motion — respected across the Atlas experience */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* -----------------------------------------------------------------------
+   Bklit Chart Library — CSS variable bridge
+   The bklit heatmap/ring/line/area/bar chart components use these CSS
+   custom properties for theming. None exist in Tailwind's default token
+   set, so we define them here mapped to the Atlas design tokens.
+   ----------------------------------------------------------------------- */
+
+:root {
+  /* ── Chart surface / text ─────────────────────────────────────────── */
+  --chart-background:                    var(--color-ink-3);
+  --chart-foreground:                    var(--color-text-primary);
+  --chart-foreground-muted:              var(--color-text-secondary);
+  --chart-label:                         var(--color-text-tertiary);
+
+  /* ── Tooltip panel ────────────────────────────────────────────────── */
+  --chart-tooltip-background:            rgba(10, 10, 14, 0.92);
+  --chart-tooltip-foreground:            var(--color-text-primary);
+  --chart-tooltip-muted:                 var(--color-text-secondary);
+
+  /* ── Line / Area chart ────────────────────────────────────────────── */
+  --chart-line-primary:                  var(--color-accent);
+  --chart-line-secondary:                var(--color-accent-hover);
+  --chart-crosshair:                     rgba(255, 255, 255, 0.15);
+  --chart-grid:                          rgba(255, 255, 255, 0.06);
+  --chart-segment-background:            rgba(255, 255, 255, 0.04);
+  --chart-segment-line:                  rgba(255, 255, 255, 0.12);
+  --chart-brush-border:                  rgba(255, 255, 255, 0.12);
+
+  /* ── Tooltip indicator dot ────────────────────────────────────────── */
+  --chart-indicator-color:               var(--color-accent);
+  --chart-indicator-secondary-color:     var(--color-accent-hover);
+  --chart-marker-background:             var(--color-ink-3);
+  --chart-marker-border:                 rgba(255, 255, 255, 0.15);
+  --chart-marker-foreground:             var(--color-text-primary);
+  --chart-marker-badge-background:       var(--color-accent);
+  --chart-marker-badge-foreground:       #ffffff;
+
+  /* ── Ring chart colour palette ────────────────────────────────────── */
+  --chart-1: var(--color-accent);        /* #6366f1 indigo  */
+  --chart-2: #67e8f9;                    /* cyan            */
+  --chart-3: #34d399;                    /* emerald         */
+  --chart-4: #a78bfa;                    /* violet          */
+  --chart-5: #fbbf24;                    /* amber           */
+
+  /* ── Heatmap five-level scale (Less → More) ───────────────────────── */
+  --chart-scale-01: #1e1e26;
+  --chart-scale-02: #363642;
+  --chart-scale-03: #626272;
+  --chart-scale-04: #a0a0b0;
+  --chart-scale-05: #ffffff;
+
+  /* ── Heatmap pattern accent ───────────────────────────────────────── */
+  --chart-scale-pattern-color: var(--color-accent);
+
+  /* ── Ring track background (visible on dark surface) ─────────────── */
+  --border: rgba(255, 255, 255, 0.10);
+}
+
+/* Tailwind Utility: bg-chart-tooltip-background (used by tooltip-box.tsx) */
+@layer utilities {
+  .bg-chart-tooltip-background {
+    background-color: var(--chart-tooltip-background);
+  }
+  .text-chart-tooltip-foreground {
+    color: var(--chart-tooltip-foreground);
+  }
+  .text-chart-tooltip-muted {
+    color: var(--chart-tooltip-muted);
+  }
+  .text-chart-label {
+    color: var(--chart-label);
+  }
+  .border-chart-tooltip-muted {
+    border-color: var(--chart-tooltip-muted);
+  }
+}
+
+/* -----------------------------------------------------------------------
+   Atlas Design Language — Tailwind color utility bridge
+   Maps @theme CSS variables to Tailwind utility classes used in components.
+   ----------------------------------------------------------------------- */
+
+@layer utilities {
+  /* Ink surface utilities */
+  .bg-ink-0  { background-color: var(--color-ink-0); }
+  .bg-ink-1  { background-color: var(--color-ink-1); }
+  .bg-ink-2  { background-color: var(--color-ink-2); }
+  .bg-ink-3  { background-color: var(--color-ink-3); }
+  .bg-ink-4  { background-color: var(--color-ink-4); }
+  .bg-ink-5  { background-color: var(--color-ink-5); }
+
+  /* Category color utilities — used by KnowledgeFabric and Benchmark cards */
+  .text-cat-models       { color: var(--color-cat-models); }
+  .text-cat-benchmarks   { color: var(--color-cat-benchmarks); }
+  .text-cat-capabilities { color: var(--color-cat-capabilities); }
+  .text-cat-safety       { color: var(--color-cat-safety); }
+  .text-cat-data         { color: var(--color-cat-data); }
+  .text-cat-output       { color: var(--color-cat-output); }
+
+  .bg-cat-models       { background-color: var(--color-cat-models); }
+  .bg-cat-benchmarks   { background-color: var(--color-cat-benchmarks); }
+  .bg-cat-capabilities { background-color: var(--color-cat-capabilities); }
+  .bg-cat-safety       { background-color: var(--color-cat-safety); }
+  .bg-cat-data         { background-color: var(--color-cat-data); }
+  .bg-cat-output       { background-color: var(--color-cat-output); }
+
+  /* Text ramp utilities */
+  .text-text-primary   { color: var(--color-text-primary); }
+  .text-text-secondary { color: var(--color-text-secondary); }
+  .text-text-tertiary  { color: var(--color-text-tertiary); }
+  .text-text-quaternary{ color: var(--color-text-quaternary); }
+
+  /* Accent utilities */
+  .text-accent         { color: var(--color-accent); }
+  .text-accent-hover   { color: var(--color-accent-hover); }
+  .bg-accent           { background-color: var(--color-accent); }
+  .bg-accent-hover     { background-color: var(--color-accent-hover); }
+  .border-accent       { border-color: var(--color-accent); }
+
+  /* Status utilities */
+  .text-success        { color: var(--color-success); }
+  .text-warning        { color: var(--color-warning); }
+  .text-error          { color: var(--color-error); }
+
+  /* Opacity variants for ink surfaces (used by layouts) */
+  .bg-ink-3\/40  { background-color: color-mix(in srgb, var(--color-ink-3) 40%, transparent); }
+  .bg-ink-3\/20  { background-color: color-mix(in srgb, var(--color-ink-3) 20%, transparent); }
+  .bg-ink-2\/60  { background-color: color-mix(in srgb, var(--color-ink-2) 60%, transparent); }
+}
+
+/* ==========================================================================
+   Atlas Design Language — Apple Liquid Glass
+
+   Faithful port of Apple's visionOS/iOS 26 glass material.
+
+   Reference anatomy (from the Apple HTML demo):
+     1. Semi-transparent dark tint        → background: rgba(14,14,22, 0.18–0.32)
+     2. Real backdrop blur + saturate     → backdrop-filter: blur(28px) saturate(180%)
+     3. Four-layer box-shadow:
+          a. Deep drop shadow             → 0 24px 60px rgba(0,0,0,0.45)
+          b. Bright top inner highlight   → inset 0 1px 1px rgba(255,255,255,0.50)
+          c. Subtle bottom inner glow     → inset 0 -8px 20px rgba(255,255,255,0.06)
+          d. Thin border ring             → inset 0 0 0 1px rgba(255,255,255,0.13)
+     4. Cursor-tracked radial glare       → ::after with --gx/--gy CSS vars
+     5. No overflow:hidden on the element itself (glare lives in ::after)
+
+   Two surface variants:
+
+   · .liquid-glass       Interactive elements: navbar pill, buttons, input pill,
+                         floating panels, drawer. Overflow VISIBLE so ::after
+                         glare renders correctly on any border-radius.
+
+   · .liquid-glass-card  Data cards and video containers that NEED overflow:hidden
+                         for child clipping (rounded video, images). Drops the
+                         ::after glare (would be clipped anyway) and uses an
+                         outer box-shadow ring for the border instead.
+   ========================================================================== */
+
+/* ── Shared base ────────────────────────────────────────────────────────── */
+.liquid-glass,
+.liquid-glass-card {
+  /* Dark tint — same range as Apple demo (0.18 → 0.28) */
+  background: linear-gradient(
+    180deg,
+    rgba(14, 14, 22, 0.20) 0%,
+    rgba(14, 14, 22, 0.30) 100%
+  );
+  /* Real blur + colour pop */
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  isolation: isolate;
+  position: relative;
+}
+
+/* ── .liquid-glass  (interactive / pill / panel) ────────────────────────── */
+.liquid-glass {
+  box-shadow:
+    /* deep drop shadow */
+    0 24px 60px rgba(0, 0, 0, 0.45),
+    /* bright top inner highlight — the key Apple signature */
+    inset 0 1px 1px rgba(255, 255, 255, 0.50),
+    /* subtle bottom inner glow */
+    inset 0 -8px 20px rgba(255, 255, 255, 0.06),
+    /* thin 1-px border ring */
+    inset 0 0 0 1px rgba(255, 255, 255, 0.13);
+}
+
+/*
+  Cursor-tracked radial glare (Apple demo uses JS to set --gx/--gy).
+  Works without JS too — defaults to top-left corner so there's always
+  a visible specular highlight.
+*/
+.liquid-glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  /* radial glare follows --gx / --gy set by useGlassGlare hook */
+  background: radial-gradient(
+    160px circle at var(--gx, 25%) var(--gy, 15%),
+    rgba(255, 255, 255, 0.22),
+    rgba(255, 255, 255, 0.04) 45%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── .liquid-glass-card  (data cards / video wrappers) ─────────────────── */
+.liquid-glass-card {
+  /*
+    Outer box-shadow ring — renders OUTSIDE the box so it's never clipped
+    by overflow:hidden children (videos, images with rounded corners).
+    Replaces the inset border ring from .liquid-glass.
+  */
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.40),
+    inset 0 1px 1px rgba(255, 255, 255, 0.40),
+    inset 0 -6px 16px rgba(255, 255, 255, 0.05),
+    0 0 0 1px rgba(255, 255, 255, 0.10);
+  overflow: hidden; /* safe — border is outer box-shadow, not ::after */
+}
+
+/* ── Ambient radial bloom — Fabric backdrop glow ───────────────────────── */
+.ambient-bloom {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(99, 102, 241, 0.06) 0%,
+    transparent 70%
+  );
+}
+
+/* ── Light sweep keyframe (optional shimmer for liquid variant of Glass) ── */
+@keyframes light-sweep {
+  0%   { transform: translateX(-150%) skewX(-20deg); }
+  8%   { transform: translateX(180%)  skewX(-20deg); }
+  100% { transform: translateX(180%)  skewX(-20deg); }
+}
+.animate-light-sweep {
+  animation: light-sweep 14s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+/* ==========================================================================
+   Atlas Design Language — Light Theme scoping for Workspace
+   ========================================================================== */
+
+.theme-light {
+  color-scheme: light;
+
+  /* Overrides color variables for scoped elements */
+  --color-white: #09090b; /* Invert standard white to black */
+  --color-black: #ffffff; /* Invert standard black to white */
+
+  /* Inks — light mode background ramp */
+  --color-ink-0: #ffffff;
+  --color-ink-1: #ffffff;
+  --color-ink-2: #ffffff;
+  --color-ink-3: #f4f4f5;
+  --color-ink-4: #e4e4e7;
+  --color-ink-5: #d4d4d8;
+
+  /* Text colors */
+  --color-text-primary: #09090b;
+  --color-text-secondary: #27272a;
+  --color-text-tertiary: #52525b;
+  --color-text-quaternary: #71717a;
+
+  /* Borders */
+  --color-border-subtle: #f4f4f5;
+  --color-border: #e4e4e7;
+  --color-border-hover: #d4d4d8;
+  --color-border-focus: #a1a1aa;
+}
+
+/* Light Glassmorphism Overrides */
+.theme-light .liquid-glass-card {
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.04),
+    inset 0 1px 1px rgba(255, 255, 255, 0.80),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.01),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.theme-light .liquid-glass {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.05);
+}
+
+.theme-light .liquid-glass::after {
+  background: radial-gradient(
+    circle at var(--glare-x, 50%) var(--glare-y, 50%),
+    rgba(0, 0, 0, 0.04) 45%,
+    transparent 70%
+  );
+}
+
+:root {
+  --chart-1: oklch(0.32 0 none);
+  --chart-2: oklch(0.41 0 none);
+  --chart-3: oklch(0.54 0 none);
+  --chart-4: oklch(0.71 0 none);
+  --chart-5: oklch(0.89 0 none);
+  --chart-background: oklch(1 0 0);
+  --chart-foreground: oklch(0.145 0.004 285);
+  --chart-foreground-muted: oklch(0.55 0.014 260);
+  --chart-line-primary: var(--chart-1);
+  --chart-line-secondary: var(--chart-2);
+  --chart-crosshair: oklch(0.4 0.1828 274.34);
+  --chart-grid: oklch(0.9 0 0);
+  --chart-brush-border: var(--chart-grid);
+  --chart-tooltip-background: oklch(0.21 0.006 285 / 0.8);
+  --chart-tooltip-foreground: oklch(0.985 0 0);
+  --chart-tooltip-muted: oklch(0.65 0.01 260);
+  --chart-marker-background: oklch(0.97 0.005 260);
+  --chart-marker-border: oklch(0.85 0.01 260);
+  --chart-marker-foreground: oklch(0.3 0.01 260);
+  --chart-label: oklch(0.45 0.01 260);
+  --chart-scale-01: oklch(0.98 0.003 106);
+  --chart-scale-02: oklch(0.92 0.008 106);
+  --chart-scale-03: oklch(0.82 0.015 106);
+  --chart-scale-04: oklch(0.68 0.02 106);
+  --chart-scale-05: oklch(0.55 0.025 106);
+  --chart-scale-pattern-color: oklch(0.96 0.005 106);
+}
+
+.dark {
+  --chart-1: oklch(1 0 none);
+  --chart-2: oklch(0.73 0 none);
+  --chart-3: oklch(0.51 0 none);
+  --chart-4: oklch(0.39 0 none);
+  --chart-5: oklch(0.32 0 none);
+  --chart-background: oklch(0.145 0 0);
+  --chart-foreground: oklch(0.45 0 0);
+  --chart-foreground-muted: oklch(0.65 0.01 260);
+  --chart-crosshair: oklch(0.45 0 0);
+  --chart-grid: oklch(0.25 0 0);
+  --chart-brush-border: var(--chart-grid);
+  --chart-marker-background: oklch(0.25 0.01 260);
+  --chart-marker-border: oklch(0.4 0.01 260);
+  --chart-marker-foreground: oklch(0.9 0 0);
+  --chart-label: oklch(0.75 0.01 260);
+  --chart-scale-01: oklch(0.28 0.03 270);
+  --chart-scale-02: oklch(0.38 0.04 270);
+  --chart-scale-03: oklch(0.48 0.05 270);
+  --chart-scale-04: oklch(0.58 0.06 270);
+  --chart-scale-05: oklch(0.68 0.07 270);
+  --chart-scale-pattern-color: oklch(0.145 0 0);
+}
+
+@theme inline {
+  --color-chart-1: var(----chart-1);
+  --color-chart-2: var(----chart-2);
+  --color-chart-3: var(----chart-3);
+  --color-chart-4: var(----chart-4);
+  --color-chart-5: var(----chart-5);
+  --color-chart-background: var(----chart-background);
+  --color-chart-foreground: var(----chart-foreground);
+  --color-chart-foreground-muted: var(----chart-foreground-muted);
+  --chart-line-primary: var(----chart-line-primary);
+  --chart-line-secondary: var(----chart-line-secondary);
+  --color-chart-crosshair: var(----chart-crosshair);
+  --color-chart-grid: var(----chart-grid);
+  --chart-brush-border: var(----chart-brush-border);
+  --color-chart-tooltip-background: var(----chart-tooltip-background);
+  --color-chart-tooltip-foreground: var(----chart-tooltip-foreground);
+  --color-chart-tooltip-muted: var(----chart-tooltip-muted);
+  --color-chart-marker-background: var(----chart-marker-background);
+  --color-chart-marker-border: var(----chart-marker-border);
+  --color-chart-marker-foreground: var(----chart-marker-foreground);
+  --color-chart-label: var(----chart-label);
+  --color-chart-scale-01: var(----chart-scale-01);
+  --color-chart-scale-02: var(----chart-scale-02);
+  --color-chart-scale-03: var(----chart-scale-03);
+  --color-chart-scale-04: var(----chart-scale-04);
+  --color-chart-scale-05: var(----chart-scale-05);
+  --color-chart-scale-pattern-color: var(----chart-scale-pattern-color);
+}
+

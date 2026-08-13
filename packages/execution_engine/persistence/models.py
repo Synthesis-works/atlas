@@ -4,14 +4,14 @@ from typing import Optional
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from atlas_db.core.base import Base, BaseMixin
 from packages.execution_engine.domain.models import ArtifactType, AttemptStatus, ExecutionState
 
 
 class ExecutionModel(Base, BaseMixin):
-    __tablename__ = "executions"
+    __tablename__ = "ee_executions"
     __table_args__ = {"extend_existing": True}
 
     benchmark_version_id: Mapped[uuid.UUID] = mapped_column(nullable=False)
@@ -35,7 +35,7 @@ class ExecutionAttemptModel(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     execution_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("executions.id", ondelete="CASCADE"), nullable=False, index=True
+        ForeignKey("ee_executions.id", ondelete="CASCADE"), nullable=False, index=True
     )
     attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[AttemptStatus] = mapped_column(
@@ -45,7 +45,9 @@ class ExecutionAttemptModel(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     error_message: Mapped[str | None] = mapped_column(String, nullable=True)
 
-    execution: Mapped["ExecutionModel"] = relationship("ExecutionModel", back_populates="attempts")
+    execution: Mapped["ExecutionModel"] = relationship(
+        "ExecutionModel", back_populates="attempts", foreign_keys=[execution_id]
+    )
 
     lease: Mapped[Optional["LeaseModel"]] = relationship(
         "LeaseModel", back_populates="attempt", uselist=False, cascade="all, delete-orphan"
