@@ -59,7 +59,7 @@ class AuthService:
         user = self.user_repo.get_by_email(identifier)
         if not user:
             user = (
-                self.user_repo.session.query(User)
+                self.user_repo.db.query(User)
                 .filter((User.email == identifier) | (User.full_name == identifier))
                 .first()
             )
