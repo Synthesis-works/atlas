@@ -13,6 +13,7 @@ from apps.backend.agent.state import (
     MAX_REPAIR_ATTEMPTS,
     MAX_STEPS,
     MAX_TOOL_CALLS,
+    AgentDecision,
     AgentDecisionType,
     AgentTask,
     AgentTaskStatus,
