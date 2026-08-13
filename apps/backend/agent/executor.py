@@ -14,7 +14,7 @@ class ToolExecutor:
     Safely executes tool routines, enforces permissions, formats sanitized observations, and logs execution traces.
     """
 
-    def __init__(self, registry: Optional[ToolRegistry] = None):
+    def __init__(self, registry: ToolRegistry | None = None):
         self.registry = registry or ToolRegistry()
 
     def execute_tool(
