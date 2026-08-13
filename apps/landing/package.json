@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/check-port.js && vite --host 127.0.0.1 --port 5173",
-    "dev:safe": "node scripts/check-port.js && vite --host 127.0.0.1 --port 5173",
+    "dev": "node scripts/check-port.js && vite --host 0.0.0.0 --port 5173",
+    "dev:safe": "node scripts/check-port.js && vite --host 0.0.0.0 --port 5173",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview"
