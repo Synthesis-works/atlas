@@ -34,6 +34,7 @@ class ProviderRouter(BaseLLMProvider):
         ]
         self.max_retries_per_provider = max_retries_per_provider
         self.max_backoff_seconds = max_backoff_seconds
+        self._provider_cooldowns: dict[str, float] = {}
 
     def _classify_error(self, err_str: str) -> str:
         """
@@ -57,6 +58,7 @@ class ProviderRouter(BaseLLMProvider):
     def decide(self, task: AgentTask, prompt_context: str, available_tools: list[dict[str, Any]]) -> AgentDecision:
         chain = [self.primary] + self.fallbacks
         failures_summary = []
+        now = time.time()
 
         for provider_idx, provider in enumerate(chain):
             provider_name = getattr(
@@ -65,6 +67,15 @@ class ProviderRouter(BaseLLMProvider):
                 getattr(provider, "provider_name", provider.__class__.__name__.replace("AgentProvider", "").lower()),
             )
             model_name = getattr(provider, "model", "default")
+
+            # Skip provider if cooling down due to recent 429 / 400 error
+            cooldown_until = self._provider_cooldowns.get(provider_name, 0)
+            if now < cooldown_until:
+                remaining_cd = int(cooldown_until - now)
+                msg = f"Provider '{provider_name}' skipped (rate-limit/availability cooldown active for {remaining_cd}s)."
+                logger.info(msg)
+                failures_summary.append(f"{provider_name}: Cooldown active ({remaining_cd}s remaining)")
+                continue
 
             # Skip provider if API key is not configured (unless it's mock in test mode)
             client = getattr(provider, "client", None)
@@ -97,7 +108,8 @@ class ProviderRouter(BaseLLMProvider):
                             return decision
 
                         if category in ("AUTH", "FALLBACK"):
-                            logger.warning(f"Provider '{provider_name}' encountered non-fatal {category} error ({err_msg}). Falling back...")
+                            logger.warning(f"Provider '{provider_name}' encountered non-fatal {category} error ({err_msg}). Setting cooldown and falling back...")
+                            self._provider_cooldowns[provider_name] = time.time() + 120.0
                             failures_summary.append(f"{provider_name}: {err_msg}")
                             next_p = chain[provider_idx + 1] if provider_idx + 1 < len(chain) else None
                             next_name = getattr(next_p, "name", getattr(next_p, "provider_name", "NONE")) if next_p else "NONE"
@@ -115,6 +127,7 @@ class ProviderRouter(BaseLLMProvider):
                             time.sleep(sleep_time)
                             continue
                         else:
+                            self._provider_cooldowns[provider_name] = time.time() + 60.0
                             failures_summary.append(f"{provider_name}: {err_msg}")
                             next_p = chain[provider_idx + 1] if provider_idx + 1 < len(chain) else None
                             next_name = getattr(next_p, "name", getattr(next_p, "provider_name", "NONE")) if next_p else "NONE"
