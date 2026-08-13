@@ -36,12 +36,13 @@ class GrokAgentProvider(BaseLLMProvider):
         tools_summary = "\n".join(tool_descriptions)
 
         system_instruction = (
-            "You are the Atlas Agent powered by Grok, an autonomous orchestration engine for AI benchmarking.\n"
+            "You are the Atlas Agent powered by xAI Grok, an autonomous execution engine for AI benchmarking.\n"
             "Analyze the user's task goal, current plan, and previous tool execution history.\n"
-            "If an action is needed, return a JSON object with keys 'tool_name' and 'arguments'.\n"
-            "If all necessary actions are completed, return a concise final text response.\n"
-            f"AVAILABLE TOOLS:\n{tools_summary}\n"
-            "Output JSON format for tool call: {\"tool_name\": \"<name>\", \"arguments\": {<args>}}"
+            "CRITICAL: When the execution plan contains pending unexecuted steps (e.g., benchmark creation, dataset generation, model execution, evaluation, report), tool calls are MANDATORY.\n"
+            "Do NOT return conversational explanations like 'I will create...' or 'I need to create...'. Actually execute the tool call.\n"
+            "Return ONLY a JSON object formatted as: {\"tool_name\": \"<name>\", \"arguments\": {<args>}}\n"
+            "FINAL_RESPONSE text is permitted ONLY when all required plan steps have ALREADY been executed and completed.\n"
+            f"AVAILABLE TOOLS:\n{tools_summary}"
         )
 
         prompt = Prompt(user=prompt_context, system=system_instruction)
@@ -53,10 +54,21 @@ class GrokAgentProvider(BaseLLMProvider):
 
             content = response.response.strip()
 
-            # Attempt to parse JSON tool call
-            if content.startswith("{") and "tool_name" in content:
+            # Robust JSON extraction from markdown code fences or raw text
+            import re
+            json_str = content
+            if "```" in content:
+                match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", content, re.DOTALL)
+                if match:
+                    json_str = match.group(1)
+            elif "{" in content and "}" in content:
+                match = re.search(r"(\{.*?\})", content, re.DOTALL)
+                if match:
+                    json_str = match.group(1)
+
+            if "tool_name" in json_str:
                 try:
-                    data = json.loads(content)
+                    data = json.loads(json_str)
                     tool_name = data.get("tool_name")
                     arguments = data.get("arguments", {})
                     if tool_name:
@@ -72,7 +84,7 @@ class GrokAgentProvider(BaseLLMProvider):
             return AgentDecision(
                 type=AgentDecisionType.FINAL_RESPONSE,
                 response=content,
-                reasoning="Grok produced final text response",
+                reasoning="Grok produced text response",
             )
 
         except Exception as e:

@@ -166,3 +166,69 @@ def test_scenario_j_k_full_workflow_and_lineage_isolation():
     assert completed_task.dataset_id is not None
     assert len(completed_task.execution_ids) == 1
     assert completed_task.report_id is not None
+
+
+def test_regression_prose_decision_rejection_and_repair():
+    """
+    Part 9 Regression Test:
+    Gemini 429 -> Grok 400 -> Mistral 1st response prose ("I need to create...") ->
+    Decision rejected & repaired -> Mistral 2nd response tool_call -> task continues.
+    """
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    gemini = MockProviderScenario("gemini", [{"type": AgentDecisionType.FAIL, "error": "429 Rate limit"}])
+    grok = MockProviderScenario("grok", [{"type": AgentDecisionType.FAIL, "error": "400 Model not found"}])
+    mistral = MockProviderScenario("mistral", [
+        {"type": AgentDecisionType.FINAL_RESPONSE, "response": "I need to create the benchmark specification first."},
+        {"type": AgentDecisionType.TOOL_CALL, "tool_name": "create_benchmark", "arguments": {"name": "Math Benchmark"}},
+        {"type": AgentDecisionType.TOOL_CALL, "tool_name": "create_dataset", "arguments": {"benchmark_id": "bm-1", "name": "Math DS", "tasks": [{"input": "1+2", "expected_output": "3"}]}},
+        {"type": AgentDecisionType.TOOL_CALL, "tool_name": "create_evaluation_case", "arguments": {"dataset_id": "ds-1", "evaluation_cases": [{"task_id": "t1", "expected_answer": "3"}]}},
+        {"type": AgentDecisionType.TOOL_CALL, "tool_name": "validate_benchmark_dataset", "arguments": {"dataset_id": "ds-1"}},
+        {"type": AgentDecisionType.TOOL_CALL, "tool_name": "run_benchmark", "arguments": {"benchmark_version_id": "bmv-1", "dataset_id": "ds-1", "target_models": ["gemini-3.5-flash-lite"]}},
+        {"type": AgentDecisionType.TOOL_CALL, "tool_name": "evaluate_run", "arguments": {"execution_id": "exec-1"}},
+        {"type": AgentDecisionType.TOOL_CALL, "tool_name": "generate_report", "arguments": {"benchmark_id": "bm-1", "execution_id": "exec-1", "summary": "100% Pass"}},
+    ])
+
+    router = ProviderRouter(primary=gemini, fallbacks=[grok, mistral], max_retries_per_provider=0)
+    agent = AtlasAgent(provider=router)
+    task = AgentTask(goal="Create Math Benchmark", granted_permissions=[AgentPermission.READ, AgentPermission.WRITE, AgentPermission.EXECUTE, AgentPermission.PUBLISH])
+
+    completed_task = agent.run_task(task, db)
+
+    assert completed_task.status == AgentTaskStatus.COMPLETED
+    assert completed_task.benchmark_id is not None
+    assert completed_task.dataset_id is not None
+    assert any((getattr(t, "event_type", t.get("event_type") if isinstance(t, dict) else None)) == "DECISION_REJECTED_PROSE" for t in completed_task.execution_trace)
+
+
+def test_regression_repeated_prose_fails_task_not_completed():
+    """
+    Part 10 Regression Test:
+    Gemini 429 -> Grok 400 -> Mistral 1st response prose -> Repair -> Mistral 2nd response prose again ->
+    Task MUST transition to FAILED, NEVER COMPLETED.
+    """
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    db = Session()
+
+    gemini = MockProviderScenario("gemini", [{"type": AgentDecisionType.FAIL, "error": "429 Rate limit"}])
+    grok = MockProviderScenario("grok", [{"type": AgentDecisionType.FAIL, "error": "400 Model not found"}])
+    mistral = MockProviderScenario("mistral", [
+        {"type": AgentDecisionType.FINAL_RESPONSE, "response": "I need to create the benchmark specification first."},
+        {"type": AgentDecisionType.FINAL_RESPONSE, "response": "I will create a benchmark soon."},
+    ])
+
+    router = ProviderRouter(primary=gemini, fallbacks=[grok, mistral], max_retries_per_provider=0)
+    agent = AtlasAgent(provider=router)
+    task = AgentTask(goal="Create Math Benchmark", granted_permissions=[AgentPermission.READ, AgentPermission.WRITE])
+
+    completed_task = agent.run_task(task, db)
+
+    assert completed_task.status == AgentTaskStatus.FAILED
+    assert completed_task.status != AgentTaskStatus.COMPLETED
+    assert "conversational text instead of executable tool call" in (completed_task.error_detail or "")
+

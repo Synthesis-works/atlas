@@ -51,7 +51,8 @@ class GeminiAgentProvider(BaseLLMProvider):
         import time
         prompt = Prompt(user=prompt_context, system=system_instruction)
 
-        for attempt in range(4):
+        max_internal_attempts = 1
+        for attempt in range(max_internal_attempts + 1):
             try:
                 response = self.client.generate(self.model, prompt, tools=tools_payload)
                 raw_candidate = response.raw.get("candidates", [{}])[0]
@@ -86,9 +87,9 @@ class GeminiAgentProvider(BaseLLMProvider):
 
             except Exception as e:
                 err_str = str(e)
-                if ("429" in err_str or "503" in err_str or "quota" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt < 3:
-                    sleep_time = (attempt + 1) * 8
-                    logger.warning(f"Gemini API rate limit/unavailable. Retrying attempt {attempt + 1} in {sleep_time}s...")
+                if ("429" in err_str or "503" in err_str or "quota" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt < max_internal_attempts:
+                    sleep_time = 1.0
+                    logger.warning(f"Gemini API rate limit/unavailable. Retrying internal attempt {attempt + 1} in {sleep_time}s...")
                     time.sleep(sleep_time)
                     continue
 

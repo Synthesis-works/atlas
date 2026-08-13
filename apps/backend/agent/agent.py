@@ -16,6 +16,7 @@ from apps.backend.agent.state import (
     AgentDecisionType,
     AgentTask,
     AgentTaskStatus,
+    ObservationRecord,
 )
 from apps.backend.agent.tools.registry import ToolRegistry
 
@@ -44,22 +45,52 @@ class AtlasAgent:
         self.executor = executor or ToolExecutor(registry=self.registry)
         self.memory_manager = memory_manager or AgentMemoryManager()
 
+    def _validate_completion(self, task: AgentTask, decision: AgentDecision) -> tuple[bool, str]:
+        """
+        Validates whether a FINAL_RESPONSE decision is allowed to complete the task.
+        Returns (is_valid, reason).
+        """
+        if decision.type != AgentDecisionType.FINAL_RESPONSE:
+            return True, ""
+
+        # Check if plan contains pending steps
+        pending_steps = []
+        for s in task.plan:
+            status = getattr(s, "status", s.get("status") if isinstance(s, dict) else None)
+            if status == "PENDING":
+                pending_steps.append(s)
+
+        if pending_steps:
+            step_descs = []
+            for s in pending_steps:
+                num = getattr(s, "step_number", s.get("step_number") if isinstance(s, dict) else "?")
+                desc = getattr(s, "description", s.get("description") if isinstance(s, dict) else "")
+                step_descs.append(f"Step {num}: {desc}")
+            return False, f"Task has {len(pending_steps)} unfulfilled plan steps ({', '.join(step_descs[:3])})"
+
+        # If task requested benchmark creation/evaluation, check required DB artifacts / tool calls
+        goal_lower = task.goal.lower()
+        if any(k in goal_lower for k in ["benchmark", "dataset", "evaluate", "arithmetic", "solve"]):
+            if task.total_tool_calls == 0:
+                return False, "Task requested benchmark execution but 0 tool calls were executed."
+
+        return True, ""
+
     def run_task(self, task: AgentTask, db: Session) -> AgentTask:
         """
         Executes the agent loop until the task completes, fails, pauses for approval, or hits a runtime limit.
         """
-        if not task.started_at:
-            task.started_at = datetime.now(UTC)
+        task.status = AgentTaskStatus.EXECUTING
+        task.started_at = datetime.now(UTC)
+        task.add_trace("TASK_STARTED", {"goal": task.goal, "primary_provider": task.primary_provider})
 
+        # Step 0: Plan Generation
         if not task.plan:
             task.plan = self.planner.generate_initial_plan(task.goal)
-            task.status = AgentTaskStatus.PLANNING
             task.add_trace("PLAN_GENERATED", {"plan_steps_count": len(task.plan)})
 
-        task.status = AgentTaskStatus.EXECUTING
-
-        while task.is_active():
-            # Check hard runtime limits
+        while task.status in (AgentTaskStatus.EXECUTING, AgentTaskStatus.REPAIRING):
+            # Enforce hard limits
             if task.step_count >= MAX_STEPS:
                 task.status = AgentTaskStatus.FAILED
                 task.error_detail = f"Hard limit exceeded: step_count ({task.step_count}) >= MAX_STEPS ({MAX_STEPS})."
@@ -130,15 +161,52 @@ class AtlasAgent:
                     break
 
             elif decision.type == AgentDecisionType.FINAL_RESPONSE:
-                task.status = AgentTaskStatus.COMPLETED
-                task.completed_at = datetime.now(UTC)
-                task.final_result = {
-                    "summary": decision.response,
-                    "total_steps": task.step_count,
-                    "total_tool_calls": task.total_tool_calls,
-                }
-                task.add_trace("TASK_COMPLETED", {"summary": decision.response})
-                break
+                is_valid_completion, reason = self._validate_completion(task, decision)
+
+                if is_valid_completion:
+                    task.status = AgentTaskStatus.COMPLETED
+                    task.completed_at = datetime.now(UTC)
+                    task.final_result = {
+                        "summary": decision.response,
+                        "total_steps": task.step_count,
+                        "total_tool_calls": task.total_tool_calls,
+                    }
+                    task.add_trace("TASK_COMPLETED", {"summary": decision.response})
+                    break
+                else:
+                    logger.warning(f"Rejected premature FINAL_RESPONSE for task {task.task_id}: {reason}")
+                    task.add_trace("DECISION_REJECTED_PROSE", {"reason": reason, "provider": task.current_provider, "response": decision.response})
+
+                    if not hasattr(task, "_prose_repairs"):
+                        task._prose_repairs = {}
+
+                    current_p = task.current_provider or "default"
+                    repair_count = task._prose_repairs.get(current_p, 0)
+
+                    if repair_count < 1:
+                        task._prose_repairs[current_p] = repair_count + 1
+                        repair_msg = (
+                            f"ATTENTION: Your previous response returned conversational text ('{decision.response[:120]}...') "
+                            f"instead of executing a required tool call. The task is NOT complete: {reason}. "
+                            "You MUST select and execute the next required tool call (e.g. create_benchmark). Do NOT return conversational text."
+                        )
+                        task.observations.append(
+                            ObservationRecord(
+                                call_id=f"call_repair_{task.step_count}",
+                                tool_name="system_notice",
+                                success=False,
+                                output={"error": repair_msg},
+                                error=repair_msg,
+                            )
+                        )
+                        continue
+                    else:
+                        logger.error(f"Provider '{current_p}' failed repair and produced prose again. Failing task.")
+                        task.status = AgentTaskStatus.FAILED
+                        task.completed_at = datetime.now(UTC)
+                        task.error_detail = f"All configured providers failed to produce a valid Atlas tool decision. Provider '{current_p}' returned conversational text instead of executable tool call: {reason}"
+                        task.add_trace("TASK_FAILED", {"error": task.error_detail})
+                        break
 
             elif decision.type == AgentDecisionType.FAIL:
                 task.status = AgentTaskStatus.FAILED

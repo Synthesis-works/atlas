@@ -149,11 +149,17 @@ class AgentMemoryManager:
         if task.tool_calls:
             lines.append("\nRecent Tool Execution History:")
             for call in task.tool_calls[-6:]:
-                matching_obs = next((obs for obs in task.observations if obs.call_id == call.call_id), None)
+                matching_obs = next(
+                    (obs for obs in task.observations if (getattr(obs, "call_id", None) if not isinstance(obs, dict) else obs.get("call_id")) == call.call_id),
+                    None,
+                )
                 if matching_obs:
-                    obs_str = f"Success: {matching_obs.success} | Output: {matching_obs.output}"
-                    if matching_obs.error:
-                        obs_str += f" | Error: {matching_obs.error}"
+                    succ = getattr(matching_obs, "success", matching_obs.get("success") if isinstance(matching_obs, dict) else False)
+                    out = getattr(matching_obs, "output", matching_obs.get("output") if isinstance(matching_obs, dict) else None)
+                    err = getattr(matching_obs, "error", matching_obs.get("error") if isinstance(matching_obs, dict) else None)
+                    obs_str = f"Success: {succ} | Output: {out}"
+                    if err:
+                        obs_str += f" | Error: {err}"
                 else:
                     obs_str = "Pending"
                 lines.append(f"  - Tool '{call.tool_name}' args={call.arguments} -> {obs_str}")
