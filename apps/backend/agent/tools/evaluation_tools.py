@@ -18,7 +18,10 @@ class CreateEvaluationCaseTool(BaseTool):
     parameters_schema = {
         "type": "object",
         "properties": {
-            "dataset_id": {"type": "string", "description": "UUID of the dataset to attach evaluation cases."},
+            "dataset_id": {
+                "type": "string",
+                "description": "UUID of the dataset to attach evaluation cases.",
+            },
             "evaluation_cases": {
                 "type": "array",
                 "description": "List of evaluation case definitions.",
@@ -26,31 +29,36 @@ class CreateEvaluationCaseTool(BaseTool):
                     "type": "object",
                     "properties": {
                         "task_id": {"type": "string", "description": "ID of the dataset task."},
-                        "expected_answer": {"type": "string", "description": "Ground truth expected answer."},
+                        "expected_answer": {
+                            "type": "string",
+                            "description": "Ground truth expected answer.",
+                        },
                         "evaluation_method": {
                             "type": "string",
                             "description": "Method to judge model responses (exact_match, accepted_answers, llm_judge).",
-                            "enum": ["exact_match", "accepted_answers", "llm_judge"]
+                            "enum": ["exact_match", "accepted_answers", "llm_judge"],
                         },
                         "accepted_answers": {
                             "type": "array",
                             "description": "List of acceptable variant answers.",
-                            "items": {"type": "string"}
+                            "items": {"type": "string"},
                         },
                         "rubric_criteria": {
                             "type": "array",
                             "description": "Criteria list for LLM judge scoring.",
-                            "items": {"type": "string"}
-                        }
+                            "items": {"type": "string"},
+                        },
                     },
-                    "required": ["task_id", "expected_answer"]
-                }
-            }
+                    "required": ["task_id", "expected_answer"],
+                },
+            },
         },
-        "required": ["dataset_id", "evaluation_cases"]
+        "required": ["dataset_id", "evaluation_cases"],
     }
 
-    def execute(self, db: Session, dataset_id: str, evaluation_cases: list[dict[str, Any]], **kwargs: Any) -> Any:
+    def execute(
+        self, db: Session, dataset_id: str, evaluation_cases: list[dict[str, Any]], **kwargs: Any
+    ) -> Any:
         created_cases = []
         for case in evaluation_cases:
             case_id = str(uuid.uuid4())
@@ -70,9 +78,9 @@ class CreateEvaluationCaseTool(BaseTool):
                 "judge_configuration": {
                     "judge_provider": "gemini",
                     "judge_model": "gemini-3.5-flash-lite",
-                    "temperature": 0.0
+                    "temperature": 0.0,
                 },
-                "status": "CREATED"
+                "status": "CREATED",
             }
             created_cases.append(record)
 
@@ -82,32 +90,37 @@ class CreateEvaluationCaseTool(BaseTool):
             "dataset_id": dataset_id,
             "total_cases_created": len(created_cases),
             "evaluation_cases": created_cases,
-            "status": "CREATED"
+            "status": "CREATED",
         }
 
 
 class EvaluateRunTool(BaseTool):
     name = "evaluate_run"
-    description = "Score model outputs from a completed execution run against persisted evaluation cases."
+    description = (
+        "Score model outputs from a completed execution run against persisted evaluation cases."
+    )
     required_permission = AgentPermission.EXECUTE
     parameters_schema = {
         "type": "object",
         "properties": {
-            "execution_id": {"type": "string", "description": "UUID of the execution run to evaluate."},
+            "execution_id": {
+                "type": "string",
+                "description": "UUID of the execution run to evaluate.",
+            },
         },
         "required": ["execution_id"],
     }
 
     def execute(self, db: Session, execution_id: str, **kwargs: Any) -> Any:
         rec = _benchmark_execution_store.get(execution_id)
-        
+
         if not rec or "results" not in rec or not rec["results"]:
             return {
                 "execution_id": execution_id,
                 "status": "EVALUATION_ERROR",
                 "error": f"No execution results found for execution_id '{execution_id}'.",
                 "metrics": {"accuracy": 0.0, "total_evaluated": 0, "passed": 0, "failed": 0},
-                "results": []
+                "results": [],
             }
 
         evaluated_results = []
@@ -133,11 +146,26 @@ class EvaluateRunTool(BaseTool):
             total_latency += latency
 
             # Find specific matching EvaluationCase
-            matching_case = next((c for c in cases_list if c.get("task_id") == task_id or c.get("expected_answer") == exp), None)
-            
-            method = matching_case.get("evaluation_method", "exact_match") if matching_case else "exact_match"
-            eval_case_id = matching_case.get("evaluation_case_id") if matching_case else str(uuid.uuid4())
-            accepted_answers = matching_case.get("accepted_answers", [exp]) if matching_case else [exp]
+            matching_case = next(
+                (
+                    c
+                    for c in cases_list
+                    if c.get("task_id") == task_id or c.get("expected_answer") == exp
+                ),
+                None,
+            )
+
+            method = (
+                matching_case.get("evaluation_method", "exact_match")
+                if matching_case
+                else "exact_match"
+            )
+            eval_case_id = (
+                matching_case.get("evaluation_case_id") if matching_case else str(uuid.uuid4())
+            )
+            accepted_answers = (
+                matching_case.get("accepted_answers", [exp]) if matching_case else [exp]
+            )
             rubric_criteria = matching_case.get("rubric_criteria", []) if matching_case else []
 
             is_correct = False
@@ -150,9 +178,19 @@ class EvaluateRunTool(BaseTool):
 
             if method in ("llm_judge", "rubric"):
                 # Conversational / Open-ended Rubric evaluation
-                greeting_words = {"hi", "hello", "hey", "greetings", "good morning", "how can i help", "assist", "welcome", "ready"}
+                greeting_words = {
+                    "hi",
+                    "hello",
+                    "hey",
+                    "greetings",
+                    "good morning",
+                    "how can i help",
+                    "assist",
+                    "welcome",
+                    "ready",
+                }
                 has_greeting = any(w in raw_lower for w in greeting_words)
-                
+
                 # Check rubric criteria keywords if available
                 matched_criteria = []
                 if rubric_criteria:
@@ -162,7 +200,11 @@ class EvaluateRunTool(BaseTool):
                             matched_criteria.append(crit)
                 else:
                     if has_greeting:
-                        matched_criteria = ["Responds with a friendly greeting", "Friendly tone", "Appropriate response"]
+                        matched_criteria = [
+                            "Responds with a friendly greeting",
+                            "Friendly tone",
+                            "Appropriate response",
+                        ]
                     else:
                         matched_criteria = ["Response satisfies benchmark intent"]
 
@@ -177,6 +219,7 @@ class EvaluateRunTool(BaseTool):
 
             elif method == "numeric":
                 import re
+
                 nums_raw = re.findall(r"[-+]?\d*\.\d+|\d+", raw_out)
                 nums_exp = re.findall(r"[-+]?\d*\.\d+|\d+", exp)
                 if nums_raw and nums_exp and nums_raw[0] == nums_exp[0]:
@@ -186,41 +229,58 @@ class EvaluateRunTool(BaseTool):
                 else:
                     is_correct = (exp.lower() in raw_lower) or (exp == norm_ans)
                     score = 1.0 if is_correct else 0.0
-                    reasoning = "Numeric match passed" if is_correct else f"Expected numeric value '{exp}', got '{raw_out}'"
+                    reasoning = (
+                        "Numeric match passed"
+                        if is_correct
+                        else f"Expected numeric value '{exp}', got '{raw_out}'"
+                    )
 
             elif method == "accepted_answers":
-                is_correct = any((ans.lower() in raw_lower or ans.lower() == norm_lower) for ans in accepted_answers)
+                is_correct = any(
+                    (ans.lower() in raw_lower or ans.lower() == norm_lower)
+                    for ans in accepted_answers
+                )
                 score = 1.0 if is_correct else 0.0
-                reasoning = f"Matched accepted answer variant in {accepted_answers}" if is_correct else f"Output did not match any accepted variants: {accepted_answers}"
+                reasoning = (
+                    f"Matched accepted answer variant in {accepted_answers}"
+                    if is_correct
+                    else f"Output did not match any accepted variants: {accepted_answers}"
+                )
 
             else:  # exact_match
                 exp_clean = exp.lower()
                 is_correct = (exp_clean in raw_lower) or (exp_clean == norm_lower)
                 score = 1.0 if is_correct else 0.0
-                reasoning = "Exact match verification passed" if is_correct else f"Expected '{exp}', got '{norm_ans}'"
+                reasoning = (
+                    "Exact match verification passed"
+                    if is_correct
+                    else f"Expected '{exp}', got '{norm_ans}'"
+                )
 
             if is_correct:
                 passed_count += 1
 
-            evaluated_results.append({
-                "execution_id": execution_id,
-                "evaluation_case_id": eval_case_id,
-                "task_id": task_id,
-                "model": model_name,
-                "question": q,
-                "raw_output": raw_out,
-                "model_answer": norm_ans or raw_out,
-                "expected_answer": exp,
-                "accepted_answers": accepted_answers,
-                "evaluation_method": method,
-                "rubric_criteria": rubric_criteria,
-                "criteria_summary": criteria_summary,
-                "correct": is_correct,
-                "judge_result": "PASS" if is_correct else "FAIL",
-                "score": score,
-                "reasoning": reasoning,
-                "latency_ms": latency
-            })
+            evaluated_results.append(
+                {
+                    "execution_id": execution_id,
+                    "evaluation_case_id": eval_case_id,
+                    "task_id": task_id,
+                    "model": model_name,
+                    "question": q,
+                    "raw_output": raw_out,
+                    "model_answer": norm_ans or raw_out,
+                    "expected_answer": exp,
+                    "accepted_answers": accepted_answers,
+                    "evaluation_method": method,
+                    "rubric_criteria": rubric_criteria,
+                    "criteria_summary": criteria_summary,
+                    "correct": is_correct,
+                    "judge_result": "PASS" if is_correct else "FAIL",
+                    "score": score,
+                    "reasoning": reasoning,
+                    "latency_ms": latency,
+                }
+            )
 
         acc = (passed_count / total_count * 100.0) if total_count > 0 else 0.0
         avg_lat = int(total_latency / total_count) if total_count > 0 else 350
@@ -235,7 +295,7 @@ class EvaluateRunTool(BaseTool):
                 "failed": total_count - passed_count,
                 "average_latency_ms": avg_lat,
             },
-            "results": evaluated_results
+            "results": evaluated_results,
         }
 
 
@@ -258,12 +318,10 @@ class CompareResultsTool(BaseTool):
         leaderboard = []
         for idx, eid in enumerate(execution_ids):
             rec = _benchmark_execution_store.get(eid)
-            model = rec.get("target_model") if rec else f"model-{idx+1}"
-            leaderboard.append({
-                "rank": idx + 1,
-                "model": model,
-                "accuracy": 100.0 if idx == 0 else 80.0
-            })
+            model = rec.get("target_model") if rec else f"model-{idx + 1}"
+            leaderboard.append(
+                {"rank": idx + 1, "model": model, "accuracy": 100.0 if idx == 0 else 80.0}
+            )
 
         best = leaderboard[0]["model"] if leaderboard else "gemini-3.5-flash-lite"
 
@@ -287,7 +345,9 @@ class GenerateReportTool(BaseTool):
         "required": ["benchmark_id"],
     }
 
-    def execute(self, db: Session, benchmark_id: str, title: str = "Benchmark Report", **kwargs: Any) -> Any:
+    def execute(
+        self, db: Session, benchmark_id: str, title: str = "Benchmark Report", **kwargs: Any
+    ) -> Any:
         report_id = str(uuid.uuid4())
         agent_task_id = kwargs.get("task_id")
 
@@ -298,7 +358,7 @@ class GenerateReportTool(BaseTool):
             "title": title,
             "summary": f"Benchmark evaluation completed successfully for '{title}'.",
             "published": True,
-            "created_at": "2026-08-13T09:40:00Z"
+            "created_at": "2026-08-13T09:40:00Z",
         }
         _report_store[report_id] = report_data
 

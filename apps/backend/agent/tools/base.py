@@ -17,7 +17,7 @@ class BaseTool(ABC):
         """
         props = self.parameters_schema.get("properties", {})
         required = self.parameters_schema.get("required", [])
-        
+
         gemini_props = {}
         for prop_name, prop_spec in props.items():
             raw_type = prop_spec.get("type", "string").upper()
@@ -28,7 +28,11 @@ class BaseTool(ABC):
             if raw_type == "ARRAY":
                 prop_dict["type"] = "ARRAY"
                 items_spec = prop_spec.get("items", {})
-                item_type = items_spec.get("type", "string").upper() if isinstance(items_spec, dict) else "STRING"
+                item_type = (
+                    items_spec.get("type", "string").upper()
+                    if isinstance(items_spec, dict)
+                    else "STRING"
+                )
                 prop_dict["items"] = {"type": item_type}
             elif raw_type in {"OBJECT", "INTEGER", "BOOLEAN"}:
                 prop_dict["type"] = raw_type

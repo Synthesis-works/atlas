@@ -23,15 +23,19 @@ class ProviderRouter(BaseLLMProvider):
     def __init__(
         self,
         primary: Optional[BaseLLMProvider] = None,
-        fallbacks: Optional[List[BaseLLMProvider]] = None,
+        fallbacks: Optional[list[BaseLLMProvider]] = None,
         max_retries_per_provider: int = 2,
         max_backoff_seconds: float = 5.0,
     ):
         self.primary = primary or GeminiAgentProvider()
-        self.fallbacks = fallbacks if fallbacks is not None else [
-            GrokAgentProvider(),
-            MistralAgentProvider(),
-        ]
+        self.fallbacks = (
+            fallbacks
+            if fallbacks is not None
+            else [
+                GrokAgentProvider(),
+                MistralAgentProvider(),
+            ]
+        )
         self.max_retries_per_provider = max_retries_per_provider
         self.max_backoff_seconds = max_backoff_seconds
         self._provider_cooldowns: dict[str, float] = {}
@@ -45,17 +49,44 @@ class ProviderRouter(BaseLLMProvider):
         - 'FATAL': internal schema/code/state corruption -> fail task
         """
         err_lower = err_str.lower()
-        if any(k in err_lower for k in ["401", "403", "unauthorized", "invalid_api_key", "invalid api key"]):
+        if any(
+            k in err_lower
+            for k in ["401", "403", "unauthorized", "invalid_api_key", "invalid api key"]
+        ):
             return "AUTH"
-        if any(k in err_lower for k in ["model not found", "model unavailable", "unsupported model", "invalid_argument", "400", "404"]):
+        if any(
+            k in err_lower
+            for k in [
+                "model not found",
+                "model unavailable",
+                "unsupported model",
+                "invalid_argument",
+                "400",
+                "404",
+            ]
+        ):
             return "FALLBACK"
-        if any(k in err_lower for k in ["429", "500", "502", "503", "timeout", "resource_exhausted", "connection failure", "request failed"]):
+        if any(
+            k in err_lower
+            for k in [
+                "429",
+                "500",
+                "502",
+                "503",
+                "timeout",
+                "resource_exhausted",
+                "connection failure",
+                "request failed",
+            ]
+        ):
             return "RETRYABLE"
         if any(k in err_lower for k in ["schema_error", "corrupted_state", "invalid_decision"]):
             return "FATAL"
         return "FALLBACK"
 
-    def decide(self, task: AgentTask, prompt_context: str, available_tools: list[dict[str, Any]]) -> AgentDecision:
+    def decide(
+        self, task: AgentTask, prompt_context: str, available_tools: list[dict[str, Any]]
+    ) -> AgentDecision:
         chain = [self.primary] + self.fallbacks
         failures_summary = []
         now = time.time()
@@ -64,7 +95,11 @@ class ProviderRouter(BaseLLMProvider):
             provider_name = getattr(
                 provider,
                 "name",
-                getattr(provider, "provider_name", provider.__class__.__name__.replace("AgentProvider", "").lower()),
+                getattr(
+                    provider,
+                    "provider_name",
+                    provider.__class__.__name__.replace("AgentProvider", "").lower(),
+                ),
             )
             model_name = getattr(provider, "model", "default")
 
@@ -74,7 +109,9 @@ class ProviderRouter(BaseLLMProvider):
                 remaining_cd = int(cooldown_until - now)
                 msg = f"Provider '{provider_name}' skipped (rate-limit/availability cooldown active for {remaining_cd}s)."
                 logger.info(msg)
-                failures_summary.append(f"{provider_name}: Cooldown active ({remaining_cd}s remaining)")
+                failures_summary.append(
+                    f"{provider_name}: Cooldown active ({remaining_cd}s remaining)"
+                )
                 continue
 
             # Skip provider if API key is not configured (unless it's mock in test mode)
@@ -90,7 +127,9 @@ class ProviderRouter(BaseLLMProvider):
             for attempt in range(self.max_retries_per_provider + 1):
                 start_time = time.time()
                 try:
-                    logger.info(f"Attempting decision with provider '{provider_name}' (model: {model_name}, attempt: {attempt + 1})")
+                    logger.info(
+                        f"Attempting decision with provider '{provider_name}' (model: {model_name}, attempt: {attempt + 1})"
+                    )
                     decision = provider.decide(task, prompt_context, available_tools)
                     latency_ms = int((time.time() - start_time) * 1000)
 
@@ -99,7 +138,9 @@ class ProviderRouter(BaseLLMProvider):
                         category = self._classify_error(err_msg)
 
                         if category == "FATAL":
-                            logger.error(f"Fatal internal error on provider '{provider_name}': {err_msg}")
+                            logger.error(
+                                f"Fatal internal error on provider '{provider_name}': {err_msg}"
+                            )
                             task.record_trace(
                                 step=task.step_count,
                                 action=f"provider_fatal_error_{provider_name}",
@@ -108,33 +149,57 @@ class ProviderRouter(BaseLLMProvider):
                             return decision
 
                         if category in ("AUTH", "FALLBACK"):
-                            logger.warning(f"Provider '{provider_name}' encountered non-fatal {category} error ({err_msg}). Setting cooldown and falling back...")
+                            logger.warning(
+                                f"Provider '{provider_name}' encountered non-fatal {category} error ({err_msg}). Setting cooldown and falling back..."
+                            )
                             self._provider_cooldowns[provider_name] = time.time() + 120.0
                             failures_summary.append(f"{provider_name}: {err_msg}")
-                            next_p = chain[provider_idx + 1] if provider_idx + 1 < len(chain) else None
-                            next_name = getattr(next_p, "name", getattr(next_p, "provider_name", "NONE")) if next_p else "NONE"
+                            next_p = (
+                                chain[provider_idx + 1] if provider_idx + 1 < len(chain) else None
+                            )
+                            next_name = (
+                                getattr(next_p, "name", getattr(next_p, "provider_name", "NONE"))
+                                if next_p
+                                else "NONE"
+                            )
                             task.record_trace(
                                 step=task.step_count,
                                 action="provider_fallback",
-                                result={"failed_provider": provider_name, "next_provider": next_name, "reason": err_msg},
+                                result={
+                                    "failed_provider": provider_name,
+                                    "next_provider": next_name,
+                                    "reason": err_msg,
+                                },
                             )
                             break  # Move to next provider immediately
 
                         # Category is RETRYABLE
                         if attempt < self.max_retries_per_provider:
                             sleep_time = min((attempt + 1) * 2.0, self.max_backoff_seconds)
-                            logger.warning(f"Retryable error on provider '{provider_name}' ({err_msg}). Retrying in {sleep_time}s...")
+                            logger.warning(
+                                f"Retryable error on provider '{provider_name}' ({err_msg}). Retrying in {sleep_time}s..."
+                            )
                             time.sleep(sleep_time)
                             continue
                         else:
                             self._provider_cooldowns[provider_name] = time.time() + 60.0
                             failures_summary.append(f"{provider_name}: {err_msg}")
-                            next_p = chain[provider_idx + 1] if provider_idx + 1 < len(chain) else None
-                            next_name = getattr(next_p, "name", getattr(next_p, "provider_name", "NONE")) if next_p else "NONE"
+                            next_p = (
+                                chain[provider_idx + 1] if provider_idx + 1 < len(chain) else None
+                            )
+                            next_name = (
+                                getattr(next_p, "name", getattr(next_p, "provider_name", "NONE"))
+                                if next_p
+                                else "NONE"
+                            )
                             task.record_trace(
                                 step=task.step_count,
                                 action="provider_fallback",
-                                result={"failed_provider": provider_name, "next_provider": next_name, "reason": err_msg},
+                                result={
+                                    "failed_provider": provider_name,
+                                    "next_provider": next_name,
+                                    "reason": err_msg,
+                                },
                             )
                             break  # Fallback after max retries
 
@@ -165,30 +230,50 @@ class ProviderRouter(BaseLLMProvider):
                         )
 
                     if category in ("AUTH", "FALLBACK"):
-                        logger.warning(f"Exception on provider '{provider_name}' ({err_str}). Falling back...")
+                        logger.warning(
+                            f"Exception on provider '{provider_name}' ({err_str}). Falling back..."
+                        )
                         failures_summary.append(f"{provider_name}: {err_str}")
                         next_p = chain[provider_idx + 1] if provider_idx + 1 < len(chain) else None
-                        next_name = getattr(next_p, "name", getattr(next_p, "provider_name", "NONE")) if next_p else "NONE"
+                        next_name = (
+                            getattr(next_p, "name", getattr(next_p, "provider_name", "NONE"))
+                            if next_p
+                            else "NONE"
+                        )
                         task.record_trace(
                             step=task.step_count,
                             action="provider_fallback",
-                            result={"failed_provider": provider_name, "next_provider": next_name, "reason": err_str},
+                            result={
+                                "failed_provider": provider_name,
+                                "next_provider": next_name,
+                                "reason": err_str,
+                            },
                         )
                         break
 
                     if attempt < self.max_retries_per_provider:
                         sleep_time = min((attempt + 1) * 2.0, self.max_backoff_seconds)
-                        logger.warning(f"Exception on provider '{provider_name}' ({err_str}). Retrying in {sleep_time}s...")
+                        logger.warning(
+                            f"Exception on provider '{provider_name}' ({err_str}). Retrying in {sleep_time}s..."
+                        )
                         time.sleep(sleep_time)
                         continue
                     else:
                         failures_summary.append(f"{provider_name}: {err_str}")
                         next_p = chain[provider_idx + 1] if provider_idx + 1 < len(chain) else None
-                        next_name = getattr(next_p, "name", getattr(next_p, "provider_name", "NONE")) if next_p else "NONE"
+                        next_name = (
+                            getattr(next_p, "name", getattr(next_p, "provider_name", "NONE"))
+                            if next_p
+                            else "NONE"
+                        )
                         task.record_trace(
                             step=task.step_count,
                             action="provider_fallback",
-                            result={"failed_provider": provider_name, "next_provider": next_name, "reason": err_str},
+                            result={
+                                "failed_provider": provider_name,
+                                "next_provider": next_name,
+                                "reason": err_str,
+                            },
                         )
                         break
 

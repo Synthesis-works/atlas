@@ -10,7 +10,12 @@ from .base import BaseLLMClient
 
 
 class GrokClient(BaseLLMClient):
-    def __init__(self, base_url: str = "https://api.x.ai/v1", api_key_env: str = "XAI_API_KEY", timeout: float = 30.0):
+    def __init__(
+        self,
+        base_url: str = "https://api.x.ai/v1",
+        api_key_env: str = "XAI_API_KEY",
+        timeout: float = 30.0,
+    ):
         self.base_url = base_url
         self.api_key = os.getenv(api_key_env)
         self.timeout = timeout

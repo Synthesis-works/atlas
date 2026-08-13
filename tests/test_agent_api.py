@@ -67,7 +67,9 @@ def test_agent_task_approval_flow():
     assert approval_token is not None
 
     # Approve task
-    appr_resp = client.post(f"/api/v1/agent/tasks/{task_id}/approve", json={"approval_token": approval_token})
+    appr_resp = client.post(
+        f"/api/v1/agent/tasks/{task_id}/approve", json={"approval_token": approval_token}
+    )
     assert appr_resp.status_code == 200
     assert appr_resp.json()["status"] == "COMPLETED"
 
@@ -94,7 +96,12 @@ def test_real_gemini_provider_smoke():
     provider = GeminiAgentProvider(model="gemini-3.5-flash-lite")
     task = AgentTask(
         goal="Create Python Security Vulnerability Benchmark",
-        granted_permissions=[AgentPermission.READ, AgentPermission.WRITE, AgentPermission.EXECUTE, AgentPermission.PUBLISH],
+        granted_permissions=[
+            AgentPermission.READ,
+            AgentPermission.WRITE,
+            AgentPermission.EXECUTE,
+            AgentPermission.PUBLISH,
+        ],
     )
     prompt_context = "Goal: Create a benchmark for Python vulnerability identification."
     declarations = [

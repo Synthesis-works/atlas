@@ -14,8 +14,14 @@ class SearchBenchmarksTool(BaseTool):
     parameters_schema = {
         "type": "object",
         "properties": {
-            "query": {"type": "string", "description": "Search query filter for benchmark name or objective."},
-            "limit": {"type": "integer", "description": "Maximum number of benchmarks to return (default 10)."},
+            "query": {
+                "type": "string",
+                "description": "Search query filter for benchmark name or objective.",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Maximum number of benchmarks to return (default 10).",
+            },
         },
     }
 
@@ -66,7 +72,10 @@ class GetBenchmarkTool(BaseTool):
             "domain": bm.domain,
             "type": bm.type,
             "status": bm.status,
-            "versions": [{"version_id": str(v.id), "version_number": getattr(v, "version_number", "v1.0")} for v in versions],
+            "versions": [
+                {"version_id": str(v.id), "version_number": getattr(v, "version_number", "v1.0")}
+                for v in versions
+            ],
         }
 
 
@@ -78,14 +87,31 @@ class CreateBenchmarkTool(BaseTool):
         "type": "object",
         "properties": {
             "name": {"type": "string", "description": "Benchmark title/name."},
-            "description": {"type": "string", "description": "Objective or description of what the benchmark tests."},
-            "task_type": {"type": "string", "description": "Task classification (e.g. security_code_audit, reasoning)."},
-            "evaluation_method": {"type": "string", "description": "Evaluation strategy (e.g. exact_match, llm_judge)."},
+            "description": {
+                "type": "string",
+                "description": "Objective or description of what the benchmark tests.",
+            },
+            "task_type": {
+                "type": "string",
+                "description": "Task classification (e.g. security_code_audit, reasoning).",
+            },
+            "evaluation_method": {
+                "type": "string",
+                "description": "Evaluation strategy (e.g. exact_match, llm_judge).",
+            },
         },
         "required": ["name"],
     }
 
-    def execute(self, db: Session, name: str, description: str = "", task_type: str = "general", evaluation_method: str = "exact_match", **kwargs: Any) -> Any:
+    def execute(
+        self,
+        db: Session,
+        name: str,
+        description: str = "",
+        task_type: str = "general",
+        evaluation_method: str = "exact_match",
+        **kwargs: Any,
+    ) -> Any:
         proj_id = kwargs.get("project_id") or uuid.UUID("00000000-0000-0000-0000-000000000001")
         bm_id = uuid.uuid4()
         version_id = uuid.uuid4()

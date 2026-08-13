@@ -12,7 +12,9 @@ dotenv.load_dotenv()
 
 # Add project root and packages/database to sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "packages", "database")))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "packages", "database"))
+)
 
 from atlas_db.core.base import Base
 from atlas_db.models.authoring import Benchmark, BenchmarkVersion
@@ -78,6 +80,7 @@ def main():
         print("Ollama Offline: True | Graceful Fallback Active (Core Agent execution unhindered)")
 
     from apps.backend.agent.providers.router import ProviderRouter
+
     # 3. Test Permission Checkpoint Flow & Provider Router
     print("\n--- Testing Permission Checkpoint Flow & Provider Router ---")
     provider_router = ProviderRouter(primary=GeminiAgentProvider(model="gemini-3.5-flash-lite"))
@@ -113,7 +116,12 @@ def main():
             "Create a disposable benchmark to test Python security vulnerability identification, "
             "generate and attach dataset tasks, validate dataset, run executions, evaluate, and generate a report."
         ),
-        granted_permissions=[AgentPermission.READ, AgentPermission.WRITE, AgentPermission.EXECUTE, AgentPermission.PUBLISH],
+        granted_permissions=[
+            AgentPermission.READ,
+            AgentPermission.WRITE,
+            AgentPermission.EXECUTE,
+            AgentPermission.PUBLISH,
+        ],
         project_id=proj_id,
     )
 
@@ -134,7 +142,9 @@ def main():
     print("\n--- Sequence of Tool Calls & Gemini Decisions ---")
     for i, call in enumerate(real_task.tool_calls, 1):
         obs = next((o for o in real_task.observations if o.call_id == call.call_id), None)
-        status_str = "SUCCESS" if obs and obs.success else f"FAILED ({obs.error if obs else 'no obs'})"
+        status_str = (
+            "SUCCESS" if obs and obs.success else f"FAILED ({obs.error if obs else 'no obs'})"
+        )
         print(f"Step {i}: Tool '{call.tool_name}' -> {status_str}")
         print(f"   Args: {json.dumps(call.arguments)}")
         if obs:

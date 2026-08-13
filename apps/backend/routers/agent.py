@@ -23,9 +23,16 @@ _tool_registry = ToolRegistry()
 class TaskCreateRequest(BaseModel):
     goal: str = Field(description="Goal for the Atlas Agent to accomplish.")
     provider: str = Field(default="mock", description="LLM provider: 'mock' or 'gemini'.")
-    model: str = Field(default="gemini-3.5-flash-lite", description="Model name if using gemini provider.")
+    model: str = Field(
+        default="gemini-3.5-flash-lite", description="Model name if using gemini provider."
+    )
     permissions: list[AgentPermission] = Field(
-        default_factory=lambda: [AgentPermission.READ, AgentPermission.WRITE, AgentPermission.EXECUTE, AgentPermission.PUBLISH],
+        default_factory=lambda: [
+            AgentPermission.READ,
+            AgentPermission.WRITE,
+            AgentPermission.EXECUTE,
+            AgentPermission.PUBLISH,
+        ],
         description="Permissions granted to the agent for this task.",
     )
 
@@ -37,14 +44,20 @@ class TaskApprovalRequest(BaseModel):
 from apps.backend.agent.providers.router import ProviderRouter
 
 
-def _run_agent_task_background(task_id: UUID, db_session_factory, provider_type: str, model_name: str):
+def _run_agent_task_background(
+    task_id: UUID, db_session_factory, provider_type: str, model_name: str
+):
     db: Session = db_session_factory()
     try:
         task = _agent_tasks_db.get(task_id)
         if not task:
             return
 
-        provider = MockAgentProvider() if provider_type == "mock" else ProviderRouter(primary=GeminiAgentProvider(model=model_name))
+        provider = (
+            MockAgentProvider()
+            if provider_type == "mock"
+            else ProviderRouter(primary=GeminiAgentProvider(model=model_name))
+        )
         agent = AtlasAgent(provider=provider, registry=_tool_registry)
         agent.run_task(task, db)
     finally:
@@ -69,7 +82,9 @@ def create_agent_task(
         agent = AtlasAgent(provider=MockAgentProvider(), registry=_tool_registry)
         agent.run_task(task, db)
     else:
-        background_tasks.add_task(_run_agent_task_background, task.task_id, SessionLocal, payload.provider, payload.model)
+        background_tasks.add_task(
+            _run_agent_task_background, task.task_id, SessionLocal, payload.provider, payload.model
+        )
 
     return {
         "task_id": str(task.task_id),
@@ -87,7 +102,9 @@ def create_agent_task(
 def get_agent_task(task_id: UUID):
     task = _agent_tasks_db.get(task_id)
     if not task:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
+        )
 
     return {
         "task_id": str(task.task_id),
@@ -118,6 +135,7 @@ def get_agent_task(task_id: UUID):
 @router.get("/reports/{report_id}", response_model=dict[str, Any])
 def get_agent_report(report_id: str):
     from apps.backend.agent.tools.evaluation_tools import _report_store
+
     report = _report_store.get(report_id)
     if not report:
         # Fallback generated report metadata if valid UUID format
@@ -126,7 +144,7 @@ def get_agent_report(report_id: str):
             "title": "Benchmark Evaluation Comparative Report",
             "summary": f"Report '{report_id}' details.",
             "published": True,
-            "created_at": "2026-08-12T19:40:00Z"
+            "created_at": "2026-08-12T19:40:00Z",
         }
     return report
 
@@ -152,16 +170,25 @@ def list_agent_tasks():
 
 
 @router.post("/tasks/{task_id}/approve", response_model=dict[str, Any])
-def approve_agent_task(task_id: UUID, payload: TaskApprovalRequest, db: Session = Depends(get_db_session)):
+def approve_agent_task(
+    task_id: UUID, payload: TaskApprovalRequest, db: Session = Depends(get_db_session)
+):
     task = _agent_tasks_db.get(task_id)
     if not task:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
+        )
 
     if task.status != AgentTaskStatus.WAITING_FOR_APPROVAL:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Task is in status '{task.status}', not WAITING_FOR_APPROVAL.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Task is in status '{task.status}', not WAITING_FOR_APPROVAL.",
+        )
 
     if task.approval_token != payload.approval_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid approval token.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid approval token."
+        )
 
     # Grant required permission and resume execution
     pending = task.pending_tool_call
@@ -188,7 +215,9 @@ def approve_agent_task(task_id: UUID, payload: TaskApprovalRequest, db: Session 
 def cancel_agent_task(task_id: UUID):
     task = _agent_tasks_db.get(task_id)
     if not task:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
+        )
 
     task.status = AgentTaskStatus.CANCELLED
     task.add_trace("TASK_CANCELLED", {"reason": "User manual cancellation"})
@@ -213,13 +242,19 @@ def clarify_agent_task(
 ):
     task = _agent_tasks_db.get(task_id)
     if not task:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
+        )
 
     if task.status != AgentTaskStatus.WAITING_FOR_CLARIFICATION:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Task is in status '{task.status}', not WAITING_FOR_CLARIFICATION.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Task is in status '{task.status}', not WAITING_FOR_CLARIFICATION.",
+        )
 
     # Record clarification answer as an observation
     from apps.backend.agent.state import ObservationRecord
+
     clarify_obs_msg = f"User Clarification: {payload.response}"
     task.observations.append(
         ObservationRecord(
@@ -240,7 +275,13 @@ def clarify_agent_task(
         agent = AtlasAgent(provider=MockAgentProvider(), registry=_tool_registry)
         agent.run_task(task, db)
     else:
-        background_tasks.add_task(_run_agent_task_background, task.task_id, SessionLocal, task.primary_provider, task.model)
+        background_tasks.add_task(
+            _run_agent_task_background,
+            task.task_id,
+            SessionLocal,
+            task.primary_provider,
+            task.model,
+        )
 
     return {
         "task_id": str(task.task_id),

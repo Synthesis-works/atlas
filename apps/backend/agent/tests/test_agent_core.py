@@ -32,7 +32,7 @@ def test_tool_registry_tools():
     registry = ToolRegistry()
     tools = registry.list_tools()
     assert len(tools) >= 13
-    
+
     declarations = registry.get_gemini_declarations()
     assert len(declarations) >= 13
     assert any(d["name"] == "search_memory" for d in declarations)
@@ -42,7 +42,7 @@ def test_tool_registry_tools():
 def test_tool_permission_enforcement():
     registry = ToolRegistry()
     granted = [AgentPermission.READ]
-    
+
     assert registry.check_permission("search_benchmarks", granted) is True
     assert registry.check_permission("create_benchmark", granted) is False
     assert registry.check_permission("run_benchmark", granted) is False
@@ -52,7 +52,12 @@ def test_mock_agent_full_workflow(db_session):
     agent = AtlasAgent(provider=MockAgentProvider())
     task = AgentTask(
         goal="Create Python Security Vulnerability Benchmark",
-        granted_permissions=[AgentPermission.READ, AgentPermission.WRITE, AgentPermission.EXECUTE, AgentPermission.PUBLISH],
+        granted_permissions=[
+            AgentPermission.READ,
+            AgentPermission.WRITE,
+            AgentPermission.EXECUTE,
+            AgentPermission.PUBLISH,
+        ],
     )
 
     agent.run_task(task, db_session)
@@ -90,6 +95,6 @@ def test_hard_limit_max_tool_calls(db_session):
 def test_semantic_memory_offline_fallback():
     store = SemanticMemoryStore(base_url="http://localhost:99999")  # Non-existent port
     assert store.is_available is False
-    
+
     res = store.search("anything")
     assert res == []

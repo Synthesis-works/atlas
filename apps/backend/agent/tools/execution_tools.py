@@ -28,25 +28,47 @@ def get_configured_models() -> dict[str, Any]:
     unavailable = []
 
     if gemini_key:
-        available.append({"provider": "gemini", "model": "gemini-3.5-flash-lite", "status": "AVAILABLE"})
-        available.append({"provider": "gemini", "model": "gemini-3.1-flash-lite", "status": "AVAILABLE"})
+        available.append(
+            {"provider": "gemini", "model": "gemini-3.5-flash-lite", "status": "AVAILABLE"}
+        )
+        available.append(
+            {"provider": "gemini", "model": "gemini-3.1-flash-lite", "status": "AVAILABLE"}
+        )
     else:
-        unavailable.append({"provider": "gemini", "model": "gemini-3.5-flash-lite", "reason": "GEMINI_API_KEY not configured"})
+        unavailable.append(
+            {
+                "provider": "gemini",
+                "model": "gemini-3.5-flash-lite",
+                "reason": "GEMINI_API_KEY not configured",
+            }
+        )
 
     if xai_key:
         available.append({"provider": "grok", "model": "grok-2-latest", "status": "AVAILABLE"})
     else:
-        unavailable.append({"provider": "grok", "model": "grok-2-latest", "reason": "XAI_API_KEY not configured"})
+        unavailable.append(
+            {"provider": "grok", "model": "grok-2-latest", "reason": "XAI_API_KEY not configured"}
+        )
 
     if mistral_key:
-        available.append({"provider": "mistral", "model": "mistral-small-latest", "status": "AVAILABLE"})
+        available.append(
+            {"provider": "mistral", "model": "mistral-small-latest", "status": "AVAILABLE"}
+        )
     else:
-        unavailable.append({"provider": "mistral", "model": "mistral-small-latest", "reason": "MISTRAL_API_KEY not configured"})
+        unavailable.append(
+            {
+                "provider": "mistral",
+                "model": "mistral-small-latest",
+                "reason": "MISTRAL_API_KEY not configured",
+            }
+        )
 
     if openai_key:
         available.append({"provider": "openai", "model": "gpt-4o", "status": "AVAILABLE"})
     else:
-        unavailable.append({"provider": "openai", "model": "gpt-4o", "reason": "OPENAI_API_KEY not configured"})
+        unavailable.append(
+            {"provider": "openai", "model": "gpt-4o", "reason": "OPENAI_API_KEY not configured"}
+        )
 
     return {
         "available_models": available,
@@ -56,7 +78,9 @@ def get_configured_models() -> dict[str, Any]:
 
 class GetAvailableModelsTool(BaseTool):
     name = "get_available_models"
-    description = "Check which LLM models are currently available and configured with valid API credentials."
+    description = (
+        "Check which LLM models are currently available and configured with valid API credentials."
+    )
     required_permission = AgentPermission.READ
     parameters_schema = {
         "type": "object",
@@ -72,21 +96,25 @@ def _normalize_answer(raw_text: str, expected: str) -> str:
     text = raw_text.strip()
     if not text:
         return ""
-    
+
     exp_clean = expected.strip().lower()
-    
+
     # Check if expected appears cleanly in response
     if exp_clean and exp_clean in text.lower():
         return expected.strip()
-        
+
     # Extract numbers if expected is numeric
     if exp_clean.isdigit():
-        numbers = re.findall(r'\b\d+\b', text)
+        numbers = re.findall(r"\b\d+\b", text)
         if numbers:
             return numbers[0]
-            
+
     # Clean markdown formatting and return first meaningful non-empty line
-    lines = [line.strip() for line in text.split('\n') if line.strip() and not line.strip().startswith('**')]
+    lines = [
+        line.strip()
+        for line in text.split("\n")
+        if line.strip() and not line.strip().startswith("**")
+    ]
     if lines:
         return lines[0][:120]
     return text[:120]
@@ -99,7 +127,10 @@ class RunBenchmarkTool(BaseTool):
     parameters_schema = {
         "type": "object",
         "properties": {
-            "benchmark_version_id": {"type": "string", "description": "UUID of the benchmark version to run."},
+            "benchmark_version_id": {
+                "type": "string",
+                "description": "UUID of the benchmark version to run.",
+            },
             "target_models": {
                 "type": "array",
                 "description": "List of model identifiers to test (e.g. ['gemini-3.5-flash-lite', 'grok-2-latest']).",
@@ -108,7 +139,9 @@ class RunBenchmarkTool(BaseTool):
         "required": ["benchmark_version_id", "target_models"],
     }
 
-    def execute(self, db: Session, benchmark_version_id: str, target_models: list[str], **kwargs: Any) -> Any:
+    def execute(
+        self, db: Session, benchmark_version_id: str, target_models: list[str], **kwargs: Any
+    ) -> Any:
         try:
             bv_uuid = uuid.UUID(benchmark_version_id)
         except ValueError:
@@ -126,8 +159,9 @@ class RunBenchmarkTool(BaseTool):
 
         # Retrieve tasks created specifically for this dataset/task
         from apps.backend.agent.tools.dataset_tools import _dataset_store
+
         tasks_to_run = []
-        
+
         # Scoped search: find dataset belonging to current agent_task_id or benchmark_version_id
         for ds in reversed(list(_dataset_store.values())):
             if ds.get("tasks"):
@@ -135,11 +169,13 @@ class RunBenchmarkTool(BaseTool):
                 break
 
         if not tasks_to_run:
-            tasks_to_run = [{
-                "id": "task-default",
-                "input": "How many 's' characters are in Mississippi?",
-                "expected_output": "4"
-            }]
+            tasks_to_run = [
+                {
+                    "id": "task-default",
+                    "input": "How many 's' characters are in Mississippi?",
+                    "expected_output": "4",
+                }
+            ]
 
         created_ids = []
         execution_records = []
@@ -156,7 +192,7 @@ class RunBenchmarkTool(BaseTool):
                     "target_model": model,
                     "status": "UNAVAILABLE",
                     "error": f"Model '{model}' is unavailable: API key not configured.",
-                    "results": []
+                    "results": [],
                 }
                 _benchmark_execution_store[exec_id] = rec
                 execution_records.append(rec)
@@ -191,15 +227,17 @@ class RunBenchmarkTool(BaseTool):
                 latency_ms = int((time.time() - start_t) * 1000)
                 norm_answer = _normalize_answer(raw_response, expected)
 
-                item_results.append({
-                    "task_id": task_item.get("id", "task-1"),
-                    "input": prompt_input,
-                    "expected_output": expected,
-                    "raw_output": raw_response,
-                    "normalized_answer": norm_answer,
-                    "latency_ms": max(latency_ms, 120),
-                    "error": err
-                })
+                item_results.append(
+                    {
+                        "task_id": task_item.get("id", "task-1"),
+                        "input": prompt_input,
+                        "expected_output": expected,
+                        "raw_output": raw_response,
+                        "normalized_answer": norm_answer,
+                        "latency_ms": max(latency_ms, 120),
+                        "error": err,
+                    }
+                )
 
             rec = {
                 "execution_id": exec_id,
@@ -207,7 +245,7 @@ class RunBenchmarkTool(BaseTool):
                 "benchmark_version_id": benchmark_version_id,
                 "target_model": model,
                 "status": "COMPLETED",
-                "results": item_results
+                "results": item_results,
             }
             _benchmark_execution_store[exec_id] = rec
             execution_records.append(rec)
@@ -234,7 +272,7 @@ class RunBenchmarkTool(BaseTool):
             "execution_ids": created_ids,
             "models_dispatched": [e["target_model"] for e in execution_records],
             "status": "DISPATCHED_AND_COMPLETED",
-            "executions": execution_records
+            "executions": execution_records,
         }
 
 

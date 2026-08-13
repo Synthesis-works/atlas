@@ -13,7 +13,10 @@ class SearchMemoryTool(BaseTool):
     parameters_schema = {
         "type": "object",
         "properties": {
-            "query": {"type": "string", "description": "Semantic query string (e.g. 'dataset validation missing expected output')."},
+            "query": {
+                "type": "string",
+                "description": "Semantic query string (e.g. 'dataset validation missing expected output').",
+            },
             "limit": {"type": "integer", "description": "Maximum results to retrieve (default 5)."},
         },
         "required": ["query"],

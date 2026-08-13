@@ -1,5 +1,7 @@
 import json
-import logging, os, time
+import logging
+import os
+import time
 from typing import Any, Dict, List, Optional
 
 from packages.llm.clients.grok import GrokClient
@@ -25,7 +27,9 @@ class GrokAgentProvider(BaseLLMProvider):
         self.model = model or os.getenv("GROK_MODEL", os.getenv("XAI_MODEL", "grok-2"))
         self.client = client or GrokClient(api_key_env=api_key_env)
 
-    def decide(self, task: AgentTask, prompt_context: str, available_tools: list[dict[str, Any]]) -> AgentDecision:
+    def decide(
+        self, task: AgentTask, prompt_context: str, available_tools: list[dict[str, Any]]
+    ) -> AgentDecision:
         tools_payload = []
         if available_tools:
             tools_payload = [
@@ -78,6 +82,7 @@ class GrokAgentProvider(BaseLLMProvider):
             content = (message.get("content") or "").strip()
             if content:
                 import re
+
                 json_str = content
                 if "```" in content:
                     match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", content, re.DOTALL)

@@ -40,7 +40,11 @@ class GetDatasetTool(BaseTool):
         versions = db.query(DatasetVersion).filter(DatasetVersion.dataset_id == d_uuid).all()
         tasks = []
         if versions and versions[0].schema_def:
-            tasks = versions[0].schema_def if isinstance(versions[0].schema_def, list) else [versions[0].schema_def]
+            tasks = (
+                versions[0].schema_def
+                if isinstance(versions[0].schema_def, list)
+                else [versions[0].schema_def]
+            )
 
         return {
             "id": str(dataset.id),
@@ -69,7 +73,9 @@ class CreateDatasetTool(BaseTool):
         "required": ["benchmark_id", "name", "tasks"],
     }
 
-    def execute(self, db: Session, benchmark_id: str, name: str, tasks: list[Any], **kwargs: Any) -> Any:
+    def execute(
+        self, db: Session, benchmark_id: str, name: str, tasks: list[Any], **kwargs: Any
+    ) -> Any:
         proj_id = kwargs.get("project_id") or uuid.UUID("00000000-0000-0000-0000-000000000001")
 
         parsed_tasks = []
@@ -111,6 +117,7 @@ class CreateDatasetTool(BaseTool):
             db.commit()
         except Exception as e:
             import traceback
+
             db.rollback()
             logger.error(f"CreateDatasetTool commit failed: {e}\n{traceback.format_exc()}")
             raise e
@@ -143,7 +150,9 @@ class UpdateDatasetTool(BaseTool):
         "required": ["dataset_id", "repaired_tasks"],
     }
 
-    def execute(self, db: Session, dataset_id: str, repaired_tasks: list[dict[str, Any]], **kwargs: Any) -> Any:
+    def execute(
+        self, db: Session, dataset_id: str, repaired_tasks: list[dict[str, Any]], **kwargs: Any
+    ) -> Any:
         try:
             d_uuid = uuid.UUID(dataset_id)
         except ValueError:
@@ -200,9 +209,13 @@ class ValidateBenchmarkDatasetTool(BaseTool):
                 invalid_tasks.append({"index": i, "reason": "Task is not a JSON object"})
                 continue
             if "input" not in task:
-                invalid_tasks.append({"index": i, "id": task.get("id"), "reason": "Missing 'input'"})
+                invalid_tasks.append(
+                    {"index": i, "id": task.get("id"), "reason": "Missing 'input'"}
+                )
             if "expected_output" not in task or not task["expected_output"]:
-                invalid_tasks.append({"index": i, "id": task.get("id"), "reason": "Missing 'expected_output'"})
+                invalid_tasks.append(
+                    {"index": i, "id": task.get("id"), "reason": "Missing 'expected_output'"}
+                )
 
         from apps.backend.agent.tools.evaluation_tools import _evaluation_case_store
 

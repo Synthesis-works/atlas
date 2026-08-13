@@ -87,23 +87,27 @@ class AgentTask(BaseModel):
     goal: str
     status: AgentTaskStatus = AgentTaskStatus.PENDING
     granted_permissions: list[AgentPermission] = Field(
-        default_factory=lambda: [AgentPermission.READ, AgentPermission.WRITE, AgentPermission.EXECUTE]
+        default_factory=lambda: [
+            AgentPermission.READ,
+            AgentPermission.WRITE,
+            AgentPermission.EXECUTE,
+        ]
     )
-    
+
     # Progress & Memory State
     plan: list[PlanStep] = Field(default_factory=list)
     current_step: int = 0
     tool_calls: list[ToolCallRecord] = Field(default_factory=list)
     observations: list[ObservationRecord] = Field(default_factory=list)
     execution_trace: list[TraceEvent] = Field(default_factory=list)
-    
+
     # Limits and Counters
     step_count: int = 0
     total_tool_calls: int = 0
     repair_attempts: int = 0
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    
+
     # Approval, Clarification & Output State
     pending_tool_call: Optional[dict[str, Any]] = None
     approval_token: Optional[str] = None

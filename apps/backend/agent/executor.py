@@ -17,7 +17,9 @@ class ToolExecutor:
     def __init__(self, registry: Optional[ToolRegistry] = None):
         self.registry = registry or ToolRegistry()
 
-    def execute_tool(self, task: AgentTask, db: Session, tool_name: str, arguments: dict[str, Any]) -> tuple[ObservationRecord, Any]:
+    def execute_tool(
+        self, task: AgentTask, db: Session, tool_name: str, arguments: dict[str, Any]
+    ) -> tuple[ObservationRecord, Any]:
         call_id = str(uuid.uuid4())
         call_rec = ToolCallRecord(call_id=call_id, tool_name=tool_name, arguments=arguments)
         task.tool_calls.append(call_rec)
@@ -26,36 +28,57 @@ class ToolExecutor:
         # Check permissions
         if not self.registry.check_permission(tool_name, task.granted_permissions):
             err_msg = f"Task permission denied for tool '{tool_name}'. Required: {self.registry.get_tool(tool_name).required_permission.value}"
-            obs = ObservationRecord(call_id=call_id, tool_name=tool_name, success=False, output=None, error=err_msg)
+            obs = ObservationRecord(
+                call_id=call_id, tool_name=tool_name, success=False, output=None, error=err_msg
+            )
             task.observations.append(obs)
             task.add_trace("TOOL_PERMISSION_DENIED", {"tool_name": tool_name, "error": err_msg})
             return obs, None
 
         try:
-            output = self.registry.execute(tool_name=tool_name, db=db, arguments=arguments, project_id=task.project_id, task_id=str(task.task_id))
-            obs = ObservationRecord(call_id=call_id, tool_name=tool_name, success=True, output=output)
+            output = self.registry.execute(
+                tool_name=tool_name,
+                db=db,
+                arguments=arguments,
+                project_id=task.project_id,
+                task_id=str(task.task_id),
+            )
+            obs = ObservationRecord(
+                call_id=call_id, tool_name=tool_name, success=True, output=output
+            )
             task.observations.append(obs)
 
             # Explicit Data Lineage Assignment
             if isinstance(output, dict):
                 if tool_name == "create_benchmark":
-                    if output.get("id"): task.benchmark_id = str(output["id"])
-                    if output.get("version_id"): task.benchmark_version_id = str(output["version_id"])
+                    if output.get("id"):
+                        task.benchmark_id = str(output["id"])
+                    if output.get("version_id"):
+                        task.benchmark_version_id = str(output["version_id"])
                 elif tool_name == "create_dataset":
-                    if output.get("id"): task.dataset_id = str(output["id"])
-                    if output.get("version_id"): task.dataset_version_id = str(output["version_id"])
+                    if output.get("id"):
+                        task.dataset_id = str(output["id"])
+                    if output.get("version_id"):
+                        task.dataset_version_id = str(output["version_id"])
                 elif tool_name == "run_benchmark":
-                    if output.get("execution_ids"): task.execution_ids = [str(e) for e in output["execution_ids"]]
+                    if output.get("execution_ids"):
+                        task.execution_ids = [str(e) for e in output["execution_ids"]]
                 elif tool_name == "generate_report":
-                    if output.get("report_id"): task.report_id = str(output["report_id"])
+                    if output.get("report_id"):
+                        task.report_id = str(output["report_id"])
 
-            task.add_trace("TOOL_EXECUTION_SUCCESS", {"tool_name": tool_name, "arguments": arguments, "output": output})
+            task.add_trace(
+                "TOOL_EXECUTION_SUCCESS",
+                {"tool_name": tool_name, "arguments": arguments, "output": output},
+            )
             return obs, output
 
         except Exception as e:
             err_str = str(e)
             logger.error(f"Execution of tool '{tool_name}' failed: {err_str}")
-            obs = ObservationRecord(call_id=call_id, tool_name=tool_name, success=False, output=None, error=err_str)
+            obs = ObservationRecord(
+                call_id=call_id, tool_name=tool_name, success=False, output=None, error=err_str
+            )
             task.observations.append(obs)
             task.add_trace("TOOL_EXECUTION_ERROR", {"tool_name": tool_name, "error": err_str})
             return obs, None

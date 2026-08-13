@@ -13,19 +13,21 @@ class MockAgentProvider(BaseLLMProvider):
     Drives a complete benchmark lifecycle step by step.
     """
 
-    def decide(self, task: AgentTask, prompt_context: str, available_tools: list[dict[str, Any]]) -> AgentDecision:
+    def decide(
+        self, task: AgentTask, prompt_context: str, available_tools: list[dict[str, Any]]
+    ) -> AgentDecision:
         called_tools = [c.tool_name for c in task.tool_calls]
-        
+
         # Check last observation for dataset validation failure simulation
         last_obs = task.observations[-1] if task.observations else None
-        
+
         # Mock clarification trigger
         if "clarif" in task.goal.lower() and "request_clarification" not in called_tools:
             return AgentDecision(
                 type=AgentDecisionType.TOOL_CALL,
                 tool_name="request_clarification",
                 arguments={"question": "Should we test addition or subtraction?"},
-                reasoning="Goal is ambiguous. Ask for clarification."
+                reasoning="Goal is ambiguous. Ask for clarification.",
             )
 
         if "create_benchmark" not in called_tools:
@@ -54,9 +56,20 @@ class MockAgentProvider(BaseLLMProvider):
                     "benchmark_id": bm_id,
                     "name": "Python SecVulnerability Samples v1",
                     "tasks": [
-                        {"id": "t1", "input": "def eval_input(x): exec(x)", "expected_output": "INSECURE_EVAL"},
-                        {"id": "t2", "input": "def query_db(q): db.execute(q)", "expected_output": "SQL_INJECTION"},
-                        {"id": "t3", "input": "def bad_format(): pass"},  # Missing expected_output for validation failure simulation
+                        {
+                            "id": "t1",
+                            "input": "def eval_input(x): exec(x)",
+                            "expected_output": "INSECURE_EVAL",
+                        },
+                        {
+                            "id": "t2",
+                            "input": "def query_db(q): db.execute(q)",
+                            "expected_output": "SQL_INJECTION",
+                        },
+                        {
+                            "id": "t3",
+                            "input": "def bad_format(): pass",
+                        },  # Missing expected_output for validation failure simulation
                     ],
                 },
                 reasoning="Step 2: Attach dataset tasks.",
@@ -75,7 +88,10 @@ class MockAgentProvider(BaseLLMProvider):
             )
 
         # Handle validation recovery flow
-        if called_tools.count("validate_benchmark_dataset") == 1 and "update_dataset" not in called_tools:
+        if (
+            called_tools.count("validate_benchmark_dataset") == 1
+            and "update_dataset" not in called_tools
+        ):
             ds_id = "00000000-0000-0000-0000-000000000002"
             return AgentDecision(
                 type=AgentDecisionType.TOOL_CALL,
@@ -83,15 +99,30 @@ class MockAgentProvider(BaseLLMProvider):
                 arguments={
                     "dataset_id": ds_id,
                     "repaired_tasks": [
-                        {"id": "t1", "input": "def eval_input(x): exec(x)", "expected_output": "INSECURE_EVAL"},
-                        {"id": "t2", "input": "def query_db(q): db.execute(q)", "expected_output": "SQL_INJECTION"},
-                        {"id": "t3", "input": "def bad_format(): pass", "expected_output": "NO_OP_SECURE"},
+                        {
+                            "id": "t1",
+                            "input": "def eval_input(x): exec(x)",
+                            "expected_output": "INSECURE_EVAL",
+                        },
+                        {
+                            "id": "t2",
+                            "input": "def query_db(q): db.execute(q)",
+                            "expected_output": "SQL_INJECTION",
+                        },
+                        {
+                            "id": "t3",
+                            "input": "def bad_format(): pass",
+                            "expected_output": "NO_OP_SECURE",
+                        },
                     ],
                 },
                 reasoning="Step 4: Repair dataset task t3 missing expected output.",
             )
 
-        if called_tools.count("validate_benchmark_dataset") == 1 and "update_dataset" in called_tools:
+        if (
+            called_tools.count("validate_benchmark_dataset") == 1
+            and "update_dataset" in called_tools
+        ):
             ds_id = "00000000-0000-0000-0000-000000000002"
             return AgentDecision(
                 type=AgentDecisionType.TOOL_CALL,
@@ -114,7 +145,11 @@ class MockAgentProvider(BaseLLMProvider):
 
         if "get_run_status" not in called_tools:
             exec_id = "00000000-0000-0000-0000-000000000004"
-            if last_obs and isinstance(last_obs.output, dict) and "execution_ids" in last_obs.output:
+            if (
+                last_obs
+                and isinstance(last_obs.output, dict)
+                and "execution_ids" in last_obs.output
+            ):
                 exec_id = str(last_obs.output["execution_ids"][0])
             return AgentDecision(
                 type=AgentDecisionType.TOOL_CALL,

@@ -52,7 +52,9 @@ class Settings(BaseSettings):
     grok_model: str = Field(default="grok-2", validation_alias="GROK_MODEL")
     mistral_model: str = Field(default="mistral-small-latest", validation_alias="MISTRAL_MODEL")
     gemini_model: str = Field(default="gemini-3.5-flash-lite", validation_alias="GEMINI_MODEL")
-    llm_provider_timeout_seconds: float = Field(default=30.0, validation_alias="LLM_PROVIDER_TIMEOUT")
+    llm_provider_timeout_seconds: float = Field(
+        default=30.0, validation_alias="LLM_PROVIDER_TIMEOUT"
+    )
 
     # Billing Configuration (Stripe & Razorpay)
     stripe_api_key: str = Field(default="")
@@ -73,4 +75,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-

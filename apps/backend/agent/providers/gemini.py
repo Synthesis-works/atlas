@@ -25,7 +25,9 @@ class GeminiAgentProvider(BaseLLMProvider):
         self.model = model
         self.client = client or GeminiClient(api_key_env=api_key_env)
 
-    def decide(self, task: AgentTask, prompt_context: str, available_tools: list[dict[str, Any]]) -> AgentDecision:
+    def decide(
+        self, task: AgentTask, prompt_context: str, available_tools: list[dict[str, Any]]
+    ) -> AgentDecision:
         system_instruction = (
             "You are the Atlas Agent, an autonomous orchestration engine for AI benchmarking and evaluation.\n"
             "Analyze the user's task goal, current plan, and tool execution history.\n"
@@ -50,6 +52,7 @@ class GeminiAgentProvider(BaseLLMProvider):
             tools_payload = [{"functionDeclarations": available_tools}]
 
         import time
+
         prompt = Prompt(user=prompt_context, system=system_instruction)
 
         max_internal_attempts = 1
@@ -88,9 +91,16 @@ class GeminiAgentProvider(BaseLLMProvider):
 
             except Exception as e:
                 err_str = str(e)
-                if ("429" in err_str or "503" in err_str or "quota" in err_str or "RESOURCE_EXHAUSTED" in err_str) and attempt < max_internal_attempts:
+                if (
+                    "429" in err_str
+                    or "503" in err_str
+                    or "quota" in err_str
+                    or "RESOURCE_EXHAUSTED" in err_str
+                ) and attempt < max_internal_attempts:
                     sleep_time = 1.0
-                    logger.warning(f"Gemini API rate limit/unavailable. Retrying internal attempt {attempt + 1} in {sleep_time}s...")
+                    logger.warning(
+                        f"Gemini API rate limit/unavailable. Retrying internal attempt {attempt + 1} in {sleep_time}s..."
+                    )
                     time.sleep(sleep_time)
                     continue
 

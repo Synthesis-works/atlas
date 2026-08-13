@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from apps.backend.agent.state import AgentPermission
 from apps.backend.agent.tools.base import BaseTool
 
+
 class RequestClarificationTool(BaseTool):
     name = "request_clarification"
     description = (

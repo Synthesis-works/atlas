@@ -1,5 +1,7 @@
 import json
-import logging, os, time
+import logging
+import os
+import time
 from typing import Any, Dict, List, Optional
 
 from packages.llm.clients.mistral import MistralClient
@@ -25,7 +27,9 @@ class MistralAgentProvider(BaseLLMProvider):
         self.model = model
         self.client = client or MistralClient(api_key_env=api_key_env)
 
-    def decide(self, task: AgentTask, prompt_context: str, available_tools: list[dict[str, Any]]) -> AgentDecision:
+    def decide(
+        self, task: AgentTask, prompt_context: str, available_tools: list[dict[str, Any]]
+    ) -> AgentDecision:
         tools_payload = []
         if available_tools:
             tools_payload = [
@@ -66,7 +70,9 @@ class MistralAgentProvider(BaseLLMProvider):
                 raw_args = tool_call.get("arguments", {})
                 arguments = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
                 if tool_name:
-                    logger.info(f"Mistral selected native tool '{tool_name}' with args: {arguments}")
+                    logger.info(
+                        f"Mistral selected native tool '{tool_name}' with args: {arguments}"
+                    )
                     return AgentDecision(
                         type=AgentDecisionType.TOOL_CALL,
                         tool_name=tool_name,
@@ -78,6 +84,7 @@ class MistralAgentProvider(BaseLLMProvider):
             content = (message.get("content") or "").strip()
             if content:
                 import re
+
                 json_str = content
                 if "```" in content:
                     match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", content, re.DOTALL)

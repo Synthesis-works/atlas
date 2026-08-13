@@ -11,7 +11,10 @@ from .base import BaseLLMClient
 
 class MistralClient(BaseLLMClient):
     def __init__(
-        self, base_url: str = "https://api.mistral.ai/v1", api_key_env: str = "MISTRAL_API_KEY", timeout: float = 30.0
+        self,
+        base_url: str = "https://api.mistral.ai/v1",
+        api_key_env: str = "MISTRAL_API_KEY",
+        timeout: float = 30.0,
     ):
         self.base_url = base_url
         self.api_key = os.getenv(api_key_env)
