@@ -214,4 +214,10 @@ class AgentMemoryManager:
         if task.repair_attempts > 0:
             lines.append(f"\nActive Repair Attempts Count: {task.repair_attempts}")
 
+        if hasattr(task, "past_clarifications") and task.past_clarifications:
+            lines.append("\nClarification History:")
+            for item in task.past_clarifications:
+                lines.append(f"  - Question: {item.get('question')}")
+                lines.append(f"    Answer: {item.get('answer')}")
+
         return "\n".join(lines)

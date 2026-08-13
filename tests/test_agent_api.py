@@ -128,3 +128,88 @@ def test_real_gemini_provider_smoke():
             assert decision.tool_name is not None
     except Exception as e:
         pytest.skip(f"Gemini API request skipped due to network/connectivity error: {e}")
+
+
+def test_agent_clarification_loop_protection():
+    payload = {
+        "goal": "Need clarification test",
+        "provider": "mock",
+        "permissions": ["READ", "WRITE", "EXECUTE", "PUBLISH"],
+    }
+    response = client.post("/api/v1/agent/tasks", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    task_id = data["task_id"]
+    assert data["status"] == "WAITING_FOR_CLARIFICATION"
+    assert data["clarification_id"] is not None
+    assert data["clarification_request"] == "Should we test addition or subtraction?"
+
+    # Poll task details 10 times to verify no state change or duplicates are added
+    for _ in range(10):
+        poll_resp = client.get(f"/api/v1/agent/tasks/{task_id}")
+        assert poll_resp.status_code == 200
+        poll_data = poll_resp.json()
+        assert poll_data["status"] == "WAITING_FOR_CLARIFICATION"
+        assert poll_data["clarification_request"] == "Should we test addition or subtraction?"
+        # Ensure no tool calls are created for request_clarification
+        tool_calls = [c["tool_name"] for c in poll_data["tool_calls"]]
+        assert "request_clarification" not in tool_calls
+
+
+def test_agent_clarification_resume_flow():
+    payload = {
+        "goal": "Need clarification test and completed",
+        "provider": "mock",
+        "permissions": ["READ", "WRITE", "EXECUTE", "PUBLISH"],
+    }
+    response = client.post("/api/v1/agent/tasks", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    task_id = data["task_id"]
+    clarify_id = data["clarification_id"]
+
+    # Submit clarification response
+    clarify_resp = client.post(
+        f"/api/v1/agent/tasks/{task_id}/clarify",
+        json={"clarification_id": clarify_id, "answer": "Test addition"},
+    )
+    assert clarify_resp.status_code == 200
+    assert clarify_resp.json()["status"] in ["PLANNING", "EXECUTING", "COMPLETED"]
+
+    # Poll until completed
+    poll_resp = client.get(f"/api/v1/agent/tasks/{task_id}")
+    poll_data = poll_resp.json()
+    assert poll_data["status"] == "COMPLETED"
+    assert len(poll_data["past_clarifications"]) == 1
+    assert poll_data["past_clarifications"][0]["answer"] == "Test addition"
+
+
+def test_agent_clarification_serialization_persistence():
+    from apps.backend.agent.state import AgentTask
+
+    task = AgentTask(
+        goal="Serialization persistence test",
+        clarification_request="Confirm target?",
+        clarification_id="clarify_xyz123",
+        clarification_attempts=1,
+        clarification_answer="Yes",
+        past_clarifications=[
+            {
+                "question": "Confirm target?",
+                "answer": "Yes",
+                "fingerprint": "confirmtarget",
+                "answered_at": "2026-08-13T12:00:00Z",
+            }
+        ],
+    )
+
+    # Serialize to dict and load back
+    task_dict = task.model_dump()
+    reloaded_task = AgentTask(**task_dict)
+
+    assert reloaded_task.clarification_request == "Confirm target?"
+    assert reloaded_task.clarification_id == "clarify_xyz123"
+    assert reloaded_task.clarification_attempts == 1
+    assert reloaded_task.clarification_answer == "Yes"
+    assert len(reloaded_task.past_clarifications) == 1
+    assert reloaded_task.past_clarifications[0]["answer"] == "Yes"

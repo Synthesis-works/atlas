@@ -22,7 +22,17 @@ class MockAgentProvider(BaseLLMProvider):
         last_obs = task.observations[-1] if task.observations else None
 
         # Mock clarification trigger
-        if "clarif" in task.goal.lower() and "request_clarification" not in called_tools:
+        has_active_clarification = (
+            task.status == "WAITING_FOR_CLARIFICATION" or task.clarification_id is not None
+        )
+        has_answered_clarification = (
+            task.clarification_answer is not None or len(task.past_clarifications) > 0
+        )
+        if (
+            "clarif" in task.goal.lower()
+            and not has_active_clarification
+            and not has_answered_clarification
+        ):
             return AgentDecision(
                 type=AgentDecisionType.TOOL_CALL,
                 tool_name="request_clarification",

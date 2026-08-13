@@ -95,6 +95,14 @@ def create_agent_task(
         "plan": [p.model_dump() for p in task.plan],
         "final_result": task.final_result,
         "error_detail": task.error_detail,
+        "clarification_request": task.clarification_request,
+        "clarification_id": task.clarification_id,
+        "clarification_attempts": task.clarification_attempts,
+        "clarification_answer": task.clarification_answer,
+        "clarification_requested_at": task.clarification_requested_at.isoformat()
+        if task.clarification_requested_at
+        else None,
+        "past_clarifications": task.past_clarifications,
     }
 
 
@@ -125,6 +133,14 @@ def get_agent_task(task_id: UUID):
         "pending_tool_call": task.pending_tool_call,
         "approval_token": task.approval_token,
         "clarification_prompt": task.clarification_prompt,
+        "clarification_request": task.clarification_request,
+        "clarification_id": task.clarification_id,
+        "clarification_attempts": task.clarification_attempts,
+        "clarification_answer": task.clarification_answer,
+        "clarification_requested_at": task.clarification_requested_at.isoformat()
+        if task.clarification_requested_at
+        else None,
+        "past_clarifications": task.past_clarifications,
         "final_result": task.final_result,
         "error_detail": task.error_detail,
         "primary_provider": task.primary_provider,
@@ -230,7 +246,15 @@ def cancel_agent_task(task_id: UUID):
 
 
 class TaskClarificationRequest(BaseModel):
-    response: str = Field(description="The user's response answering the clarification prompt.")
+    clarification_id: Optional[str] = Field(
+        default=None, description="The ID of the clarification prompt."
+    )
+    answer: Optional[str] = Field(
+        default=None, description="The user's response answering the clarification prompt."
+    )
+    response: Optional[str] = Field(
+        default=None, description="Backwards compatible response field."
+    )
 
 
 @router.post("/tasks/{task_id}/clarify", response_model=dict[str, Any])
@@ -252,24 +276,57 @@ def clarify_agent_task(
             detail=f"Task is in status '{task.status}', not WAITING_FOR_CLARIFICATION.",
         )
 
-    # Record clarification answer as an observation
-    from apps.backend.agent.state import ObservationRecord
-
-    clarify_obs_msg = f"User Clarification: {payload.response}"
-    task.observations.append(
-        ObservationRecord(
-            call_id=f"clarify_{task.step_count}",
-            tool_name="request_clarification",
-            success=True,
-            output={"response": clarify_obs_msg},
-            error=None,
+    answer_text = payload.answer or payload.response
+    if not answer_text:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Clarification answer/response is required.",
         )
-    )
-    task.add_trace("CLARIFICATION_RESPONDED", {"response": payload.response})
 
-    # Clear clarification prompt and resume task
+    # Verify clarification_id if specified (and if task.clarification_id is present)
+    if (
+        task.clarification_id
+        and payload.clarification_id
+        and task.clarification_id != payload.clarification_id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Clarification ID mismatch. Expected '{task.clarification_id}', got '{payload.clarification_id}'.",
+        )
+
+    # Persist the answer
+    task.clarification_answer = answer_text
+
+    # Store in history/past_clarifications with fingerprint
+    from apps.backend.agent.agent import AtlasAgent
+    from datetime import datetime, UTC
+
+    agent = AtlasAgent()
+    fingerprint = agent._normalize_clarification(
+        task.clarification_request or task.clarification_prompt or ""
+    )
+
+    task.past_clarifications.append(
+        {
+            "question": task.clarification_request
+            or task.clarification_prompt
+            or "Clarification request",
+            "answer": answer_text,
+            "fingerprint": fingerprint,
+            "answered_at": datetime.now(UTC).isoformat(),
+        }
+    )
+
+    # Clear active clarification prompt/id
+    task.clarification_request = None
     task.clarification_prompt = None
-    task.status = AgentTaskStatus.EXECUTING
+    task.clarification_id = None
+    task.clarification_requested_at = None
+
+    task.add_trace("CLARIFICATION_RESPONDED", {"response": answer_text})
+
+    # Transition task back to PLANNING status
+    task.status = AgentTaskStatus.PLANNING
 
     if task.primary_provider == "mock":
         agent = AtlasAgent(provider=MockAgentProvider(), registry=_tool_registry)

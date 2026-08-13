@@ -40,6 +40,7 @@ MAX_TOOL_CALLS = 50
 MAX_REPAIR_ATTEMPTS = 3
 MAX_EXECUTION_TIME = 600  # seconds (10 minutes)
 MAX_MODELS_PER_RUN = 5
+MAX_CLARIFICATION_ROUNDS = 2
 
 
 class PlanStep(BaseModel):
@@ -112,6 +113,12 @@ class AgentTask(BaseModel):
     pending_tool_call: Optional[dict[str, Any]] = None
     approval_token: Optional[str] = None
     clarification_prompt: Optional[str] = None
+    clarification_request: Optional[str] = None
+    clarification_id: Optional[str] = None
+    clarification_attempts: int = 0
+    clarification_answer: Optional[str] = None
+    clarification_requested_at: Optional[datetime] = None
+    past_clarifications: list[dict[str, Any]] = Field(default_factory=list)
     final_result: Optional[dict[str, Any]] = None
     error_detail: Optional[str] = None
 

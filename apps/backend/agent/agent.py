@@ -9,6 +9,7 @@ from apps.backend.agent.planner import AgentPlanner
 from apps.backend.agent.providers.base import BaseLLMProvider
 from apps.backend.agent.providers.mock import MockAgentProvider
 from apps.backend.agent.state import (
+    MAX_CLARIFICATION_ROUNDS,
     MAX_EXECUTION_TIME,
     MAX_REPAIR_ATTEMPTS,
     MAX_STEPS,
@@ -45,6 +46,23 @@ class AtlasAgent:
         self.planner = planner or AgentPlanner()
         self.executor = executor or ToolExecutor(registry=self.registry)
         self.memory_manager = memory_manager or AgentMemoryManager()
+
+    def _normalize_clarification(self, text: str) -> str:
+        import re
+
+        if not text:
+            return ""
+        return re.sub(r"[^a-zA-Z0-9]", "", text).lower()
+
+    def _get_clarification_question(self, decision: AgentDecision) -> Optional[str]:
+        if decision.type == AgentDecisionType.REQUEST_CLARIFICATION:
+            return decision.response or "Could you clarify your request?"
+        elif (
+            decision.type == AgentDecisionType.TOOL_CALL
+            and decision.tool_name == "request_clarification"
+        ):
+            return decision.arguments.get("question") or "Could you clarify your request?"
+        return None
 
     def _validate_completion(self, task: AgentTask, decision: AgentDecision) -> tuple[bool, str]:
         """
@@ -144,20 +162,86 @@ class AtlasAgent:
                 {"decision_type": decision.type.value, "reasoning": decision.reasoning},
             )
 
+            # Uniform Clarification Check
+            clarify_question = self._get_clarification_question(decision)
+            if clarify_question is not None:
+                fingerprint = self._normalize_clarification(clarify_question)
+
+                # Check if we are already waiting for clarification
+                if task.status == AgentTaskStatus.WAITING_FOR_CLARIFICATION:
+                    break
+
+                # Check if we have already answered this clarification
+                previous_answer = None
+                for item in task.past_clarifications:
+                    if item.get("fingerprint") == fingerprint:
+                        previous_answer = item.get("answer")
+                        break
+
+                if previous_answer is not None:
+                    # Duplicate clarification! The user already answered this.
+                    # Inject the answer back into context and continue execution without pausing.
+                    task.add_trace(
+                        "DUPLICATE_CLARIFICATION_REJECTED",
+                        {
+                            "question": clarify_question,
+                            "fingerprint": fingerprint,
+                            "previous_answer": previous_answer,
+                        },
+                    )
+                    task.observations.append(
+                        ObservationRecord(
+                            call_id=f"clarify_dup_{task.step_count}",
+                            tool_name="system_notice",
+                            success=True,
+                            output={
+                                "notice": (
+                                    f"You previously requested clarification: '{clarify_question}'. "
+                                    f"The user has already answered this: '{previous_answer}'. "
+                                    "Please proceed and execute the remaining benchmark/dataset tools using this answer."
+                                )
+                            },
+                        )
+                    )
+                    continue
+
+                # Check the max number of clarification attempts
+                if task.clarification_attempts >= MAX_CLARIFICATION_ROUNDS:
+                    task.status = AgentTaskStatus.FAILED
+                    task.completed_at = datetime.now(UTC)
+                    task.error_detail = (
+                        f"Hard limit exceeded: clarification_attempts ({task.clarification_attempts}) "
+                        f">= MAX_CLARIFICATION_ROUNDS ({MAX_CLARIFICATION_ROUNDS})."
+                    )
+                    task.add_trace(
+                        "LIMIT_EXCEEDED",
+                        {"limit": "MAX_CLARIFICATION_ROUNDS", "value": task.clarification_attempts},
+                    )
+                    break
+
+                # Otherwise, pause execution and wait for clarification
+                import uuid
+
+                task.status = AgentTaskStatus.WAITING_FOR_CLARIFICATION
+                task.clarification_request = clarify_question
+                task.clarification_prompt = clarify_question
+                task.clarification_id = f"clarify_{uuid.uuid4().hex[:8]}"
+                task.clarification_requested_at = datetime.now(UTC)
+                task.clarification_attempts += 1
+
+                task.add_trace(
+                    "WAITING_FOR_CLARIFICATION",
+                    {
+                        "question": clarify_question,
+                        "clarification_id": task.clarification_id,
+                        "attempt": task.clarification_attempts,
+                    },
+                )
+                break
+
             if decision.type == AgentDecisionType.TOOL_CALL:
                 tool_name = decision.tool_name
                 args = decision.arguments
-
-                if tool_name == "request_clarification":
-                    self.executor.execute_tool(task, db, tool_name, args)
-                    task.status = AgentTaskStatus.WAITING_FOR_CLARIFICATION
-                    task.clarification_prompt = args.get(
-                        "question", "Could you clarify your request?"
-                    )
-                    task.add_trace(
-                        "WAITING_FOR_CLARIFICATION", {"question": task.clarification_prompt}
-                    )
-                    break
 
                 # Permission check
                 if not self.registry.check_permission(tool_name, task.granted_permissions):
@@ -269,12 +353,6 @@ class AtlasAgent:
                         task.error_detail = f"All configured providers failed to produce a valid Atlas tool decision. Provider '{current_p}' returned conversational text instead of executable tool call: {reason}"
                         task.add_trace("TASK_FAILED", {"error": task.error_detail})
                         break
-
-            elif decision.type == AgentDecisionType.REQUEST_CLARIFICATION:
-                task.status = AgentTaskStatus.WAITING_FOR_CLARIFICATION
-                task.clarification_prompt = decision.response or "Could you clarify your request?"
-                task.add_trace("WAITING_FOR_CLARIFICATION", {"question": task.clarification_prompt})
-                break
 
             elif decision.type == AgentDecisionType.FAIL:
                 task.status = AgentTaskStatus.FAILED
