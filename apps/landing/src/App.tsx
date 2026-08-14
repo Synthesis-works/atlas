@@ -28,6 +28,7 @@ const WorkspaceProviders = lazy(() => import('@/pages/workspace/Providers'));
 const WorkspaceModels = lazy(() => import('@/pages/workspace/Models'));
 const DatasetsPage = lazy(() => import('@/features/datasets/page/DatasetsPage'));
 const WorkspaceSection = lazy(() => import('@/pages/workspace/WorkspaceSection'));
+const WorkspaceNotFound = lazy(() => import('@/pages/workspace/WorkspaceNotFound'));
 
 class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
@@ -89,13 +90,14 @@ function AppRoutes() {
             <Route path="new" element={<Suspense fallback={<PageLoader />}><WorkspaceExperiments openNewModal={true} /></Suspense>} />
             <Route path="*" element={<Suspense fallback={<PageLoader />}><WorkspaceExperiments /></Suspense>} />
           </Route>
-          
+
           <Route path="experiments" element={<Suspense fallback={<PageLoader />}><WorkspaceExperiments /></Suspense>} />
           <Route path="providers" element={<Suspense fallback={<PageLoader />}><WorkspaceProviders /></Suspense>} />
           <Route path="models" element={<Suspense fallback={<PageLoader />}><WorkspaceModels /></Suspense>} />
           <Route path="reports" element={<Suspense fallback={<WorkspaceSection title="Reports" description="View and compare evaluation reports." />}><WorkspaceSection title="Reports" description="View and compare evaluation reports." /></Suspense>} />
           <Route path="leaderboard" element={<Suspense fallback={<WorkspaceSection title="Leaderboard" description="Compare model rankings across capabilities." />}><WorkspaceSection title="Leaderboard" description="Compare model rankings across capabilities." /></Suspense>} />
           <Route path="settings" element={<Suspense fallback={<WorkspaceSection title="Settings" description="Configure your Workspace preferences." />}><WorkspaceSection title="Settings" description="Configure your Workspace preferences." /></Suspense>} />
+          <Route path="*" element={<Suspense fallback={<PageLoader />}><WorkspaceNotFound /></Suspense>} />
         </Route>
       </Route>
       

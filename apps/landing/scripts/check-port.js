@@ -38,16 +38,21 @@ try {
 
     if (!isCurrentWorktree) {
       console.error('\n==================================================');
-      console.error('❌ PORT 5173 IS OCCUPIED BY ANOTHER PROJECT');
+      console.error('❌ PORT 5173 IS OCCUPIED BY A STALE / FOREIGN PROJECT');
       console.error('==================================================');
       console.error(`Occupying Process PID: ${occupyingPid}`);
       console.error(`Command Line: ${procInfo}`);
-      console.error(`Current Worktree: ${CURRENT_DIR}`);
-      console.error('\nPlease terminate the conflicting process on port 5173 before launching Atlas.\n');
-      process.exit(1);
+      console.error(`Canonical Worktree: ${CURRENT_DIR}`);
+      console.error('\n[Atlas Guard] Auto-terminating foreign process on port 5173...');
+      try {
+        execSync(`powershell -Command "Stop-Process -Id ${occupyingPid} -Force"`);
+        console.log(`[Atlas Guard] Successfully killed process ${occupyingPid}. Port 5173 is now free.\n`);
+      } catch (killErr) {
+        console.error(`[Atlas Guard] Failed to kill process ${occupyingPid}: ${killErr.message}`);
+        process.exit(1);
+      }
     } else {
       console.log(`\n[Atlas Guard] Port 5173 is already in use by active process (PID ${occupyingPid}) in this worktree.\n`);
-      process.exit(1);
     }
   } else {
     console.log('[Atlas Guard] Port 5173 is free. Starting canonical dev server on 127.0.0.1:5173...');

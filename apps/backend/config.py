@@ -45,17 +45,6 @@ class Settings(BaseSettings):
     outbox_batch_size: int = Field(default=100)
     outbox_poll_interval: int = Field(default=5)
 
-    # LLM & Agent Configuration
-    gemini_api_key: str | None = Field(default=None)
-    xai_api_key: str | None = Field(default=None)
-    mistral_api_key: str | None = Field(default=None)
-    grok_model: str = Field(default="grok-2", validation_alias="GROK_MODEL")
-    mistral_model: str = Field(default="mistral-small-latest", validation_alias="MISTRAL_MODEL")
-    gemini_model: str = Field(default="gemini-3.5-flash-lite", validation_alias="GEMINI_MODEL")
-    llm_provider_timeout_seconds: float = Field(
-        default=30.0, validation_alias="LLM_PROVIDER_TIMEOUT"
-    )
-
     # Billing Configuration (Stripe & Razorpay)
     stripe_api_key: str = Field(default="")
     stripe_webhook_secret: str = Field(default="")
