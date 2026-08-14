@@ -13,63 +13,15 @@ from packages.llm.clients.grok import GrokClient
 from packages.llm.clients.mistral import MistralClient
 from packages.llm.models.prompt import Prompt
 
-# In-memory execution store for rich benchmark model outputs scoped by execution_id
-_benchmark_execution_store: dict[str, dict[str, Any]] = {}
+# Centralized model registry holds available target configurations
 
 
 def get_configured_models() -> dict[str, Any]:
     """Inspects environment keys to return available vs unavailable LLM models."""
-    gemini_key = os.getenv("GEMINI_API_KEY")
-    xai_key = os.getenv("XAI_API_KEY")
-    mistral_key = os.getenv("MISTRAL_API_KEY")
-    openai_key = os.getenv("OPENAI_API_KEY")
-
-    available = []
-    unavailable = []
-
-    if gemini_key:
-        available.append(
-            {"provider": "gemini", "model": "gemini-3.5-flash-lite", "status": "AVAILABLE"}
-        )
-        available.append(
-            {"provider": "gemini", "model": "gemini-3.1-flash-lite", "status": "AVAILABLE"}
-        )
-    else:
-        unavailable.append(
-            {
-                "provider": "gemini",
-                "model": "gemini-3.5-flash-lite",
-                "reason": "GEMINI_API_KEY not configured",
-            }
-        )
-
-    if xai_key:
-        available.append({"provider": "grok", "model": "grok-2-latest", "status": "AVAILABLE"})
-    else:
-        unavailable.append(
-            {"provider": "grok", "model": "grok-2-latest", "reason": "XAI_API_KEY not configured"}
-        )
-
-    if mistral_key:
-        available.append(
-            {"provider": "mistral", "model": "mistral-small-latest", "status": "AVAILABLE"}
-        )
-    else:
-        unavailable.append(
-            {
-                "provider": "mistral",
-                "model": "mistral-small-latest",
-                "reason": "MISTRAL_API_KEY not configured",
-            }
-        )
-
-    if openai_key:
-        available.append({"provider": "openai", "model": "gpt-4o", "status": "AVAILABLE"})
-    else:
-        unavailable.append(
-            {"provider": "openai", "model": "gpt-4o", "reason": "OPENAI_API_KEY not configured"}
-        )
-
+    from packages.llm.registry import ModelRegistry
+    all_models = ModelRegistry.get_all_models()
+    available = [m for m in all_models if m["available"]]
+    unavailable = [m for m in all_models if not m["available"]]
     return {
         "available_models": available,
         "unavailable_models": unavailable,
@@ -149,130 +101,66 @@ class RunBenchmarkTool(BaseTool):
 
         proj_id = kwargs.get("project_id") or uuid.UUID("00000000-0000-0000-0000-000000000001")
         agent_task_id = kwargs.get("task_id")
-        config = get_configured_models()
-        avail_names = {m["model"] for m in config["available_models"]}
+        user_id = uuid.UUID("00000000-0000-0000-0000-000000000003")
 
-        # Helper LLM clients
-        gemini_client = GeminiClient()
-        grok_client = GrokClient()
-        mistral_client = MistralClient()
+        # Validate that selected models are configured/available in our registry
+        from packages.llm.registry import ModelRegistry
+        all_models = ModelRegistry.get_all_models()
+        available_model_names = {m["model"] for m in all_models if m["available"]}
+        available_identifiers = {f"{m['provider']}/{m['model']}" for m in all_models if m["available"]}
 
-        # Retrieve tasks created specifically for this dataset/task
-        from apps.backend.agent.tools.dataset_tools import _dataset_store
-
-        tasks_to_run = []
-
-        # Scoped search: find dataset belonging to current agent_task_id or benchmark_version_id
-        for ds in reversed(list(_dataset_store.values())):
-            if ds.get("tasks"):
-                tasks_to_run = ds["tasks"]
-                break
-
-        if not tasks_to_run:
-            tasks_to_run = [
-                {
-                    "id": "task-default",
-                    "input": "How many 's' characters are in Mississippi?",
-                    "expected_output": "4",
-                }
-            ]
-
-        created_ids = []
-        execution_records = []
-
-        for model in target_models[:5]:
-            exec_id = str(uuid.uuid4())
-            created_ids.append(exec_id)
-
-            if model not in avail_names:
-                rec = {
-                    "execution_id": exec_id,
-                    "agent_task_id": agent_task_id,
-                    "benchmark_version_id": benchmark_version_id,
-                    "target_model": model,
-                    "status": "UNAVAILABLE",
-                    "error": f"Model '{model}' is unavailable: API key not configured.",
-                    "results": [],
-                }
-                _benchmark_execution_store[exec_id] = rec
-                execution_records.append(rec)
-                continue
-
-            item_results = []
-            for task_item in tasks_to_run:
-                prompt_input = task_item.get("input", "")
-                expected = str(task_item.get("expected_output", "")).strip()
-                prompt_obj = Prompt(user=prompt_input, system="Answer accurately and concisely.")
-
-                start_t = time.time()
-                raw_response = ""
-                err = None
-
-                try:
-                    if "gemini" in model.lower():
-                        resp = gemini_client.generate(model, prompt_obj)
-                        raw_response = resp.response.strip()
-                    elif "grok" in model.lower():
-                        resp = grok_client.generate(model, prompt_obj)
-                        raw_response = resp.response.strip()
-                    elif "mistral" in model.lower():
-                        resp = mistral_client.generate(model, prompt_obj)
-                        raw_response = resp.response.strip()
-                    else:
-                        raw_response = f"Simulated response from {model}"
-                except Exception as e:
-                    err = str(e)
-                    raw_response = f"Execution error: {err}"
-
-                latency_ms = int((time.time() - start_t) * 1000)
-                norm_answer = _normalize_answer(raw_response, expected)
-
-                item_results.append(
-                    {
-                        "task_id": task_item.get("id", "task-1"),
-                        "input": prompt_input,
-                        "expected_output": expected,
-                        "raw_output": raw_response,
-                        "normalized_answer": norm_answer,
-                        "latency_ms": max(latency_ms, 120),
-                        "error": err,
-                    }
+        for model in target_models:
+            if model not in available_model_names and model not in available_identifiers:
+                raise ValueError(
+                    f"Model '{model}' is not configured/available. Please configure API credentials or host connection."
                 )
 
-            rec = {
-                "execution_id": exec_id,
-                "agent_task_id": agent_task_id,
-                "benchmark_version_id": benchmark_version_id,
-                "target_model": model,
-                "status": "COMPLETED",
-                "results": item_results,
-            }
-            _benchmark_execution_store[exec_id] = rec
-            execution_records.append(rec)
+        # Instantiate core ExecutionApplicationService
+        from packages.execution_engine.application.execution_app_service import ExecutionApplicationService
+        from packages.execution_engine.domain.services import ExecutionService
+        from packages.execution_engine.persistence.repository import SqlAlchemyExecutionRepository
+        from atlas_db.repositories.authoring import BenchmarkRepository
 
-            # Persist DB execution record
-            exec_obj = Execution(
-                id=uuid.UUID(exec_id),
-                project_id=proj_id,
+        domain_service = ExecutionService()
+        execution_repo = SqlAlchemyExecutionRepository(db)
+        benchmark_repo = BenchmarkRepository(db)
+        service = ExecutionApplicationService(domain_service, execution_repo, benchmark_repo)
+
+        created_ids = []
+        for model in target_models:
+            execution = service.submit_execution(
                 benchmark_version_id=bv_uuid,
+                submitted_by=user_id,
                 target_model=model,
-                status=ExecutionStatus.COMPLETED,
-                total_items=len(item_results),
-                completed_items=len(item_results),
             )
-            db.add(exec_obj)
+            created_ids.append(str(execution.id))
 
+        # Commit transaction so worker or synchronous eager task can query the records
         try:
             db.commit()
         except Exception:
             db.rollback()
 
+        # Update AgentTask with execution tracking
+        if agent_task_id:
+            from apps.backend.routers.agent import _agent_tasks_db
+            try:
+                task_obj = _agent_tasks_db.get(uuid.UUID(agent_task_id))
+                if task_obj:
+                    if not hasattr(task_obj, "execution_ids") or not task_obj.execution_ids:
+                        task_obj.execution_ids = []
+                    for eid in created_ids:
+                        if eid not in task_obj.execution_ids:
+                            task_obj.execution_ids.append(eid)
+            except Exception:
+                pass
+
         return {
             "benchmark_version_id": benchmark_version_id,
             "execution_ids": created_ids,
-            "models_dispatched": [e["target_model"] for e in execution_records],
-            "status": "DISPATCHED_AND_COMPLETED",
-            "executions": execution_records,
+            "models_dispatched": target_models,
+            "status": "DISPATCHED",
+            "message": f"Successfully submitted executions for {len(target_models)} models via core execution service."
         }
 
 
@@ -289,11 +177,40 @@ class GetRunStatusTool(BaseTool):
     }
 
     def execute(self, db: Session, execution_id: str, **kwargs: Any) -> Any:
-        rec = _benchmark_execution_store.get(execution_id)
-        if rec:
-            return rec
+        try:
+            exec_uuid = uuid.UUID(execution_id)
+        except ValueError:
+            return {
+                "execution_id": execution_id,
+                "status": "FAILED",
+                "error": f"Invalid UUID: '{execution_id}'",
+                "progress": "0%",
+            }
+
+        from atlas_db.models.execution import Execution as DBExecution
+        exec_obj = db.query(DBExecution).filter(DBExecution.id == exec_uuid).first()
+        if not exec_obj:
+            from packages.execution_engine.persistence.models import ExecutionModel
+            exec_obj = db.query(ExecutionModel).filter(ExecutionModel.id == exec_uuid).first()
+
+        if not exec_obj:
+            return {
+                "execution_id": execution_id,
+                "status": "FAILED",
+                "error": f"Execution {execution_id} not found in database.",
+                "progress": "0%",
+            }
+
+        # Normalize status string from enum or raw text
+        status_val = str(exec_obj.status).split(".")[-1]
+        total = getattr(exec_obj, "total_items", 0) or 0
+        completed = getattr(exec_obj, "completed_items", 0) or 0
+        progress_pct = f"{int((completed / total) * 100)}%" if total > 0 else "0%"
+
         return {
             "execution_id": execution_id,
-            "status": "COMPLETED",
-            "progress": "100%",
+            "status": status_val,
+            "progress": progress_pct,
+            "completed_items": completed,
+            "total_items": total,
         }

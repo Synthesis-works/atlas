@@ -129,6 +129,8 @@ class AgentTask(BaseModel):
     dataset_version_id: Optional[str] = None
     execution_ids: list[str] = Field(default_factory=list)
     report_id: Optional[str] = None
+    run_mode: Optional[str] = None
+    source_task_id: Optional[UUID] = None
 
     # Provider Telemetry
     primary_provider: str = "gemini"

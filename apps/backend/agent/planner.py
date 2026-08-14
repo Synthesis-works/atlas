@@ -11,13 +11,50 @@ class AgentPlanner:
     Manages task planning, step tracking, re-planning, and failure repair strategy formulation.
     """
 
-    def generate_initial_plan(self, goal: str) -> list[PlanStep]:
+    def generate_initial_plan(self, goal: str, run_mode: Optional[str] = None) -> list[PlanStep]:
         """
         Creates an initial structured plan adaptively based on the goal description.
         """
-        goal_lower = goal.lower()
+        if run_mode == "RERUN":
+            return [
+                PlanStep(
+                    step_number=1,
+                    description="Define benchmark specification",
+                    status="COMPLETED",
+                    result_summary="Reused existing benchmark configuration.",
+                ),
+                PlanStep(
+                    step_number=2,
+                    description="Generate and attach dataset tasks",
+                    status="COMPLETED",
+                    result_summary="Reused existing dataset tasks.",
+                ),
+                PlanStep(
+                    step_number=3,
+                    description="Generate evaluation cases and ground truth",
+                    status="COMPLETED",
+                    result_summary="Reused existing evaluation cases.",
+                ),
+                PlanStep(
+                    step_number=4,
+                    description="Validate task formats and completeness",
+                    status="COMPLETED",
+                    result_summary="Reused existing validation status.",
+                ),
+                PlanStep(step_number=5, description="Run target model executions", status="PENDING"),
+                PlanStep(
+                    step_number=6,
+                    description="Evaluate outputs using evaluation cases",
+                    status="PENDING",
+                ),
+                PlanStep(
+                    step_number=7,
+                    description="Publish comparative benchmark report",
+                    status="PENDING",
+                ),
+            ]
 
-        # Check if full evaluation pipeline requested (run, evaluate, report)
+        goal_lower = goal.lower()
         is_full_eval = any(
             k in goal_lower
             for k in [
@@ -31,7 +68,6 @@ class AgentPlanner:
             ]
         )
 
-        # Check if creation-only benchmark requested
         is_creation_only = any(
             k in goal_lower
             for k in [
@@ -62,7 +98,6 @@ class AgentPlanner:
                 ),
             ]
 
-        # Default full benchmarking pipeline plan
         return [
             PlanStep(step_number=1, description="Define benchmark specification", status="PENDING"),
             PlanStep(
@@ -96,7 +131,7 @@ class AgentPlanner:
         Updates task plan step statuses based on executed tool decisions and observations.
         """
         if not task.plan:
-            task.plan = self.generate_initial_plan(task.goal)
+            task.plan = self.generate_initial_plan(task.goal, getattr(task, "run_mode", None))
 
         if decision.tool_name in {"create_benchmark", "search_benchmarks"}:
             self._set_step_status(task.plan, 1, "COMPLETED", "Benchmark defined.")

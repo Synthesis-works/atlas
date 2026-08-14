@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const artAccuracy = document.getElementById('artAccuracy');
     const artBestPerformer = document.getElementById('artBestPerformer');
     const artViewReportBtn = document.getElementById('artViewReportBtn');
+    const artRunAgainBtn = document.getElementById('artRunAgainBtn');
     
     const recentActivityList = document.getElementById('recentActivityList');
     const taskCountLabel = document.getElementById('taskCountLabel');
@@ -778,6 +779,56 @@ AgentTask: ${taskData.task_id}
                 setDisplay(reportModal, 'flex');
             } catch (e) {
                 alert(`Error loading report: ${e.message}`);
+            }
+        });
+    }
+
+    if (artRunAgainBtn) {
+        artRunAgainBtn.addEventListener('click', async () => {
+            if (!currentTaskId) {
+                alert('No active task to run again.');
+                return;
+            }
+
+            if (confirm('Launch a new benchmark execution from this configuration?')) {
+                try {
+                    artRunAgainBtn.disabled = true;
+                    artRunAgainBtn.textContent = 'Launching...';
+
+                    const resp = await fetch(`/api/v1/agent/tasks/${currentTaskId}/run-again`, {
+                        method: 'POST'
+                    });
+
+                    if (!resp.ok) {
+                        const errData = await resp.json();
+                        throw new Error(errData.detail || 'Server error');
+                    }
+
+                    const data = await resp.json();
+                    currentTaskId = data.task_id;
+
+                    // Reset UI panels to clean state
+                    if (activitySection) activitySection.innerHTML = '';
+                    setDisplay(modelResultsSection, 'none');
+                    setDisplay(dataLineageSection, 'none');
+                    setDisplay(resultArtifactCard, 'none');
+                    setDisplay(approvalCard, 'none');
+                    setDisplay(clarificationCard, 'none');
+                    setDisplay(failureCard, 'none');
+
+                    // Open panel drawer, trigger polling and activity reload
+                    if (drawer && !drawer.classList.contains('open')) {
+                        drawer.classList.add('open');
+                    }
+                    startPolling();
+                    fetchRecentActivity();
+
+                } catch (err) {
+                    alert(`Error running again: ${err.message}`);
+                } finally {
+                    artRunAgainBtn.disabled = false;
+                    artRunAgainBtn.textContent = 'Run Again';
+                }
             }
         });
     }
