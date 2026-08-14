@@ -213,3 +213,44 @@ def test_agent_clarification_serialization_persistence():
     assert reloaded_task.clarification_answer == "Yes"
     assert len(reloaded_task.past_clarifications) == 1
     assert reloaded_task.past_clarifications[0]["answer"] == "Yes"
+
+
+def test_delete_individual_agent_task():
+    # 1. Create a task
+    payload = {
+        "goal": "Task to delete",
+        "provider": "mock",
+    }
+    response = client.post("/api/v1/agent/tasks", json=payload)
+    assert response.status_code == 201
+    task_id = response.json()["task_id"]
+
+    # 2. Delete it
+    del_resp = client.delete(f"/api/v1/agent/tasks/{task_id}")
+    assert del_resp.status_code == 200
+    assert del_resp.json()["status"] == "success"
+
+    # 3. Verify it is gone
+    get_resp = client.get(f"/api/v1/agent/tasks/{task_id}")
+    assert get_resp.status_code == 404
+
+
+def test_clear_all_agent_tasks():
+    # 1. Create a task
+    payload = {
+        "goal": "Task to clear",
+        "provider": "mock",
+    }
+    response = client.post("/api/v1/agent/tasks", json=payload)
+    assert response.status_code == 201
+
+    # 2. Clear all tasks
+    clear_resp = client.delete("/api/v1/agent/tasks")
+    assert clear_resp.status_code == 200
+    assert clear_resp.json()["status"] == "success"
+
+    # 3. Verify list is empty
+    list_resp = client.get("/api/v1/agent/tasks")
+    assert list_resp.status_code == 200
+    assert len(list_resp.json()) == 0
+

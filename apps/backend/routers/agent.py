@@ -185,6 +185,21 @@ def list_agent_tasks():
     ]
 
 
+@router.delete("/tasks", response_model=dict[str, Any])
+def clear_agent_tasks():
+    _agent_tasks_db.clear()
+    return {"status": "success", "message": "All agent tasks cleared."}
+
+
+@router.delete("/tasks/{task_id}", response_model=dict[str, Any])
+def delete_agent_task(task_id: UUID):
+    if task_id in _agent_tasks_db:
+        del _agent_tasks_db[task_id]
+        return {"status": "success", "message": f"Task {task_id} deleted."}
+    raise HTTPException(status_code=404, detail="Task not found")
+
+
+
 @router.post("/tasks/{task_id}/approve", response_model=dict[str, Any])
 def approve_agent_task(
     task_id: UUID, payload: TaskApprovalRequest, db: Session = Depends(get_db_session)

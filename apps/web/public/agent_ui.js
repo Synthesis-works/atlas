@@ -62,6 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let pollInterval = null;
     let currentApprovalToken = null;
     let currentClarificationId = null;
+    let currentFilter = 'all';
+    let autoSelectedOnStart = false;
 
     // Helper for safe element style mutation
     function setDisplay(element, value) {
@@ -70,8 +72,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Helper for formatting relative time
+    function formatTimeAgo(dateStr) {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        const seconds = Math.floor((new Date() - date) / 1000);
+        if (seconds < 60) return 'just now';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        return date.toLocaleDateString();
+    }
+
     // Toggle Drawer Panel
-    if (openBtn) openBtn.addEventListener('click', () => drawer?.classList.add('open'));
+    if (openBtn) {
+        openBtn.addEventListener('click', () => {
+            drawer?.classList.add('open');
+            // If no task is selected yet, force auto-selection on opening the panel
+            if (!currentTaskId) {
+                autoSelectedOnStart = false;
+                fetchRecentActivity();
+            }
+        });
+    }
     if (closeBtn) closeBtn.addEventListener('click', () => drawer?.classList.remove('open'));
     if (closeFailureBtn) closeFailureBtn.addEventListener('click', () => setDisplay(failureCard, 'none'));
     if (closeReportModalBtn) closeReportModalBtn.addEventListener('click', () => setDisplay(reportModal, 'none'));
@@ -88,6 +112,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (submitBtn) submitBtn.addEventListener('click', () => submitTask());
 
+    // Filter Buttons Event Listeners
+    const filterBtns = ['filterAllBtn', 'filterActiveBtn', 'filterCompletedBtn', 'filterFailedBtn'];
+    filterBtns.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(id => document.getElementById(id)?.classList.remove('active'));
+                btn.classList.add('active');
+                
+                if (btnId === 'filterAllBtn') currentFilter = 'all';
+                else if (btnId === 'filterActiveBtn') currentFilter = 'active';
+                else if (btnId === 'filterCompletedBtn') currentFilter = 'completed';
+                else if (btnId === 'filterFailedBtn') currentFilter = 'failed';
+                
+                fetchRecentActivity();
+            });
+        }
+    });
+
+    // Clear History Button Listener
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to clear all agent task execution history? This cannot be undone.')) {
+                return;
+            }
+            try {
+                const resp = await fetch('/api/v1/agent/tasks', { method: 'DELETE' });
+                if (resp.ok) {
+                    currentTaskId = null;
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                    
+                    // Reset UI drawer state
+                    setDisplay(goalBannerCard, 'none');
+                    if (activitySection) activitySection.innerHTML = '';
+                    setDisplay(modelResultsSection, 'none');
+                    setDisplay(dataLineageSection, 'none');
+                    setDisplay(resultArtifactCard, 'none');
+                    setDisplay(approvalCard, 'none');
+                    setDisplay(clarificationCard, 'none');
+                    setDisplay(failureCard, 'none');
+                    
+                    autoSelectedOnStart = false;
+                    fetchRecentActivity();
+                } else {
+                    alert('Failed to clear history');
+                }
+            } catch (e) {
+                alert(`Error: ${e.message}`);
+            }
+        });
+    }
+
     // Fetch Recent Workspace Tasks
     fetchRecentActivity();
 
@@ -95,37 +173,66 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const resp = await fetch('/api/v1/agent/tasks');
             if (!resp.ok) return;
-            const tasks = await resp.json();
+            const allTasks = await resp.json();
             
+            // Filter tasks dynamically
+            let filteredTasks = allTasks;
+            if (currentFilter === 'active') {
+                filteredTasks = allTasks.filter(t => ['EXECUTING', 'WAITING_FOR_CLARIFICATION', 'WAITING_FOR_APPROVAL', 'PLANNING', 'REPAIRING'].includes(t.status));
+            } else if (currentFilter === 'completed') {
+                filteredTasks = allTasks.filter(t => t.status === 'COMPLETED');
+            } else if (currentFilter === 'failed') {
+                filteredTasks = allTasks.filter(t => ['FAILED', 'CANCELLED'].includes(t.status));
+            }
+
             if (taskCountLabel) {
-                taskCountLabel.textContent = `${tasks.length} task${tasks.length === 1 ? '' : 's'}`;
+                taskCountLabel.textContent = `${filteredTasks.length} task${filteredTasks.length === 1 ? '' : 's'}`;
+            }
+
+            // Auto-select latest active task or latest completed on initial load
+            if (!autoSelectedOnStart && allTasks.length > 0) {
+                const activeTask = allTasks.find(t => ['EXECUTING', 'WAITING_FOR_CLARIFICATION', 'WAITING_FOR_APPROVAL', 'PLANNING', 'REPAIRING'].includes(t.status));
+                if (activeTask) {
+                    currentTaskId = activeTask.task_id;
+                    startPolling();
+                } else {
+                    currentTaskId = allTasks[0].task_id;
+                    fetchTaskDetails(); // render once without full interval polling if completed
+                }
+                autoSelectedOnStart = true;
             }
 
             if (!recentActivityList) return;
 
-            if (tasks.length === 0) {
+            if (filteredTasks.length === 0) {
                 recentActivityList.innerHTML = `
-                    <div style="padding: 2rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: 14px; border: 1px solid var(--border-subtle);">
-                        No agent tasks executed yet. Click <strong>✦ Ask Atlas</strong> above to run your first task.
+                    <div style="padding: 2rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: 14px; border: 1px solid var(--border-subtle); width: 100%;">
+                        No tasks match the selected filter.
                     </div>
                 `;
                 return;
             }
 
-            recentActivityList.innerHTML = tasks.map(t => {
+            recentActivityList.innerHTML = filteredTasks.map(t => {
                 const statusClass = (t.status || 'PENDING').toLowerCase();
                 const provider = (t.current_provider || 'gemini').toUpperCase();
+                const timeAgo = formatTimeAgo(t.created_at);
+                const isActive = t.task_id === currentTaskId;
+                
                 return `
-                    <div class="activity-item-card" onclick="window.openTaskDetails('${t.task_id}')">
+                    <div class="activity-item-card ${isActive ? 'active-selection' : ''}" 
+                         style="${isActive ? 'border-color: var(--accent-indigo); background: rgba(99, 102, 241, 0.08); shadow: 0 4px 12px rgba(99, 102, 241, 0.15);' : ''}" 
+                         onclick="window.openTaskDetails('${t.task_id}')">
                         <div class="activity-info">
-                            <div class="activity-goal">${t.goal}</div>
-                            <div class="activity-meta">
-                                <span>Provider: ${provider}</span>
-                                <span>Steps: ${t.step_count || 0}</span>
-                                <span>Tool Calls: ${t.total_tool_calls || 0}</span>
+                            <div class="activity-goal" style="font-weight: 500; margin-bottom: 0.35rem; font-size: 0.95rem;">${t.goal}</div>
+                            <div class="activity-meta" style="font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                <span>Provider: <strong style="color: var(--text-main);">${provider}</strong></span>
+                                <span>Steps: <strong style="color: var(--text-main);">${t.step_count || 0}</strong></span>
+                                <span>Calls: <strong style="color: var(--text-main);">${t.total_tool_calls || 0}</strong></span>
+                                ${timeAgo ? `<span style="color: var(--accent-cyan); font-weight: 500;">✦ ${timeAgo}</span>` : ''}
                             </div>
                         </div>
-                        <div>
+                        <div style="display: flex; align-items: center; justify-content: flex-end; min-width: 90px;">
                             <span class="status-pill ${statusClass}">${t.status}</span>
                         </div>
                     </div>
@@ -139,6 +246,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.openTaskDetails = function(taskId) {
         currentTaskId = taskId;
         drawer?.classList.add('open');
+        // Fetch task details to update highlight in list instantly
+        fetchRecentActivity();
         startPolling();
     };
 

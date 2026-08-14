@@ -49,9 +49,19 @@
 
             <!-- Recent Agent Activity Section -->
             <section class="recent-activity-section">
-                <div class="section-header">
-                    <h2 class="section-title">Recent Agent Activity</h2>
-                    <span style="font-size: 0.85rem; color: var(--text-muted);" id="taskCountLabel">0 tasks</span>
+                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <h2 class="section-title" style="margin: 0;">Recent Agent Activity</h2>
+                        <span style="font-size: 0.85rem; color: var(--text-muted);" id="taskCountLabel">0 tasks</span>
+                    </div>
+                    <div class="activity-controls" style="display: flex; align-items: center; gap: 0.75rem;">
+                        <button class="filter-btn active" id="filterAllBtn">All</button>
+                        <button class="filter-btn" id="filterActiveBtn">Active</button>
+                        <button class="filter-btn" id="filterCompletedBtn">Completed</button>
+                        <button class="filter-btn" id="filterFailedBtn">Failed</button>
+                        <span style="color: var(--border-subtle); margin: 0 0.25rem;">|</span>
+                        <button class="clear-history-btn" id="clearHistoryBtn">Clear History</button>
+                    </div>
                 </div>
                 <div class="recent-activity-list" id="recentActivityList">
                     <!-- Populated dynamically via JS -->
