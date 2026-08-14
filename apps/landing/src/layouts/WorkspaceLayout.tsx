@@ -42,13 +42,7 @@ export function WorkspaceLayout() {
   const { setPageTransitionKey, exitAtlas } = useExperience();
   const mainRef = useRef<HTMLElement>(null);
 
-  useEffect(() => {
-    const token = getAuthToken();
-    const isLoggedIn = Boolean(token) || localStorage.getItem('atlas_logged_in') === 'true';
-    if (!isLoggedIn) {
-      navigate('/', { replace: true });
-    }
-  }, [navigate]);
+
 
   useEffect(() => {
     setPageTransitionKey(location.pathname);
