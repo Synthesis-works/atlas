@@ -117,6 +117,7 @@ class DatasetVersion(Base):
     )
 
     dataset: Mapped["Dataset"] = relationship("Dataset", back_populates="versions")
+    tasks: Mapped[list["Task"]] = relationship("Task", back_populates="dataset_version")
 
     __mapper_args__ = {"version_id_col": version_number}
 

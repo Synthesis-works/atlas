@@ -1,3 +1,5 @@
+import uuid
+from typing import Any
 from pydantic import BaseModel, Field
 
 from packages.benchmark.models.task import Task
@@ -30,3 +32,12 @@ class DatasetPack(BaseModel):
     manifest: DatasetManifest
     tasks: list[Task] = Field(default_factory=list)
     stats: ImportStats | None = None
+
+
+class TrainingExample(BaseModel):
+    dataset_version_id: uuid.UUID
+    task_id: uuid.UUID
+    task_name: str
+    prompt: str
+    canonical_answer: str
+    metadata: dict[str, Any] = Field(default_factory=dict)

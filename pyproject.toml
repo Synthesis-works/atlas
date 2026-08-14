@@ -26,6 +26,7 @@ dependencies = [
     "pwdlib[argon2]>=0.2.0",
     "python-multipart>=0.0.6",
     "redis>=8.0.1",
+    "minio>=7.2.0",
 ]
 
 [project.optional-dependencies]

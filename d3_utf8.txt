@@ -1,0 +1,120 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-9.1.1, pluggy-1.6.0
+rootdir: C:\Users\siddh\Downloads\atlas.zip123\atlas
+configfile: pyproject.toml
+plugins: anyio-4.14.2, asyncio-1.4.0, cov-7.1.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 6 items
+
+packages\datasets\tests\test_d3_exporters.py .....F                      [100%]
+
+================================== FAILURES ===================================
+____________________________ test_unicode_content _____________________________
+
+    def test_unicode_content():
+        exporter = JSONLDatasetExporter()
+        ex = dummy_example("hello \U0001f44b", "world \U0001f30d", metadata={"unicode \\u1234": "val"})
+        result = exporter.export([ex])
+        line = result.content.decode("utf-8").strip()
+>       assert "\U0001f44b" in line
+E       assert '\U0001f44b' in '{"canonical_answer":"world \\\\ud83c\\\\udf0d","dataset_version_id":"6882c388-b851-45b6-add5-bbc20f7ff3b7","metadata":{"u... \\\\u1234":"val"},"prompt":"hello \\\\ud83d\\\\udc4b","task_id":"ab7af7bc-61f1-42f0-a883-68ab4044877a","task_name":"dummy"}'
+
+packages\datasets\tests\test_d3_exporters.py:77: AssertionError
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.13.7-final-0 _______________
+
+Name                                             Stmts   Miss  Cover
+--------------------------------------------------------------------
+packages\benchmark\__init__.py                       0      0   100%
+packages\benchmark\exceptions\__init__.py            2      2     0%
+packages\benchmark\exceptions\errors.py             12     12     0%
+packages\benchmark\importers\__init__.py             3      3     0%
+packages\benchmark\importers\custom.py               9      9     0%
+packages\benchmark\importers\humaneval.py           22     22     0%
+packages\benchmark\interfaces\__init__.py            5      5     0%
+packages\benchmark\interfaces\importer.py            7      7     0%
+packages\benchmark\interfaces\loader.py             14     14     0%
+packages\benchmark\interfaces\registry.py           16     16     0%
+packages\benchmark\interfaces\validation.py          6      6     0%
+packages\benchmark\loader\__init__.py                3      3     0%
+packages\benchmark\loader\json_loader.py            16     16     0%
+packages\benchmark\loader\yaml_loader.py            16     16     0%
+packages\benchmark\manager\__init__.py               2      2     0%
+packages\benchmark\manager\facade.py                25     25     0%
+packages\benchmark\models\__init__.py                6      0   100%
+packages\benchmark\models\benchmark.py               8      0   100%
+packages\benchmark\models\enums.py                  71      0   100%
+packages\benchmark\models\metadata.py               17      0   100%
+packages\benchmark\models\schema.py                  8      0   100%
+packages\benchmark\models\task.py                   26      0   100%
+packages\benchmark\registry\__init__.py              2      2     0%
+packages\benchmark\registry\memory.py               32     32     0%
+packages\benchmark\validation\__init__.py            4      4     0%
+packages\benchmark\validation\metadata.py           13     13     0%
+packages\benchmark\validation\registry.py           12     12     0%
+packages\benchmark\validation\schema.py             11     11     0%
+packages\datasets\exporters\__init__.py              3      0   100%
+packages\datasets\exporters\base.py                 12      1    92%
+packages\datasets\exporters\jsonl_exporter.py       13      0   100%
+packages\datasets\models.py                         34      0   100%
+packages\datasets\tests\test_d3_exporters.py        50      1    98%
+packages\execution_engine\__init__.py                0      0   100%
+packages\execution_engine\domain\__init__.py         0      0   100%
+packages\execution_engine\domain\clock.py           15     15     0%
+packages\execution_engine\domain\events.py          65     65     0%
+packages\execution_engine\domain\exceptions.py      18     18     0%
+packages\execution_engine\domain\models.py         121    121     0%
+packages\execution_engine\domain\services.py       122    122     0%
+packages\llm\__init__.py                             3      3     0%
+packages\llm\clients\__init__.py                     4      4     0%
+packages\llm\clients\adapter.py                     74     74     0%
+packages\llm\clients\base.py                        25     25     0%
+packages\llm\clients\gemini.py                      51     51     0%
+packages\llm\clients\grok.py                        48     48     0%
+packages\llm\clients\groq.py                        48     48     0%
+packages\llm\clients\mistral.py                     48     48     0%
+packages\llm\clients\nvidia.py                      48     48     0%
+packages\llm\clients\ollama.py                      54     54     0%
+packages\llm\config.py                               3      3     0%
+packages\llm\exceptions.py                          10     10     0%
+packages\llm\models\__init__.py                      4      4     0%
+packages\llm\models\model_types.py                   7      7     0%
+packages\llm\models\prompt.py                        6      6     0%
+packages\llm\models\response.py                     13     13     0%
+packages\llm\prompt_builder.py                      20     20     0%
+packages\llm\prompt_genealogy.py                    22     22     0%
+packages\orchestrator\__init__.py                    0      0   100%
+packages\orchestrator\atlas_orchestrator.py         49     49     0%
+packages\orchestrator\metrics_aggregator.py         52     52     0%
+packages\orchestrator\models.py                     52     52     0%
+packages\orchestrator\progress_ui.py                51     51     0%
+packages\orchestrator\state_manager.py              62     62     0%
+packages\runtime\__init__.py                         0      0   100%
+packages\runtime\exceptions\__init__.py             10     10     0%
+packages\runtime\manager\__init__.py                 2      2     0%
+packages\runtime\manager\runtime_manager.py         20     20     0%
+packages\runtime\models\__init__.py                  4      4     0%
+packages\runtime\models\execution_request.py        12     12     0%
+packages\runtime\models\execution_result.py         23     23     0%
+packages\runtime\models\runtime_config.py            6      6     0%
+packages\runtime\monitor\__init__.py                 2      2     0%
+packages\runtime\monitor\process.py                 18     18     0%
+packages\runtime\runner\__init__.py                  2      2     0%
+packages\runtime\runner\test_runner.py              12     12     0%
+packages\runtime\runtimes\__init__.py                3      3     0%
+packages\runtime\runtimes\base.py                   13     13     0%
+packages\runtime\runtimes\python_runtime.py         43     43     0%
+packages\runtime\sandbox\__init__.py                 2      2     0%
+packages\runtime\sandbox\tempdir.py                 25     25     0%
+packages\runtime\security\__init__.py                5      5     0%
+packages\runtime\security\base.py                    7      7     0%
+packages\runtime\security\call_checker.py           13     13     0%
+packages\runtime\security\import_checker.py         16     16     0%
+packages\runtime\security\validator.py              19     19     0%
+packages\runtime\utils\__init__.py                   2      2     0%
+packages\runtime\utils\logger.py                    29     29     0%
+--------------------------------------------------------------------
+TOTAL                                             1863   1617    13%
+=========================== short test summary info ===========================
+FAILED packages/datasets/tests/test_d3_exporters.py::test_unicode_content - a...
+========================= 1 failed, 5 passed in 2.57s =========================

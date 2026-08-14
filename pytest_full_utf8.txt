@@ -1,0 +1,971 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.13.7, pytest-9.1.1, pluggy-1.6.0
+rootdir: C:\Users\siddh\Downloads\atlas.zip123\atlas
+configfile: pyproject.toml
+testpaths: tests, packages/database/tests, services/dataset/tests, services/report/tests
+plugins: anyio-4.14.2, asyncio-1.4.0, cov-7.1.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 164 items
+
+tests\api\test_benchmark_contract.py ..                                  [  1%]
+tests\api\test_dataset_contract.py .....                                 [  4%]
+tests\api\test_execution_contract.py ....                                [  6%]
+tests\api\test_execution_status_contract.py ..                           [  7%]
+tests\api\test_milestone_3c_chaos_suite.py ...                           [  9%]
+tests\api\test_reporting_and_leaderboard_contract.py ..                  [ 10%]
+tests\backend\benchmark\test_benchmark_api.py .....                      [ 14%]
+tests\backend\benchmark\test_benchmark_discovery.py .                    [ 14%]
+tests\backend\test_api_auth.py .....                                     [ 17%]
+tests\backend\test_api_authz.py ....                                     [ 20%]
+tests\backend\test_api_benchmarks.py ...                                 [ 21%]
+tests\backend\test_api_datasets.py ..                                    [ 23%]
+tests\backend\test_api_evaluation.py ..                                  [ 24%]
+tests\backend\test_api_executions.py ...                                 [ 26%]
+tests\backend\test_api_history.py ..                                     [ 27%]
+tests\backend\test_api_leaderboard.py .......                            [ 31%]
+tests\backend\test_api_reporting.py ...........                          [ 38%]
+tests\backend\test_api_slice2.py ...                                     [ 40%]
+tests\backend\test_distributed_infrastructure.py .                       [ 40%]
+tests\backend\test_exporters.py ..                                       [ 42%]
+tests\backend\test_minio_storage.py ...                                  [ 43%]
+tests\backend\test_ollama_adapter.py ...                                 [ 45%]
+tests\backend\test_repo_leaderboard.py ...                               [ 47%]
+tests\backend\test_search_service.py ...                                 [ 49%]
+tests\backend\test_worker_orchestration.py ...                           [ 51%]
+tests\benchmark\test_benchmark_service.py ......                         [ 54%]
+tests\benchmark\test_foundation.py .                                     [ 55%]
+tests\benchmark\test_lifecycle.py .....                                  [ 58%]
+tests\benchmark\test_versioning.py .                                     [ 59%]
+tests\execution\test_api.py ....                                         [ 61%]
+tests\execution\test_domain.py ...........                               [ 68%]
+tests\execution\test_persistence.py FFE                                  [ 69%]
+tests\execution\test_scheduler.py ...                                    [ 71%]
+tests\execution\test_worker_data_plane.py .......                        [ 75%]
+tests\integration\test_benchmark_repository.py ...                       [ 77%]
+tests\integration\test_e2e_execution_pipeline.py .                       [ 78%]
+tests\integration\test_query_utils.py .......                            [ 82%]
+tests\test_health.py .                                                   [ 82%]
+packages\database\tests\test_base_repository.py .                        [ 83%]
+packages\database\tests\test_d2_extraction.py ......                     [ 87%]
+packages\database\tests\test_d2_postgres_integration.py ..               [ 88%]
+packages\database\tests\test_d2_suite.py .....                           [ 91%]
+packages\database\tests\test_models.py .......                           [ 95%]
+packages\database\tests\test_ownership.py ...                            [ 97%]
+services\dataset\tests\api\test_dataset.py .                             [ 98%]
+services\report\tests\api\test_reporting_api.py ..                       [ 99%]
+uv : C:\Users\siddh\AppData\Local\Programs\Py
+thon\Python313\Lib\ast.py:50: 
+ResourceWarning: unclosed database in 
+<sqlite3.Connection object at 
+0x000001C9F48331F0>
+At line:1 char:147
++ ... ytest_test_log.txt 2>&1 ; uv run 
+pytest -v > pytest_full_log.txt 2>&1
++                               
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified:  
+   (C:\Users\siddh\...0001C9F48331F0>:Strin  
+  g) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandE 
+   rror
+ 
+  return compile(source, filename, mode, 
+flags,
+ResourceWarning: Enable tracemalloc to get 
+the object allocation traceback
+services\report\tests\unit\test_reporting.py .                           [100%]
+
+=================================== ERRORS ====================================
+______________ ERROR at teardown of test_concurrency_skip_locked ______________
+
+self = <sqlalchemy.engine.base.Connection object at 0x000001C9F43AB570>
+dialect = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001C9F20FD810>
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001C9F4900850>
+statement = <sqlalchemy.dialects.postgresql.base.PGDDLCompiler object at 0x000001C9F40C3290>
+parameters = [immutabledict({})]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -> CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+    
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+    
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+    
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+    
+        effective_parameters: Optional[_AnyExecuteParams]
+    
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+    
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+    
+        if self._echo:
+            self._log_info(str_statement)
+    
+            stats = context._get_cache_stats()
+    
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+    
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+>                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001C9F20FD810>
+cursor = <cursor object at 0x000001C9F0490F20; closed: -1>
+statement = 'ALTER TABLE organizations DROP CONSTRAINT fk_organizations_updated_by_id_users'
+parameters = immutabledict({})
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001C9F4900850>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       psycopg2.errors.UndefinedObject: constraint "fk_organizations_updated_by_id_users" of relation "organizations" does not exist
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: UndefinedObject
+
+The above exception was the direct cause of the following exception:
+
+    @pytest.fixture(scope="module")
+    def setup_database():
+        Base.metadata.create_all(bind=engine)
+        yield
+>       Base.metadata.drop_all(bind=engine)
+
+tests\execution\test_persistence.py:45: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+.venv\Lib\site-packages\sqlalchemy\sql\schema.py:5958: in drop_all
+    bind._run_ddl_visitor(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:3270: in _run_ddl_visitor
+    conn._run_ddl_visitor(visitorcallable, element, **kwargs)
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2469: in _run_ddl_visitor
+    ).traverse_single(element)
+      ^^^^^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\sqlalchemy\sql\ddl.py:1151: in visit_metadata
+    self.traverse_single(fkc)
+.venv\Lib\site-packages\sqlalchemy\sql\visitors.py:661: in traverse_single
+    return meth(obj, **kw)
+           ^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\sqlalchemy\sql\ddl.py:1230: in visit_foreign_key_constraint
+    DropConstraint(constraint)._invoke_with(self.connection)
+.venv\Lib\site-packages\sqlalchemy\sql\ddl.py:322: in _invoke_with
+    return bind.execute(self)
+           ^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1421: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\ddl.py:188: in _execute_on_connection
+    return connection._execute_ddl(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1532: in _execute_ddl
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2365: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001C9F20FD810>
+cursor = <cursor object at 0x000001C9F0490F20; closed: -1>
+statement = 'ALTER TABLE organizations DROP CONSTRAINT fk_organizations_updated_by_id_users'
+parameters = immutabledict({})
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001C9F4900850>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedObject) constraint "fk_organizations_updated_by_id_users" of relation "organizations" does not exist
+E       
+E       [SQL: ALTER TABLE organizations DROP CONSTRAINT fk_organizations_updated_by_id_users]
+E       (Background on this error at: https://sqlalche.me/e/20/f405)
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: ProgrammingError
+================================== FAILURES ===================================
+_________________________ test_persistence_roundtrip __________________________
+
+self = <sqlalchemy.engine.base.Connection object at 0x000001C9F47D7770>
+dialect = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001C9F20FD810>
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001C9F4900050>
+statement = <sqlalchemy.dialects.postgresql.base.PGCompiler object at 0x000001C9F4940050>
+parameters = [{'id': UUID('1dcdd0c8-b03d-476b-bcfc-072edf085188'), 'benchmark_id': UUID('4449f45f-ff11-4d9d-af80-4c2e46470ad7'), 'version_string': '1.0.0', 'primary_dataset_version_id': None, ...}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -> CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+    
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+    
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+    
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+    
+        effective_parameters: Optional[_AnyExecuteParams]
+    
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+    
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+    
+        if self._echo:
+            self._log_info(str_statement)
+    
+            stats = context._get_cache_stats()
+    
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+    
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+>                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001C9F20FD810>
+cursor = <cursor object at 0x000001C9F494FE60; closed: -1>
+statement = 'INSERT INTO benchmark_versions (id, benchmark_id, version_string, primary_dataset_version_id, created_at, created_by_...ng)s, %(primary_dataset_version_id)s::UUID, %(created_at)s, %(created_by_id)s::UUID, %(evaluation_strategy_id)s::UUID)'
+parameters = {'id': UUID('1dcdd0c8-b03d-476b-bcfc-072edf085188'), 'benchmark_id': UUID('4449f45f-ff11-4d9d-af80-4c2e46470ad7'), 'version_string': '1.0.0', 'primary_dataset_version_id': None, ...}
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001C9F4900050>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       psycopg2.errors.UndefinedColumn: column "evaluation_strategy_id" of relation "benchmark_versions" does not exist
+E       LINE 1: ...ry_dataset_version_id, created_at, created_by_id, evaluation...
+E                                                                    ^
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: UndefinedColumn
+
+The above exception was the direct cause of the following exception:
+
+db_session = <sqlalchemy.orm.session.Session object at 0x000001C9F437DE80>
+
+    def test_persistence_roundtrip(db_session: Session):
+        clock = TestClock(datetime.now(UTC))
+        repo = SqlAlchemyExecutionRepository(db_session)
+    
+>       project_id, bv_id, user_id = create_parent_records(db_session)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\execution\test_persistence.py:88: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\execution\test_persistence.py:79: in create_parent_records
+    session.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:2035: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1316: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1290: in _prepare_impl
+    self.session.flush()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4353: in flush
+    self._flush(objects)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4488: in _flush
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py:122: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4449: in _flush
+    flush_context.execute()
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:465: in execute
+    rec.execute(self)
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:641: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:94: in save_obj
+    _emit_insert_statements(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:1234: in _emit_insert_statements
+    result = connection.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1421: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:526: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1643: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2365: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001C9F20FD810>
+cursor = <cursor object at 0x000001C9F494FE60; closed: -1>
+statement = 'INSERT INTO benchmark_versions (id, benchmark_id, version_string, primary_dataset_version_id, created_at, created_by_...ng)s, %(primary_dataset_version_id)s::UUID, %(created_at)s, %(created_by_id)s::UUID, %(evaluation_strategy_id)s::UUID)'
+parameters = {'id': UUID('1dcdd0c8-b03d-476b-bcfc-072edf085188'), 'benchmark_id': UUID('4449f45f-ff11-4d9d-af80-4c2e46470ad7'), 'version_string': '1.0.0', 'primary_dataset_version_id': None, ...}
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001C9F4900050>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column "evaluation_strategy_id" of relation "benchmark_versions" does not exist
+E       LINE 1: ...ry_dataset_version_id, created_at, created_by_id, evaluation...
+E                                                                    ^
+E       
+E       [SQL: INSERT INTO benchmark_versions (id, benchmark_id, version_string, primary_dataset_version_id, created_at, created_by_id, evaluation_strategy_id) VALUES (%(id)s::UUID, %(benchmark_id)s::UUID, %(version_string)s, %(primary_dataset_version_id)s::UUID, %(created_at)s, %(created_by_id)s::UUID, %(evaluation_strategy_id)s::UUID)]
+E       [parameters: {'id': UUID('1dcdd0c8-b03d-476b-bcfc-072edf085188'), 'benchmark_id': UUID('4449f45f-ff11-4d9d-af80-4c2e46470ad7'), 'version_string': '1.0.0', 'primary_dataset_version_id': None, 'created_at': datetime.datetime(2026, 8, 14, 8, 56, 19, 914774, tzinfo=datetime.timezone.utc), 'created_by_id': UUID('1da9a851-4f9e-400d-b9ce-2d565f853870'), 'evaluation_strategy_id': None}]
+E       (Background on this error at: https://sqlalche.me/e/20/f405)
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: ProgrammingError
+________________________ test_concurrency_skip_locked _________________________
+
+self = <sqlalchemy.engine.base.Connection object at 0x000001C9F43AB130>
+dialect = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001C9F20FD810>
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001C9F4900F50>
+statement = <sqlalchemy.dialects.postgresql.base.PGCompiler object at 0x000001C9F4940050>
+parameters = [{'id': UUID('a84aec63-9074-470e-8ac2-5123a59537ae'), 'benchmark_id': UUID('2272f4fc-a07b-4b68-9786-315cfe76a223'), 'version_string': '1.0.0', 'primary_dataset_version_id': None, ...}]
+
+    def _exec_single_context(
+        self,
+        dialect: Dialect,
+        context: ExecutionContext,
+        statement: Union[str, Compiled],
+        parameters: Optional[_AnyMultiExecuteParams],
+    ) -> CursorResult[Any]:
+        """continue the _execute_context() method for a single DBAPI
+        cursor.execute() or cursor.executemany() call.
+    
+        """
+        if dialect.bind_typing is BindTyping.SETINPUTSIZES:
+            generic_setinputsizes = context._prepare_set_input_sizes()
+    
+            if generic_setinputsizes:
+                try:
+                    dialect.do_set_input_sizes(
+                        context.cursor, generic_setinputsizes, context
+                    )
+                except BaseException as e:
+                    self._handle_dbapi_exception(
+                        e, str(statement), parameters, None, context
+                    )
+    
+        cursor, str_statement, parameters = (
+            context.cursor,
+            context.statement,
+            context.parameters,
+        )
+    
+        effective_parameters: Optional[_AnyExecuteParams]
+    
+        if not context.executemany:
+            effective_parameters = parameters[0]
+        else:
+            effective_parameters = parameters
+    
+        if self._has_events or self.engine._has_events:
+            for fn in self.dispatch.before_cursor_execute:
+                str_statement, effective_parameters = fn(
+                    self,
+                    cursor,
+                    str_statement,
+                    effective_parameters,
+                    context,
+                    context.executemany,
+                )
+    
+        if self._echo:
+            self._log_info(str_statement)
+    
+            stats = context._get_cache_stats()
+    
+            if not self.engine.hide_parameters:
+                self._log_info(
+                    "[%s] %r",
+                    stats,
+                    sql_util._repr_params(
+                        effective_parameters,
+                        batches=10,
+                        ismulti=context.executemany,
+                    ),
+                )
+            else:
+                self._log_info(
+                    "[%s] [SQL parameters hidden due to hide_parameters=True]",
+                    stats,
+                )
+    
+        evt_handled: bool = False
+        try:
+            if context.execute_style is ExecuteStyle.EXECUTEMANY:
+                effective_parameters = cast(
+                    "_CoreMultiExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_executemany:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_executemany(
+                        cursor,
+                        str_statement,
+                        effective_parameters,
+                        context,
+                    )
+            elif not effective_parameters and context.no_parameters:
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute_no_params:
+                        if fn(cursor, str_statement, context):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+                    self.dialect.do_execute_no_params(
+                        cursor, str_statement, context
+                    )
+            else:
+                effective_parameters = cast(
+                    "_CoreSingleExecuteParams", effective_parameters
+                )
+                if self.dialect._has_events:
+                    for fn in self.dialect.dispatch.do_execute:
+                        if fn(
+                            cursor,
+                            str_statement,
+                            effective_parameters,
+                            context,
+                        ):
+                            evt_handled = True
+                            break
+                if not evt_handled:
+>                   self.dialect.do_execute(
+                        cursor, str_statement, effective_parameters, context
+                    )
+
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001C9F20FD810>
+cursor = <cursor object at 0x000001C9F42F35A0; closed: -1>
+statement = 'INSERT INTO benchmark_versions (id, benchmark_id, version_string, primary_dataset_version_id, created_at, created_by_...ng)s, %(primary_dataset_version_id)s::UUID, %(created_at)s, %(created_by_id)s::UUID, %(evaluation_strategy_id)s::UUID)'
+parameters = {'id': UUID('a84aec63-9074-470e-8ac2-5123a59537ae'), 'benchmark_id': UUID('2272f4fc-a07b-4b68-9786-315cfe76a223'), 'version_string': '1.0.0', 'primary_dataset_version_id': None, ...}
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001C9F4900F50>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       psycopg2.errors.UndefinedColumn: column "evaluation_strategy_id" of relation "benchmark_versions" does not exist
+E       LINE 1: ...ry_dataset_version_id, created_at, created_by_id, evaluation...
+E                                                                    ^
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: UndefinedColumn
+
+The above exception was the direct cause of the following exception:
+
+setup_database = None
+
+    @pytest.mark.skipif(not has_postgres, reason="Concurrency SKIP LOCKED test requires PostgreSQL")
+    def test_concurrency_skip_locked(setup_database):
+        """
+        Test that two concurrent workers do not acquire the same queued execution.
+        Worker 1 acquires the lock and sleeps.
+        Worker 2 attempts to find schedulable executions and should get NOTHING due to skip_locked.
+        """
+        # Setup record
+        session_setup = SessionLocal()
+        repo_setup = SqlAlchemyExecutionRepository(session_setup)
+        clock = TestClock(datetime.now(UTC))
+>       project_id, bv_id, user_id = create_parent_records(session_setup)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\execution\test_persistence.py:150: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\execution\test_persistence.py:79: in create_parent_records
+    session.commit()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:2035: in commit
+    trans.commit(_to_root=True)
+<string>:2: in commit
+    ???
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1316: in commit
+    self._prepare_impl()
+<string>:2: in _prepare_impl
+    ???
+.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py:137: in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:1290: in _prepare_impl
+    self.session.flush()
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4353: in flush
+    self._flush(objects)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4488: in _flush
+    with util.safe_reraise():
+         ^^^^^^^^^^^^^^^^^^^
+.venv\Lib\site-packages\sqlalchemy\util\langhelpers.py:122: in __exit__
+    raise exc_value.with_traceback(exc_tb)
+.venv\Lib\site-packages\sqlalchemy\orm\session.py:4449: in _flush
+    flush_context.execute()
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:465: in execute
+    rec.execute(self)
+.venv\Lib\site-packages\sqlalchemy\orm\unitofwork.py:641: in execute
+    util.preloaded.orm_persistence.save_obj(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:94: in save_obj
+    _emit_insert_statements(
+.venv\Lib\site-packages\sqlalchemy\orm\persistence.py:1234: in _emit_insert_statements
+    result = connection.execute(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1421: in execute
+    return meth(
+.venv\Lib\site-packages\sqlalchemy\sql\elements.py:526: in _execute_on_connection
+    return connection._execute_clauseelement(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1643: in _execute_clauseelement
+    ret = self._execute_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1848: in _execute_context
+    return self._exec_single_context(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1988: in _exec_single_context
+    self._handle_dbapi_exception(
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:2365: in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+.venv\Lib\site-packages\sqlalchemy\engine\base.py:1969: in _exec_single_context
+    self.dialect.do_execute(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <sqlalchemy.dialects.postgresql.psycopg2.PGDialect_psycopg2 object at 0x000001C9F20FD810>
+cursor = <cursor object at 0x000001C9F42F35A0; closed: -1>
+statement = 'INSERT INTO benchmark_versions (id, benchmark_id, version_string, primary_dataset_version_id, created_at, created_by_...ng)s, %(primary_dataset_version_id)s::UUID, %(created_at)s, %(created_by_id)s::UUID, %(evaluation_strategy_id)s::UUID)'
+parameters = {'id': UUID('a84aec63-9074-470e-8ac2-5123a59537ae'), 'benchmark_id': UUID('2272f4fc-a07b-4b68-9786-315cfe76a223'), 'version_string': '1.0.0', 'primary_dataset_version_id': None, ...}
+context = <sqlalchemy.dialects.postgresql.psycopg2.PGExecutionContext_psycopg2 object at 0x000001C9F4900F50>
+
+    def do_execute(self, cursor, statement, parameters, context=None):
+>       cursor.execute(statement, parameters)
+E       sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column "evaluation_strategy_id" of relation "benchmark_versions" does not exist
+E       LINE 1: ...ry_dataset_version_id, created_at, created_by_id, evaluation...
+E                                                                    ^
+E       
+E       [SQL: INSERT INTO benchmark_versions (id, benchmark_id, version_string, primary_dataset_version_id, created_at, created_by_id, evaluation_strategy_id) VALUES (%(id)s::UUID, %(benchmark_id)s::UUID, %(version_string)s, %(primary_dataset_version_id)s::UUID, %(created_at)s, %(created_by_id)s::UUID, %(evaluation_strategy_id)s::UUID)]
+E       [parameters: {'id': UUID('a84aec63-9074-470e-8ac2-5123a59537ae'), 'benchmark_id': UUID('2272f4fc-a07b-4b68-9786-315cfe76a223'), 'version_string': '1.0.0', 'primary_dataset_version_id': None, 'created_at': datetime.datetime(2026, 8, 14, 8, 56, 23, 11567, tzinfo=datetime.timezone.utc), 'created_by_id': UUID('b0fd1549-5e0a-44b1-b220-5b6d690a41fe'), 'evaluation_strategy_id': None}]
+E       (Background on this error at: https://sqlalche.me/e/20/f405)
+
+.venv\Lib\site-packages\sqlalchemy\engine\default.py:952: ProgrammingError
+============================== warnings summary ===============================
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  C:\Users\siddh\Downloads\atlas.zip123\atlas\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+apps\backend\schemas\benchmarks.py:39
+  C:\Users\siddh\Downloads\atlas.zip123\atlas\apps\backend\schemas\benchmarks.py:39: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class BenchmarkRead(BaseModel):
+
+apps\backend\schemas\benchmarks.py:60
+  C:\Users\siddh\Downloads\atlas.zip123\atlas\apps\backend\schemas\benchmarks.py:60: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class BenchmarkVersionRead(BaseModel):
+
+apps\backend\events\bus.py:10
+  C:\Users\siddh\Downloads\atlas.zip123\atlas\apps\backend\events\bus.py:10: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class ExecutionEvent(BaseModel):
+
+packages\database\atlas_db\models\tasks.py:49
+  C:\Users\siddh\Downloads\atlas.zip123\atlas\packages\database\atlas_db\models\tasks.py:49: PytestCollectionWarning: cannot collect test class 'TestCase' because it has a __init__ constructor (from: packages/database/tests/test_d2_extraction.py)
+    class TestCase(Base, BaseMixin):
+
+packages\database\atlas_db\models\tasks.py:49
+  C:\Users\siddh\Downloads\atlas.zip123\atlas\packages\database\atlas_db\models\tasks.py:49: PytestCollectionWarning: cannot collect test class 'TestCase' because it has a __init__ constructor (from: packages/database/tests/test_d2_postgres_integration.py)
+    class TestCase(Base, BaseMixin):
+
+packages\database\atlas_db\models\tasks.py:49
+  C:\Users\siddh\Downloads\atlas.zip123\atlas\packages\database\atlas_db\models\tasks.py:49: PytestCollectionWarning: cannot collect test class 'TestCase' because it has a __init__ constructor (from: packages/database/tests/test_d2_suite.py)
+    class TestCase(Base, BaseMixin):
+
+tests/backend/test_api_evaluation.py::test_evaluate_execution_authorized
+  C:\Users\siddh\Downloads\atlas.zip123\atlas\tests\backend\test_api_evaluation.py:37: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/benchmark/test_foundation.py::TestBenchmarkFoundation::test_custom_benchmark_lifecycle
+tests/benchmark/test_foundation.py::TestBenchmarkFoundation::test_custom_benchmark_lifecycle
+  C:\Users\siddh\Downloads\atlas.zip123\atlas\.venv\Lib\site-packages\pydantic\main.py:263: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+
+services/report/tests/api/test_reporting_api.py::test_health_check
+  C:\Users\siddh\Downloads\atlas.zip123\atlas\services\report\api\routers\reporting_router.py:20: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    return SystemHealthDTO(status="ok", timestamp=datetime.utcnow())
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+_______________ coverage: platform win32, python 3.13.7-final-0 _______________
+
+Name                                                             Stmts   Miss  Cover
+------------------------------------------------------------------------------------
+packages\benchmark\__init__.py                                       0      0   100%
+packages\benchmark\exceptions\__init__.py                            2      0   100%
+packages\benchmark\exceptions\errors.py                             12      0   100%
+packages\benchmark\importers\__init__.py                             3      0   100%
+packages\benchmark\importers\custom.py                               9      0   100%
+packages\benchmark\importers\humaneval.py                           22     15    32%
+packages\benchmark\interfaces\__init__.py                            5      0   100%
+packages\benchmark\interfaces\importer.py                            7      1    86%
+packages\benchmark\interfaces\loader.py                             14      4    71%
+packages\benchmark\interfaces\registry.py                           16      4    75%
+packages\benchmark\interfaces\validation.py                          6      1    83%
+packages\benchmark\loader\__init__.py                                3      3     0%
+packages\benchmark\loader\json_loader.py                            16     16     0%
+packages\benchmark\loader\yaml_loader.py                            16     16     0%
+packages\benchmark\manager\__init__.py                               2      0   100%
+packages\benchmark\manager\facade.py                                25      3    88%
+packages\benchmark\models\__init__.py                                6      0   100%
+packages\benchmark\models\benchmark.py                               8      0   100%
+packages\benchmark\models\enums.py                                  71      0   100%
+packages\benchmark\models\metadata.py                               17      0   100%
+packages\benchmark\models\schema.py                                  8      0   100%
+packages\benchmark\models\task.py                                   26      0   100%
+packages\benchmark\registry\__init__.py                              2      0   100%
+packages\benchmark\registry\memory.py                               32      8    75%
+packages\benchmark\validation\__init__.py                            4      0   100%
+packages\benchmark\validation\metadata.py                           13      2    85%
+packages\benchmark\validation\registry.py                           12      1    92%
+packages\benchmark\validation\schema.py                             11      2    82%
+packages\database\atlas_db\core\base.py                             25      1    96%
+packages\database\atlas_db\core\config.py                           16      0   100%
+packages\database\atlas_db\core\engine.py                            5      0   100%
+packages\database\atlas_db\core\session.py                          13      6    54%
+packages\database\atlas_db\events.py                                30      0   100%
+packages\database\atlas_db\models\__init__.py                       11      0   100%
+packages\database\atlas_db\models\authoring.py                      67      0   100%
+packages\database\atlas_db\models\core.py                           95      0   100%
+packages\database\atlas_db\models\dataset.py                        64      0   100%
+packages\database\atlas_db\models\evaluation.py                     87      0   100%
+packages\database\atlas_db\models\execution.py                      81      0   100%
+packages\database\atlas_db\models\leaderboard.py                    29      0   100%
+packages\database\atlas_db\models\outbox.py                         22      0   100%
+packages\database\atlas_db\models\reporting.py                      27      0   100%
+packages\database\atlas_db\models\system.py                         19      0   100%
+packages\database\atlas_db\models\tasks.py                          45      0   100%
+packages\database\atlas_db\repositories\__init__.py                  8      0   100%
+packages\database\atlas_db\repositories\authoring.py                40     18    55%
+packages\database\atlas_db\repositories\base.py                     42      2    95%
+packages\database\atlas_db\repositories\core.py                     20      2    90%
+packages\database\atlas_db\repositories\dataset.py                  12      0   100%
+packages\database\atlas_db\repositories\evaluation.py               16      0   100%
+packages\database\atlas_db\repositories\execution.py                27     10    63%
+packages\database\atlas_db\repositories\leaderboard.py              47     16    66%
+packages\database\atlas_db\repositories\query_utils.py              24      1    96%
+packages\database\atlas_db\repositories\tasks.py                    12      0   100%
+packages\database\atlas_db\services\__init__.py                      2      0   100%
+packages\database\atlas_db\services\benchmark_service.py           189     65    66%
+packages\database\atlas_db\services\dataset_extraction.py           45      6    87%
+packages\database\atlas_db\services\dataset_service.py              47      5    89%
+packages\database\tests\conftest.py                                 34      0   100%
+packages\database\tests\test_base_repository.py                     22      0   100%
+packages\database\tests\test_d2_extraction.py                      112      0   100%
+packages\database\tests\test_d2_postgres_integration.py             81      2    98%
+packages\database\tests\test_d2_suite.py                           104      0   100%
+packages\database\tests\test_models.py                              71      0   100%
+packages\database\tests\test_ownership.py                           52      0   100%
+packages\datasets\importers\base.py                                 39     25    36%
+packages\datasets\importers\humaneval.py                            24      9    62%
+packages\datasets\importers\mbpp.py                                 29      9    69%
+packages\datasets\mapper.py                                          7      1    86%
+packages\datasets\models.py                                         34      0   100%
+packages\execution_engine\__init__.py                                0      0   100%
+packages\execution_engine\api\dtos.py                               32      0   100%
+packages\execution_engine\api\worker_dtos.py                        28      0   100%
+packages\execution_engine\application\execution_app_service.py      34     18    47%
+packages\execution_engine\application\interfaces.py                 11      2    82%
+packages\execution_engine\application\outbox_dispatcher.py          57     41    28%
+packages\execution_engine\application\scheduler_service.py          27      3    89%
+packages\execution_engine\application\subscribers.py                37     21    43%
+packages\execution_engine\application\worker_app_service.py         77     47    39%
+packages\execution_engine\domain\__init__.py                         0      0   100%
+packages\execution_engine\domain\clock.py                           15      1    93%
+packages\execution_engine\domain\events.py                          65     15    77%
+packages\execution_engine\domain\exceptions.py                      18      0   100%
+packages\execution_engine\domain\models.py                         121      7    94%
+packages\execution_engine\domain\services.py                       122     26    79%
+packages\execution_engine\persistence\interfaces.py                 19      5    74%
+packages\execution_engine\persistence\mapper.py                     42     33    21%
+packages\execution_engine\persistence\models.py                     44      0   100%
+packages\execution_engine\persistence\repository.py                 45     27    40%
+packages\llm\__init__.py                                             3      3     0%
+packages\llm\clients\__init__.py                                     4      4     0%
+packages\llm\clients\adapter.py                                     74     74     0%
+packages\llm\clients\base.py                                        25     25     0%
+packages\llm\clients\gemini.py                                      51     51     0%
+packages\llm\clients\grok.py                                        48     48     0%
+packages\llm\clients\groq.py                                        48     48     0%
+packages\llm\clients\mistral.py                                     48     48     0%
+packages\llm\clients\nvidia.py                                      48     48     0%
+packages\llm\clients\ollama.py                                      54     54     0%
+packages\llm\config.py                                               3      3     0%
+packages\llm\exceptions.py                                          10     10     0%
+packages\llm\models\__init__.py                                      4      4     0%
+packages\llm\models\model_types.py                                   7      7     0%
+packages\llm\models\prompt.py                                        6      6     0%
+packages\llm\models\response.py                                     13     13     0%
+packages\llm\prompt_builder.py                                      20     20     0%
+packages\llm\prompt_genealogy.py                                    22     22     0%
+packages\orchestrator\__init__.py                                    0      0   100%
+packages\orchestrator\atlas_orchestrator.py                         49     49     0%
+packages\orchestrator\metrics_aggregator.py                         52     52     0%
+packages\orchestrator\models.py                                     52     52     0%
+packages\orchestrator\progress_ui.py                                51     51     0%
+packages\orchestrator\state_manager.py                              62     62     0%
+packages\runtime\__init__.py                                         0      0   100%
+packages\runtime\exceptions\__init__.py                             10     10     0%
+packages\runtime\manager\__init__.py                                 2      2     0%
+packages\runtime\manager\runtime_manager.py                         20     20     0%
+packages\runtime\models\__init__.py                                  4      4     0%
+packages\runtime\models\execution_request.py                        12     12     0%
+packages\runtime\models\execution_result.py                         23     23     0%
+packages\runtime\models\runtime_config.py                            6      6     0%
+packages\runtime\monitor\__init__.py                                 2      2     0%
+packages\runtime\monitor\process.py                                 18     18     0%
+packages\runtime\runner\__init__.py                                  2      2     0%
+packages\runtime\runner\test_runner.py                              12     12     0%
+packages\runtime\runtimes\__init__.py                                3      3     0%
+packages\runtime\runtimes\base.py                                   13     13     0%
+packages\runtime\runtimes\python_runtime.py                         43     43     0%
+packages\runtime\sandbox\__init__.py                                 2      2     0%
+packages\runtime\sandbox\tempdir.py                                 25     25     0%
+packages\runtime\security\__init__.py                                5      5     0%
+packages\runtime\security\base.py                                    7      7     0%
+packages\runtime\security\call_checker.py                           13     13     0%
+packages\runtime\security\import_checker.py                         16     16     0%
+packages\runtime\security\validator.py                              19     19     0%
+packages\runtime\utils\__init__.py                                   2      2     0%
+packages\runtime\utils\logger.py                                    29     29     0%
+services\dataset\api\dependencies.py                                18      5    72%
+services\dataset\api\routers\dataset_router.py                      34     13    62%
+services\dataset\importers\base.py                                  14      4    71%
+services\dataset\main.py                                             7      2    71%
+services\dataset\models\dtos.py                                     46      0   100%
+services\dataset\repositories\dataset_repo.py                       47     26    45%
+services\dataset\services\publishing.py                             10      5    50%
+services\dataset\services\versioning.py                             14      5    64%
+services\dataset\storage\provider.py                                25     13    48%
+services\dataset\tests\api\test_dataset.py                           5      0   100%
+services\dataset\validation\rules.py                                32     19    41%
+services\dataset\validation\service.py                              31     23    26%
+services\report\api\dependencies.py                                 21      7    67%
+services\report\api\routers\reporting_router.py                     38     12    68%
+services\report\core\cache.py                                       14      4    71%
+services\report\exporters\__init__.py                                3      0   100%
+services\report\exporters\base.py                                   12      1    92%
+services\report\exporters\csv_exporter.py                           26      1    96%
+services\report\exporters\json_exporter.py                          13      0   100%
+services\report\exporters\registry.py                               15      0   100%
+services\report\main.py                                              7      2    71%
+services\report\models\dtos.py                                      59      0   100%
+services\report\models\read_models.py                              100      0   100%
+services\report\repositories\reporting_repo.py                      85     66    22%
+services\report\services\queries.py                                107     84    21%
+services\report\services\reporting.py                               54     40    26%
+services\report\strategies\leaderboard.py                           14      4    71%
+services\report\strategies\trends.py                                19      1    95%
+services\report\tests\api\test_reporting_api.py                     12      0   100%
+services\report\tests\unit\test_reporting.py                        13      0   100%
+services\search\providers\base.py                                    6      0   100%
+services\search\providers\benchmark.py                              31     20    35%
+services\search\providers\execution.py                              33     22    33%
+services\search\registry.py                                          8      0   100%
+services\search\service.py                                          15      0   100%
+------------------------------------------------------------------------------------
+TOTAL                                                             4968   1921    61%
+=========================== short test summary info ===========================
+ERROR tests/execution/test_persistence.py::test_concurrency_skip_locked - sql...
+FAILED tests/execution/test_persistence.py::test_persistence_roundtrip - sqla...
+FAILED tests/execution/test_persistence.py::test_concurrency_skip_locked - sq...
+============ 2 failed, 162 passed, 11 warnings, 1 error in 29.77s =============

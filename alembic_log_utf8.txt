@@ -1,0 +1,251 @@
+﻿uv : INFO  [alembic.runtime.migration] 
+Context impl PostgresqlImpl.
+At line:1 char:517
++ ... e9ea13c79 ; uv run alembic -c 
+packages/database/alembic.ini upgrade h ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified:  
+   (INFO  [alembic....PostgresqlImpl.:Strin  
+  g) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandE 
+   rror
+ 
+INFO  [alembic.runtime.migration] Will 
+assume transactional DDL.
+INFO  [alembic.runtime.migration] Running 
+upgrade b8fe9ea13c79 -> c28d8d3dd1a7, Sync 
+repository schema bounds
+Traceback (most recent call last):
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\sqlalchemy\eng
+ine\base.py", line 1969, in 
+_exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, 
+effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\sqlalchemy\eng
+ine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+psycopg2.errors.DatatypeMismatch: default 
+for column "status" cannot be cast 
+automatically to type dataset_status
+
+
+The above exception was the direct cause of 
+the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in 
+_run_module_as_main
+  File "<frozen runpy>", line 88, in 
+_run_code
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Scripts\alembic.exe\__main__.py"
+, line 10, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\alembic\config
+.py", line 1047, in main
+    CommandLine(prog=prog).main(argv=argv)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\alembic\config
+.py", line 1037, in main
+    self.run_cmd(cfg, options)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\alembic\config
+.py", line 971, in run_cmd
+    fn(
+    ~~^
+        config,
+        ^^^^^^^
+        *[getattr(options, k, None) for k in 
+positional],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^
+        **{k: getattr(options, k, None) for 
+k in kwarg},
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\alembic\comman
+d.py", line 490, in upgrade
+    script.run_env()
+    ~~~~~~~~~~~~~~^^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\alembic\script
+\base.py", line 556, in run_env
+    util.load_python_file(self.dir, "env.py")
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\alembic\util\p
+yfiles.py", line 116, in load_python_file
+    module = load_module_py(module_id, path)
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\alembic\util\p
+yfiles.py", line 136, in load_module_py
+    spec.loader.exec_module(module)  # type: 
+ignore
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^
+  File "<frozen 
+importlib._bootstrap_external>", line 1026, 
+in exec_module
+  File "<frozen importlib._bootstrap>", line 
+488, in _call_with_frames_removed
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\packages\database\alembic\env.py", 
+line 107, in <module>
+    run_migrations_online()
+    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\packages\database\alembic\env.py", 
+line 101, in run_migrations_online
+    context.run_migrations()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "<string>", line 8, in run_migrations
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\alembic\runtim
+e\environment.py", line 969, in 
+run_migrations
+    self.get_context().run_migrations(**kw)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\alembic\runtim
+e\migration.py", line 626, in run_migrations
+    step.migration_fn(**kw)
+    ~~~~~~~~~~~~~~~~~^^^^^^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\packages\database\alembic\versions\c28
+d8d3dd1a7_sync_repository_schema_bounds.py", 
+line 155, in upgrade
+    with op.batch_alter_table('datasets', 
+schema=None) as batch_op:
+         
+~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\siddh\AppData\Local\Programs
+\Python\Python313\Lib\contextlib.py", line 
+148, in __exit__
+    next(self.gen)
+    ~~~~^^^^^^^^^^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\alembic\operat
+ions\base.py", line 408, in batch_alter_table
+    impl.flush()
+    ~~~~~~~~~~^^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\alembic\operat
+ions\batch.py", line 115, in flush
+    fn(*arg, **kw)
+    ~~^^^^^^^^^^^^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\alembic\ddl\po
+stgresql.py", line 189, in alter_column
+    self._exec(
+    ~~~~~~~~~~^
+        PostgresqlColumnType(
+        ^^^^^^^^^^^^^^^^^^^^^
+    ...<8 lines>...
+        )
+        ^
+    )
+    ^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\alembic\ddl\im
+pl.py", line 256, in _exec
+    return conn.execute(construct, params)
+           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\sqlalchemy\eng
+ine\base.py", line 1421, in execute
+    return meth(
+        self,
+        distilled_parameters,
+        execution_options or NO_OPTIONS,
+    )
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\sqlalchemy\sql
+\ddl.py", line 188, in _execute_on_connection
+    return connection._execute_ddl(
+           ~~~~~~~~~~~~~~~~~~~~~~~^
+        self, distilled_params, 
+execution_options
+        
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\sqlalchemy\eng
+ine\base.py", line 1532, in _execute_ddl
+    ret = self._execute_context(
+        dialect,
+    ...<4 lines>...
+        compiled,
+    )
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\sqlalchemy\eng
+ine\base.py", line 1848, in _execute_context
+    return self._exec_single_context(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        dialect, context, statement, 
+parameters
+        
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\sqlalchemy\eng
+ine\base.py", line 1988, in 
+_exec_single_context
+    self._handle_dbapi_exception(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        e, str_statement, 
+effective_parameters, cursor, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\sqlalchemy\eng
+ine\base.py", line 2365, in 
+_handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback
+(exc_info[2]) from e
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\sqlalchemy\eng
+ine\base.py", line 1969, in 
+_exec_single_context
+    self.dialect.do_execute(
+    ~~~~~~~~~~~~~~~~~~~~~~~^
+        cursor, str_statement, 
+effective_parameters, context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\siddh\Downloads\atlas.zip123
+\atlas\.venv\Lib\site-packages\sqlalchemy\eng
+ine\default.py", line 952, in do_execute
+    cursor.execute(statement, parameters)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+sqlalchemy.exc.ProgrammingError: 
+(psycopg2.errors.DatatypeMismatch) default 
+for column "status" cannot be cast 
+automatically to type dataset_status
+
+[SQL: ALTER TABLE datasets ALTER COLUMN 
+status TYPE dataset_status USING 
+status::dataset_status]
+(Background on this error at: 
+https://sqlalche.me/e/20/f405)

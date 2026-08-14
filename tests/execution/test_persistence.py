@@ -20,13 +20,14 @@ from packages.execution_engine.persistence.repository import SqlAlchemyExecution
 
 # Load all models for Base.metadata
 import atlas_db.models  # noqa: F401
+import packages.execution_engine.persistence.models  # noqa: F401
 from atlas_db.models.authoring import Benchmark, BenchmarkVersion
 from atlas_db.models.core import Organization, Project, User
 
 # Try connecting to Postgres if available, else SQLite
 import os
 
-DB_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/atlas")
+DB_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/test_execution_db")
 try:
     engine = create_engine(DB_URL)
     with engine.connect() as conn:

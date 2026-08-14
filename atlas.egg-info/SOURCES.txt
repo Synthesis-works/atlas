@@ -14,6 +14,7 @@ apps/backend/adapters/__init__.py
 apps/backend/adapters/base.py
 apps/backend/adapters/factory.py
 apps/backend/adapters/mock.py
+apps/backend/adapters/ollama.py
 apps/backend/core/logging.py
 apps/backend/core/telemetry/__init__.py
 apps/backend/core/telemetry/context.py
@@ -39,6 +40,7 @@ apps/backend/routers/health.py
 apps/backend/routers/history.py
 apps/backend/routers/internal_workers.py
 apps/backend/routers/leaderboard.py
+apps/backend/routers/models.py
 apps/backend/routers/organizations.py
 apps/backend/routers/projects.py
 apps/backend/routers/reporting.py
@@ -68,6 +70,7 @@ apps/backend/services/organizations.py
 apps/backend/services/projects.py
 apps/backend/services/publishing.py
 apps/backend/services/snapshot.py
+apps/backend/services/storage.py
 apps/backend/worker/__init__.py
 apps/backend/worker/celery_app.py
 apps/backend/worker/execution_runner.py
@@ -75,6 +78,7 @@ apps/backend/worker/execution_worker.py
 apps/backend/worker/prompt_resolver.py
 apps/backend/worker/snapshot_tasks.py
 apps/backend/worker/tasks.py
+apps/web/node_modules/flatted/python/flatted.py
 atlas.egg-info/PKG-INFO
 atlas.egg-info/SOURCES.txt
 atlas.egg-info/dependency_links.txt
@@ -111,6 +115,7 @@ packages/benchmark/validation/schema.py
 packages/core/models/health.py
 packages/core/models/pagination.py
 packages/database/alembic/env.py
+packages/database/alembic/versions/0fe98ac3f9d1_add_dataset_version_id_to_tasks.py
 packages/database/alembic/versions/1df343a1dca3_add_benchmark_dataset_relationships_and_.py
 packages/database/alembic/versions/2256bd2b7c2c_rename_model_outputs_atlas_run_id_to_.py
 packages/database/alembic/versions/27624aa4c089_implement_readiness_review.py
@@ -124,7 +129,9 @@ packages/database/alembic/versions/8c0990ae707b_add_ownership_models.py
 packages/database/alembic/versions/a1b2c3d4e5f6_execution_service_slice_1_and_2.py
 packages/database/alembic/versions/a5eef4ee78a5_make_datasets_project_scoped.py
 packages/database/alembic/versions/b1c2d3e4f5g6_add_outbox_table.py
+packages/database/alembic/versions/b8fe9ea13c79_d1_5_lossless.py
 packages/database/alembic/versions/c1d2e3f4g5h6_update_evaluation_schema.py
+packages/database/alembic/versions/c28d8d3dd1a7_sync_repository_schema_bounds.py
 packages/database/alembic/versions/d2e3f4g5h6i7_update_capability_profile_schema.py
 packages/database/alembic/versions/e5842a639de0_merge_multiple_heads.py
 packages/database/alembic/versions/e837053abeb8_add_celery_task_id_and_cancellation_.py
@@ -159,9 +166,14 @@ packages/database/atlas_db/repositories/system.py
 packages/database/atlas_db/repositories/tasks.py
 packages/database/atlas_db/services/__init__.py
 packages/database/atlas_db/services/benchmark_service.py
+packages/database/atlas_db/services/dataset_extraction.py
+packages/database/atlas_db/services/dataset_service.py
 packages/database/scripts/seed.py
 packages/database/tests/conftest.py
 packages/database/tests/test_base_repository.py
+packages/database/tests/test_d2_extraction.py
+packages/database/tests/test_d2_postgres_integration.py
+packages/database/tests/test_d2_suite.py
 packages/database/tests/test_models.py
 packages/database/tests/test_ownership.py
 packages/datasets/mapper.py
@@ -234,7 +246,9 @@ packages/llm/clients/adapter.py
 packages/llm/clients/base.py
 packages/llm/clients/gemini.py
 packages/llm/clients/grok.py
+packages/llm/clients/groq.py
 packages/llm/clients/mistral.py
+packages/llm/clients/nvidia.py
 packages/llm/clients/ollama.py
 packages/llm/models/__init__.py
 packages/llm/models/model_types.py
