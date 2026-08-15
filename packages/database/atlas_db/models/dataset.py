@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 
 from atlas_db.core.base import Base, BaseMixin, utcnow
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, Index, text
 from sqlalchemy.dialects.postgresql import ENUM, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -122,3 +122,47 @@ class DatasetVersion(Base):
     __mapper_args__ = {"version_id_col": version_number}
 
     __table_args__ = (UniqueConstraint("dataset_id", "version_string", name="uq_dataset_version"),)
+
+
+class DatasetExportState(str, enum.Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class DatasetExportAction(Base):
+    __tablename__ = "dataset_export_actions"
+
+    __table_args__ = (
+        Index(
+            "idx_unique_active_dataset_export",
+            "dataset_version_id",
+            unique=True,
+            postgresql_where=text("status IN ('PENDING'::dataset_export_state, 'RUNNING'::dataset_export_state)"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    dataset_version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("dataset_versions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    status: Mapped[DatasetExportState] = mapped_column(
+        ENUM(DatasetExportState, name="dataset_export_state"), nullable=False, default=DatasetExportState.PENDING
+    )
+    error_message: Mapped[str | None] = mapped_column(String, nullable=True)
+    artifact_uri: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+    created_by_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True, index=True
+    )

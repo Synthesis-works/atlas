@@ -12,7 +12,7 @@ celery_app = Celery(
     "atlas_worker",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["apps.backend.worker.tasks"],
+    include=["apps.backend.worker.tasks", "apps.backend.worker.dataset_tasks"],
 )
 
 celery_app.conf.update(

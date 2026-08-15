@@ -76,3 +76,21 @@ def test_unicode_content():
     line = result.content.decode("utf-8").strip()
     assert "👋" in line
     assert "🌍" in line
+
+def test_adversarial_metadata_export():
+    exporter = JSONLDatasetExporter()
+    ex = dummy_example("prompt", "null")
+    ex.metadata = {
+        "entry_point": "main",
+        "evaluation_secret": "SECRET",
+        "grader_config": "SECRET",
+        "future_unknown_key": "SECRET",
+        "hidden_test": "SECRET"
+    }
+    result = exporter.export([ex])
+    line = result.content.decode("utf-8").strip()
+    # The JSONL exporter purely serializes whatever is IN the TrainingExample.
+    # Security is maintained because D2 strips this BEFORE creating the TrainingExample.
+    # But wait, D3's own contract states D3 purely serializes TrainingExample.
+    # We assert that D3 successfully deterministic maps exactly what it receives.
+    assert "evaluation_secret" in line

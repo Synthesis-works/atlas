@@ -2,6 +2,15 @@ import pytest
 from unittest.mock import patch, MagicMock
 from apps.backend.services.storage import StorageService
 
+@pytest.fixture(autouse=True)
+def mock_settings():
+    with patch("apps.backend.services.storage.settings") as ms:
+        ms.minio_endpoint = "localhost:9000"
+        ms.minio_access_key = "admin"
+        ms.minio_secret_key = "password"
+        ms.minio_secure = False
+        yield ms
+
 @patch("apps.backend.services.storage.Minio")
 def test_storage_service_upload(mock_minio):
     mock_client = MagicMock()

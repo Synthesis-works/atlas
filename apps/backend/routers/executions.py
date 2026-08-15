@@ -83,6 +83,9 @@ def get_execution(
     Retrieves details of an execution including attempts, leases, and artifacts.
     """
     execution = service.get_execution(execution_id)
+    if not execution:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Execution not found")
     return map_to_response(execution)
 
 

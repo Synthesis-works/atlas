@@ -23,6 +23,7 @@ import atlas_db.models  # noqa: F401
 import packages.execution_engine.persistence.models  # noqa: F401
 from atlas_db.models.authoring import Benchmark, BenchmarkVersion
 from atlas_db.models.core import Organization, Project, User
+from packages.execution_engine.persistence.models import ExecutionModel, ExecutionAttemptModel, LeaseModel, ArtifactModel
 
 # Try connecting to Postgres if available, else SQLite
 import os
@@ -39,8 +40,26 @@ except Exception:
 SessionLocal = sessionmaker(bind=engine)
 
 
+from alembic import command
+from alembic.config import Config
+import sqlalchemy as sa
+
 @pytest.fixture(scope="module")
 def setup_database():
+    if has_postgres:
+        import sqlalchemy as sa
+        from sqlalchemy.dialects.postgresql import ENUM
+        from packages.execution_engine.domain.models import ExecutionState, AttemptStatus, ArtifactType
+        with engine.connect() as conn:
+            # Purge lingering test schema structures
+            conn.execute(sa.text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
+
+            # Create explicit ENUMs
+            ENUM(ExecutionState, name="execution_status").create(conn, checkfirst=True)
+            ENUM(AttemptStatus, name="attempt_status").create(conn, checkfirst=True)
+            ENUM(ArtifactType, name="execution_artifact_type").create(conn, checkfirst=True)
+            conn.commit()
+
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)

@@ -97,8 +97,9 @@ def override_leaderboard_and_reporting_dependencies():
 
 
 def test_get_global_leaderboard_contract():
-    """Verify GET /api/v1/leaderboard returns LeaderboardRead schema."""
-    response = client.get("/api/v1/leaderboard")
+    """Verify GET /api/v1/benchmarks/{id}/leaderboard returns LeaderboardRead schema."""
+    benchmark_version_id = "00000000-0000-0000-0000-000000000000"
+    response = client.get(f"/api/v1/benchmarks/{benchmark_version_id}/leaderboard")
     assert response.status_code == 200, f"Expected 200, got {response.status_code}"
     data = response.json()
     assert "entries" in data, "Leaderboard response missing 'entries'"

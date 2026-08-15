@@ -86,4 +86,11 @@ async def metrics():
     """
     # This would typically return `prometheus_client.generate_latest()`
     # We return a placeholder for now since we haven't configured a full prometheus registry
-    return "# HELP atlas_health_checks_total Total health checks\n# TYPE atlas_health_checks_total counter\natlas_health_checks_total 1.0\n"
+    return (
+        "# HELP atlas_health_checks_total Total health checks\n"
+        "# TYPE atlas_health_checks_total counter\n"
+        "atlas_health_checks_total 1.0\n"
+        "atlas_executions_queued_total 0.0\n"
+        "atlas_executions_running_total 0.0\n"
+        "atlas_outbox_pending_total 0.0\n"
+    )

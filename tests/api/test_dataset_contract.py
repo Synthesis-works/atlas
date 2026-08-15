@@ -34,7 +34,7 @@ def override_dataset_dependencies():
     )
 
     mock_service = MagicMock()
-    mock_service.list_all_datasets.return_value = [dataset_domain]
+    mock_service.list_datasets.return_value = [dataset_domain]
     mock_service.get_dataset.side_effect = lambda ds_id: dataset_domain if ds_id == sample_dataset_id else None
     mock_service.create_dataset.side_effect = lambda project_id, user_id, data: Dataset(
         id=uuid.uuid4(),
@@ -79,7 +79,7 @@ def override_dataset_dependencies():
 
 def test_get_datasets_catalog_contract():
     """Verify GET /api/v1/datasets returns a list of DatasetRead DTOs."""
-    response = client.get("/api/v1/datasets")
+    response = client.get("/api/v1/projects/11111111-2222-3333-4444-555555555555/datasets")
     assert response.status_code == 200, f"Expected 200, got {response.status_code}"
     datasets = response.json()
     assert isinstance(datasets, list), "Expected response to be a list"
@@ -95,7 +95,7 @@ def test_get_datasets_catalog_contract():
 def test_get_dataset_by_id_contract():
     """Verify GET /api/v1/datasets/{dataset_id} returns DatasetRead DTO."""
     valid_id = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-    response = client.get(f"/api/v1/datasets/{valid_id}")
+    response = client.get(f"/api/v1/projects/11111111-2222-3333-4444-555555555555/datasets/{valid_id}")
     assert response.status_code == 200, f"Expected 200, got {response.status_code}"
     ds = response.json()
     assert ds["id"] == valid_id
@@ -105,7 +105,7 @@ def test_get_dataset_by_id_contract():
 def test_get_dataset_not_found_returns_404():
     """Verify GET /api/v1/datasets/{non_existent_id} returns 404 Not Found."""
     random_id = str(uuid.uuid4())
-    response = client.get(f"/api/v1/datasets/{random_id}")
+    response = client.get(f"/api/v1/projects/11111111-2222-3333-4444-555555555555/datasets/{random_id}")
     assert response.status_code == 404, f"Expected 404, got {response.status_code}"
 
 

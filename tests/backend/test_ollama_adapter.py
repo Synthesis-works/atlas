@@ -5,7 +5,11 @@ import urllib.error
 
 @pytest.fixture
 def adapter():
-    return OllamaAdapter(target_model="llama3.2:1b")
+    with patch("apps.backend.adapters.ollama.settings") as mock_settings:
+        mock_settings.ollama_base_url = "http://localhost:11434"
+        mock_settings.ollama_default_model = "llama3.2:1b"
+        mock_settings.ollama_timeout = 5
+        yield OllamaAdapter(target_model="llama3.2:1b")
 
 @patch("urllib.request.urlopen")
 def test_ollama_predict_success(mock_urlopen, adapter):
@@ -30,7 +34,9 @@ def test_ollama_predict_timeout(mock_urlopen, adapter):
     assert result.latency_ms >= 0
 
 @patch("urllib.request.urlopen")
-def test_ollama_discovery(mock_urlopen):
+@patch("apps.backend.adapters.ollama.settings")
+def test_ollama_discovery(mock_settings, mock_urlopen):
+    mock_settings.ollama_base_url = "http://localhost:11434"
     mock_response = MagicMock()
     mock_response.read.return_value = b'{"models": [{"name": "llama3.2:1b", "size": 12345}]}'
     mock_response.__enter__.return_value = mock_response
