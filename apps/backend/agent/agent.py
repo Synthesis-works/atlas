@@ -166,6 +166,7 @@ class AtlasAgent:
             task.add_trace("PLAN_GENERATED", {"plan_steps_count": len(task.plan)})
 
         while task.status in (AgentTaskStatus.EXECUTING, AgentTaskStatus.REPAIRING, AgentTaskStatus.PLANNING):
+            old_fingerprint = self._get_progress_fingerprint(task)
             # Enforce hard limits
             if task.step_count >= MAX_STEPS:
                 task.status = AgentTaskStatus.FAILED
@@ -430,4 +431,52 @@ class AtlasAgent:
                 task.add_trace("TASK_FAILED", {"error": decision.error_message})
                 break
 
+            # Plan-Progress Invariant Check
+            new_fingerprint = self._get_progress_fingerprint(task)
+            if new_fingerprint == old_fingerprint:
+                task.consecutive_non_progress_steps += 1
+                if task.consecutive_non_progress_steps >= 4:
+                    task.status = AgentTaskStatus.FAILED
+                    task.completed_at = datetime.now(UTC)
+                    task.error_detail = (
+                        "Plan-Progress Invariant Violation: The agent failed to advance the plan, "
+                        "resolve a clarification, or produce a final result within 4 consecutive reasoning cycles. "
+                        "Stopping execution to prevent infinite loop."
+                    )
+                    task.add_trace(
+                        "PROGRESS_INVARIANT_VIOLATION",
+                        {"consecutive_cycles": task.consecutive_non_progress_steps},
+                    )
+                    break
+            else:
+                task.consecutive_non_progress_steps = 0
+
         return task
+
+    def _get_progress_fingerprint(self, task: AgentTask) -> tuple:
+        """
+        Computes a stable fingerprint representing the task's progress state.
+        If the fingerprint remains unchanged across consecutive reasoning cycles,
+        it indicates that no meaningful progress has been made.
+        """
+        plan_statuses = tuple(getattr(s, "status", "") for s in task.plan)
+        past_clars_count = len(task.past_clarifications)
+        clarification_id = task.clarification_id
+        execution_ids = tuple(task.execution_ids)
+        report_id = task.report_id
+
+        # Serialize unique tool calls (tool name + normalized sorted arguments)
+        unique_calls = []
+        for c in task.tool_calls:
+            args_key = tuple(sorted((k, str(v)) for k, v in c.arguments.items()))
+            unique_calls.append((c.tool_name, args_key))
+        unique_calls_set = tuple(sorted(list(set(unique_calls))))
+
+        return (
+            plan_statuses,
+            past_clars_count,
+            clarification_id,
+            execution_ids,
+            report_id,
+            unique_calls_set,
+        )

@@ -106,6 +106,7 @@ class AgentTask(BaseModel):
     step_count: int = 0
     total_tool_calls: int = 0
     repair_attempts: int = 0
+    consecutive_non_progress_steps: int = 0
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
 

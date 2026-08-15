@@ -84,3 +84,35 @@ def test_agent_run_again_flow():
         ).fetchone()
         assert rep_row is not None
         assert rep_row.id == ver_row.report_id
+
+
+def test_stuck_agent_progress_invariant():
+    from apps.backend.agent.agent import AtlasAgent
+    from apps.backend.agent.state import AgentTask, AgentTaskStatus, AgentDecision, AgentDecisionType
+    from apps.backend.agent.providers.base import BaseLLMProvider
+    from atlas_db.core.session import SessionLocal
+
+    class StuckLLMProvider(BaseLLMProvider):
+        def decide(self, task, context, declarations) -> AgentDecision:
+            return AgentDecision(
+                type=AgentDecisionType.TOOL_CALL,
+                tool_name="get_available_models",
+                arguments={},
+                reasoning="Simulating stuck behavior by calling get_available_models repeatedly."
+            )
+
+    task = AgentTask(
+        goal="Simulate a stuck agent run.",
+        primary_provider="mock",
+    )
+
+    agent = AtlasAgent(provider=StuckLLMProvider())
+    
+    with SessionLocal() as db:
+        run_task = agent.run_task(task, db)
+        
+    assert run_task.status == AgentTaskStatus.FAILED
+    assert "Plan-Progress Invariant Violation" in run_task.error_detail
+    assert run_task.step_count == 5
+    assert run_task.consecutive_non_progress_steps == 4
+
