@@ -4,30 +4,38 @@ import path from 'path';
 const PORT = 5173;
 const CURRENT_DIR = path.resolve(process.cwd());
 
+console.log('==================================================');
+console.log('🛡️ ATLAS FRONTEND PORT & IP BINDING SECURITY GUARD');
+console.log('==================================================');
+
 try {
   let netstatOutput = '';
   try {
     netstatOutput = execSync(`netstat -ano`, { encoding: 'utf-8' });
   } catch (e) {
-    // Ignore error
+    console.error('Failed to run netstat:', e.message);
   }
 
   const lines = netstatOutput.split('\n');
-  let occupyingPid = null;
+  const listeningPids = new Set();
 
   for (const line of lines) {
-    if (line.includes(`:5173`) && line.includes('LISTENING')) {
+    if ((line.includes(':5173 ') || line.includes(':5173\t')) && (line.includes('LISTENING') || line.includes('ESTABLISHED'))) {
       const parts = line.trim().split(/\s+/);
-      occupyingPid = parts[parts.length - 1];
-      break;
+      const pid = parts[parts.length - 1];
+      if (pid && !isNaN(parseInt(pid, 10))) {
+        listeningPids.add(pid);
+      }
     }
   }
 
-  if (occupyingPid) {
+  console.log(`[Atlas Guard] Discovered ${listeningPids.size} listener PIDs on port 5173 (IPv4 & IPv6).`);
+
+  for (const pid of listeningPids) {
     let procInfo = '';
     try {
       procInfo = execSync(
-        `powershell -Command "Get-CimInstance Win32_Process -Filter \\"ProcessId = ${occupyingPid}\\" | Select-Object -ExpandProperty CommandLine"`,
+        `powershell -Command "Get-CimInstance Win32_Process -Filter \\"ProcessId = ${pid}\\" | Select-Object -ExpandProperty CommandLine"`,
         { encoding: 'utf-8' }
       ).trim();
     } catch (e) {
@@ -37,26 +45,25 @@ try {
     const isCurrentWorktree = procInfo.includes('wire_real_llm_adapter');
 
     if (!isCurrentWorktree) {
-      console.error('\n==================================================');
-      console.error('❌ PORT 5173 IS OCCUPIED BY A STALE / FOREIGN PROJECT');
-      console.error('==================================================');
-      console.error(`Occupying Process PID: ${occupyingPid}`);
-      console.error(`Command Line: ${procInfo}`);
-      console.error(`Canonical Worktree: ${CURRENT_DIR}`);
-      console.error('\n[Atlas Guard] Auto-terminating foreign process on port 5173...');
+      console.error(`\n❌ FOREIGN / STALE PROCESS DETECTED ON PORT 5173:`);
+      console.error(`  - PID: ${pid}`);
+      console.error(`  - Command: ${procInfo}`);
+      console.error(`  - Action: Auto-terminating foreign process...`);
       try {
-        execSync(`powershell -Command "Stop-Process -Id ${occupyingPid} -Force"`);
-        console.log(`[Atlas Guard] Successfully killed process ${occupyingPid}. Port 5173 is now free.\n`);
+        execSync(`powershell -Command "Stop-Process -Id ${pid} -Force"`);
+        console.log(`  - Result: Successfully killed PID ${pid}.\n`);
       } catch (killErr) {
-        console.error(`[Atlas Guard] Failed to kill process ${occupyingPid}: ${killErr.message}`);
+        console.error(`  - Result: FAILED to kill PID ${pid}: ${killErr.message}`);
+        console.error('❌ CANNOT CONTINUE. Exiting to prevent port collision.');
         process.exit(1);
       }
     } else {
-      console.log(`\n[Atlas Guard] Port 5173 is already in use by active process (PID ${occupyingPid}) in this worktree.\n`);
+      console.log(`  - PID ${pid}: Valid canonical process in wire_real_llm_adapter.`);
     }
-  } else {
-    console.log('[Atlas Guard] Port 5173 is free. Starting canonical dev server on 127.0.0.1:5173...');
   }
+
+  console.log('✅ Port 5173 IPv4 & IPv6 audit complete. Canonical server launching...\n');
 } catch (err) {
-  // If check fails, allow execution
+  console.error('[Atlas Guard] Exception during port audit:', err.message);
+  process.exit(1);
 }

@@ -6,12 +6,11 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function runForensicAudit() {
-  console.log('==================================================');
-  console.log('🚀 STARTING PLAYWRIGHT REAL BROWSER FORENSIC AUDIT');
-  console.log('==================================================');
+async function auditUrl(browser, targetUrl, screenshotFilename) {
+  console.log(`\n--------------------------------------------------`);
+  console.log(`🌐 AUDITING ENDPOINT: ${targetUrl}`);
+  console.log(`--------------------------------------------------`);
 
-  const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const page = await context.newPage();
 
@@ -44,27 +43,25 @@ async function runForensicAudit() {
     });
   });
 
-  const targetUrl = 'http://127.0.0.1:5173/dashboard/evaluations/new';
-  console.log(`Navigating Chromium to: ${targetUrl}`);
+  const originHost = new URL(targetUrl).origin;
 
   try {
-    await page.goto('http://127.0.0.1:5173/login', { waitUntil: 'networkidle', timeout: 15000 });
+    await page.goto(`${originHost}/login`, { waitUntil: 'networkidle', timeout: 15000 });
     await page.evaluate(() => {
       localStorage.setItem('atlas_logged_in', 'true');
       localStorage.setItem('atlas_token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDIiLCJtZW1iZXJzaGlwX2lkIjpudWxsLCJvcmdhbml6YXRpb25faWQiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJleHAiOjE3ODY3NzAxMDksImlhdCI6MTc4NjYxNDE0OSwianRpIjoiNTZkNzU1ZDUtNzhjZS00YzE1LWE5MDItMGI1ZjVjODcxMTRiIn0.pho6L20Aubonc8tn-gGj-s3vOfwlKuSHpY8HjPpVvlU');
     });
     await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 15000 });
   } catch (gotoErr) {
-    console.warn(`[Warning] Navigation timeout/issue: ${gotoErr.message}`);
+    console.warn(`[Warning] Navigation issue for ${targetUrl}: ${gotoErr.message}`);
   }
 
-  // Wait extra 2s to allow React lazy suspense to settle
   await page.waitForTimeout(2000);
 
-  const screenshotPath = path.resolve(__dirname, 'browser_forensic_screenshot.png');
+  const screenshotPath = path.resolve(__dirname, screenshotFilename);
   await page.screenshot({ path: screenshotPath, fullPage: true });
 
-  const pageUrl = page.url();
+  const finalUrl = page.url();
   const pageTitle = await page.title();
   const bodyText = await page.evaluate(() => document.body.innerText);
   const bodyHtmlLen = await page.evaluate(() => document.body.innerHTML.length);
@@ -75,96 +72,94 @@ async function runForensicAudit() {
     return el ? el.getAttribute('data-canonical-marker') : null;
   });
 
-  const computedStyles = await page.evaluate(() => {
-    const rootEl = document.querySelector('#root');
-    const firstChild = rootEl?.firstElementChild;
-    const bodyStyle = window.getComputedStyle(document.body);
-    const rootStyle = rootEl ? window.getComputedStyle(rootEl) : null;
-    const childStyle = firstChild ? window.getComputedStyle(firstChild) : null;
-
-    return {
-      body: {
-        display: bodyStyle.display,
-        visibility: bodyStyle.visibility,
-        opacity: bodyStyle.opacity,
-        backgroundColor: bodyStyle.backgroundColor,
-        color: bodyStyle.color,
-      },
-      root: rootStyle ? {
-        display: rootStyle.display,
-        visibility: rootStyle.visibility,
-        opacity: rootStyle.opacity,
-        height: rootStyle.height,
-        width: rootStyle.width,
-        overflow: rootStyle.overflow,
-      } : null,
-      topReactChild: childStyle ? {
-        display: childStyle.display,
-        visibility: childStyle.visibility,
-        opacity: childStyle.opacity,
-        position: childStyle.position,
-        zIndex: childStyle.zIndex,
-      } : null,
-    };
-  });
-
-  const rootInnerHtmlSnippet = await page.evaluate(() => {
-    const root = document.querySelector('#root');
-    return root ? root.innerHTML.substring(0, 300) : 'NO_ROOT';
-  });
-
-  console.log('\n--- BROWSER DOM STATE ---');
-  console.log(`Page URL: ${pageUrl}`);
+  console.log(`Final Page URL: ${finalUrl}`);
   console.log(`Page Title: ${pageTitle}`);
   console.log(`Body InnerText Length: ${bodyText.length}`);
   console.log(`Body InnerHTML Length: ${bodyHtmlLen}`);
   console.log(`Root InnerHTML Length: ${rootHtmlLen}`);
   console.log(`Root Children Count: ${rootChildrenCount}`);
   console.log(`Canonical Marker: ${canonicalMarker}`);
-  console.log(`Root InnerHTML Snippet: ${rootInnerHtmlSnippet}`);
+  console.log(`Screenshot Saved: ${screenshotPath}`);
 
-  console.log('\n--- COMPUTED STYLES ---');
-  console.log(JSON.stringify(computedStyles, null, 2));
-
-  console.log('\n--- CHRONOLOGICAL BROWSER CONSOLE MESSAGES ---');
-  if (consoleLogs.length === 0) {
-    console.log('No console messages.');
-  } else {
-    consoleLogs.forEach((log, i) => console.log(`[${i + 1}] [${log.type}] ${log.text}`));
+  if (consoleLogs.length > 0) {
+    console.log(`Console Messages (${consoleLogs.length}):`);
+    consoleLogs.forEach((l, i) => console.log(`  [${i + 1}] [${l.type}] ${l.text}`));
+  }
+  if (pageErrors.length > 0) {
+    console.error(`❌ Page Errors (${pageErrors.length}):`);
+    pageErrors.forEach((e, i) => console.error(`  [${i + 1}] ${e.name}: ${e.message}`));
+  }
+  if (requestFailures.length > 0) {
+    console.error(`❌ Request Failures (${requestFailures.length}):`);
+    requestFailures.forEach((f, i) => console.error(`  [${i + 1}] ${f.method} ${f.url} -> ${f.failure}`));
   }
 
-  console.log('\n--- PAGE ERRORS (JAVASCRIPT EXCEPTIONS) ---');
-  if (pageErrors.length === 0) {
-    console.log('No JS page errors.');
-  } else {
-    pageErrors.forEach((err, i) => {
-      console.log(`[${i + 1}] ${err.name}: ${err.message}`);
-      if (err.stack) console.log(err.stack);
-    });
-  }
+  await context.close();
 
-  console.log('\n--- REQUEST FAILURES ---');
-  if (requestFailures.length === 0) {
-    console.log('No request failures.');
-  } else {
-    requestFailures.forEach((fail, i) => {
-      console.log(`[${i + 1}] ${fail.method} ${fail.url} -> ${fail.failure}`);
-    });
-  }
-
-  console.log('\n--- JS MODULE NETWORK RESPONSES ---');
-  const jsRequests = networkRequests.filter(r => r.url.endsWith('.js') || r.url.endsWith('.tsx') || r.url.includes('/src/'));
-  jsRequests.forEach((req, i) => {
-    console.log(`[${i + 1}] ${req.status} ${req.url} (${req.contentType})`);
-  });
-
-  console.log(`\nScreenshot saved to: ${screenshotPath}`);
-
-  await browser.close();
-  console.log('==================================================');
+  return {
+    targetUrl,
+    finalUrl,
+    rootHtmlLen,
+    rootChildrenCount,
+    canonicalMarker,
+    pageErrorsCount: pageErrors.length,
+    requestFailuresCount: requestFailures.length,
+  };
 }
 
-runForensicAudit().catch(err => {
+async function runForensicAudit() {
+  console.log('==================================================');
+  console.log('🚀 DUAL ORIGIN PLAYWRIGHT BROWSER FORENSIC AUDIT');
+  console.log('   Testing both http://localhost:5173 AND http://127.0.0.1:5173');
+  console.log('==================================================');
+
+  const browser = await chromium.launch({ headless: true });
+
+  const localhostRes = await auditUrl(
+    browser,
+    'http://localhost:5173/dashboard/evaluations/new',
+    'screenshot_localhost.png'
+  );
+
+  const ipRes = await auditUrl(
+    browser,
+    'http://127.0.0.1:5173/dashboard/evaluations/new',
+    'screenshot_127.png'
+  );
+
+  await browser.close();
+
+  console.log('\n==================================================');
+  console.log('📊 DUAL ORIGIN FORENSIC AUDIT SUMMARY');
+  console.log('==================================================');
+  console.log(`http://localhost:5173 -> Marker: ${localhostRes.canonicalMarker} | RootLen: ${localhostRes.rootHtmlLen}`);
+  console.log(`http://127.0.0.1:5173 -> Marker: ${ipRes.canonicalMarker} | RootLen: ${ipRes.rootHtmlLen}`);
+
+  let failed = false;
+
+  if (localhostRes.canonicalMarker !== 'ATLAS_CANONICAL_WORKTREE_MARKER') {
+    console.error('❌ FAIL: http://localhost:5173 is missing ATLAS_CANONICAL_WORKTREE_MARKER!');
+    failed = true;
+  } else {
+    console.log('✅ PASS: http://localhost:5173 rendered canonical worktree!');
+  }
+
+  if (ipRes.canonicalMarker !== 'ATLAS_CANONICAL_WORKTREE_MARKER') {
+    console.error('❌ FAIL: http://127.0.0.1:5173 is missing ATLAS_CANONICAL_WORKTREE_MARKER!');
+    failed = true;
+  } else {
+    console.log('✅ PASS: http://127.0.0.1:5173 rendered canonical worktree!');
+  }
+
+  if (failed) {
+    console.error('\n❌ AUDIT FAILED: Origin divergence detected!');
+    process.exit(1);
+  }
+
+  console.log('\n✨ DUAL ORIGIN AUDIT PASSED PERFECTLY WITH ZERO DIVERGENCE!\n');
+}
+
+runForensicAudit().catch((err) => {
   console.error('Forensic Audit Error:', err);
   process.exit(1);
 });
