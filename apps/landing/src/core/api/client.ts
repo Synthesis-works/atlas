@@ -130,11 +130,6 @@ async function request<T>(endpoint: string, options: RequestOptions = {}, isRetr
     if (activeToken) {
       headers['Authorization'] = `Bearer ${activeToken}`;
     }
-  } else {
-    const token = getAuthToken();
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
   }
 
   const config: RequestInit = {
