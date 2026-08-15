@@ -33,9 +33,6 @@ def test_evaluate_execution_authorized(test_client):
     project_id = uuid.uuid4()
     execution_id = uuid.uuid4()
 
-    profile_id = uuid.uuid4()
-    now = datetime.utcnow()
-
     # We patch ProjectAuthorizationService directly because it's instantiated inside the router
     with patch("apps.backend.routers.evaluation.ProjectAuthorizationService") as mock_authz_cls:
         mock_authz = mock_authz_cls.return_value
@@ -49,29 +46,18 @@ def test_evaluate_execution_authorized(test_client):
             mock_execution.project_id = project_id
             mock_eval_service.execution_repo.get.return_value = mock_execution
 
-            # Setup evaluation return value (CapabilityProfile model)
-            mock_profile = Mock()
-            mock_profile.id = profile_id
-            mock_profile.execution_id = execution_id
-            mock_profile.overall_score = 1.0
-            mock_profile.profile_metadata = {"strategy": "exact_match"}
-            mock_profile.created_at = now
-            mock_profile.updated_at = now
-            mock_profile.scores = []
+            with patch("apps.backend.worker.evaluation_tasks.run_evaluation_task") as mock_task:
+                response = test_client.post(
+                    f"/api/v1/projects/{project_id}/executions/{execution_id}/evaluate"
+                )
 
-            mock_eval_service.evaluate_execution.return_value = mock_profile
+                assert response.status_code == 202
+                data = response.json()
+                assert data["execution_id"] == str(execution_id)
+                assert data["status"] == "QUEUED"
 
-            response = test_client.post(
-                f"/api/v1/projects/{project_id}/executions/{execution_id}/evaluate?force=true"
-            )
+                mock_task.delay.assert_called_once_with(str(execution_id))
 
-            assert response.status_code == 200
-            data = response.json()
-            assert data["id"] == str(profile_id)
-            assert data["execution_id"] == str(execution_id)
-            assert data["overall_score"] == 1.0
-
-            mock_eval_service.evaluate_execution.assert_called_once_with(execution_id, force=True)
 
 
 def test_evaluate_execution_forbidden(test_client):

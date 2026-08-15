@@ -52,3 +52,10 @@ class EvaluationSummaryResponse(BaseModel):
     profile: CapabilityProfileRead | None = None
 
     model_config = {"from_attributes": True}
+
+class EvaluationEnqueuedResponse(BaseModel):
+    execution_id: uuid.UUID
+    status: str = "QUEUED"
+    message: str = "Evaluation task enqueued successfully"
+
+    model_config = {"from_attributes": True}

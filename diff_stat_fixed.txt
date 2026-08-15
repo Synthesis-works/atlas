@@ -1,0 +1,16 @@
+ .coverage                                          | Bin 77824 -> 94208 bytes
+ apps/backend/events/celery_bus.py                  |  39 +-------
+ apps/backend/routers/evaluation.py                 |  17 ++--
+ apps/backend/schemas/evaluation.py                 |   7 ++
+ apps/backend/worker/celery_app.py                  |   2 +-
+ apps/backend/worker/tasks.py                       |   3 +-
+ atlas.egg-info/SOURCES.txt                         |  19 ++++
+ packages/database/atlas_db/models/evaluation.py    |   3 +
+ packages/database/atlas_db/models/leaderboard.py   |  11 ++-
+ packages/evaluation_engine/application/service.py  | 104 ++++++++++++---------
+ .../evaluation_engine/application/subscriber.py    |  62 +++---------
+ .../application/outbox_dispatcher.py               |   3 +
+ pyproject.toml                                     |   8 +-
+ tests/backend/test_api_evaluation.py               |  38 +++-----
+ tests/execution/test_persistence.py                |  51 +++++++---
+ 15 files changed, 181 insertions(+), 186 deletions(-)

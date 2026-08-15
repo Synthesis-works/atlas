@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, UTC
-from sqlalchemy import String, Integer, Float, DateTime, ForeignKey, Enum as SQLEnum
+from sqlalchemy import String, Integer, Float, DateTime, ForeignKey, Enum as SQLEnum, Index, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import JSONB
 import enum
@@ -16,6 +16,15 @@ class TargetType(str, enum.Enum):
 
 class LeaderboardSnapshot(Base):
     __tablename__ = "leaderboard_snapshots"
+    __table_args__ = (
+        Index(
+            "uq_snapshot_target_exec",
+            "target_id",
+            text("(metadata->>'execution_id_trigger')"),
+            unique=True,
+            postgresql_where=text("metadata->>'execution_id_trigger' IS NOT NULL")
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     target_type: Mapped[TargetType] = mapped_column(

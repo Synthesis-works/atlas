@@ -1,0 +1,24 @@
+ M .coverage
+ M apps/backend/events/celery_bus.py
+ M apps/backend/routers/evaluation.py
+ M apps/backend/schemas/evaluation.py
+ M apps/backend/worker/celery_app.py
+ M apps/backend/worker/tasks.py
+ M atlas.egg-info/SOURCES.txt
+ M packages/database/atlas_db/models/evaluation.py
+ M packages/database/atlas_db/models/leaderboard.py
+ M packages/evaluation_engine/application/service.py
+ M packages/evaluation_engine/application/subscriber.py
+ M packages/execution_engine/application/outbox_dispatcher.py
+ M pyproject.toml
+ M tests/backend/test_api_evaluation.py
+ M tests/execution/test_persistence.py
+?? apps/backend/events/snapshot_subscriber.py
+?? apps/backend/worker/evaluation_tasks.py
+?? git_diff_stat.txt
+?? git_status.txt
+?? packages/database/alembic/versions/02f16730fe4f_d6_capabilities_idempotency.py
+?? packages/database/alembic/versions/cb618b624b42_d7_snapshot_idempotency.py
+?? tests/backend/test_d6_evaluation.py
+?? tests/backend/test_d7_reporting_async.py
+?? tests/execution/conftest.py

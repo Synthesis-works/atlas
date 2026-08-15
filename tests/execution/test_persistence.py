@@ -4,6 +4,9 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
+
+pytestmark = pytest.mark.isolate  # Must not run in same process as atlas_db tests
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -46,23 +49,43 @@ import sqlalchemy as sa
 
 @pytest.fixture(scope="module")
 def setup_database():
-    if has_postgres:
-        import sqlalchemy as sa
-        from sqlalchemy.dialects.postgresql import ENUM
-        from packages.execution_engine.domain.models import ExecutionState, AttemptStatus, ArtifactType
-        with engine.connect() as conn:
-            # Purge lingering test schema structures
-            conn.execute(sa.text("DROP SCHEMA public CASCADE; CREATE SCHEMA public;"))
-
-            # Create explicit ENUMs
-            ENUM(ExecutionState, name="execution_status").create(conn, checkfirst=True)
-            ENUM(AttemptStatus, name="attempt_status").create(conn, checkfirst=True)
-            ENUM(ArtifactType, name="execution_artifact_type").create(conn, checkfirst=True)
-            conn.commit()
-
+    # Ensure schema is created (idempotent)
     Base.metadata.create_all(bind=engine)
+
+    if has_postgres:
+        # Wipe only the execution-related tables to isolate this module's tests.
+        # We deliberately avoid DROP SCHEMA CASCADE which would destroy the public
+        # schema and corrupt the SQLAlchemy mapper registry for all downstream tests.
+        _truncate_execution_tables()
+
     yield
-    Base.metadata.drop_all(bind=engine)
+
+    if has_postgres:
+        _truncate_execution_tables()
+    # Note: we intentionally do NOT call drop_all here — that would leave
+    # downstream tests with a dead mapper pointing at non-existent tables.
+
+
+def _truncate_execution_tables():
+    """Truncate only execution-related tables, preserving the public schema."""
+    tables = [
+        "execution_artifacts",
+        "execution_attempts",
+        "execution_leases",
+        "executions",
+        "benchmark_versions",
+        "benchmarks",
+        "organizations",
+        "users",
+        "projects",
+    ]
+    with engine.connect() as conn:
+        # CASCADE handles FK ordering automatically
+        conn.execute(sa.text(
+            f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"
+        ))
+        conn.commit()
+
 
 
 @pytest.fixture

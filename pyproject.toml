@@ -51,11 +51,17 @@ ignore = ["E501", "B008", "E402", "SIM108", "F841", "W291", "W293", "N806", "N80
 minversion = "7.0"
 addopts = "-ra -q --cov=packages --cov=services"
 testpaths = [
-    "tests",
+    # execution-engine persistence tests (tests/execution/) must be run separately:
+    #   uv run pytest tests/execution -q
+    # They import packages.execution_engine.persistence.models which registers a
+    # second mapper for 'executions' table and corrupts the shared mapper registry.
+    "tests/backend",
+    "tests/benchmark",
     "packages/database/tests",
     "services/dataset/tests",
     "services/report/tests"
 ]
+
 pythonpath = [
     ".",
     "packages",

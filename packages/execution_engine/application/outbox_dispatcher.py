@@ -20,6 +20,8 @@ from packages.execution_engine.domain.events import (
     LeaseExpiredEvent,
 )
 
+from packages.evaluation_engine.domain.events import EvaluationCompletedEvent
+
 logger = get_logger("OUTBOX")
 
 # Event Registry to map event types back to classes
@@ -32,6 +34,7 @@ EVENT_REGISTRY: dict[str, type[DomainEvent]] = {
     "ExecutionFailedEvent": ExecutionFailedEvent,
     "ExecutionCompletedEvent": ExecutionCompletedEvent,
     "ExecutionCancelledEvent": ExecutionCancelledEvent,
+    "EvaluationCompletedEvent": EvaluationCompletedEvent,
 }
 
 

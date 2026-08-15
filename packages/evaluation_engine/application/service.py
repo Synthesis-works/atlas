@@ -50,72 +50,90 @@ class EvaluationAppService:
         self.event_publisher = event_publisher
 
     def evaluate_execution(self, execution_id: uuid.UUID) -> None:
+        from atlas_db.models.authoring import BenchmarkVersion
+        from atlas_db.models.evaluation import EvaluationStrategyVersion
+        import json
+
         execution = self.session.query(Execution).filter(Execution.id == execution_id).first()
         if not execution:
             logger.error("Execution not found for evaluation", execution_id=str(execution_id))
             return
 
-        evaluation_id = uuid.uuid4()
-        strategy_version_id = (
-            uuid.uuid4()
-        )  # In a real implementation, fetched from execution.benchmark
+        benchmark_version = self.session.query(BenchmarkVersion).filter(BenchmarkVersion.id == execution.benchmark_version_id).first()
+        if not benchmark_version or not benchmark_version.evaluation_strategy_id:
+            logger.error("No strategy attached to execution", execution_id=str(execution.id))
+            return
 
+        strategy_version_id = benchmark_version.evaluation_strategy_id
+        strategy_version = self.session.query(EvaluationStrategyVersion).filter(EvaluationStrategyVersion.id == strategy_version_id).first()
+        if not strategy_version:
+            logger.error("Strategy configuration missing", execution_id=str(execution.id))
+            return
+
+        strategy_type = strategy_version.strategy.type
+
+        evaluation_id = uuid.uuid4()
         self._publish_started(evaluation_id, execution_id, strategy_version_id)
 
         try:
             # 1. Resolve pipeline components
-            # For the MVP, we hardcode the benchmark type to a generic exact_match to prove the flow
-            strategy_type = "exact_match"
             evaluator, scorer, _ = self.registry.resolve(strategy_type)
 
-            # 2. Extract execution outputs
-            # Assuming execution has a backref to model_output or similar
-            # For now, we mock the outputs
-            mock_execution_output = {"completion": "test output"}
+            if not execution.model_outputs:
+                logger.warning("Execution has no outputs to evaluate", execution_id=str(execution_id))
+                return
 
-            # 3. Measurement Phase
+            # 3. Measurement & Scoring Phase
             context = EvaluatorContext(
                 execution_id=execution_id,
-                benchmark_version="1.0",
-                dataset_version="1.0",
+                benchmark_version=benchmark_version.version_string,
+                dataset_version=str(benchmark_version.primary_dataset_version_id) if benchmark_version.primary_dataset_version_id else "unknown",
                 environment="prod",
             )
             evaluator.prepare(context)
-            raw_measurements = evaluator.evaluate(mock_execution_output)
-            evaluator.postprocess(raw_measurements)
 
-            # 4. Scoring Phase
-            profile = scorer.score(raw_measurements)
+            evaluation_results = []
+            overall_score_total = 0.0
 
-            # 5. Persist Results
-            # Use actual model_output_id if available for the MVP flow
-            model_output_id = (
-                execution.model_outputs[0].id if execution.model_outputs else uuid.uuid4()
-            )
-            result = EvaluationResult(
-                id=evaluation_id,
-                model_output_id=model_output_id,
-                strategy_version_id=strategy_version_id,
-                status=EvaluationStatus.COMPLETED,
-                passed=True if profile.overall_score and profile.overall_score >= 80 else False,
-                raw_measurements=raw_measurements.raw_data,
-                evaluation_context={
-                    "benchmark_version": context.benchmark_version,
-                    "dataset_version": context.dataset_version,
-                    "environment": context.environment,
-                },
-            )
-            self.session.add(result)
+            for output in execution.model_outputs:
+                try:
+                    execution_output = json.loads(output.raw_output)
+                except json.JSONDecodeError:
+                    execution_output = {"completion": output.raw_output}
+
+                raw_measurements = evaluator.evaluate(execution_output)
+                evaluator.postprocess(raw_measurements)
+
+                profile = scorer.score(raw_measurements)
+                overall_score_total += profile.overall_score
+
+                result = EvaluationResult(
+                    id=uuid.uuid4(),
+                    model_output_id=output.id,
+                    strategy_version_id=strategy_version_id,
+                    status=EvaluationStatus.COMPLETED,
+                    passed=True if profile.overall_score and profile.overall_score >= 80 else False,
+                    raw_measurements=raw_measurements.raw_data,
+                    evaluation_context={
+                        "benchmark_version": context.benchmark_version,
+                        "dataset_version": context.dataset_version,
+                        "environment": context.environment,
+                    },
+                )
+                self.session.add(result)
+                evaluation_results.append(result)
+
             self.session.flush()
 
-            # Persist Profile
+            # Create ONE Capability Profile for the execution using the first evaluation_id as the anchor
+            final_score = overall_score_total / len(evaluation_results) if evaluation_results else 0.0
             db_profile = CapabilityProfile(
                 execution_id=execution_id,
-                evaluation_id=result.id,
+                evaluation_id=evaluation_results[0].id,
                 strategy_version_id=strategy_version_id,
                 profile_version=1,
-                overall_score=profile.overall_score,
-                score_explanation=profile.explanation,
+                overall_score=final_score,
+                score_explanation={"overall": final_score},
                 profile_metadata={},
             )
             self.session.add(db_profile)
@@ -131,7 +149,7 @@ class EvaluationAppService:
             uri = self.artifact_store.store_artifact(evaluation_id, "logs.txt", tf_path)
             artifact_count += 1
             db_artifact = EvaluationArtifact(
-                evaluation_result_id=result.id,
+                evaluation_result_id=evaluation_results[0].id,
                 artifact_uri=uri,
                 name="logs.txt",
                 mime_type="text/plain",
@@ -144,11 +162,9 @@ class EvaluationAppService:
             self._publish_completed(
                 evaluation_id=evaluation_id,
                 execution_id=execution_id,
-                overall_score=profile.overall_score,
+                overall_score=final_score,
                 artifact_count=artifact_count,
             )
-
-            # Commit handled by caller or Outbox transaction wrapper
 
         except Exception as e:
             logger.error(

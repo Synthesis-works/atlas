@@ -71,6 +71,7 @@ def outbox_sweep_task(self):
     Celery periodic task to process pending outbox events.
     """
     from packages.evaluation_engine.application.subscriber import EvaluationSubscriber
+    from apps.backend.events.snapshot_subscriber import SnapshotSubscriber
 
     try:
         with SessionLocal() as db:
@@ -78,7 +79,7 @@ def outbox_sweep_task(self):
             # In a real DI container this would be injected.
             publisher = CompositeEventPublisher(
                 telemetry_sink=NullTelemetrySink(),
-                subscribers=[EvaluationSubscriber()],  # Hook the new evaluation subsystem
+                subscribers=[EvaluationSubscriber(), SnapshotSubscriber()],  # Hook the new evaluation subsystem and Snapshots
             )
             dispatcher = OutboxDispatcher(session=db, publisher=publisher)
             processed_count = dispatcher.sweep()
