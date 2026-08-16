@@ -19,6 +19,7 @@ from atlas_db.repositories.evaluation import (
 from atlas_db.repositories.execution import ExecutionRepository, ModelOutputRepository
 from atlas_db.repositories.tasks import TestCaseRepository
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from apps.backend.evaluation import ExactMatchStrategy
@@ -43,16 +44,32 @@ class EvaluationService:
     def _get_or_create_strategy_version(self) -> EvaluationStrategyVersion:
         strategy = self.strategy_repo.get_by(type=StrategyType.EXACT_MATCH)
         if not strategy:
-            strategy = self.strategy_repo.create(
-                EvaluationStrategy(name="System Exact Match", type=StrategyType.EXACT_MATCH)
-            )
+            try:
+                strategy = self.strategy_repo.create(
+                    EvaluationStrategy(name="System Exact Match", type=StrategyType.EXACT_MATCH)
+                )
+            except IntegrityError:
+                # Concurrent evaluators may race to create the singleton strategy.
+                # Roll back the failed insert and reuse the winning row.
+                self.db.rollback()
+                strategy = self.strategy_repo.get_by(type=StrategyType.EXACT_MATCH)
+                if not strategy:
+                    raise
             self.db.flush()
 
         version = self.strategy_version_repo.get_by(strategy_id=strategy.id, version_string="v1.0")
         if not version:
-            version = self.strategy_version_repo.create(
-                EvaluationStrategyVersion(strategy_id=strategy.id, version_string="v1.0")
-            )
+            try:
+                version = self.strategy_version_repo.create(
+                    EvaluationStrategyVersion(strategy_id=strategy.id, version_string="v1.0")
+                )
+            except IntegrityError:
+                self.db.rollback()
+                version = self.strategy_version_repo.get_by(
+                    strategy_id=strategy.id, version_string="v1.0"
+                )
+                if not version:
+                    raise
             self.db.flush()
 
         return version
