@@ -21,21 +21,25 @@ class ExecutionRunner:
         Returns a list of uncommitted ModelOutput objects.
         """
         from atlas_db.models.tasks import TestCase
-        
+
         adapter = AdapterFactory.get_adapter(execution.target_model)
         resolver = PromptResolver()
 
         dv_id = execution.dataset_version_id
         if not dv_id:
             logger.error(f"Execution {execution.id} lacks dataset_version_id. Failing explicitly.")
-            raise ValueError(f"Execution {execution.id} lacks dataset_version_id. Execution isolated runs require a dataset_version_id.")
+            raise ValueError(
+                f"Execution {execution.id} lacks dataset_version_id. Execution isolated runs require a dataset_version_id."
+            )
 
         # Load isolated test cases for the exact dataset version
         test_cases = self.db.query(TestCase).filter(TestCase.dataset_version_id == dv_id).all()
-        
+
         if not test_cases:
             logger.error(f"No test cases found for dataset_version_id {dv_id}")
-            raise ValueError(f"No test cases found for dataset_version_id {dv_id} in execution {execution.id}")
+            raise ValueError(
+                f"No test cases found for dataset_version_id {dv_id} in execution {execution.id}"
+            )
 
         # Calculate total test cases for progress tracking
         execution.total_items = len(test_cases)

@@ -23,10 +23,12 @@ async def lifespan(app: FastAPI):
 
     # Initialize database schemas and tables on startup for development/SQLite mode
     from apps.backend.config import settings
+
     if "sqlite" in settings.database_url or settings.environment == "development":
         try:
             from atlas_db.core.initialize import initialize_database_schema
             from atlas_db.core.session import engine
+
             initialize_database_schema(engine)
         except Exception as e:
             logger.critical(f"Database schema initialization failed: {e}")

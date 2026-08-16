@@ -23,26 +23,27 @@ REQUIRED_TABLES = [
     "report_versions",
 ]
 
+
 def initialize_database_schema(engine: Engine) -> None:
     """
     Initialize database schemas and tables on the target engine.
     Ensures all models are fully registered, and verifies that the required tables exist.
     """
     logger.info(f"Initializing database schema on engine: {engine.url}")
-    
+
     # 1. Create tables
     Base.metadata.create_all(bind=engine)
-    
+
     # 2. Verify all required tables exist
     inspector = inspect(engine)
     existing_tables = inspector.get_table_names()
-    
+
     logger.info(f"Existing tables in database: {existing_tables}")
-    
+
     missing_tables = [table for table in REQUIRED_TABLES if table not in existing_tables]
     if missing_tables:
         err_msg = f"Database initialization failed. Missing required tables: {missing_tables}"
         logger.error(err_msg)
         raise RuntimeError(err_msg)
-        
+
     logger.info("Database schema initialized and verified successfully.")

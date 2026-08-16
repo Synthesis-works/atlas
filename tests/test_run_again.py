@@ -7,13 +7,17 @@ from apps.backend.routers.agent import _agent_tasks_db
 
 client = TestClient(app)
 
+
 @pytest.fixture(autouse=True)
 def setup_db():
     from atlas_db.core.engine import engine
+
     if "sqlite" in str(engine.url):
         from atlas_db.core.initialize import initialize_database_schema
+
         initialize_database_schema(engine)
     _agent_tasks_db.clear()
+
 
 def test_agent_run_again_flow():
     # 1. Start normal benchmark task
@@ -31,7 +35,7 @@ def test_agent_run_again_flow():
     # Get detailed state of source task
     source_detail = client.get(f"/api/v1/agent/tasks/{source_id}").json()
     assert source_detail["report_id"] is not None
-    
+
     # 2. Trigger Run Again
     rerun_resp = client.post(f"/api/v1/agent/tasks/{source_id}/run-again")
     assert rerun_resp.status_code == 200
@@ -42,7 +46,7 @@ def test_agent_run_again_flow():
 
     # 3. Retrieve and inspect rerun task details
     rerun_detail = client.get(f"/api/v1/agent/tasks/{rerun_id}").json()
-    
+
     # Assert reuse of configurations
     assert rerun_detail["run_mode"] == "RERUN"
     assert rerun_detail["source_task_id"] == source_id
@@ -70,17 +74,21 @@ def test_agent_run_again_flow():
     with SessionLocal() as db:
         # Retrieve report version
         ver_row = db.execute(
-            text("SELECT id, report_id, execution_id FROM report_versions WHERE id = :report_version_id"),
-            {"report_version_id": rerun_detail["report_id"].replace("-", "")}
+            text(
+                "SELECT id, report_id, execution_id FROM report_versions WHERE id = :report_version_id"
+            ),
+            {"report_version_id": rerun_detail["report_id"].replace("-", "")},
         ).fetchone()
         assert ver_row is not None
         assert ver_row.id == rerun_detail["report_id"].replace("-", "")
-        assert ver_row.execution_id in [eid.replace("-", "") for eid in rerun_detail["execution_ids"]]
+        assert ver_row.execution_id in [
+            eid.replace("-", "") for eid in rerun_detail["execution_ids"]
+        ]
 
         # Retrieve new report
         rep_row = db.execute(
             text("SELECT id, name, project_id FROM reports WHERE id = :report_id"),
-            {"report_id": ver_row.report_id}
+            {"report_id": ver_row.report_id},
         ).fetchone()
         assert rep_row is not None
         assert rep_row.id == ver_row.report_id
@@ -88,7 +96,12 @@ def test_agent_run_again_flow():
 
 def test_stuck_agent_progress_invariant():
     from apps.backend.agent.agent import AtlasAgent
-    from apps.backend.agent.state import AgentTask, AgentTaskStatus, AgentDecision, AgentDecisionType
+    from apps.backend.agent.state import (
+        AgentTask,
+        AgentTaskStatus,
+        AgentDecision,
+        AgentDecisionType,
+    )
     from apps.backend.agent.providers.base import BaseLLMProvider
     from atlas_db.core.session import SessionLocal
 
@@ -98,7 +111,7 @@ def test_stuck_agent_progress_invariant():
                 type=AgentDecisionType.TOOL_CALL,
                 tool_name="get_available_models",
                 arguments={},
-                reasoning="Simulating stuck behavior by calling get_available_models repeatedly."
+                reasoning="Simulating stuck behavior by calling get_available_models repeatedly.",
             )
 
     task = AgentTask(
@@ -107,12 +120,11 @@ def test_stuck_agent_progress_invariant():
     )
 
     agent = AtlasAgent(provider=StuckLLMProvider())
-    
+
     with SessionLocal() as db:
         run_task = agent.run_task(task, db)
-        
+
     assert run_task.status == AgentTaskStatus.FAILED
     assert "Plan-Progress Invariant Violation" in run_task.error_detail
     assert run_task.step_count == 5
     assert run_task.consecutive_non_progress_steps == 4
-

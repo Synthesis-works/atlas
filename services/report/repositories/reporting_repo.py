@@ -238,14 +238,17 @@ class ReportingRepository:
 
     def get_report_export(
         self, run_id: UUID
-    ) -> tuple[
-        AtlasRun,
-        ReportVersion | None,
-        Report | None,
-        BenchmarkVersion | None,
-        Benchmark | None,
-        list[ReportMetric],
-    ] | None:
+    ) -> (
+        tuple[
+            AtlasRun,
+            ReportVersion | None,
+            Report | None,
+            BenchmarkVersion | None,
+            Benchmark | None,
+            list[ReportMetric],
+        ]
+        | None
+    ):
         """Resolve the persisted report artifact for an execution run.
 
         Returns the Execution, its latest ReportVersion (if any), the Report it

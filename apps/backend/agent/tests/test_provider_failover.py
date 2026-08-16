@@ -487,9 +487,7 @@ def test_cooldown_skip_emits_provider_fallback_trace():
     assert decision.response == "Groq Ok"
     assert task.current_provider == "groq"
 
-    fallback_events = [
-        e for e in task.execution_trace if e.event_type == "provider_fallback"
-    ]
+    fallback_events = [e for e in task.execution_trace if e.event_type == "provider_fallback"]
     assert len(fallback_events) == 1
     details = fallback_events[0].details
     assert details["failed_provider"] == "gemini"
@@ -521,7 +519,9 @@ def test_unhealthy_skip_emits_provider_fallback_trace():
     groq = MockProviderScenario(
         "groq", [{"type": AgentDecisionType.FINAL_RESPONSE, "response": "Groq Ok"}]
     )
-    router = ProviderRouter(primary=_UnhealthyProvider(), fallbacks=[groq], max_retries_per_provider=0)
+    router = ProviderRouter(
+        primary=_UnhealthyProvider(), fallbacks=[groq], max_retries_per_provider=0
+    )
     task = AgentTask(goal="Unhealthy trace", granted_permissions=[AgentPermission.READ])
 
     decision = router.decide(task, "ctx", [])
@@ -529,9 +529,7 @@ def test_unhealthy_skip_emits_provider_fallback_trace():
     assert decision.response == "Groq Ok"
     assert task.current_provider == "groq"
 
-    fallback_events = [
-        e for e in task.execution_trace if e.event_type == "provider_fallback"
-    ]
+    fallback_events = [e for e in task.execution_trace if e.event_type == "provider_fallback"]
     assert len(fallback_events) == 1
     details = fallback_events[0].details
     assert details["failed_provider"] == "gemini"
@@ -559,9 +557,7 @@ def test_retry_exhaustion_emits_provider_fallback_trace():
     assert decision.response == "Groq Ok"
     assert task.current_provider == "groq"
 
-    fallback_events = [
-        e for e in task.execution_trace if e.event_type == "provider_fallback"
-    ]
+    fallback_events = [e for e in task.execution_trace if e.event_type == "provider_fallback"]
     assert len(fallback_events) == 1
     details = fallback_events[0].details
     assert details["failed_provider"] == "gemini"
@@ -586,7 +582,9 @@ def test_exception_retry_exhaustion_emits_provider_fallback_trace():
     groq = MockProviderScenario(
         "groq", [{"type": AgentDecisionType.FINAL_RESPONSE, "response": "Groq Ok"}]
     )
-    router = ProviderRouter(primary=_RaisingProvider(), fallbacks=[groq], max_retries_per_provider=0)
+    router = ProviderRouter(
+        primary=_RaisingProvider(), fallbacks=[groq], max_retries_per_provider=0
+    )
     task = AgentTask(goal="Exception exhaustion trace", granted_permissions=[AgentPermission.READ])
 
     decision = router.decide(task, "ctx", [])
@@ -594,9 +592,7 @@ def test_exception_retry_exhaustion_emits_provider_fallback_trace():
     assert decision.response == "Groq Ok"
     assert task.current_provider == "groq"
 
-    fallback_events = [
-        e for e in task.execution_trace if e.event_type == "provider_fallback"
-    ]
+    fallback_events = [e for e in task.execution_trace if e.event_type == "provider_fallback"]
     assert len(fallback_events) == 1
     details = fallback_events[0].details
     assert details["failed_provider"] == "gemini"

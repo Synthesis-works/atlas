@@ -14,6 +14,7 @@ The normalizer never mutates the original Gemini schema in-place: every
 conversion produces a brand-new dict tree, so the canonical Gemini schema
 remains untouched for the Gemini provider.
 """
+
 from typing import Any
 import json
 
@@ -58,7 +59,9 @@ def _normalize_schema_object(schema: dict[str, Any]) -> dict[str, Any]:
         elif key in _SINGLE_SCHEMA_KEYS and isinstance(value, dict):
             result[key] = _normalize_schema_object(value)
         elif key in _LIST_SCHEMA_KEYS and isinstance(value, list):
-            result[key] = [_normalize_schema_object(item) for item in value if isinstance(item, dict)]
+            result[key] = [
+                _normalize_schema_object(item) for item in value if isinstance(item, dict)
+            ]
         elif key == "properties" and isinstance(value, dict):
             result[key] = {
                 prop_name: _normalize_schema_object(prop_spec)

@@ -101,7 +101,9 @@ def test_export_run_results_json(test_client, mock_reporting_service):
 
     mock_reporting_service.build_report_export.return_value = None
     mock_reporting_service.export_run_results.return_value = ExportResult(
-        content=b'{"report": {"title": "Sample"}}', mime_type="application/json", filename_extension="json"
+        content=b'{"report": {"title": "Sample"}}',
+        mime_type="application/json",
+        filename_extension="json",
     )
 
     response = test_client.get(f"/api/v1/reports/runs/{run_id}/export?format=json")

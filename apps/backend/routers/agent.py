@@ -8,7 +8,11 @@ from sqlalchemy.orm import Session
 from apps.backend.agent.agent import AtlasAgent
 from apps.backend.agent.providers.base import BaseLLMProvider
 from apps.backend.agent.providers.mock import MockAgentProvider
-from apps.backend.agent.providers.router import ProviderRouter, build_provider_instance, get_configured_providers
+from apps.backend.agent.providers.router import (
+    ProviderRouter,
+    build_provider_instance,
+    get_configured_providers,
+)
 from apps.backend.agent.state import AgentPermission, AgentTask, AgentTaskStatus
 from apps.backend.agent.tools.registry import ToolRegistry
 from apps.backend.dependencies import get_db_session
@@ -166,8 +170,7 @@ def get_agent_report(report_id: str, db: Session = Depends(get_db_session)):
         )
 
     metrics = [
-        {"metric_name": m.metric_name, "metric_value": m.metric_value}
-        for m in version.metrics
+        {"metric_name": m.metric_name, "metric_value": m.metric_value} for m in version.metrics
     ]
 
     # Resolve the real benchmark ID when possible:
@@ -219,7 +222,6 @@ def delete_agent_task(task_id: UUID):
         del _agent_tasks_db[task_id]
         return {"status": "success", "message": f"Task {task_id} deleted."}
     raise HTTPException(status_code=404, detail="Task not found")
-
 
 
 @router.post("/tasks/{task_id}/approve", response_model=dict[str, Any])
@@ -398,8 +400,9 @@ def run_agent_task_again(
 
     # Create new task cloning parameters
     from uuid import uuid4
+
     new_task_id = uuid4()
-    
+
     new_task = AgentTask(
         task_id=new_task_id,
         goal=old_task.goal,
@@ -420,12 +423,12 @@ def run_agent_task_again(
 
     # Trace rerun start
     new_task.add_trace(
-        "TASK_CLONED", 
+        "TASK_CLONED",
         {
             "source_task_id": str(old_task.task_id),
             "benchmark_version_id": old_task.benchmark_version_id,
             "dataset_version_id": old_task.dataset_version_id,
-        }
+        },
     )
 
     # Start the task in background

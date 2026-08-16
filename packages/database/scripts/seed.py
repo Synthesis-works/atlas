@@ -27,11 +27,11 @@ async def main():
 
         # Create a User
         admin_user = User(
-            email="admin@atlas.local", 
-            full_name="Atlas Admin", 
-            org_id=org.id, 
+            email="admin@atlas.local",
+            full_name="Atlas Admin",
+            org_id=org.id,
             is_active=True,
-            password_hash="$argon2id$v=19$m=65536,t=3,p=4$g4pnVKod3E0CzEDKN26z+g$UicSqlEoaoTeYZp8bM7erzPSnkwOs/pHEMucZVQXfw8"
+            password_hash="$argon2id$v=19$m=65536,t=3,p=4$g4pnVKod3E0CzEDKN26z+g$UicSqlEoaoTeYZp8bM7erzPSnkwOs/pHEMucZVQXfw8",
         )
         session.add(admin_user)
         await session.commit()

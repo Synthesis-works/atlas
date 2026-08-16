@@ -130,6 +130,7 @@ class EvaluationService:
 
             if method == "numeric":
                 import re
+
                 nums_raw = re.findall(r"[-+]?\d*\.\d+|\d+", raw_out)
                 nums_exp = re.findall(r"[-+]?\d*\.\d+|\d+", exp)
                 if nums_raw and nums_exp and nums_raw[0] == nums_exp[0]:
@@ -137,9 +138,13 @@ class EvaluationService:
                     score = 1.0
                     reasoning = f"Numeric value equality verified ({nums_raw[0]} == {nums_exp[0]})"
                 else:
-                    passed = (exp.lower() in raw_lower)
+                    passed = exp.lower() in raw_lower
                     score = 1.0 if passed else 0.0
-                    reasoning = "Numeric match passed" if passed else f"Expected numeric value '{exp}', got '{raw_out}'"
+                    reasoning = (
+                        "Numeric match passed"
+                        if passed
+                        else f"Expected numeric value '{exp}', got '{raw_out}'"
+                    )
 
             elif method == "accepted_answers":
                 passed = any(ans.lower() in raw_lower for ans in accepted_answers)
@@ -164,7 +169,7 @@ class EvaluationService:
                         matched_criteria = ["Responds with a friendly greeting"]
                     else:
                         matched_criteria = ["Response satisfies benchmark intent"]
-                
+
                 passed = has_greeting or (len(matched_criteria) > 0)
                 score = 1.0 if passed else 0.0
                 reasoning = (
@@ -177,7 +182,11 @@ class EvaluationService:
                 passed, score, metrics = self.exact_match.evaluate(
                     reference=exp, prediction=raw_out
                 )
-                reasoning = "Exact match verification passed" if passed else f"Expected '{exp}', got '{raw_out}'"
+                reasoning = (
+                    "Exact match verification passed"
+                    if passed
+                    else f"Expected '{exp}', got '{raw_out}'"
+                )
 
             result = EvaluationResult(
                 model_output_id=output.id,

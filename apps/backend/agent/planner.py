@@ -41,7 +41,9 @@ class AgentPlanner:
                     status="COMPLETED",
                     result_summary="Reused existing validation status.",
                 ),
-                PlanStep(step_number=5, description="Run target model executions", status="PENDING"),
+                PlanStep(
+                    step_number=5, description="Run target model executions", status="PENDING"
+                ),
                 PlanStep(
                     step_number=6,
                     description="Evaluate outputs using evaluation cases",

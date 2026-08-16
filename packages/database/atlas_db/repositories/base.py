@@ -33,7 +33,7 @@ class BaseRepository(Generic[ModelType]):
     def create(self, obj_in: Any = None, *, commit: bool = True, **kwargs: Any) -> ModelType:
         if obj_in is None:
             obj_in = kwargs.pop("obj_in", None)
-            
+
         if obj_in is not None:
             if isinstance(obj_in, self.model):
                 obj = obj_in

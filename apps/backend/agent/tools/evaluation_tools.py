@@ -68,6 +68,7 @@ class CreateEvaluationCaseTool(BaseTool):
 
         if agent_task_id:
             from apps.backend.routers.agent import _agent_tasks_db
+
             try:
                 agent_task = _agent_tasks_db.get(uuid.UUID(agent_task_id))
                 if agent_task:
@@ -90,7 +91,9 @@ class CreateEvaluationCaseTool(BaseTool):
         # Fetch all test cases for this benchmark version
         db_test_cases = []
         if bv_id:
-            db_test_cases = db.query(DBTestCase).join(DBTask).filter(DBTask.benchmark_version_id == bv_id).all()
+            db_test_cases = (
+                db.query(DBTestCase).join(DBTask).filter(DBTask.benchmark_version_id == bv_id).all()
+            )
 
         created_cases = []
         for case in evaluation_cases:
@@ -109,19 +112,18 @@ class CreateEvaluationCaseTool(BaseTool):
                 if input_text is not None and db_test_cases:
                     target_case = next(
                         (tc for tc in db_test_cases if tc.input_data.get("text") == input_text),
-                        None
+                        None,
                     )
                 # 2. Try matching by direct task ID UUID
                 if not target_case and db_test_cases:
                     try:
                         t_uuid = uuid.UUID(str(case_task_id))
                         target_case = next(
-                            (tc for tc in db_test_cases if tc.task_id == t_uuid),
-                            None
+                            (tc for tc in db_test_cases if tc.task_id == t_uuid), None
                         )
                     except ValueError:
                         pass
-            
+
             # If still not found, check the first test case
             if not target_case and db_test_cases:
                 target_case = db_test_cases[0]
@@ -131,7 +133,7 @@ class CreateEvaluationCaseTool(BaseTool):
                     "expected_answer": expected,
                     "evaluation_method": method,
                     "accepted_answers": accepted,
-                    "rubric_criteria": rubric
+                    "rubric_criteria": rubric,
                 }
                 db.add(target_case)
 
@@ -184,6 +186,7 @@ class EvaluateRunTool(BaseTool):
 
     def execute(self, db: Session, execution_id: str, **kwargs: Any) -> Any:
         import uuid
+
         try:
             exec_uuid = uuid.UUID(execution_id)
         except ValueError:
@@ -201,7 +204,9 @@ class EvaluateRunTool(BaseTool):
 
         # Fetch model outputs from database
         execution = db.query(DBExecution).filter(DBExecution.id == exec_uuid).first()
-        model_outputs = db.query(DBModelOutput).filter(DBModelOutput.execution_id == exec_uuid).all()
+        model_outputs = (
+            db.query(DBModelOutput).filter(DBModelOutput.execution_id == exec_uuid).all()
+        )
         if not model_outputs:
             return {
                 "execution_id": execution_id,
@@ -213,6 +218,7 @@ class EvaluateRunTool(BaseTool):
 
         # Invoke core evaluation service
         from apps.backend.services.evaluation import EvaluationService
+
         eval_service = EvaluationService(db)
         profile = eval_service.evaluate_execution(exec_uuid, force=True)
         db.commit()
@@ -230,7 +236,11 @@ class EvaluateRunTool(BaseTool):
             task = db.query(DBTask).filter(DBTask.id == test_case.task_id).first()
             task_id_str = str(task.id) if task else "task-default"
 
-            eval_res = db.query(DBEvaluationResult).filter(DBEvaluationResult.model_output_id == out.id).first()
+            eval_res = (
+                db.query(DBEvaluationResult)
+                .filter(DBEvaluationResult.model_output_id == out.id)
+                .first()
+            )
             if not eval_res:
                 continue
 
@@ -244,32 +254,39 @@ class EvaluateRunTool(BaseTool):
             is_correct = bool(eval_res.passed)
             if is_correct:
                 passed_count += 1
-            
+
             total_latency += getattr(out, "duration_ms", 0) or 0
 
             # Use local normalization helper
             from apps.backend.agent.tools.execution_tools import _normalize_answer
+
             norm_ans = _normalize_answer(out.raw_output, exp)
 
-            evaluated_results.append({
-                "execution_id": execution_id,
-                "evaluation_case_id": str(eval_res.id),
-                "task_id": task_id_str,
-                "model": execution.target_model if execution else "model-default",
-                "question": test_case.input_data.get("text", "") if test_case.input_data else "",
-                "raw_output": out.raw_output,
-                "model_answer": norm_ans or out.raw_output,
-                "expected_answer": exp,
-                "accepted_answers": accepted_answers,
-                "evaluation_method": method,
-                "rubric_criteria": rubric_criteria,
-                "criteria_summary": f"{len(rubric_criteria)} criteria" if rubric_criteria else "exact match",
-                "correct": is_correct,
-                "judge_result": "PASS" if is_correct else "FAIL",
-                "score": score,
-                "reasoning": eval_res.reasoning,
-                "latency_ms": getattr(out, "duration_ms", 0) or 0,
-            })
+            evaluated_results.append(
+                {
+                    "execution_id": execution_id,
+                    "evaluation_case_id": str(eval_res.id),
+                    "task_id": task_id_str,
+                    "model": execution.target_model if execution else "model-default",
+                    "question": test_case.input_data.get("text", "")
+                    if test_case.input_data
+                    else "",
+                    "raw_output": out.raw_output,
+                    "model_answer": norm_ans or out.raw_output,
+                    "expected_answer": exp,
+                    "accepted_answers": accepted_answers,
+                    "evaluation_method": method,
+                    "rubric_criteria": rubric_criteria,
+                    "criteria_summary": f"{len(rubric_criteria)} criteria"
+                    if rubric_criteria
+                    else "exact match",
+                    "correct": is_correct,
+                    "judge_result": "PASS" if is_correct else "FAIL",
+                    "score": score,
+                    "reasoning": eval_res.reasoning,
+                    "latency_ms": getattr(out, "duration_ms", 0) or 0,
+                }
+            )
 
         total_count = len(evaluated_results)
         acc = (passed_count / total_count * 100.0) if total_count > 0 else 0.0
@@ -320,14 +337,20 @@ class CompareResultsTool(BaseTool):
             model_name = exec_obj.target_model if exec_obj else f"model-{idx + 1}"
 
             # Query the actual CapabilityProfile score
-            profile = db.query(DBCapabilityProfile).filter(DBCapabilityProfile.execution_id == exec_uuid).first()
+            profile = (
+                db.query(DBCapabilityProfile)
+                .filter(DBCapabilityProfile.execution_id == exec_uuid)
+                .first()
+            )
             accuracy = (profile.overall_score * 100.0) if profile else 0.0
 
-            leaderboard.append({
-                "rank": idx + 1,
-                "model": model_name,
-                "accuracy": round(accuracy, 1),
-            })
+            leaderboard.append(
+                {
+                    "rank": idx + 1,
+                    "model": model_name,
+                    "accuracy": round(accuracy, 1),
+                }
+            )
 
         # Sort leaderboard descending by accuracy
         leaderboard.sort(key=lambda x: x["accuracy"], reverse=True)
@@ -361,7 +384,7 @@ class GenerateReportTool(BaseTool):
     ) -> Any:
         import uuid
         from atlas_db.models.reporting import Report as DBReport, ReportVersion as DBReportVersion
-        
+
         report_id = uuid.uuid4()
         agent_task_id = kwargs.get("task_id")
         proj_id = kwargs.get("project_id") or uuid.UUID("00000000-0000-0000-0000-000000000001")
@@ -370,6 +393,7 @@ class GenerateReportTool(BaseTool):
         exec_id = None
         if agent_task_id:
             from apps.backend.routers.agent import _agent_tasks_db
+
             try:
                 task_obj = _agent_tasks_db.get(uuid.UUID(agent_task_id))
                 if task_obj and task_obj.execution_ids:
@@ -378,7 +402,11 @@ class GenerateReportTool(BaseTool):
                 pass
 
         # Find or create a Report for this project/benchmark
-        report_obj = db.query(DBReport).filter(DBReport.project_id == proj_id, DBReport.name == title).first()
+        report_obj = (
+            db.query(DBReport)
+            .filter(DBReport.project_id == proj_id, DBReport.name == title)
+            .first()
+        )
         if not report_obj:
             report_obj = DBReport(
                 id=uuid.uuid4(),
@@ -398,7 +426,7 @@ class GenerateReportTool(BaseTool):
             execution_id=exec_id,
         )
         db.add(report_version)
-        
+
         try:
             db.commit()
             db.refresh(report_version)
@@ -408,6 +436,7 @@ class GenerateReportTool(BaseTool):
         # Update AgentTask with report tracking if task_id exists
         if agent_task_id:
             from apps.backend.routers.agent import _agent_tasks_db
+
             try:
                 task_obj = _agent_tasks_db.get(uuid.UUID(agent_task_id))
                 if task_obj:
@@ -462,9 +491,7 @@ class GenerateReportTool(BaseTool):
         metrics: list[Any] = []
 
         profile = (
-            db.query(CapabilityProfile)
-            .filter(CapabilityProfile.execution_id == exec_id)
-            .first()
+            db.query(CapabilityProfile).filter(CapabilityProfile.execution_id == exec_id).first()
         )
         if profile and profile.overall_score is not None:
             metrics.append(
@@ -477,9 +504,7 @@ class GenerateReportTool(BaseTool):
 
         output_ids = [
             mo.id
-            for mo in db.query(DBModelOutput)
-            .filter(DBModelOutput.execution_id == exec_id)
-            .all()
+            for mo in db.query(DBModelOutput).filter(DBModelOutput.execution_id == exec_id).all()
         ]
         if output_ids:
             total = len(output_ids)

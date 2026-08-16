@@ -12,6 +12,7 @@ Covers:
 
 All external API calls are mocked — no network access and no Gemini quota burn.
 """
+
 import json
 
 import pytest
@@ -196,7 +197,9 @@ def test_mistral_provider_tool_call_decision():
 
 
 def test_mistral_provider_json_text_fallback():
-    raw = make_raw("mistral", content='{"tool_name": "create_benchmark", "arguments": {"name": "X"}}')
+    raw = make_raw(
+        "mistral", content='{"tool_name": "create_benchmark", "arguments": {"name": "X"}}'
+    )
     provider = MistralAgentProvider(client=FakeClient(raw))
     decision = provider.decide(task, "ctx", sample_gemini_tools())
     assert decision.type == AgentDecisionType.TOOL_CALL
@@ -351,9 +354,18 @@ def test_router_primary_override_excludes_duplicate(monkeypatch):
 def test_router_gemini_fails_groq_attempted():
     from apps.backend.agent.tests.test_provider_failover import MockProviderScenario
 
-    gemini = MockProviderScenario("gemini", [{"type": AgentDecisionType.FAIL, "error": "429 Rate limit"}])
+    gemini = MockProviderScenario(
+        "gemini", [{"type": AgentDecisionType.FAIL, "error": "429 Rate limit"}]
+    )
     groq = MockProviderScenario(
-        "groq", [{"type": AgentDecisionType.TOOL_CALL, "tool_name": "create_benchmark", "arguments": {"name": "M"}}]
+        "groq",
+        [
+            {
+                "type": AgentDecisionType.TOOL_CALL,
+                "tool_name": "create_benchmark",
+                "arguments": {"name": "M"},
+            }
+        ],
     )
     router = ProviderRouter(primary=gemini, fallbacks=[groq], max_retries_per_provider=0)
     task = AgentTask(goal="Test", granted_permissions=[])
@@ -366,14 +378,16 @@ def test_router_gemini_fails_groq_attempted():
 def test_router_gemini_and_groq_fail_mistral_success():
     from apps.backend.agent.tests.test_provider_failover import MockProviderScenario
 
-    gemini = MockProviderScenario("gemini", [{"type": AgentDecisionType.FAIL, "error": "429 Rate limit"}])
-    groq = MockProviderScenario("groq", [{"type": AgentDecisionType.FAIL, "error": "400 Model not found"}])
+    gemini = MockProviderScenario(
+        "gemini", [{"type": AgentDecisionType.FAIL, "error": "429 Rate limit"}]
+    )
+    groq = MockProviderScenario(
+        "groq", [{"type": AgentDecisionType.FAIL, "error": "400 Model not found"}]
+    )
     mistral = MockProviderScenario(
         "mistral", [{"type": AgentDecisionType.FINAL_RESPONSE, "response": "Mistral OK"}]
     )
-    router = ProviderRouter(
-        primary=gemini, fallbacks=[groq, mistral], max_retries_per_provider=0
-    )
+    router = ProviderRouter(primary=gemini, fallbacks=[groq, mistral], max_retries_per_provider=0)
     task = AgentTask(goal="Test", granted_permissions=[])
     decision = router.decide(task, "ctx", [])
     assert decision.type == AgentDecisionType.FINAL_RESPONSE
@@ -385,12 +399,16 @@ def test_router_gemini_and_groq_fail_mistral_success():
 def test_router_all_providers_fail_preserves_chain_info():
     from apps.backend.agent.tests.test_provider_failover import MockProviderScenario
 
-    gemini = MockProviderScenario("gemini", [{"type": AgentDecisionType.FAIL, "error": "429 Rate limit"}])
-    groq = MockProviderScenario("groq", [{"type": AgentDecisionType.FAIL, "error": "400 Model not found"}])
-    mistral = MockProviderScenario("mistral", [{"type": AgentDecisionType.FAIL, "error": "503 upstream"}])
-    router = ProviderRouter(
-        primary=gemini, fallbacks=[groq, mistral], max_retries_per_provider=0
+    gemini = MockProviderScenario(
+        "gemini", [{"type": AgentDecisionType.FAIL, "error": "429 Rate limit"}]
     )
+    groq = MockProviderScenario(
+        "groq", [{"type": AgentDecisionType.FAIL, "error": "400 Model not found"}]
+    )
+    mistral = MockProviderScenario(
+        "mistral", [{"type": AgentDecisionType.FAIL, "error": "503 upstream"}]
+    )
+    router = ProviderRouter(primary=gemini, fallbacks=[groq, mistral], max_retries_per_provider=0)
     task = AgentTask(goal="Test", granted_permissions=[])
     decision = router.decide(task, "ctx", [])
     assert decision.type == AgentDecisionType.FAIL

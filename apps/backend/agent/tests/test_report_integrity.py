@@ -57,9 +57,7 @@ def _register_task(execution_id):
 
 def _seed_resolvable_chain(db):
     """Seeds Benchmark -> BenchmarkVersion -> Execution and returns their ids."""
-    benchmark = Benchmark(
-        id=uuid.uuid4(), project_id=uuid.uuid4(), name="Integrity Benchmark"
-    )
+    benchmark = Benchmark(id=uuid.uuid4(), project_id=uuid.uuid4(), name="Integrity Benchmark")
     db.add(benchmark)
     db.flush()
 

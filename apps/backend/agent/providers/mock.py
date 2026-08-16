@@ -130,7 +130,10 @@ class MockAgentProvider(BaseLLMProvider):
             ds_id = task.dataset_id or "00000000-0000-0000-0000-000000000002"
             # If we validated once and update is pending, mock the repair call first
             called_tools = [c.tool_name for c in task.tool_calls]
-            if called_tools.count("validate_benchmark_dataset") == 1 and "update_dataset" not in called_tools:
+            if (
+                called_tools.count("validate_benchmark_dataset") == 1
+                and "update_dataset" not in called_tools
+            ):
                 return AgentDecision(
                     type=AgentDecisionType.TOOL_CALL,
                     tool_name="update_dataset",
@@ -172,7 +175,11 @@ class MockAgentProvider(BaseLLMProvider):
                 # Dynamically resolve execution ID
                 real_exec_id = None
                 for obs in task.observations:
-                    if obs.tool_name == "run_benchmark" and isinstance(obs.output, dict) and "execution_ids" in obs.output:
+                    if (
+                        obs.tool_name == "run_benchmark"
+                        and isinstance(obs.output, dict)
+                        and "execution_ids" in obs.output
+                    ):
                         real_exec_id = str(obs.output["execution_ids"][0])
                 exec_id = real_exec_id or "00000000-0000-0000-0000-000000000004"
                 return AgentDecision(
@@ -195,7 +202,11 @@ class MockAgentProvider(BaseLLMProvider):
         if "evaluate outputs" in desc:
             real_exec_id = None
             for obs in task.observations:
-                if obs.tool_name == "run_benchmark" and isinstance(obs.output, dict) and "execution_ids" in obs.output:
+                if (
+                    obs.tool_name == "run_benchmark"
+                    and isinstance(obs.output, dict)
+                    and "execution_ids" in obs.output
+                ):
                     real_exec_id = str(obs.output["execution_ids"][0])
             exec_id = real_exec_id or "00000000-0000-0000-0000-000000000004"
             return AgentDecision(

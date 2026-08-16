@@ -10,6 +10,7 @@ xAI/Grok: code preserved in grok.py but EXCLUDED from production chain.
   Reason: account has no credits; grok-2/grok-beta models are deprecated/not found.
   Re-enable by adding GrokAgentProvider() to _build_default_chain() once credits are restored.
 """
+
 import logging
 import os
 import time
@@ -40,12 +41,12 @@ class ProviderConfig:
     model-level availability needs to be surfaced in the future.
     """
 
-    value: str          # Identifier sent by the frontend when submitting a task
-    label: str          # Human-readable name shown in the UI
-    description: str    # Brief description of the provider
-    model: str          # Default model ID used for this provider
+    value: str  # Identifier sent by the frontend when submitting a task
+    label: str  # Human-readable name shown in the UI
+    description: str  # Brief description of the provider
+    model: str  # Default model ID used for this provider
     is_test_only: bool  # True = never exposed in the user-facing provider selector
-    api_key_env: str    # Environment variable that must be present for this provider
+    api_key_env: str  # Environment variable that must be present for this provider
 
     def is_configured(self) -> bool:
         """Returns True if the required API key is set in the environment."""
@@ -111,12 +112,15 @@ def get_configured_providers(include_test_only: bool = False) -> list[ProviderCo
     By default excludes test-only providers (i.e. Mock).
     """
     return [
-        p for p in PROVIDER_REGISTRY
+        p
+        for p in PROVIDER_REGISTRY
         if (include_test_only or not p.is_test_only) and p.is_configured()
     ]
 
 
-def build_provider_instance(provider_value: str, model_override: Optional[str] = None) -> Optional[BaseLLMProvider]:
+def build_provider_instance(
+    provider_value: str, model_override: Optional[str] = None
+) -> Optional[BaseLLMProvider]:
     """
     Instantiate the agent provider for a given provider value string.
     Returns None if the provider is not recognized.
@@ -154,7 +158,9 @@ def _build_default_chain() -> list[BaseLLMProvider]:
         if config.is_test_only:
             continue
         if not config.is_configured():
-            logger.info(f"Provider '{config.value}' skipped in fallback chain — {config.api_key_env} not set.")
+            logger.info(
+                f"Provider '{config.value}' skipped in fallback chain — {config.api_key_env} not set."
+            )
             continue
         instance = build_provider_instance(config.value)
         if instance:
@@ -188,9 +194,7 @@ class ProviderRouter(BaseLLMProvider):
             # Explicit primary override — build fallbacks from registry, excluding the
             # provider already being used as primary to avoid double-invocation.
             primary_value = _provider_value(primary)
-            registry_fallbacks = [
-                p for p in default_chain if _provider_value(p) != primary_value
-            ]
+            registry_fallbacks = [p for p in default_chain if _provider_value(p) != primary_value]
             self.primary = primary
             self.fallbacks = fallbacks if fallbacks is not None else registry_fallbacks
         elif default_chain:
@@ -218,17 +222,38 @@ class ProviderRouter(BaseLLMProvider):
         - 'FATAL': internal schema/state corruption -> fail task
         """
         err_lower = err_str.lower()
-        if any(k in err_lower for k in ["401", "403", "unauthorized", "invalid_api_key", "invalid api key"]):
+        if any(
+            k in err_lower
+            for k in ["401", "403", "unauthorized", "invalid_api_key", "invalid api key"]
+        ):
             return "AUTH"
-        if any(k in err_lower for k in [
-            "model not found", "model unavailable", "unsupported model",
-            "invalid_argument", "400", "404", "no credits", "permission-denied",
-        ]):
+        if any(
+            k in err_lower
+            for k in [
+                "model not found",
+                "model unavailable",
+                "unsupported model",
+                "invalid_argument",
+                "400",
+                "404",
+                "no credits",
+                "permission-denied",
+            ]
+        ):
             return "FALLBACK"
-        if any(k in err_lower for k in [
-            "429", "500", "502", "503", "timeout",
-            "resource_exhausted", "connection failure", "request failed",
-        ]):
+        if any(
+            k in err_lower
+            for k in [
+                "429",
+                "500",
+                "502",
+                "503",
+                "timeout",
+                "resource_exhausted",
+                "connection failure",
+                "request failed",
+            ]
+        ):
             return "RETRYABLE"
         if any(k in err_lower for k in ["schema_error", "corrupted_state", "invalid_decision"]):
             return "FATAL"
@@ -294,7 +319,9 @@ class ProviderRouter(BaseLLMProvider):
                 remaining_cd = int(cooldown_until - now)
                 msg = f"Provider '{provider_name}' skipped (cooldown {remaining_cd}s remaining)."
                 logger.info(msg)
-                failures_summary.append(f"{provider_name}: Cooldown active ({remaining_cd}s remaining)")
+                failures_summary.append(
+                    f"{provider_name}: Cooldown active ({remaining_cd}s remaining)"
+                )
                 self._record_fallback(
                     task,
                     chain,
@@ -337,7 +364,9 @@ class ProviderRouter(BaseLLMProvider):
                         category = self._classify_error(err_msg)
 
                         if category == "FATAL":
-                            logger.error(f"Fatal internal error on provider '{provider_name}': {err_msg}")
+                            logger.error(
+                                f"Fatal internal error on provider '{provider_name}': {err_msg}"
+                            )
                             task.record_trace(
                                 step=task.step_count,
                                 action=f"provider_fatal_error_{provider_name}",
@@ -351,9 +380,7 @@ class ProviderRouter(BaseLLMProvider):
                             )
                             self._provider_cooldowns[provider_name] = time.time() + 120.0
                             failures_summary.append(f"{provider_name}: {err_msg}")
-                            self._record_fallback(
-                                task, chain, provider_idx, provider_name, err_msg
-                            )
+                            self._record_fallback(task, chain, provider_idx, provider_name, err_msg)
                             break
 
                         # RETRYABLE
@@ -405,11 +432,11 @@ class ProviderRouter(BaseLLMProvider):
                         )
 
                     if category in ("AUTH", "FALLBACK"):
-                        logger.warning(f"Exception on '{provider_name}' ({err_str}). Falling back...")
-                        failures_summary.append(f"{provider_name}: {err_str}")
-                        self._record_fallback(
-                            task, chain, provider_idx, provider_name, err_str
+                        logger.warning(
+                            f"Exception on '{provider_name}' ({err_str}). Falling back..."
                         )
+                        failures_summary.append(f"{provider_name}: {err_str}")
+                        self._record_fallback(task, chain, provider_idx, provider_name, err_str)
                         break
 
                     if attempt < self.max_retries_per_provider:

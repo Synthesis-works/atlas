@@ -138,7 +138,11 @@ def _collect_agent_execution_meta(run_id: uuid.UUID) -> dict[str, Any]:
                     providers.append(str(provider))
             elif trace_event.event_type == "provider_fallback":
                 next_provider = details.get("next_provider")
-                if next_provider and str(next_provider) != "NONE" and str(next_provider) not in providers:
+                if (
+                    next_provider
+                    and str(next_provider) != "NONE"
+                    and str(next_provider) not in providers
+                ):
                     providers.append(str(next_provider))
 
         meta: dict[str, Any] = {

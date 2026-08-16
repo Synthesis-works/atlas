@@ -19,6 +19,7 @@ from packages.llm.models.prompt import Prompt
 def get_configured_models() -> dict[str, Any]:
     """Inspects environment keys to return available vs unavailable LLM models."""
     from packages.llm.registry import ModelRegistry
+
     all_models = ModelRegistry.get_all_models()
     available = [m for m in all_models if m["available"]]
     unavailable = [m for m in all_models if not m["available"]]
@@ -96,7 +97,12 @@ class RunBenchmarkTool(BaseTool):
     }
 
     def execute(
-        self, db: Session, benchmark_version_id: str, dataset_version_id: str, target_models: list[str], **kwargs: Any
+        self,
+        db: Session,
+        benchmark_version_id: str,
+        dataset_version_id: str,
+        target_models: list[str],
+        **kwargs: Any,
     ) -> Any:
         try:
             bv_uuid = uuid.UUID(benchmark_version_id)
@@ -110,9 +116,12 @@ class RunBenchmarkTool(BaseTool):
 
         # Validate that selected models are configured/available in our registry
         from packages.llm.registry import ModelRegistry
+
         all_models = ModelRegistry.get_all_models()
         available_model_names = {m["model"] for m in all_models if m["available"]}
-        available_identifiers = {f"{m['provider']}/{m['model']}" for m in all_models if m["available"]}
+        available_identifiers = {
+            f"{m['provider']}/{m['model']}" for m in all_models if m["available"]
+        }
 
         for model in target_models:
             if model not in available_model_names and model not in available_identifiers:
@@ -121,7 +130,9 @@ class RunBenchmarkTool(BaseTool):
                 )
 
         # Instantiate core ExecutionApplicationService
-        from packages.execution_engine.application.execution_app_service import ExecutionApplicationService
+        from packages.execution_engine.application.execution_app_service import (
+            ExecutionApplicationService,
+        )
         from packages.execution_engine.domain.services import ExecutionService
         from packages.execution_engine.persistence.repository import SqlAlchemyExecutionRepository
         from atlas_db.repositories.authoring import BenchmarkRepository
@@ -150,6 +161,7 @@ class RunBenchmarkTool(BaseTool):
         # Update AgentTask with execution tracking
         if agent_task_id:
             from apps.backend.routers.agent import _agent_tasks_db
+
             try:
                 task_obj = _agent_tasks_db.get(uuid.UUID(agent_task_id))
                 if task_obj:
@@ -166,7 +178,7 @@ class RunBenchmarkTool(BaseTool):
             "execution_ids": created_ids,
             "models_dispatched": target_models,
             "status": "DISPATCHED",
-            "message": f"Successfully submitted executions for {len(target_models)} models via core execution service."
+            "message": f"Successfully submitted executions for {len(target_models)} models via core execution service.",
         }
 
 
@@ -194,9 +206,11 @@ class GetRunStatusTool(BaseTool):
             }
 
         from atlas_db.models.execution import Execution as DBExecution
+
         exec_obj = db.query(DBExecution).filter(DBExecution.id == exec_uuid).first()
         if not exec_obj:
             from packages.execution_engine.persistence.models import ExecutionModel
+
             exec_obj = db.query(ExecutionModel).filter(ExecutionModel.id == exec_uuid).first()
 
         if not exec_obj:

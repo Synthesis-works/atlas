@@ -102,42 +102,65 @@ class AtlasAgent:
             if not task.report_id:
                 return (
                     False,
-                    "Task execution is not complete: target model executions were run or a report step was planned, but no report has been generated/published yet. You MUST call generate_report."
+                    "Task execution is not complete: target model executions were run or a report step was planned, but no report has been generated/published yet. You MUST call generate_report.",
                 )
 
             # Verify the report and version explicitly exist in the database and belong to this run lineage
             import uuid
             from atlas_db.core.session import SessionLocal
+
             with SessionLocal() as db_session:
                 from sqlalchemy import text
-                
+
                 # Retrieve the report_versions row (task.report_id is the ReportVersion.id)
-                report_ver_hex = task.report_id.replace("-", "") if isinstance(task.report_id, str) else str(task.report_id).replace("-", "")
+                report_ver_hex = (
+                    task.report_id.replace("-", "")
+                    if isinstance(task.report_id, str)
+                    else str(task.report_id).replace("-", "")
+                )
                 version_row = db_session.execute(
-                    text("SELECT id, report_id, execution_id FROM report_versions WHERE id = :report_version_id"),
-                    {"report_version_id": report_ver_hex}
+                    text(
+                        "SELECT id, report_id, execution_id FROM report_versions WHERE id = :report_version_id"
+                    ),
+                    {"report_version_id": report_ver_hex},
                 ).fetchone()
 
                 if not version_row:
-                    return False, f"Report version '{task.report_id}' not found in the report_versions table."
+                    return (
+                        False,
+                        f"Report version '{task.report_id}' not found in the report_versions table.",
+                    )
 
                 # Retrieve the report row
                 report_row = db_session.execute(
                     text("SELECT id, name, project_id FROM reports WHERE id = :report_id"),
-                    {"report_id": version_row.report_id}
+                    {"report_id": version_row.report_id},
                 ).fetchone()
 
                 if not report_row:
-                    return False, f"Parent Report '{version_row.report_id}' not found in the reports table."
+                    return (
+                        False,
+                        f"Parent Report '{version_row.report_id}' not found in the reports table.",
+                    )
 
                 # Check execution run lineage
                 if task.execution_ids:
                     if not version_row.execution_id:
-                        return False, f"Lineage error: Report version '{task.report_id}' has no execution_id link."
-                    version_exec_hex = version_row.execution_id.replace("-", "") if isinstance(version_row.execution_id, str) else str(version_row.execution_id).replace("-", "")
+                        return (
+                            False,
+                            f"Lineage error: Report version '{task.report_id}' has no execution_id link.",
+                        )
+                    version_exec_hex = (
+                        version_row.execution_id.replace("-", "")
+                        if isinstance(version_row.execution_id, str)
+                        else str(version_row.execution_id).replace("-", "")
+                    )
                     task_exec_hexs = [str(eid).replace("-", "") for eid in task.execution_ids]
                     if version_exec_hex not in task_exec_hexs:
-                        return False, f"Lineage error: Report version execution_id '{version_row.execution_id}' does not match any execution IDs for this task: {task.execution_ids}."
+                        return (
+                            False,
+                            f"Lineage error: Report version execution_id '{version_row.execution_id}' does not match any execution IDs for this task: {task.execution_ids}.",
+                        )
 
         # If task requested benchmark creation/evaluation, check required DB artifacts / tool calls
         goal_lower = task.goal.lower()
@@ -162,10 +185,16 @@ class AtlasAgent:
 
         # Step 0: Plan Generation
         if not task.plan:
-            task.plan = self.planner.generate_initial_plan(task.goal, getattr(task, "run_mode", None))
+            task.plan = self.planner.generate_initial_plan(
+                task.goal, getattr(task, "run_mode", None)
+            )
             task.add_trace("PLAN_GENERATED", {"plan_steps_count": len(task.plan)})
 
-        while task.status in (AgentTaskStatus.EXECUTING, AgentTaskStatus.REPAIRING, AgentTaskStatus.PLANNING):
+        while task.status in (
+            AgentTaskStatus.EXECUTING,
+            AgentTaskStatus.REPAIRING,
+            AgentTaskStatus.PLANNING,
+        ):
             old_fingerprint = self._get_progress_fingerprint(task)
             # Enforce hard limits
             if task.step_count >= MAX_STEPS:
@@ -323,7 +352,9 @@ class AtlasAgent:
                     if any(k in err_lower for k in infra_keywords):
                         task.status = AgentTaskStatus.FAILED
                         task.completed_at = datetime.now(UTC)
-                        task.error_detail = f"Infrastructure failure during tool '{tool_name}': {obs.error}"
+                        task.error_detail = (
+                            f"Infrastructure failure during tool '{tool_name}': {obs.error}"
+                        )
                         task.add_trace("TASK_FAILED", {"error": task.error_detail})
                         break
 

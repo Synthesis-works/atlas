@@ -6,7 +6,10 @@ from typing import Any, Optional
 from packages.llm.clients.groq import GroqClient
 from packages.llm.models.prompt import Prompt
 from apps.backend.agent.providers.base import BaseLLMProvider
-from apps.backend.agent.providers.schema_utils import extract_json_object, normalize_tools_for_openai
+from apps.backend.agent.providers.schema_utils import (
+    extract_json_object,
+    normalize_tools_for_openai,
+)
 from apps.backend.agent.state import AgentDecision, AgentDecisionType, AgentTask
 
 logger = logging.getLogger(__name__)
@@ -55,7 +58,9 @@ class GroqAgentProvider(BaseLLMProvider):
         prompt = Prompt(user=prompt_context, system=system_instruction)
 
         try:
-            response = self.client.generate(self.model, prompt, tools=tools_payload if tools_payload else None)
+            response = self.client.generate(
+                self.model, prompt, tools=tools_payload if tools_payload else None
+            )
             raw_choice = (response.raw or {}).get("choices", [{}])[0]
             message = raw_choice.get("message", {})
 

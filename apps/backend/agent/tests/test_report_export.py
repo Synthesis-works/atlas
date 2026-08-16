@@ -65,9 +65,7 @@ def _build_service(db):
 
 def _seed_resolvable_chain(db):
     """Seeds Benchmark -> BenchmarkVersion -> Execution and returns their ids."""
-    benchmark = Benchmark(
-        id=uuid.uuid4(), project_id=uuid.uuid4(), name="Export Benchmark"
-    )
+    benchmark = Benchmark(id=uuid.uuid4(), project_id=uuid.uuid4(), name="Export Benchmark")
     db.add(benchmark)
     db.flush()
 

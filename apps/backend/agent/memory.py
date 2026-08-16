@@ -52,7 +52,7 @@ class SemanticMemoryStore:
     def _initialize_provider(self) -> None:
         if SemanticMemoryStore._cached_initialized:
             return
-        
+
         try:
             # Quick check with 0.5s timeout for fast process local startup
             with httpx.Client(timeout=0.5) as client:

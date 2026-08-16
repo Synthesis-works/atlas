@@ -5,14 +5,19 @@ from fastapi.testclient import TestClient
 
 dotenv.load_dotenv()
 
+
 @pytest.fixture(autouse=True)
 def setup_db():
     from atlas_db.core.engine import engine
+
     if "sqlite" in str(engine.url):
         from atlas_db.core.initialize import initialize_database_schema
+
         initialize_database_schema(engine)
     from apps.backend.routers.agent import _agent_tasks_db
+
     _agent_tasks_db.clear()
+
 
 from apps.backend.main import app
 from apps.backend.agent.providers.gemini import GeminiAgentProvider
@@ -293,5 +298,3 @@ def test_providers_endpoint_returns_configured_providers_only():
         assert p["is_test_only"] is False
         assert p["model"]
         assert p["label"]
-
-

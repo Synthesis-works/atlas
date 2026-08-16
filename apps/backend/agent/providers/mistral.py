@@ -7,7 +7,10 @@ from typing import Any, Dict, List, Optional
 from packages.llm.clients.mistral import MistralClient
 from packages.llm.models.prompt import Prompt
 from apps.backend.agent.providers.base import BaseLLMProvider
-from apps.backend.agent.providers.schema_utils import extract_json_object, normalize_tools_for_openai
+from apps.backend.agent.providers.schema_utils import (
+    extract_json_object,
+    normalize_tools_for_openai,
+)
 from apps.backend.agent.state import AgentDecision, AgentDecisionType, AgentTask
 
 logger = logging.getLogger(__name__)
