@@ -148,7 +148,7 @@ class ReportingService:
             # CSV is inherently row-based: export the per-case rows (possibly []).
             export_result = exporter.export(document.results if document else [])
         else:
-            export_result = exporter.export(document)
+            export_result = exporter.export(document if document is not None else [])
 
         if document and document.report:
             stem = _slugify(document.report.title) or "report"

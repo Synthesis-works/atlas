@@ -1,5 +1,5 @@
 import json
-from typing import Any, Iterable
+from typing import Any, Iterable, cast
 
 from pydantic import BaseModel
 
@@ -13,12 +13,12 @@ class JSONExporter(Exporter):
         elif isinstance(data, dict):
             content = json.dumps(data, indent=2).encode("utf-8")
         else:
-            items = []
-            for item in data:
+            items: list[dict[str, Any]] = []
+            for item in cast(Iterable[Any], data):
                 if isinstance(item, BaseModel):
                     items.append(item.model_dump(mode="json"))
                 else:
-                    items.append(item)
+                    items.append(cast(dict[str, Any], item))
             content = json.dumps(items, indent=2).encode("utf-8")
 
         return ExportResult(
