@@ -14,6 +14,18 @@ from packages.execution_engine.application.subscribers import CompositeEventPubl
 logger = structlog.get_logger(__name__)
 
 
+class ExecutionQueuedSubscriber:
+    """Dispatches run_execution_task when ExecutionQueuedEvent is swept from the outbox."""
+
+    def handle(self, event) -> None:
+        event_type_name = type(event).__name__
+        if event_type_name == "ExecutionQueuedEvent":
+            execution_id = getattr(event, "execution_id", None)
+            if execution_id:
+                logger.info("Dispatching run_execution_task", execution_id=str(execution_id))
+                run_execution_task.delay(str(execution_id))
+
+
 @celery_app.task(
     bind=True,
     max_retries=3,
@@ -21,6 +33,9 @@ logger = structlog.get_logger(__name__)
     time_limit=3660,  # Hard kill after 1h 1m
 )
 def run_execution_task(self, execution_id_str: str, correlation_id: str = None):
+    print("*" * 50)
+    print(f"!!! CELERY EXECUTING run_execution_task FOR {execution_id_str}")
+    print("*" * 50)
     """
     Celery task to run a benchmark execution.
     Retries on infrastructure/network errors automatically (if configured).
@@ -78,8 +93,7 @@ def outbox_sweep_task(self):
             # Note: We construct a CompositeEventPublisher here.
             # In a real DI container this would be injected.
             publisher = CompositeEventPublisher(
-                telemetry_sink=NullTelemetrySink(),
-                subscribers=[EvaluationSubscriber(), SnapshotSubscriber()],  # Hook the new evaluation subsystem and Snapshots
+                subscribers=[ExecutionQueuedSubscriber(), EvaluationSubscriber(), SnapshotSubscriber()],
             )
             dispatcher = OutboxDispatcher(session=db, publisher=publisher)
             processed_count = dispatcher.sweep()

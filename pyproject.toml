@@ -3,7 +3,11 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["apps*", "packages*", "services*", "sdk*", "cli*"]
+include = ["apps*", "packages.execution_engine*", "packages.evaluation_engine*", "services*", "sdk*", "cli*", "atlas_db*"]
+exclude = [".venv*", "node_modules*", "atlas.egg-info*", ".pytest_cache*", "tests*"]
+
+[tool.setuptools.package-dir]
+"atlas_db" = "packages/database/atlas_db"
 
 [project]
 name = "atlas"
@@ -27,7 +31,9 @@ dependencies = [
     "python-multipart>=0.0.6",
     "redis>=8.0.1",
     "minio>=7.2.0",
+    "atlas-db",
 ]
+
 
 [project.optional-dependencies]
 dev = [

@@ -68,7 +68,12 @@ def create_execution(
     """
     Creates and queues a new execution for a specific benchmark version.
     """
-    user_id = current_user.get("user_id", uuid.uuid4())
+    # Extract 'sub' claim correctly and fallback safely without generating rogue UUIDs
+    sub = current_user.get("sub")
+    if not sub:
+        raise HTTPException(status_code=401, detail="Invalid token: missing subject claim")
+    user_id = uuid.UUID(sub)
+
     execution = service.submit_execution(benchmark_version_id, user_id)
     return map_to_response(execution)
 

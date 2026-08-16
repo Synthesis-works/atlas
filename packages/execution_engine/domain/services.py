@@ -36,11 +36,12 @@ class ExecutionService:
             )
 
     def create_execution(
-        self, execution_id: uuid.UUID, benchmark_version_id: uuid.UUID, submitted_by: uuid.UUID
+        self, execution_id: uuid.UUID, benchmark_version_id: uuid.UUID, project_id: uuid.UUID, submitted_by: uuid.UUID
     ) -> Execution:
         execution = Execution(
             id=execution_id,
             benchmark_version_id=benchmark_version_id,
+            project_id=project_id,
             created_by=submitted_by,
             status=ExecutionState.QUEUED,
             created_at=self.clock.now(),

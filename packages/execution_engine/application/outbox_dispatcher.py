@@ -20,7 +20,7 @@ from packages.execution_engine.domain.events import (
     LeaseExpiredEvent,
 )
 
-from packages.evaluation_engine.domain.events import EvaluationCompletedEvent
+from packages.evaluation_engine.domain.events import EvaluationCompletedEvent, EvaluationStartedEvent
 
 logger = get_logger("OUTBOX")
 
@@ -34,6 +34,7 @@ EVENT_REGISTRY: dict[str, type[DomainEvent]] = {
     "ExecutionFailedEvent": ExecutionFailedEvent,
     "ExecutionCompletedEvent": ExecutionCompletedEvent,
     "ExecutionCancelledEvent": ExecutionCancelledEvent,
+    "EvaluationStartedEvent": EvaluationStartedEvent,
     "EvaluationCompletedEvent": EvaluationCompletedEvent,
 }
 

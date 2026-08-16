@@ -22,17 +22,17 @@ class EvaluationSubscriber(EventSubscriber):
         pass
 
     def handle(self, event: DomainEvent) -> None:
+        print(f"!!! EVALUATION SUBSCRIBER RECEIVED EVENT: {type(event).__name__}")
         if isinstance(event, ExecutionCompletedEvent):
-            logger.info(
-                "EvaluationSubscriber received ExecutionCompletedEvent, enqueuing evaluation celery task",
-                execution_id=str(event.execution_id),
-            )
+            print(f"!!! MATCHED ExecutionCompletedEvent FOR EXEC_ID: {event.execution_id}")
 
             # Enqueue the celery task, breaking synchronous execution inline outbox sweep
             from apps.backend.worker.evaluation_tasks import run_evaluation_task
 
             try:
+                print("!!! ENQUEUING EVALUATION TASK...")
                 run_evaluation_task.delay(str(event.execution_id))
+                print("!!! TASK ENQUEUED SUCESSFULLY ENQUEUED VIA REDIS")
             except Exception as e:
-                logger.error("Failed to enqueue evaluation task", execution_id=str(event.execution_id), exc_info=True)
+                print(f"!!! FAILED TO ENQUEUE EVALUATION TASK: {e}")
                 raise e

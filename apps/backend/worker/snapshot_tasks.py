@@ -13,7 +13,7 @@ from apps.backend.services.snapshot import LeaderboardSnapshotService
 logger = get_task_logger(__name__)
 
 
-@celery_app.task(name="tasks.generate_benchmark_snapshot")
+@celery_app.task()
 def generate_benchmark_snapshot(
     benchmark_version_id_str: str, execution_id_trigger_str: str
 ) -> None:
@@ -43,7 +43,7 @@ def generate_benchmark_snapshot(
             )
 
 
-@celery_app.task(name="tasks.generate_capability_snapshot")
+@celery_app.task()
 def generate_capability_snapshot(capability_id_str: str, execution_id_trigger_str: str) -> None:
     logger.info(
         f"Generating capability snapshot for {capability_id_str} triggered by {execution_id_trigger_str}"

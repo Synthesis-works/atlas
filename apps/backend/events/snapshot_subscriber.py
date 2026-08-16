@@ -22,18 +22,21 @@ class SnapshotSubscriber(EventSubscriber):
         self.snapshot_dispatcher = CelerySnapshotDispatcher()
 
     def handle(self, event: DomainEvent) -> None:
-        if isinstance(event, EvaluationCompletedEvent):
+        if isinstance(event, EvaluationCompletedEvent) or type(event).__name__ == "EvaluationCompletedEvent":
             logger.info(
                 f"SnapshotSubscriber acting on EvaluationCompleted Event for execution {event.execution_id}"
             )
             # Dispatch Snapshot Updates securely
             try:
                 with SessionLocal() as db:
+                    print(f"!!! QUERYING FOR EXECUTION: {event.execution_id}")
                     execution = (
                         db.query(Execution).filter(Execution.id == event.execution_id).first()
                     )
+                    print(f"!!! EXECUTION FOUND: {execution is not None}")
                     if execution:
                         # 1. Update overall benchmark tracking
+                        print(f"!!! CALLING benchmark snapshot on {execution.benchmark_version_id}")
                         self.snapshot_dispatcher.dispatch_benchmark_snapshot(
                             benchmark_version_id=execution.benchmark_version_id,
                             execution_id_trigger=event.execution_id,
