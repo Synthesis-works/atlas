@@ -14,11 +14,13 @@ from apps.backend.adapters.real import RealModelAdapter
 from apps.backend.worker.execution_worker import ExecutionWorker
 from atlas_db.models.authoring import Benchmark, BenchmarkVersion
 from atlas_db.models.core import Base, Organization, Project, User
+from atlas_db.models.dataset import Dataset, DatasetVersion
 from atlas_db.models.evaluation import CapabilityProfile, EvaluationResult, EvaluationStatus
 from atlas_db.models.execution import Execution, ExecutionStatus, ModelOutput
 from atlas_db.models.tasks import Prompt as DBTaskPrompt, Task, TestCase as DBTestCase
 from packages.evaluation_engine.application.subscriber import EvaluationSubscriber
 from packages.execution_engine.domain.events import ExecutionCompletedEvent
+from packages.execution_engine.persistence import models as ee_persistence_models  # noqa: F401
 
 
 @pytest.fixture
@@ -73,12 +75,29 @@ def test_live_provider_e2e_execution(db_session):
     db_session.add(benchmark_version)
     db_session.commit()
 
+    dataset = Dataset(id=uuid.uuid4(), project_id=project.id, name="Live E2E Dataset")
+    db_session.add(dataset)
+    db_session.commit()
+
+    dataset_version = DatasetVersion(
+        id=uuid.uuid4(),
+        dataset_id=dataset.id,
+        version_string="1.0.0",
+        storage_path="storage/datasets/live-e2e",
+    )
+    db_session.add(dataset_version)
+    db_session.commit()
+
     task = Task(id=uuid.uuid4(), benchmark_version_id=benchmark_version.id, name="add_two_numbers")
     db_session.add(task)
     db_session.commit()
 
     test_case = DBTestCase(
-        id=uuid.uuid4(), task_id=task.id, input_data={"a": 2, "b": 3}, expected_output={"result": 5}
+        id=uuid.uuid4(),
+        task_id=task.id,
+        dataset_version_id=dataset_version.id,
+        input_data={"a": 2, "b": 3},
+        expected_output={"result": 5},
     )
     task_prompt = DBTaskPrompt(
         id=uuid.uuid4(),
@@ -97,6 +116,7 @@ def test_live_provider_e2e_execution(db_session):
         id=uuid.uuid4(),
         project_id=project.id,
         benchmark_version_id=benchmark_version.id,
+        dataset_version_id=dataset_version.id,
         submitted_by_id=user.id,
         target_model=target_model,
         status=ExecutionStatus.QUEUED,

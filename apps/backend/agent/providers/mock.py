@@ -169,6 +169,7 @@ class MockAgentProvider(BaseLLMProvider):
         # Step 5: Run target model executions
         if "run target model" in desc:
             bm_v_id = task.benchmark_version_id or "00000000-0000-0000-0000-000000000003"
+            ds_v_id = task.dataset_version_id or "00000000-0000-0000-0000-000000000002"
             # If run has been dispatched but status isn't complete, perform get_run_status
             called_tools = [c.tool_name for c in task.tool_calls]
             if "run_benchmark" in called_tools and "get_run_status" not in called_tools:
@@ -193,6 +194,7 @@ class MockAgentProvider(BaseLLMProvider):
                 tool_name="run_benchmark",
                 arguments={
                     "benchmark_version_id": bm_v_id,
+                    "dataset_version_id": ds_v_id,
                     "target_models": ["mock"],
                 },
                 reasoning="Step 5b: Dispatch execution runs.",

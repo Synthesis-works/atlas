@@ -91,7 +91,6 @@ class Execution:
         cls,
         id: uuid.UUID,
         benchmark_version_id: uuid.UUID,
-        dataset_version_id: uuid.UUID | None,
         project_id: uuid.UUID,
         status: ExecutionState,
         created_by: uuid.UUID,
@@ -99,6 +98,7 @@ class Execution:
         updated_at: datetime,
         max_retries: int,
         attempts: list[ExecutionAttempt],
+        dataset_version_id: uuid.UUID | None = None,
         target_model: str = "gemini-2.5-flash",
     ) -> "Execution":
         """Reconstructs the aggregate from persistence without triggering domain invariants."""
