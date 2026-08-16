@@ -31,7 +31,7 @@ const WorkspaceSection = lazy(() => import('@/pages/workspace/WorkspaceSection')
 const WorkspaceNotFound = lazy(() => import('@/pages/workspace/WorkspaceNotFound'));
 
 class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
-  state = { hasError: false, error: null };
+  state: { hasError: boolean; error: Error | null } = { hasError: false, error: null };
 
   static getDerivedStateFromError(error: Error): { hasError: boolean; error: Error } {
     return { hasError: true, error };
