@@ -99,6 +99,11 @@ export function WorkspaceLayout() {
       href: '/dashboard/leaderboard',
     },
     {
+      title: 'Agent',
+      icon: <span className="w-full h-full text-accent font-bold" style={{display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem'}}>✦</span>,
+      href: '/dashboard/agent',
+    },
+    {
       title: 'Settings',
       icon: <Settings className="w-full h-full" />,
       href: '/dashboard/settings',

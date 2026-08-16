@@ -99,8 +99,9 @@ def test_export_run_results_json(test_client, mock_reporting_service):
     run_id = uuid.uuid4()
     from services.report.exporters import ExportResult
 
+    mock_reporting_service.build_report_export.return_value = None
     mock_reporting_service.export_run_results.return_value = ExportResult(
-        content=b'[{"test": 1}]', mime_type="application/json", filename_extension="json"
+        content=b'{"report": {"title": "Sample"}}', mime_type="application/json", filename_extension="json"
     )
 
     response = test_client.get(f"/api/v1/reports/runs/{run_id}/export?format=json")
@@ -108,16 +109,24 @@ def test_export_run_results_json(test_client, mock_reporting_service):
     assert response.headers["Content-Type"] == "application/json"
     assert "attachment; filename=" in response.headers["Content-Disposition"]
     assert "json" in response.headers["Content-Disposition"]
-    assert response.content == b'[{"test": 1}]'
-    mock_reporting_service.export_run_results.assert_called_once_with(
-        run_id=run_id, format_type="json", include_prompt=False, include_expected_output=False
-    )
+    assert response.content == b'{"report": {"title": "Sample"}}'
+    mock_reporting_service.export_run_results.assert_called_once()
+    export_call = mock_reporting_service.export_run_results.call_args
+    assert export_call.args[0] == run_id
+    assert export_call.kwargs == {
+        "format_type": "json",
+        "include_prompt": False,
+        "include_expected_output": False,
+        "execution_meta": {},
+        "document": None,
+    }
 
 
 def test_export_run_results_csv(test_client, mock_reporting_service):
     run_id = uuid.uuid4()
     from services.report.exporters import ExportResult
 
+    mock_reporting_service.build_report_export.return_value = None
     mock_reporting_service.export_run_results.return_value = ExportResult(
         content=b"test\n1", mime_type="text/csv", filename_extension="csv"
     )
@@ -129,9 +138,16 @@ def test_export_run_results_csv(test_client, mock_reporting_service):
     assert "text/csv" in response.headers["Content-Type"]
     assert "csv" in response.headers["Content-Disposition"]
     assert response.content == b"test\n1"
-    mock_reporting_service.export_run_results.assert_called_once_with(
-        run_id=run_id, format_type="csv", include_prompt=True, include_expected_output=False
-    )
+    mock_reporting_service.export_run_results.assert_called_once()
+    export_call = mock_reporting_service.export_run_results.call_args
+    assert export_call.args[0] == run_id
+    assert export_call.kwargs == {
+        "format_type": "csv",
+        "include_prompt": True,
+        "include_expected_output": False,
+        "execution_meta": {},
+        "document": None,
+    }
 
 
 def test_export_run_results_invalid_format(test_client, mock_reporting_service):

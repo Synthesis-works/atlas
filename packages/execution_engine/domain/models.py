@@ -75,6 +75,7 @@ class ExecutionAttempt:
 class Execution:
     id: uuid.UUID
     benchmark_version_id: uuid.UUID
+    dataset_version_id: uuid.UUID | None = None
     project_id: uuid.UUID = field(default_factory=uuid.uuid4)
     status: ExecutionState = ExecutionState.QUEUED
     target_model: str = "gemini-2.5-flash"
@@ -90,6 +91,7 @@ class Execution:
         cls,
         id: uuid.UUID,
         benchmark_version_id: uuid.UUID,
+        dataset_version_id: uuid.UUID | None,
         project_id: uuid.UUID,
         status: ExecutionState,
         created_by: uuid.UUID,
@@ -103,6 +105,7 @@ class Execution:
         instance = cls(
             id=id,
             benchmark_version_id=benchmark_version_id,
+            dataset_version_id=dataset_version_id,
             project_id=project_id,
             status=status,
             target_model=target_model,

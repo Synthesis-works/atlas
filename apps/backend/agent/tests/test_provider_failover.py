@@ -462,3 +462,142 @@ def test_adaptive_plan_generation():
     task_full.plan = agent.planner.generate_initial_plan(task_full.goal)
     assert len(task_full.plan) == 7
     assert task_full.plan[-1].description == "Publish comparative benchmark report"
+
+
+def test_cooldown_skip_emits_provider_fallback_trace():
+    """
+    Regression: when a provider is skipped because its cooldown is active,
+    the execution trace MUST contain a provider_fallback event explaining
+    the skip and the next provider the router advanced to.
+    """
+    gemini = MockProviderScenario(
+        "gemini", [{"type": AgentDecisionType.FINAL_RESPONSE, "response": "Gemini Ok"}]
+    )
+    groq = MockProviderScenario(
+        "groq", [{"type": AgentDecisionType.FINAL_RESPONSE, "response": "Groq Ok"}]
+    )
+    router = ProviderRouter(primary=gemini, fallbacks=[groq], max_retries_per_provider=0)
+    task = AgentTask(goal="Cooldown trace", granted_permissions=[AgentPermission.READ])
+
+    # Force gemini into cooldown as if it had failed recently.
+    router._provider_cooldowns["gemini"] = __import__("time").time() + 300.0
+
+    decision = router.decide(task, "ctx", [])
+    assert decision.type == AgentDecisionType.FINAL_RESPONSE
+    assert decision.response == "Groq Ok"
+    assert task.current_provider == "groq"
+
+    fallback_events = [
+        e for e in task.execution_trace if e.event_type == "provider_fallback"
+    ]
+    assert len(fallback_events) == 1
+    details = fallback_events[0].details
+    assert details["failed_provider"] == "gemini"
+    assert details["next_provider"] == "groq"
+    assert "cooldown" in details["reason"].lower()
+    assert gemini.call_count == 0
+
+
+def test_unhealthy_skip_emits_provider_fallback_trace():
+    """
+    Regression: when a provider is skipped because its health check fails
+    (missing API key), the execution trace MUST contain a provider_fallback
+    event explaining the skip and the next provider.
+    """
+
+    class _UnhealthyProvider(BaseLLMProvider):
+        name = "gemini"
+        model = "gemini-3.5-flash-lite"
+
+        class _Client:
+            def health(self):
+                return False
+
+        client = _Client()
+
+        def decide(self, task, prompt_context, available_tools):
+            raise AssertionError("Unhealthy provider should never be called")
+
+    groq = MockProviderScenario(
+        "groq", [{"type": AgentDecisionType.FINAL_RESPONSE, "response": "Groq Ok"}]
+    )
+    router = ProviderRouter(primary=_UnhealthyProvider(), fallbacks=[groq], max_retries_per_provider=0)
+    task = AgentTask(goal="Unhealthy trace", granted_permissions=[AgentPermission.READ])
+
+    decision = router.decide(task, "ctx", [])
+    assert decision.type == AgentDecisionType.FINAL_RESPONSE
+    assert decision.response == "Groq Ok"
+    assert task.current_provider == "groq"
+
+    fallback_events = [
+        e for e in task.execution_trace if e.event_type == "provider_fallback"
+    ]
+    assert len(fallback_events) == 1
+    details = fallback_events[0].details
+    assert details["failed_provider"] == "gemini"
+    assert details["next_provider"] == "groq"
+    assert "unhealthy" in details["reason"].lower() or "missing" in details["reason"].lower()
+
+
+def test_retry_exhaustion_emits_provider_fallback_trace():
+    """
+    Regression: when a provider exhausts its retries on a RETRYABLE error,
+    the execution trace MUST contain a provider_fallback event when the
+    router advances to the next provider.
+    """
+    gemini = MockProviderScenario(
+        "gemini", [{"type": AgentDecisionType.FAIL, "error": "429 RESOURCE_EXHAUSTED"}]
+    )
+    groq = MockProviderScenario(
+        "groq", [{"type": AgentDecisionType.FINAL_RESPONSE, "response": "Groq Ok"}]
+    )
+    router = ProviderRouter(primary=gemini, fallbacks=[groq], max_retries_per_provider=0)
+    task = AgentTask(goal="Retry exhaustion trace", granted_permissions=[AgentPermission.READ])
+
+    decision = router.decide(task, "ctx", [])
+    assert decision.type == AgentDecisionType.FINAL_RESPONSE
+    assert decision.response == "Groq Ok"
+    assert task.current_provider == "groq"
+
+    fallback_events = [
+        e for e in task.execution_trace if e.event_type == "provider_fallback"
+    ]
+    assert len(fallback_events) == 1
+    details = fallback_events[0].details
+    assert details["failed_provider"] == "gemini"
+    assert details["next_provider"] == "groq"
+    assert "429" in details["reason"]
+
+
+def test_exception_retry_exhaustion_emits_provider_fallback_trace():
+    """
+    Regression: when a provider raises exceptions that exhaust retries, the
+    execution trace MUST contain a provider_fallback event when the router
+    advances to the next provider.
+    """
+
+    class _RaisingProvider(BaseLLMProvider):
+        name = "gemini"
+        model = "gemini-3.5-flash-lite"
+
+        def decide(self, task, prompt_context, available_tools):
+            raise ConnectionError("connection failure: upstream timeout")
+
+    groq = MockProviderScenario(
+        "groq", [{"type": AgentDecisionType.FINAL_RESPONSE, "response": "Groq Ok"}]
+    )
+    router = ProviderRouter(primary=_RaisingProvider(), fallbacks=[groq], max_retries_per_provider=0)
+    task = AgentTask(goal="Exception exhaustion trace", granted_permissions=[AgentPermission.READ])
+
+    decision = router.decide(task, "ctx", [])
+    assert decision.type == AgentDecisionType.FINAL_RESPONSE
+    assert decision.response == "Groq Ok"
+    assert task.current_provider == "groq"
+
+    fallback_events = [
+        e for e in task.execution_trace if e.event_type == "provider_fallback"
+    ]
+    assert len(fallback_events) == 1
+    details = fallback_events[0].details
+    assert details["failed_provider"] == "gemini"
+    assert details["next_provider"] == "groq"

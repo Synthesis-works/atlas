@@ -158,6 +158,7 @@ class CreateDatasetTool(BaseTool):
             db_test_case = DBTestCase(
                 id=uuid.uuid4(),
                 task_id=db_task.id,
+                dataset_version_id=version_id,
                 input_data={"text": task_item.get("input", "")},
                 expected_output={"expected_answer": task_item.get("expected_output", "")},
             )

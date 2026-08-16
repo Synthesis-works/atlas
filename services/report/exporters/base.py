@@ -8,6 +8,7 @@ class ExportResult:
     content: bytes
     mime_type: str
     filename_extension: str
+    filename_stem: str | None = None
 
 
 class Exporter(ABC):

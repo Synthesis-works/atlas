@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 from typing import Any, Dict, List
 from sqlalchemy.orm import Session
 
@@ -400,6 +401,7 @@ class GenerateReportTool(BaseTool):
         
         try:
             db.commit()
+            db.refresh(report_version)
         except Exception:
             db.rollback()
 
@@ -413,6 +415,25 @@ class GenerateReportTool(BaseTool):
             except Exception:
                 pass
 
+        # Persist ReportMetric rows ONLY from genuine evaluation data for the
+        # linked execution. If no evaluation results exist, write no metrics —
+        # an empty report is honest; a fabricated one is not.
+        if exec_id:
+            metric_rows = self._collect_real_metrics(db, exec_id, report_id)
+            for row in metric_rows:
+                db.add(row)
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+
+        # created_at must come from the persisted report version, never a hardcoded value.
+        created_at = (
+            report_version.created_at.isoformat()
+            if report_version.created_at
+            else datetime.now(UTC).isoformat()
+        )
+
         return {
             "report_id": str(report_id),
             "agent_task_id": agent_task_id,
@@ -420,5 +441,76 @@ class GenerateReportTool(BaseTool):
             "title": title,
             "summary": f"Benchmark evaluation completed successfully for '{title}'.",
             "published": True,
-            "created_at": "2026-08-13T09:40:00Z",
+            "created_at": created_at,
         }
+
+    def _collect_real_metrics(
+        self, db: Session, exec_id: uuid.UUID, report_version_id: uuid.UUID
+    ) -> list[Any]:
+        """
+        Derives ReportMetric rows from the actual evaluation state persisted for
+        an execution: the CapabilityProfile (accuracy) and the per-output
+        EvaluationResult rows (total/passed/failed).
+        """
+        from atlas_db.models.evaluation import (
+            CapabilityProfile,
+            EvaluationResult,
+        )
+        from atlas_db.models.execution import ModelOutput as DBModelOutput
+        from atlas_db.models.reporting import ReportMetric
+
+        metrics: list[Any] = []
+
+        profile = (
+            db.query(CapabilityProfile)
+            .filter(CapabilityProfile.execution_id == exec_id)
+            .first()
+        )
+        if profile and profile.overall_score is not None:
+            metrics.append(
+                ReportMetric(
+                    report_version_id=report_version_id,
+                    metric_name="accuracy",
+                    metric_value=round(profile.overall_score * 100.0, 1),
+                )
+            )
+
+        output_ids = [
+            mo.id
+            for mo in db.query(DBModelOutput)
+            .filter(DBModelOutput.execution_id == exec_id)
+            .all()
+        ]
+        if output_ids:
+            total = len(output_ids)
+            passed = (
+                db.query(EvaluationResult)
+                .filter(
+                    EvaluationResult.model_output_id.in_(output_ids),
+                    EvaluationResult.passed.is_(True),
+                )
+                .count()
+            )
+            metrics.append(
+                ReportMetric(
+                    report_version_id=report_version_id,
+                    metric_name="total_evaluated",
+                    metric_value=float(total),
+                )
+            )
+            metrics.append(
+                ReportMetric(
+                    report_version_id=report_version_id,
+                    metric_name="passed",
+                    metric_value=float(passed),
+                )
+            )
+            metrics.append(
+                ReportMetric(
+                    report_version_id=report_version_id,
+                    metric_name="failed",
+                    metric_value=float(total - passed),
+                )
+            )
+
+        return metrics

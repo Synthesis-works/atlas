@@ -263,3 +263,35 @@ def test_clear_all_agent_tasks():
     assert list_resp.status_code == 200
     assert len(list_resp.json()) == 0
 
+
+def test_providers_endpoint_never_exposes_mock():
+    """Requirement E: Atlas Mock must never appear in the user-facing provider selector."""
+    response = client.get("/api/v1/agent/providers")
+    assert response.status_code == 200
+    providers = response.json()
+    values = [p["value"] for p in providers]
+    assert "mock" not in values
+
+
+def test_providers_endpoint_never_exposes_grok():
+    """Requirement E/D: xAI Grok is excluded from the production chain, so it must not appear."""
+    response = client.get("/api/v1/agent/providers")
+    assert response.status_code == 200
+    providers = response.json()
+    values = [p["value"] for p in providers]
+    assert "grok" not in values
+
+
+def test_providers_endpoint_returns_configured_providers_only():
+    """Requirement E: only configured (API-key-present) providers are returned."""
+    response = client.get("/api/v1/agent/providers")
+    assert response.status_code == 200
+    providers = response.json()
+    for p in providers:
+        assert p["value"] in {"gemini", "groq", "mistral"}
+        assert p["configured"] is True
+        assert p["is_test_only"] is False
+        assert p["model"]
+        assert p["label"]
+
+

@@ -38,6 +38,9 @@ class TestCase(Base, BaseMixin):
     __tablename__ = "test_cases"
 
     task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tasks.id"), nullable=False, index=True)
+    dataset_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("dataset_versions.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     input_data: Mapped[dict | list] = mapped_column(JSONB, nullable=False)
     expected_output: Mapped[dict | list] = mapped_column(JSONB, nullable=False)
     is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

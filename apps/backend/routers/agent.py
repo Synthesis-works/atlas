@@ -6,8 +6,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from apps.backend.agent.agent import AtlasAgent
-from apps.backend.agent.providers.gemini import GeminiAgentProvider
+from apps.backend.agent.providers.base import BaseLLMProvider
 from apps.backend.agent.providers.mock import MockAgentProvider
+from apps.backend.agent.providers.router import ProviderRouter, build_provider_instance, get_configured_providers
 from apps.backend.agent.state import AgentPermission, AgentTask, AgentTaskStatus
 from apps.backend.agent.tools.registry import ToolRegistry
 from apps.backend.dependencies import get_db_session
@@ -22,9 +23,13 @@ _tool_registry = ToolRegistry()
 
 class TaskCreateRequest(BaseModel):
     goal: str = Field(description="Goal for the Atlas Agent to accomplish.")
-    provider: str = Field(default="mock", description="LLM provider: 'mock' or 'gemini'.")
-    model: str = Field(
-        default="gemini-3.5-flash-lite", description="Model name if using gemini provider."
+    provider: str = Field(
+        default="gemini",
+        description="Agent reasoning provider: 'gemini', 'groq', 'mistral', or 'mock' (test only).",
+    )
+    model: Optional[str] = Field(
+        default=None,
+        description="Model override. If omitted, the provider's configured default is used.",
     )
     permissions: list[AgentPermission] = Field(
         default_factory=lambda: [
@@ -41,87 +46,8 @@ class TaskApprovalRequest(BaseModel):
     approval_token: str = Field(description="Token authorizing the pending tool action.")
 
 
-from apps.backend.agent.providers.router import ProviderRouter
-
-
-def _run_agent_task_background(
-    task_id: UUID, db_session_factory, provider_type: str, model_name: str
-):
-    db: Session = db_session_factory()
-    try:
-        task = _agent_tasks_db.get(task_id)
-        if not task:
-            return
-
-        provider = (
-            MockAgentProvider()
-            if provider_type == "mock"
-            else ProviderRouter(primary=GeminiAgentProvider(model=model_name))
-        )
-        agent = AtlasAgent(provider=provider, registry=_tool_registry)
-        agent.run_task(task, db)
-    finally:
-        db.close()
-
-
-@router.post("/tasks", response_model=dict[str, Any], status_code=status.HTTP_201_CREATED)
-def create_agent_task(
-    payload: TaskCreateRequest,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db_session),
-):
-    task = AgentTask(
-        goal=payload.goal,
-        granted_permissions=payload.permissions,
-        primary_provider=payload.provider,
-        model=payload.model,
-    )
-    _agent_tasks_db[task.task_id] = task
-
-    if payload.provider == "mock":
-        agent = AtlasAgent(provider=MockAgentProvider(), registry=_tool_registry)
-        agent.run_task(task, db)
-    else:
-        background_tasks.add_task(
-            _run_agent_task_background, task.task_id, SessionLocal, payload.provider, payload.model
-        )
-
-    return {
-        "task_id": str(task.task_id),
-        "goal": task.goal,
-        "status": task.status.value,
-        "step_count": task.step_count,
-        "total_tool_calls": task.total_tool_calls,
-        "plan": [p.model_dump() for p in task.plan],
-        "final_result": task.final_result,
-        "error_detail": task.error_detail,
-        "clarification_request": task.clarification_request,
-        "clarification_id": task.clarification_id,
-        "clarification_attempts": task.clarification_attempts,
-        "clarification_answer": task.clarification_answer,
-        "clarification_requested_at": task.clarification_requested_at.isoformat()
-        if task.clarification_requested_at
-        else None,
-        "past_clarifications": task.past_clarifications,
-        "run_mode": task.run_mode,
-        "source_task_id": str(task.source_task_id) if task.source_task_id else None,
-        "dataset_version_id": task.dataset_version_id,
-        "benchmark_id": task.benchmark_id,
-        "benchmark_version_id": task.benchmark_version_id,
-        "dataset_id": task.dataset_id,
-        "execution_ids": task.execution_ids,
-        "report_id": task.report_id,
-    }
-
-
-@router.get("/tasks/{task_id}", response_model=dict[str, Any])
-def get_agent_task(task_id: UUID):
-    task = _agent_tasks_db.get(task_id)
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
-        )
-
+def _serialize_agent_task(task: AgentTask) -> dict[str, Any]:
+    """Full, lossless serialization of an AgentTask used by create/detail/list endpoints."""
     return {
         "task_id": str(task.task_id),
         "goal": task.goal,
@@ -156,56 +82,129 @@ def get_agent_task(task_id: UUID):
         "error_detail": task.error_detail,
         "primary_provider": task.primary_provider,
         "current_provider": task.current_provider,
+        "created_at": task.started_at.isoformat() if task.started_at else None,
+        "started_at": task.started_at.isoformat() if task.started_at else None,
+        "completed_at": task.completed_at.isoformat() if task.completed_at else None,
     }
+
+
+def _run_agent_task_background(
+    task_id: UUID, db_session_factory, provider_type: str, model_override: Optional[str]
+):
+    db: Session = db_session_factory()
+    try:
+        task = _agent_tasks_db.get(task_id)
+        if not task:
+            return
+
+        if provider_type == "mock":
+            provider: BaseLLMProvider = MockAgentProvider()
+        else:
+            # Build the specific primary provider requested; let ProviderRouter handle fallbacks
+            primary = build_provider_instance(provider_type, model_override)
+            provider = ProviderRouter(primary=primary) if primary else ProviderRouter()
+
+        agent = AtlasAgent(provider=provider, registry=_tool_registry)
+        agent.run_task(task, db)
+    finally:
+        db.close()
+
+
+@router.post("/tasks", response_model=dict[str, Any], status_code=status.HTTP_201_CREATED)
+def create_agent_task(
+    payload: TaskCreateRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db_session),
+):
+    task = AgentTask(
+        goal=payload.goal,
+        granted_permissions=payload.permissions,
+        primary_provider=payload.provider,
+    )
+    if payload.model is not None:
+        task.model = payload.model
+    _agent_tasks_db[task.task_id] = task
+
+    if payload.provider == "mock":
+        agent = AtlasAgent(provider=MockAgentProvider(), registry=_tool_registry)
+        agent.run_task(task, db)
+    else:
+        background_tasks.add_task(
+            _run_agent_task_background, task.task_id, SessionLocal, payload.provider, payload.model
+        )
+
+    return _serialize_agent_task(task)
+
+
+@router.get("/tasks/{task_id}", response_model=dict[str, Any])
+def get_agent_task(task_id: UUID):
+    task = _agent_tasks_db.get(task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
+        )
+
+    return _serialize_agent_task(task)
 
 
 @router.get("/reports/{report_id}", response_model=dict[str, Any])
 def get_agent_report(report_id: str, db: Session = Depends(get_db_session)):
-    from atlas_db.models.reporting import ReportVersion
+    from atlas_db.models.reporting import ReportMetric, ReportVersion
     import uuid
 
     try:
         report_uuid = uuid.UUID(report_id)
-        version = db.query(ReportVersion).filter(ReportVersion.id == report_uuid).first()
-        if version:
-            return {
-                "report_id": str(version.id),
-                "benchmark_id": str(version.report_id),
-                "title": version.report.name if version.report else "Benchmark Report",
-                "summary": version.summary,
-                "published": True,
-                "created_at": version.created_at.isoformat(),
-            }
-    except Exception:
-        pass
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Report '{report_id}' not found."
+        )
+
+    version = db.query(ReportVersion).filter(ReportVersion.id == report_uuid).first()
+    if not version:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"Report '{report_id}' not found."
+        )
+
+    metrics = [
+        {"metric_name": m.metric_name, "metric_value": m.metric_value}
+        for m in version.metrics
+    ]
+
+    # Resolve the real benchmark ID when possible:
+    # ReportVersion.execution_id -> Execution.benchmark_version_id -> BenchmarkVersion.benchmark_id
+    # If the linkage cannot be resolved, return null rather than inventing one.
+    benchmark_id = None
+    if version.execution_id:
+        from atlas_db.models.execution import Execution as DBExecution
+        from atlas_db.models.authoring import BenchmarkVersion as DBBenchmarkVersion
+
+        execution = db.query(DBExecution).filter(DBExecution.id == version.execution_id).first()
+        if execution and execution.benchmark_version_id:
+            benchmark_version = (
+                db.query(DBBenchmarkVersion)
+                .filter(DBBenchmarkVersion.id == execution.benchmark_version_id)
+                .first()
+            )
+            if benchmark_version:
+                benchmark_id = str(benchmark_version.benchmark_id)
 
     return {
-        "report_id": report_id,
-        "title": "Benchmark Evaluation Comparative Report",
-        "summary": f"Report '{report_id}' details.",
+        "report_id": str(version.id),
+        "benchmark_id": benchmark_id,
+        "title": version.report.name if version.report else "Benchmark Report",
+        "summary": version.summary,
+        "version_string": version.version_string,
+        "execution_id": str(version.execution_id) if version.execution_id else None,
         "published": True,
-        "created_at": "2026-08-12T19:40:00Z",
+        "created_at": version.created_at.isoformat(),
+        "metrics": metrics,
     }
 
 
 @router.get("/tasks", response_model=list[dict[str, Any]])
 def list_agent_tasks():
     tasks = list(_agent_tasks_db.values())
-    return [
-        {
-            "task_id": str(t.task_id),
-            "goal": t.goal,
-            "status": t.status.value,
-            "step_count": t.step_count,
-            "total_tool_calls": t.total_tool_calls,
-            "primary_provider": t.primary_provider,
-            "current_provider": t.current_provider,
-            "final_result": t.final_result,
-            "report_id": t.report_id,
-            "created_at": t.started_at.isoformat() if t.started_at else None,
-        }
-        for t in reversed(tasks)
-    ]
+    return [_serialize_agent_task(t) for t in reversed(tasks)]
 
 
 @router.delete("/tasks", response_model=dict[str, Any])
@@ -452,3 +451,28 @@ def run_agent_task_again(
 @router.get("/tools", response_model=list[dict[str, Any]])
 def list_agent_tools():
     return _tool_registry.list_tools()
+
+
+@router.get("/providers", response_model=list[dict[str, Any]])
+def list_agent_providers():
+    """
+    Returns the list of configured Agent reasoning providers.
+
+    Configuration-aware: only providers with valid API keys present are included.
+    Test-only providers (Atlas Mock) are never exposed here.
+    The list is built from PROVIDER_REGISTRY in router.py — no live API calls.
+    """
+    configured = get_configured_providers(include_test_only=False)
+    return [
+        {
+            "value": p.value,
+            "label": p.label,
+            "description": p.description,
+            "model": p.model,
+            "is_test_only": p.is_test_only,
+            "configured": True,
+            "enabled": not p.is_test_only,
+            "status": "ready" if p.is_configured() else "unconfigured",
+        }
+        for p in configured
+    ]

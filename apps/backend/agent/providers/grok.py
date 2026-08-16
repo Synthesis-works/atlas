@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 from packages.llm.clients.grok import GrokClient
 from packages.llm.models.prompt import Prompt
 from apps.backend.agent.providers.base import BaseLLMProvider
+from apps.backend.agent.providers.schema_utils import normalize_tools_for_openai
 from apps.backend.agent.state import AgentDecision, AgentDecisionType, AgentTask
 
 logger = logging.getLogger(__name__)
@@ -30,19 +31,8 @@ class GrokAgentProvider(BaseLLMProvider):
     def decide(
         self, task: AgentTask, prompt_context: str, available_tools: list[dict[str, Any]]
     ) -> AgentDecision:
-        tools_payload = []
-        if available_tools:
-            tools_payload = [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": t.get("name"),
-                        "description": t.get("description", ""),
-                        "parameters": t.get("parameters", {"type": "object", "properties": {}}),
-                    },
-                }
-                for t in available_tools
-            ]
+        # Normalize Gemini-style UPPERCASE types to JSON Schema lowercase before sending to xAI
+        tools_payload = normalize_tools_for_openai(available_tools) if available_tools else []
 
         system_instruction = (
             "You are the Atlas Agent powered by xAI Grok, an autonomous execution engine for AI benchmarking.\n"

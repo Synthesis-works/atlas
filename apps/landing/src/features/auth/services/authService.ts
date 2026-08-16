@@ -250,20 +250,52 @@ export function logoutUser(): void {
   localStorage.removeItem(CURRENT_USER_KEY);
 }
 
+/**
+ * Establish a real backend session (JWT) so authenticated endpoints such as the
+ * report export endpoint can authorize legitimate downloads.
+ *
+ * The Agent workspace relies on real JWTs — local fallback tokens (`local_token_*`)
+ * are never accepted by the backend and would make protected endpoints 401.
+ */
 export async function ensureAuthenticatedSession(): Promise<string | null> {
   const existingToken = getAuthToken();
   if (existingToken && !existingToken.startsWith('local_token_')) {
     return existingToken;
   }
-  try {
-    const res = await loginUser({ username: 'demo@atlas.val', password: 'password123' });
-    const token = res.data?.access_token || (res as any)?.access_token || (res as any)?.data?.access_token;
-    if (token) {
-      setAuthToken(token);
-      return token;
-    }
-  } catch (err) {
-    console.error('Failed to establish backend session:', err);
+
+  const username = 'admin@example.com';
+  const password = 'password123';
+
+  const isRealToken = (token: string | undefined | null): token is string =>
+    !!token && !token.startsWith('local_token_');
+
+  // 1. Try a real backend login first. loginUser falls back to a local fake token
+  //    when the backend rejects the credentials, so inspect the returned token.
+  let res = await loginUser({ username, password });
+  let token = res.data?.access_token;
+  if (isRealToken(token)) {
+    setAuthToken(token);
+    return token;
   }
+
+  // 2. No real session yet — register the demo Agent user once, then log in again.
+  try {
+    await registerUser({
+      email: username,
+      username: 'admin',
+      password,
+      full_name: 'Atlas Administrator',
+    });
+  } catch (err) {
+    console.warn('Demo Agent user registration failed (may already exist):', err);
+  }
+  res = await loginUser({ username, password });
+  token = res.data?.access_token;
+  if (isRealToken(token)) {
+    setAuthToken(token);
+    return token;
+  }
+
+  console.error('Failed to establish a real backend session for the Agent workspace.');
   return null;
 }

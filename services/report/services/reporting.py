@@ -1,3 +1,4 @@
+import re
 import uuid
 from ..core.cache import ReportCache
 from ..exporters import ExportResult, get_exporter
@@ -6,6 +7,7 @@ from ..models.read_models import (
     HistoryEntryRead,
     LeaderboardRead,
     PaginatedReportRunsRead,
+    ReportExportRead,
     ReportRunsFilter,
     ReportSummaryRead,
 )
@@ -19,6 +21,14 @@ from ..strategies.leaderboard import (
     CapabilityLeaderboardStrategy,
     OverallLeaderboardStrategy,
 )
+
+
+def _slugify(value: str) -> str:
+    """Slugify a report title for a Content-Disposition filename."""
+    slug = re.sub(r"[^\w\s-]", "", value, flags=re.UNICODE)
+    slug = re.sub(r"[\s_]+", "-", slug)
+    slug = re.sub(r"-+", "-", slug)
+    return slug.strip("-").lower()
 
 
 class ReportingService:
@@ -92,20 +102,57 @@ class ReportingService:
     def get_history(self, limit: int = 50, offset: int = 0) -> tuple[list[HistoryEntryRead], int]:
         return self.history_query.get_paginated_history(limit, offset)
 
+    def build_report_export(
+        self,
+        run_id: uuid.UUID,
+        include_prompt: bool = False,
+        include_expected_output: bool = False,
+        execution_meta: dict | None = None,
+    ) -> ReportExportRead | None:
+        """Build the machine-readable export document for a persisted report.
+
+        ``execution_meta`` may carry truthful agent-run context (steps, tool
+        calls, provider chain, duration) for executions driven by an in-memory
+        agent task. No data is fabricated: unmatched executions export only
+        what genuinely exists in the database.
+        """
+        return self.run_query.get_report_export(
+            run_id,
+            include_prompt=include_prompt,
+            include_expected_output=include_expected_output,
+            execution_meta=execution_meta,
+        )
+
     def export_run_results(
         self,
         run_id: uuid.UUID,
         format_type: str,
         include_prompt: bool = False,
         include_expected_output: bool = False,
+        execution_meta: dict | None = None,
+        document: ReportExportRead | None = None,
     ) -> ExportResult:
         exporter = get_exporter(format_type)
         if not exporter:
             raise ValueError(f"Export format '{format_type}' is not supported.")
 
-        data = self.run_query.get_run_export_data(
-            run_id,
-            include_prompt=include_prompt,
-            include_expected_output=include_expected_output,
-        )
-        return exporter.export(data)
+        if document is None:
+            document = self.build_report_export(
+                run_id,
+                include_prompt=include_prompt,
+                include_expected_output=include_expected_output,
+                execution_meta=execution_meta,
+            )
+
+        if format_type.lower() == "csv":
+            # CSV is inherently row-based: export the per-case rows (possibly []).
+            export_result = exporter.export(document.results if document else [])
+        else:
+            export_result = exporter.export(document)
+
+        if document and document.report:
+            stem = _slugify(document.report.title) or "report"
+            version = (document.report.version or "").lstrip("v")
+            export_result.filename_stem = f"{stem}-v{version}" if version else stem
+
+        return export_result

@@ -83,21 +83,26 @@ class RunBenchmarkTool(BaseTool):
                 "type": "string",
                 "description": "UUID of the benchmark version to run.",
             },
+            "dataset_version_id": {
+                "type": "string",
+                "description": "UUID of the dataset version to run.",
+            },
             "target_models": {
                 "type": "array",
                 "description": "List of model identifiers to test (e.g. ['gemini-3.5-flash-lite', 'grok-2-latest']).",
             },
         },
-        "required": ["benchmark_version_id", "target_models"],
+        "required": ["benchmark_version_id", "dataset_version_id", "target_models"],
     }
 
     def execute(
-        self, db: Session, benchmark_version_id: str, target_models: list[str], **kwargs: Any
+        self, db: Session, benchmark_version_id: str, dataset_version_id: str, target_models: list[str], **kwargs: Any
     ) -> Any:
         try:
             bv_uuid = uuid.UUID(benchmark_version_id)
+            dv_uuid = uuid.UUID(dataset_version_id)
         except ValueError:
-            bv_uuid = uuid.uuid4()
+            raise ValueError("Invalid benchmark_version_id or dataset_version_id UUID")
 
         proj_id = kwargs.get("project_id") or uuid.UUID("00000000-0000-0000-0000-000000000001")
         agent_task_id = kwargs.get("task_id")
@@ -130,6 +135,7 @@ class RunBenchmarkTool(BaseTool):
         for model in target_models:
             execution = service.submit_execution(
                 benchmark_version_id=bv_uuid,
+                dataset_version_id=dv_uuid,
                 submitted_by=user_id,
                 target_model=model,
             )
