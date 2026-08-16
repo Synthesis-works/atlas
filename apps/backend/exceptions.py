@@ -72,9 +72,12 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
     Catch-all handler for unhandled server errors.
     """
     import traceback
+
     traceback.print_exc()
     error_response = APIErrorResponse(
-        error=ErrorDetail(code="INTERNAL_SERVER_ERROR", message=f"An unexpected error occurred: {str(exc)}"),
+        error=ErrorDetail(
+            code="INTERNAL_SERVER_ERROR", message=f"An unexpected error occurred: {str(exc)}"
+        ),
         meta=_get_meta(request),
     )
     return JSONResponse(status_code=500, content=error_response.model_dump(mode="json"))
