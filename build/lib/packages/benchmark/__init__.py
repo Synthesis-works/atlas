@@ -1,3 +1,0 @@
-"""
-Atlas Benchmark Foundation
-"""

@@ -16,3 +16,5 @@ report.md
 *.db
 *.db-journal
 .ruff_cache/
+build/
+dist/
