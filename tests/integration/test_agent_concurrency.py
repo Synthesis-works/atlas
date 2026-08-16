@@ -108,12 +108,46 @@ def test_c4_adversarial_dataset_isolation():
     from atlas_db.models.execution import Execution as DBExecution
     from apps.backend.worker.execution_runner import ExecutionRunner
     from atlas_db.core.session import SessionLocal
+    from atlas_db.models.authoring import Benchmark, BenchmarkVersion
+    from atlas_db.models.dataset import Dataset, DatasetVersion, DatasetLifecycle
 
     db = SessionLocal()
     try:
+        # Postgres enforces foreign keys, so the execution's parent rows must
+        # exist before the execution itself can be inserted. They are created
+        # with no test cases so the lineage check below still triggers.
+        project_id = uuid.UUID("00000000-0000-0000-0000-000000000003")
+        benchmark = Benchmark(
+            id=uuid4(),
+            project_id=project_id,
+            name=f"Isolation Benchmark {fake_bv_id}",
+        )
+        db.add(benchmark)
+        db.flush()
+        benchmark_version = BenchmarkVersion(
+            id=fake_bv_id, benchmark_id=benchmark.id, version_string="1.0.0"
+        )
+        db.add(benchmark_version)
+        dataset = Dataset(
+            id=uuid4(),
+            project_id=project_id,
+            name=f"Isolation Dataset {fake_dv_id}",
+        )
+        db.add(dataset)
+        db.flush()
+        dataset_version = DatasetVersion(
+            id=fake_dv_id,
+            dataset_id=dataset.id,
+            version_string="1.0.0",
+            storage_path=f"storage/datasets/{fake_dv_id}",
+            lifecycle=DatasetLifecycle.UPLOADED,
+        )
+        db.add(dataset_version)
+        db.commit()
+
         db_exec = DBExecution(
             id=uuid4(),
-            project_id=uuid.UUID("00000000-0000-0000-0000-000000000003"),
+            project_id=project_id,
             benchmark_version_id=fake_bv_id,
             dataset_version_id=fake_dv_id,
             submitted_by_id=uuid.UUID("00000000-0000-0000-0000-000000000002"),

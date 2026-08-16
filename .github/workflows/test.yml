@@ -49,6 +49,13 @@ jobs:
         MYPYPATH=services/execution-service mypy services/execution-service
         mypy services/report
       
+    - name: Initialize database schema
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/atlas_test
+        PYTHONPATH: packages/database
+      run: |
+        python -c "from atlas_db.core.initialize import initialize_database_schema; from atlas_db.core.engine import engine; initialize_database_schema(engine)"
+
     - name: Run tests with Pytest
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/atlas_test

@@ -130,6 +130,7 @@ class CreateBenchmarkTool(BaseTool):
         version = BenchmarkVersion(
             id=version_id,
             benchmark_id=bm_id,
+            version_string="1.0.0",
         )
         db.add(version)
 

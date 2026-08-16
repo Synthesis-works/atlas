@@ -42,7 +42,11 @@ SessionLocal = sessionmaker(bind=engine)
 def setup_database():
     Base.metadata.create_all(bind=engine)
     yield
-    Base.metadata.drop_all(bind=engine)
+    # On Postgres the engine is shared with the rest of the suite, so dropping
+    # the entire schema here would break every later test that needs tables.
+    # On SQLite the engine is isolated, so dropping is safe.
+    if engine.dialect.name == "sqlite":
+        Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture
@@ -145,6 +149,12 @@ def test_concurrency_skip_locked(setup_database):
     """
     # Setup record
     session_setup = SessionLocal()
+    # Remove executions left behind by prior runs so the test is deterministic
+    # on a shared Postgres database (SQLite engine is isolated per run).
+    from sqlalchemy import text
+
+    session_setup.execute(text("TRUNCATE TABLE ee_executions CASCADE"))
+    session_setup.commit()
     repo_setup = SqlAlchemyExecutionRepository(session_setup)
     clock = TestClock(datetime.now(UTC))
     project_id, bv_id, user_id = create_parent_records(session_setup)

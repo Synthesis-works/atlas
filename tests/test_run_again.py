@@ -80,8 +80,8 @@ def test_agent_run_again_flow():
             {"report_version_id": rerun_detail["report_id"].replace("-", "")},
         ).fetchone()
         assert ver_row is not None
-        assert ver_row.id == rerun_detail["report_id"].replace("-", "")
-        assert ver_row.execution_id in [
+        assert str(ver_row.id).replace("-", "") == rerun_detail["report_id"].replace("-", "")
+        assert str(ver_row.execution_id).replace("-", "") in [
             eid.replace("-", "") for eid in rerun_detail["execution_ids"]
         ]
 
