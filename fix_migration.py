@@ -2,7 +2,7 @@ import sys
 import re
 
 file_path = 'packages/database/alembic/versions/f20ab7bfab93_add_missing_evaluation_strategy_id_and_.py'
-with open(file_path, 'r') as f:
+with open(file_path) as f:
     lines = f.readlines()
 
 tables_to_drop = []

@@ -9,7 +9,7 @@ Validates Deliverables 1-4:
 """
 
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, UTC
 import pytest
 from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
@@ -53,8 +53,8 @@ def override_auth_and_services():
             project_id=uuid.uuid4(),
             status=ExecutionState.QUEUED,
             created_by=user_id,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             max_retries=3,
             attempts=[],
         )
@@ -110,8 +110,8 @@ def test_chaos_scenario_expired_lease_sweep_recovery():
         project_id=uuid.uuid4(),
         status=ExecutionState.RUNNING,
         created_by=uuid.uuid4(),
-        created_at=datetime.now(timezone.utc) - timedelta(minutes=10),
-        updated_at=datetime.now(timezone.utc) - timedelta(minutes=10),
+        created_at=datetime.now(UTC) - timedelta(minutes=10),
+        updated_at=datetime.now(UTC) - timedelta(minutes=10),
         max_retries=3,
         attempts=[],
     )

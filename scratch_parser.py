@@ -2,7 +2,7 @@ import json
 import sys
 
 try:
-    with open('results/experiments/registry.json', 'r') as f:
+    with open('results/experiments/registry.json') as f:
         data = json.load(f)
 except Exception as e:
     sys.exit(1)

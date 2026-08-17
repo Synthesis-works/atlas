@@ -4,7 +4,7 @@ Validates GET /api/v1/leaderboard, GET /api/v1/reports/runs, and export endpoint
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 import pytest
 from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
@@ -50,14 +50,14 @@ def override_leaderboard_and_reporting_dependencies():
                     model_name="GPT-5",
                     overall_score=94.5,
                     benchmark_count=12,
-                    last_updated=datetime.now(timezone.utc),
+                    last_updated=datetime.now(UTC),
                 ),
                 LeaderboardEntryRead(
                     rank=2,
                     model_name="Claude-3.5-Sonnet",
                     overall_score=91.2,
                     benchmark_count=10,
-                    last_updated=datetime.now(timezone.utc),
+                    last_updated=datetime.now(UTC),
                 ),
             ],
             total=2,
@@ -76,8 +76,8 @@ def override_leaderboard_and_reporting_dependencies():
                 target_model="GPT-5",
                 overall_score=94.5,
                 evaluation_status=ReportRunStatus.COMPLETED,
-                started_at=datetime.now(timezone.utc),
-                completed_at=datetime.now(timezone.utc),
+                started_at=datetime.now(UTC),
+                completed_at=datetime.now(UTC),
             )
         ],
         total=1,

@@ -98,7 +98,8 @@ async def test_d5_export_lifecycle_api(pg_session):
             action = pg_session.query(DatasetExportAction).filter_by(id=export_id).first()
             action.status = DatasetExportState.COMPLETED
             # We need a dummy file
-            import tempfile, os
+            import tempfile
+            import os
             fd, path = tempfile.mkstemp(suffix=".jsonl")
             os.write(fd, b'{"hello":"world"}\n')
             os.close(fd)

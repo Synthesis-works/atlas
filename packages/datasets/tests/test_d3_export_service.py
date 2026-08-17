@@ -58,7 +58,7 @@ def test_export_service_integration(tmp_path):
     assert str(tmp_path) in physical_path
     
     # 4. Check outputs mapping cleanly properly securely natively
-    with open(physical_path, "r", encoding="utf-8") as f:
+    with open(physical_path, encoding="utf-8") as f:
         lines = f.readlines()
         
     assert len(lines) == 2

@@ -4,7 +4,7 @@ Validates GET /api/v1/datasets, GET /api/v1/datasets/{dataset_id}, UUID integrit
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 import pytest
 from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
@@ -29,8 +29,8 @@ def override_dataset_dependencies():
         name="MMLU-Pro Test Set",
         description="Massive Multitask Language Understanding Pro Dataset",
         status=DatasetStatus.ACTIVE,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
     mock_service = MagicMock()
@@ -42,8 +42,8 @@ def override_dataset_dependencies():
         name=data.name,
         description=data.description,
         status=DatasetStatus.ACTIVE,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
 
     user_id = uuid.uuid4()

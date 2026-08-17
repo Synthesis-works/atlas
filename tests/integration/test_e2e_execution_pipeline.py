@@ -10,7 +10,7 @@ Simulates full operational workflow:
 """
 
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, UTC
 import pytest
 from unittest.mock import MagicMock
 
@@ -39,8 +39,8 @@ def test_full_e2e_worker_failover_and_outbox_pipeline():
         project_id=uuid.uuid4(),
         status=ExecutionState.QUEUED,
         created_by=user_id,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
         max_retries=3,
         attempts=[],
     )
@@ -62,7 +62,7 @@ def test_full_e2e_worker_failover_and_outbox_pipeline():
     assert execution.current_attempt.lease.worker_id == worker_1_id, "Worker 1 should own lease"
 
     # Step 3: Worker 1 dies mid-execution, lease expires (simulate 10 minutes passing)
-    execution.current_attempt.lease.expires_at = datetime.now(timezone.utc) - timedelta(minutes=5)
+    execution.current_attempt.lease.expires_at = datetime.now(UTC) - timedelta(minutes=5)
     execution_repo.find_expired_active_attempts.return_value = [execution]
 
     # Step 4: SchedulerService sweeps expired lease

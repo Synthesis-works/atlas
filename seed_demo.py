@@ -10,7 +10,7 @@ Usage:
 import os
 import sys
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, UTC
 
 sys.stdout.reconfigure(encoding='utf-8')
 sys.path.insert(0, os.path.abspath("packages/database"))
@@ -144,7 +144,7 @@ def seed_real(session, user, project):
 
 
     # Real Executions
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     real_runs = [
         # HumanEval Runs
         ("qwen2.5:2.5b", humaneval_v1.id, ExecutionStatus.COMPLETED, 31.2, 245, now - timedelta(hours=5), "real"),
@@ -193,7 +193,7 @@ def seed_demo(session, user, project):
         ("SWE-Bench Lite", "Software Engineering Real GitHub Issues", "expert", "coding"),
     ]
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for name, obj, diff, domain in demo_benchmarks:
         bm = session.query(Benchmark).filter_by(name=name).first()
         if not bm:

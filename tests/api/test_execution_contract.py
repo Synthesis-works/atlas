@@ -5,7 +5,7 @@ X-Request-ID correlation header propagation, idempotency, cancellation contract,
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 import pytest
 from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
@@ -47,8 +47,8 @@ def override_auth_and_services():
             project_id=uuid.uuid4(),
             status=ExecutionState.QUEUED,
             created_by=user_id,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             max_retries=3,
             attempts=[],
         )
@@ -62,8 +62,8 @@ def override_auth_and_services():
             project_id=uuid.uuid4(),
             status=ExecutionState.CANCELLED,
             created_by=user_id,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             max_retries=3,
             attempts=[],
         )
