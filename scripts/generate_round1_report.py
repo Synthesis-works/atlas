@@ -7,7 +7,7 @@ experiments_dir = 'D:/atlas/results/experiments'
 output_file = 'D:/atlas/llm_responses_round1.md'
 
 try:
-    with open(registry_path, 'r', encoding='utf-8') as f:
+    with open(registry_path, encoding='utf-8') as f:
         registry = json.load(f)
 except Exception as e:
     print(f"Failed to load registry: {e}")
@@ -40,7 +40,7 @@ with open(output_file, 'w', encoding='utf-8') as out:
         tasks_dir = os.path.join(experiments_dir, exp_id, 'tasks')
         
         if not os.path.exists(tasks_dir):
-            out.write(f"*No task responses recorded for this run. Error or execution failure during the run.*\n\n")
+            out.write("*No task responses recorded for this run. Error or execution failure during the run.*\n\n")
             continue
             
         task_files = sorted([f for f in os.listdir(tasks_dir) if f.endswith('.json')])
@@ -51,7 +51,7 @@ with open(output_file, 'w', encoding='utf-8') as out:
         for t_file in task_files:
             t_path = os.path.join(tasks_dir, t_file)
             try:
-                with open(t_path, 'r', encoding='utf-8') as tf:
+                with open(t_path, encoding='utf-8') as tf:
                     t_data = json.load(tf)
                 
                 task_id = t_data.get('task_id', t_file)
