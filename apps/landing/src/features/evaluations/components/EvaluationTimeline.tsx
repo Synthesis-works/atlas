@@ -102,16 +102,11 @@ export const EvaluationTimeline: React.FC<Props> = ({ evaluation }) => {
             : status === 'failed' ? 'text-rose-400'
             : 'text-white/25';
 
-          const dockerImg = evaluation.reproducibility?.dockerImage ?? 'atlas-runner:v1';
           const stageDetailMap: Record<string, string> = {
-            'Queued': `worker: ${evaluation.worker ?? 'node-01'} · prio: ${evaluation.priority ?? 'normal'}`,
-            'Downloading Dataset': `16,000 samples indexed`,
-            'Preparing Runtime': `container: ${dockerImg}`,
-            'Loading Model': `vRAM: ${evaluation.metrics?.memoryGb ?? 18} GB · GPU util: ${evaluation.metrics?.gpuUtilPct ?? 72}%`,
-            'Running Tests': `throughput: ${evaluation.metrics?.tokensPerSec ?? 65} tok/s`,
-            'Scoring': evaluation.metrics ? `pass@1: ${Math.round((evaluation.metrics.passAt1 ?? 0.88) * 100)}%` : 'computing score',
-            'Aggregating': `metrics aggregated`,
-            'Generating Report': `report.pdf generated`,
+            'Queued': evaluation.queuedAt ? `queued at ${new Date(evaluation.queuedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '',
+            'Running Tests': evaluation.totalItems ? `${evaluation.completedItems ?? 0}/${evaluation.totalItems} cases evaluated` : '',
+            'Scoring': evaluation.metrics?.passAt1 != null ? `pass@1: ${Math.round(evaluation.metrics.passAt1 * 100)}%` : '',
+            'Completed': evaluation.completedAt ? `completed at ${new Date(evaluation.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '',
           };
           const stageDetail = stageDetailMap[pStage.name] ?? '';
 

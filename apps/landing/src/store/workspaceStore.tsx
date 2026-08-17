@@ -331,11 +331,11 @@ export const WorkspaceStoreProvider: React.FC<{ children: React.ReactNode }> = (
   const triggerEvaluationRun = useCallback(
     async (benchmarkId: string, model: string) => {
       const bm = benchmarks.find((b) => b.id === benchmarkId);
-      if (!bm) return;
+      const benchmarkName = bm?.name ?? benchmarkId;
 
       const timestamp = new Date().toLocaleTimeString();
       setTerminalLogs((prev) => [
-        `${timestamp} [Job] Dispatching API execution for ${bm.name} on ${model}...`,
+        `${timestamp} [Job] Dispatching API execution for ${benchmarkName} on ${model}...`,
         ...prev,
       ]);
 
@@ -348,7 +348,7 @@ export const WorkspaceStoreProvider: React.FC<{ children: React.ReactNode }> = (
       const newQueueItem: QueueItem = {
         id: execId,
         model,
-        benchmarkName: bm.name,
+        benchmarkName,
         progress: 0,
         status: initialStatus === 'QUEUED' ? 'Queued' : initialStatus,
       };
@@ -366,7 +366,7 @@ export const WorkspaceStoreProvider: React.FC<{ children: React.ReactNode }> = (
 
       addNotification(
         'Evaluation Queued',
-        `Dispatched ${bm.name} execution (${execId.substring(0, 8)}) against ${model}`,
+        `Dispatched ${benchmarkName} execution (${execId.substring(0, 8)}) against ${model}`,
         'info'
       );
     },

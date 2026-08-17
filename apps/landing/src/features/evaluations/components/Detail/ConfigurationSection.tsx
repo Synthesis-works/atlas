@@ -4,6 +4,17 @@ import type { EvaluationRun } from '@/domain/evaluations/types';
 interface Props { evaluation: EvaluationRun; }
 
 export const ConfigurationSection: React.FC<Props> = ({ evaluation }) => {
+  if (!evaluation.config) {
+    return (
+      <div className="space-y-3">
+        <h4 className="text-xs font-semibold text-white">Runtime Configuration</h4>
+        <div className="p-6 rounded-xl border border-white/5 bg-black/40 text-center text-xs font-mono text-white/30">
+          No execution configuration was persisted for this run.
+        </div>
+      </div>
+    );
+  }
+
   const c = evaluation.config;
 
   const rows = [

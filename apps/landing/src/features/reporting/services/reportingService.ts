@@ -10,17 +10,19 @@ export interface ReportRunSummaryDTO {
   run_id: string;
   benchmark_id: string;
   benchmark_name: string;
+  benchmark_version: string;
   target_model: string;
-  overall_score: number;
-  status: string;
-  created_at: string;
+  evaluation_status: string;
+  started_at: string | null;
+  completed_at: string | null;
+  overall_score: number | null;
 }
 
 export interface PaginatedReportRunsDTO {
   items: ReportRunSummaryDTO[];
-  total_count: number;
-  limit: number;
-  offset: number;
+  total: number;
+  page: number;
+  size: number;
 }
 
 export async function getReportRuns(): Promise<ServiceResult<PaginatedReportRunsDTO | null>> {

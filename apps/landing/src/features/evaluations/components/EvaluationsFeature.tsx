@@ -12,13 +12,23 @@ import { EvaluationKPIs } from './EvaluationKPIs';
 import { AnalyticsGrid } from './AnalyticsGrid';
 import { EvaluationConsole } from './EvaluationConsole';
 import { ReportsTable } from './ReportsTable';
-import { EvaluationDrawer } from './Drawer';
+import { EvaluationDetailSurface } from './EvaluationDetailSurface';
 import { ComparisonView } from './ComparisonView';
 import { NewEvaluationModal } from './NewEvaluationModal';
 import type { EvaluationRun } from '@/domain/evaluations/types';
 
 interface EvaluationsFeatureProps {
   openNewModal?: boolean;
+}
+
+function deriveProviderLabel(model: string): string {
+  const lowered = (model || '').toLowerCase();
+  if (lowered.includes('gemini')) return 'Google AI';
+  if (lowered.includes('gpt')) return 'OpenAI';
+  if (lowered.includes('claude')) return 'Anthropic';
+  if (lowered.includes('grok')) return 'xAI';
+  if (lowered.includes('llama') || lowered.includes('qwen') || lowered.includes('mistral') || lowered.includes('deepseek')) return 'Open Source';
+  return 'Unknown';
 }
 
 export const EvaluationsFeature: React.FC<EvaluationsFeatureProps> = ({ openNewModal = false }) => {
@@ -49,34 +59,30 @@ export const EvaluationsFeature: React.FC<EvaluationsFeatureProps> = ({ openNewM
     }
   }, [activeEvaluations, evaluations, timelineEval]);
 
-  const handleRunDispatched = (dto: any) => {
+  const handleRunDispatched = (dto: any, benchmark: { name: string; version: string }) => {
     const newRun: EvaluationRun = {
       id: dto.id,
-      name: `${dto.target_model} on ${dto.benchmark_version_id === '00000000-0000-0000-0000-000000000005' ? 'HumanEval Benchmark' : dto.benchmark_version_id}`,
-      benchmark: dto.benchmark_version_id === '00000000-0000-0000-0000-000000000005' ? 'HumanEval Benchmark' : dto.benchmark_version_id,
-      benchmarkCategory: 'coding',
-      priority: 'high',
-      dataset: 'Test Set',
+      name: `${dto.target_model} on ${benchmark.name}`,
+      benchmark: benchmark.name,
+      benchmarkVersion: benchmark.version,
+      benchmarkCategory: '',
+      priority: 'normal',
+      dataset: '',
       model: dto.target_model,
-      modelProvider: dto.target_model.includes('groq') ? 'Groq' : 'Live Provider',
+      modelProvider: deriveProviderLabel(dto.target_model),
       status: 'Queued',
       progress: 0,
       currentStage: 'Queued',
-      worker: 'worker-node-01',
-      workerStatus: 'busy',
+      worker: '',
+      workerStatus: 'idle',
       queuedAt: dto.created_at || new Date().toISOString(),
-      startedAt: new Date().toISOString(),
-      durationMs: 0,
-      owner: 'Atlas Admin',
-      metrics: { passAt1: 0, accuracy: 0, latencyMs: 0 },
+      startedAt: dto.created_at || new Date().toISOString(),
+      owner: '—',
       stages: [],
       logs: [],
       artifacts: [],
-      config: { temperature: 0.2, topP: 0.9, seed: 42, maxTokens: 2048, batchSize: 8, threads: 4, timeout: '300s', retries: 3, provider: 'Live Provider' },
-      reproducibility: { modelVersion: '1.0', datasetVersion: '1.0', benchmarkVersion: '1.0', promptVersion: '1.0', commitSha: 'a1b2c3d', dockerImage: 'atlas-runner:v1', runtime: 'python-3.11', seed: 42, os: 'Linux', pythonVersion: '3.11', cudaVersion: '12.1', engineVersion: '2.1.0' },
-      isVerified: true,
+      tags: ['live'],
       source: 'live',
-      tags: ['live', 'groq', 'verified'],
     };
 
     addExecutionRun(newRun);
@@ -100,6 +106,17 @@ export const EvaluationsFeature: React.FC<EvaluationsFeatureProps> = ({ openNewM
     console.log('[Atlas] Refreshing evaluations state...');
   };
 
+  // Full-workspace detail surface: replaces the evaluation workspace entirely so
+  // no stale canvas remains behind it. Live lifecycle data flows from the hook's
+  // 3s refresh through `selectedEvaluation`.
+  if (selectedEvaluation) {
+    return (
+      <div className="w-full h-full text-white">
+        <EvaluationDetailSurface evaluation={selectedEvaluation} onClose={closeDrawer} />
+      </div>
+    );
+  }
+
   return (
     <div className="w-full text-white">
       <WorkspacePage>
@@ -111,6 +128,8 @@ export const EvaluationsFeature: React.FC<EvaluationsFeatureProps> = ({ openNewM
             totalCount={allEvaluations.length}
             filteredCount={evaluations.length}
             compareCount={compareIds.length}
+            activeWorkers={kpis.activeWorkers}
+            successRate={kpis.successRate}
             onSearch={setSearchQuery}
             onStatusFilter={setStatusFilter}
             onOpenCompare={openCompare}
@@ -132,7 +151,7 @@ export const EvaluationsFeature: React.FC<EvaluationsFeatureProps> = ({ openNewM
           <EvaluationConsole
             evaluations={evaluations}
             activeEvaluations={activeEvaluations}
-            selectedId={selectedEvaluation?.id}
+            selectedId={undefined}
             compareIds={compareIds}
             timelineEval={timelineEval}
             runtimeLogs={runtimeLogs}
@@ -153,11 +172,6 @@ export const EvaluationsFeature: React.FC<EvaluationsFeatureProps> = ({ openNewM
           onClose={() => setIsNewModalOpen(false)}
           onRunDispatched={handleRunDispatched}
         />
-
-        {/* Detail Drawer */}
-        {selectedEvaluation && (
-          <EvaluationDrawer evaluation={selectedEvaluation} onClose={closeDrawer} />
-        )}
 
         {/* Comparison Modal */}
         {isCompareOpen && compareEvaluations.length > 0 && (

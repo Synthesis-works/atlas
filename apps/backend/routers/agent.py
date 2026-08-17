@@ -20,6 +20,28 @@ from atlas_db.core.session import SessionLocal
 
 router = APIRouter(prefix="/agent", tags=["Atlas Agent"])
 
+
+def _persist_task(db: Session, task: "AgentTask") -> None:
+    """Persist (or refresh) the AgentTask snapshot so it survives backend restarts."""
+    from atlas_db.models.agent import AgentTaskRecord
+
+    snapshot = task.model_dump(mode="json")
+    record = db.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == task.task_id).first()
+    if record is None:
+        record = AgentTaskRecord(
+            task_id=task.task_id,
+            goal=task.goal,
+            status=task.status.value,
+            snapshot=snapshot,
+        )
+        db.add(record)
+    else:
+        record.goal = task.goal
+        record.status = task.status.value
+        record.snapshot = snapshot
+    db.commit()
+
+
 # In-memory storage for active agent tasks (backed by DB models)
 _agent_tasks_db: dict[UUID, AgentTask] = {}
 _tool_registry = ToolRegistry()
@@ -96,8 +118,8 @@ def _run_agent_task_background(
     task_id: UUID, db_session_factory, provider_type: str, model_override: Optional[str]
 ):
     db: Session = db_session_factory()
+    task = _agent_tasks_db.get(task_id)
     try:
-        task = _agent_tasks_db.get(task_id)
         if not task:
             return
 
@@ -111,6 +133,8 @@ def _run_agent_task_background(
         agent = AtlasAgent(provider=provider, registry=_tool_registry)
         agent.run_task(task, db)
     finally:
+        if task is not None:
+            _persist_task(db, task)
         db.close()
 
 
@@ -128,10 +152,12 @@ def create_agent_task(
     if payload.model is not None:
         task.model = payload.model
     _agent_tasks_db[task.task_id] = task
+    _persist_task(db, task)
 
     if payload.provider == "mock":
         agent = AtlasAgent(provider=MockAgentProvider(), registry=_tool_registry)
         agent.run_task(task, db)
+        _persist_task(db, task)
     else:
         background_tasks.add_task(
             _run_agent_task_background, task.task_id, SessionLocal, payload.provider, payload.model
@@ -141,12 +167,17 @@ def create_agent_task(
 
 
 @router.get("/tasks/{task_id}", response_model=dict[str, Any])
-def get_agent_task(task_id: UUID):
+def get_agent_task(task_id: UUID, db: Session = Depends(get_db_session)):
     task = _agent_tasks_db.get(task_id)
     if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
-        )
+        from atlas_db.models.agent import AgentTaskRecord
+
+        record = db.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == task_id).first()
+        if not record:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
+            )
+        task = AgentTask.model_validate(record.snapshot)
 
     return _serialize_agent_task(task)
 
@@ -205,21 +236,37 @@ def get_agent_report(report_id: str, db: Session = Depends(get_db_session)):
 
 
 @router.get("/tasks", response_model=list[dict[str, Any]])
-def list_agent_tasks():
-    tasks = list(_agent_tasks_db.values())
-    return [_serialize_agent_task(t) for t in reversed(tasks)]
+def list_agent_tasks(db: Session = Depends(get_db_session)):
+    from atlas_db.models.agent import AgentTaskRecord
+
+    live = list(_agent_tasks_db.values())
+    live_ids = {t.task_id for t in live}
+    records = db.query(AgentTaskRecord).order_by(AgentTaskRecord.created_at.desc()).all()
+    persisted = [AgentTask.model_validate(r.snapshot) for r in records if r.task_id not in live_ids]
+    tasks = list(reversed(live)) + persisted
+    return [_serialize_agent_task(t) for t in tasks]
 
 
 @router.delete("/tasks", response_model=dict[str, Any])
-def clear_agent_tasks():
+def clear_agent_tasks(db: Session = Depends(get_db_session)):
+    from atlas_db.models.agent import AgentTaskRecord
+
     _agent_tasks_db.clear()
+    db.query(AgentTaskRecord).delete()
+    db.commit()
     return {"status": "success", "message": "All agent tasks cleared."}
 
 
 @router.delete("/tasks/{task_id}", response_model=dict[str, Any])
-def delete_agent_task(task_id: UUID):
+def delete_agent_task(task_id: UUID, db: Session = Depends(get_db_session)):
+    from atlas_db.models.agent import AgentTaskRecord
+
     if task_id in _agent_tasks_db:
         del _agent_tasks_db[task_id]
+    record = db.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == task_id).first()
+    if record:
+        db.delete(record)
+        db.commit()
         return {"status": "success", "message": f"Task {task_id} deleted."}
     raise HTTPException(status_code=404, detail="Task not found")
 
@@ -258,6 +305,7 @@ def approve_agent_task(
 
     agent = AtlasAgent(provider=MockAgentProvider(), registry=_tool_registry)
     agent.run_task(task, db)
+    _persist_task(db, task)
 
     return {
         "task_id": str(task.task_id),
@@ -370,6 +418,7 @@ def clarify_agent_task(
     if task.primary_provider == "mock":
         agent = AtlasAgent(provider=MockAgentProvider(), registry=_tool_registry)
         agent.run_task(task, db)
+        _persist_task(db, task)
     else:
         background_tasks.add_task(
             _run_agent_task_background,
@@ -420,6 +469,7 @@ def run_agent_task_again(
 
     # Register in in-memory tasks database
     _agent_tasks_db[new_task_id] = new_task
+    _persist_task(db, new_task)
 
     # Trace rerun start
     new_task.add_trace(
@@ -435,6 +485,7 @@ def run_agent_task_again(
     if new_task.primary_provider == "mock":
         agent = AtlasAgent(provider=MockAgentProvider(), registry=_tool_registry)
         agent.run_task(new_task, db)
+        _persist_task(db, new_task)
     else:
         background_tasks.add_task(
             _run_agent_task_background,

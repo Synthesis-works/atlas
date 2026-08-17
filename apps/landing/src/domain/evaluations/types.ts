@@ -108,6 +108,7 @@ export interface EvaluationRun {
   dataset: string;
   benchmark: string;
   benchmarkCategory: string;
+  benchmarkVersion?: string;
   owner: string;
 
   progress: number;
@@ -126,8 +127,8 @@ export interface EvaluationRun {
   stages: EvaluationStageRecord[];
   logs: string[];
   artifacts: EvaluationArtifact[];
-  config: EvaluationConfig;
-  reproducibility: EvaluationReproducibility;
+  config?: EvaluationConfig;
+  reproducibility?: EvaluationReproducibility;
 
   tags: string[];
   description?: string;
@@ -136,6 +137,8 @@ export interface EvaluationRun {
   retryCount?: number;
   isVerified?: boolean;
   source?: string;
+  totalItems?: number;
+  completedItems?: number;
 }
 
 

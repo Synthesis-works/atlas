@@ -1,6 +1,6 @@
 import React from 'react';
 import type { EvaluationRun } from '@/domain/evaluations/types';
-import { EVALUATION_STATUS_MAP, EVALUATION_PRIORITY_MAP } from '@/domain/evaluations/constants';
+import { getStatusStyle, EVALUATION_PRIORITY_MAP } from '@/domain/evaluations/constants';
 import { DataTable } from '@/shared/components';
 import type { Column } from '@/shared/components';
 
@@ -50,7 +50,7 @@ export const EvaluationQueue: React.FC<Props> = ({
       key: 'status',
       header: 'Status',
       render: (ev) => {
-        const sc = EVALUATION_STATUS_MAP[ev.status];
+        const sc = getStatusStyle(ev.status);
         return (
           <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] whitespace-nowrap ${sc.badgeClass}`}>
             <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sc.dotClass}`} />
@@ -76,7 +76,7 @@ export const EvaluationQueue: React.FC<Props> = ({
       render: (ev) => (
         <div>
           <div className="text-white/70">{ev.benchmark}</div>
-          <div className="text-[10px] text-white/30">{ev.benchmarkCategory}</div>
+          <div className="text-[10px] text-white/30">{ev.benchmarkVersion ? `v${ev.benchmarkVersion}` : '—'}</div>
         </div>
       ),
     },
@@ -93,7 +93,7 @@ export const EvaluationQueue: React.FC<Props> = ({
     {
       key: 'dataset',
       header: 'Dataset',
-      render: (ev) => <span className="text-white/50 text-[11px] truncate max-w-[140px] block">{ev.dataset}</span>,
+      render: (ev) => <span className="text-white/50 text-[11px] truncate max-w-[140px] block">{ev.dataset || '—'}</span>,
     },
     {
       key: 'startedAt',
@@ -130,7 +130,7 @@ export const EvaluationQueue: React.FC<Props> = ({
     {
       key: 'worker',
       header: 'Worker',
-      render: (ev) => <span className="text-white/30 text-[10px] font-mono">{ev.worker}</span>,
+      render: (ev) => <span className="text-white/30 text-[10px] font-mono">{ev.worker || '—'}</span>,
     },
     {
       key: 'priority',

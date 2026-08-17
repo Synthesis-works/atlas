@@ -31,6 +31,13 @@ export const EvaluationConsoleComponent: React.FC<EvaluationConsoleProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'queue' | 'timeline' | 'terminal' | 'diagnostics'>('queue');
 
+  const failedRuns = evaluations.filter((e) => e.status === 'Failed');
+  const completedRuns = evaluations.filter((e) => e.status === 'Completed');
+  const successRate =
+    completedRuns.length + failedRuns.length > 0
+      ? Math.round((completedRuns.length / (completedRuns.length + failedRuns.length)) * 100)
+      : null;
+
   return (
     <section className="liquid-glass-card rounded-2xl border border-accent/30 shadow-[0_0_40px_rgba(99,102,241,0.12)] overflow-hidden flex flex-col h-full space-y-0 relative" aria-label="Execution Control Center">
       <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-emerald-400 via-accent to-purple-500 opacity-80" />
@@ -182,25 +189,40 @@ export const EvaluationConsoleComponent: React.FC<EvaluationConsoleProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-purple-300">
                 <AlertTriangle className="w-4 h-4 text-amber-400" aria-hidden="true" />
-                <span className="font-semibold text-sm">Evaluation Execution Diagnostic Alert</span>
+                <span className="font-semibold text-sm">Evaluation Execution Diagnostics</span>
               </div>
               <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                Auto-Diagnostic Active
+                {failedRuns.length > 0 ? `${failedRuns.length} failed` : 'No anomalies'}
               </span>
             </div>
 
-            <p className="text-white/70 text-xs leading-relaxed">
-              Anomaly detected in Llama-3 70B run on HumanEval: 2 worker threads encountered token context truncation at token 4096. Recommend increasing context window size or applying dynamic chunking.
-            </p>
-
-            <div className="flex items-center gap-4 pt-3 border-t border-purple-500/20 text-purple-300 text-xs">
-              <button className="underline hover:text-white cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                View Stack Trace →
-              </button>
-              <button className="underline hover:text-white cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                Retry Failed Batch
-              </button>
-            </div>
+            {failedRuns.length === 0 ? (
+              <p className="text-white/70 text-xs leading-relaxed">
+                No failed executions detected. {completedRuns.length} completed, {activeEvaluations.length} active,{' '}
+                {successRate !== null ? `${successRate}% success rate` : 'no completed runs yet'}.
+              </p>
+            ) : (
+              <>
+                <p className="text-white/70 text-xs leading-relaxed">
+                  {failedRuns.length} execution{failedRuns.length !== 1 ? 's' : ''} did not complete. Review the
+                  failed runs below and the queue table for error context.
+                </p>
+                <div className="space-y-1.5">
+                  {failedRuns.slice(0, 10).map((run) => (
+                    <div
+                      key={run.id}
+                      className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-rose-500/20 bg-rose-500/5"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-white/80 truncate">{run.name}</div>
+                        <div className="text-[10px] text-white/40 font-mono truncate">{run.model} · {run.benchmark}</div>
+                      </div>
+                      <span className="text-[10px] font-mono text-rose-400 shrink-0">Failed</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

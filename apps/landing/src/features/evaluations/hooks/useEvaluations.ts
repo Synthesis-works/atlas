@@ -1,5 +1,4 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
-import { MOCK_RUNTIME_LOGS } from '@/domain/evaluations/mock';
 import type { EvaluationRun, EvaluationReport } from '@/domain/evaluations/types';
 import { filterEvaluations } from '../lib/searchParser';
 import { getEvaluations } from '../services/evaluationService';
@@ -15,7 +14,7 @@ export function useEvaluations() {
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('queue');
-  const [runtimeLogs] = useState<string[]>(MOCK_RUNTIME_LOGS);
+  const [runtimeLogs] = useState<string[]>([]);
   const [terminalPaused, setTerminalPaused] = useState(false);
 
   useEffect(() => {
@@ -24,6 +23,13 @@ export function useEvaluations() {
       const res = await getEvaluations();
       if (isMounted && res.data && res.data.length > 0) {
         setEvaluations(res.data);
+        // Keep the open detail surface live: re-attach the freshest snapshot of
+        // the selected run so status/progress/metrics update without a reload.
+        setSelectedEvaluation((prev) => {
+          if (!prev) return prev;
+          const fresh = res.data.find((e) => e.id === prev.id);
+          return fresh ?? prev;
+        });
       }
     };
     fetchEvaluations();
@@ -98,7 +104,7 @@ export function useEvaluations() {
       tokensProcessed: Math.round(totalTokens),
       totalCostUsd: totalCost,
       activeWorkers,
-      totalWorkers: 16,
+      totalWorkers: activeWorkers,
     };
   }, [evaluations]);
 
@@ -136,14 +142,14 @@ export function useEvaluations() {
         { label: '60s+', count: completed.filter(e => (e.durationMs ?? 0) > 60000).length },
       ],
       successRateTrend: [
-        { day: '30d ago', rate: Math.round(passRate) },
-        { day: '15d ago', rate: Math.round(passRate) },
-        { day: 'Today', rate: Math.round(passRate) },
+        { day: 'Current', rate: Math.round(passRate) },
+        { day: 'Current', rate: Math.round(passRate) },
+        { day: 'Current', rate: Math.round(passRate) },
       ],
       queueLengthTrend: [
-        { hour: '00:00', length: queuedCount },
-        { hour: '12:00', length: runningCount },
-        { hour: '24:00', length: queuedCount },
+        { hour: 'Now', length: queuedCount },
+        { hour: 'Now', length: runningCount },
+        { hour: 'Now', length: queuedCount },
       ],
       failureDistribution: evaluations.filter(e => e.status === 'Failed').length > 0
         ? [{ reason: 'Execution Failed', count: evaluations.filter(e => e.status === 'Failed').length }]
