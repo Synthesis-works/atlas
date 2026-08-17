@@ -40,7 +40,15 @@ class ExecutionResponse(BaseModel):
 
 class ExecutionCreateRequest(BaseModel):
     target_model: str = "gemini-2.5-flash"
+    dataset_version_id: uuid.UUID | None = None
     execution_config: dict | None = None
+
+
+class DispatchTargetResponse(BaseModel):
+    benchmark_version_id: uuid.UUID
+    benchmark_name: str
+    version_string: str
+    dataset_version_id: uuid.UUID | None = None
 
 
 class ExecutionListResponse(BaseModel):

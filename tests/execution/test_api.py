@@ -4,10 +4,11 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from apps.backend.dependencies import require_authenticated
+from apps.backend.dependencies import get_db_session, require_authenticated
 from apps.backend.main import app
 from apps.backend.routers.executions import get_execution_service
 from apps.backend.schemas.auth import TokenClaims
+from atlas_db.models.authoring import BenchmarkVersion
 from packages.execution_engine.application.execution_app_service import ExecutionApplicationService
 from packages.execution_engine.domain.exceptions import ExecutionNotFoundError
 from packages.execution_engine.domain.models import Execution, ExecutionState
@@ -43,6 +44,16 @@ def mock_exec_service():
 
 def test_create_execution(mock_exec_service):
     bv_id = uuid.uuid4()
+    benchmark_version = BenchmarkVersion(
+        id=bv_id,
+        benchmark_id=uuid.uuid4(),
+        version_string="v1",
+        primary_dataset_version_id=uuid.uuid4(),
+    )
+    db = MagicMock()
+    db.query.return_value.filter.return_value.first.return_value = benchmark_version
+    app.dependency_overrides[get_db_session] = lambda: db
+
     mock_execution = Execution(
         id=uuid.uuid4(),
         benchmark_version_id=bv_id,
@@ -57,6 +68,7 @@ def test_create_execution(mock_exec_service):
     assert data["status"] == "QUEUED"
     assert data["benchmark_version_id"] == str(bv_id)
     assert mock_exec_service.submit_execution.called
+    app.dependency_overrides.pop(get_db_session, None)
 
 
 def test_get_execution(mock_exec_service):
