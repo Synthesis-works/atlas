@@ -23,6 +23,8 @@ interface Props {
   totalCount: number;
   filteredCount: number;
   compareCount: number;
+  activeWorkers: number;
+  successRate: number;
   onSearch: (q: string) => void;
   onStatusFilter: (s: string) => void;
   onOpenCompare: () => void;
@@ -36,6 +38,8 @@ export const EvaluationHeader: React.FC<Props> = ({
   totalCount,
   filteredCount,
   compareCount,
+  activeWorkers,
+  successRate,
   onSearch,
   onStatusFilter,
   onOpenCompare,
@@ -76,13 +80,13 @@ export const EvaluationHeader: React.FC<Props> = ({
             <div className="flex items-center gap-2">
               <Activity className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-white/40">Active Workers:</span>
-              <span className="text-white font-semibold">12 / 16</span>
+              <span className="text-white font-semibold">{activeWorkers}</span>
             </div>
             <div className="w-px h-3 bg-white/10" />
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
               <span className="text-white/40">Pass Index:</span>
-              <span className="text-white font-semibold">96.8%</span>
+              <span className="text-white font-semibold">{successRate}%</span>
             </div>
           </div>
 

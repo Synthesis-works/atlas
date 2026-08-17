@@ -4,6 +4,17 @@ import type { EvaluationRun } from '@/domain/evaluations/types';
 interface Props { evaluation: EvaluationRun; }
 
 export const ReproducibilitySection: React.FC<Props> = ({ evaluation }) => {
+  if (!evaluation.reproducibility) {
+    return (
+      <div className="space-y-3">
+        <h4 className="text-xs font-semibold text-white">Reproducibility Manifest</h4>
+        <div className="p-6 rounded-xl border border-white/5 bg-black/40 text-center text-xs font-mono text-white/30">
+          No reproducibility manifest was persisted for this run.
+        </div>
+      </div>
+    );
+  }
+
   const r = evaluation.reproducibility;
   const rows = [
     { label: 'Model Version', value: r.modelVersion, mono: true },

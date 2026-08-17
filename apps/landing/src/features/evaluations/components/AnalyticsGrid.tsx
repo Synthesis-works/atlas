@@ -98,6 +98,19 @@ export const AnalyticsGridComponent: React.FC<Props> = ({ data }) => {
   const latestSuccess = data.successRateTrend[data.successRateTrend.length - 1]?.rate ?? 0;
   const currentQueue = Math.round(data.queueLengthTrend[data.queueLengthTrend.length - 1]?.length ?? 0);
 
+  const totalCompleted = data.runtimeDistribution.reduce((s, d) => s + d.count, 0);
+  const MIDPOINTS: Record<string, number> = {
+    '0-5s': 2.5, '5-10s': 7.5, '10-20s': 15, '20-60s': 40, '60s+': 90,
+  };
+  const meanSeconds = totalCompleted > 0
+    ? data.runtimeDistribution.reduce((s, d) => s + d.count * (MIDPOINTS[d.label] ?? 30), 0) / totalCompleted
+    : 0;
+  const meanLabel = meanSeconds > 0
+    ? meanSeconds >= 60 ? `${Math.floor(meanSeconds / 60)}m ${Math.round(meanSeconds % 60)}s` : `${Math.round(meanSeconds)}s`
+    : '—';
+
+  const topFailure = [...data.failureDistribution].sort((a, b) => b.count - a.count)[0];
+
   return (
     <section className="liquid-glass-card rounded-2xl p-5 sm:p-6 border border-white/10 space-y-5" aria-label="Evaluation Intelligence Surface">
       {/* Header */}
@@ -130,7 +143,7 @@ export const AnalyticsGridComponent: React.FC<Props> = ({ data }) => {
               <BarChart2 className="w-3.5 h-3.5 text-blue-400" />
               Runtime Distribution
             </div>
-            <div className="text-[10px] font-mono text-white/40 mt-1">p50: 12m · p90: 28m · Mean: 14m 20s</div>
+            <div className="text-[10px] font-mono text-white/40 mt-1">Mean: {meanLabel} · {totalCompleted} completed runs</div>
           </div>
           <div className="space-y-2 pt-1 flex-1 flex flex-col justify-center">
             {data.runtimeDistribution.map(b => (
@@ -139,8 +152,8 @@ export const AnalyticsGridComponent: React.FC<Props> = ({ data }) => {
             ))}
           </div>
           <div className="pt-1 text-[10px] font-mono text-white/30 border-t border-white/5 flex items-center justify-between">
-            <span>Peak: &lt;10m (18 runs)</span>
-            <span className="text-blue-400 font-semibold">92% &lt; 30m</span>
+            <span>Bucket counts from completed runs</span>
+            <span className="text-blue-400 font-semibold">{totalCompleted} total</span>
           </div>
         </div>
 
@@ -151,14 +164,14 @@ export const AnalyticsGridComponent: React.FC<Props> = ({ data }) => {
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
               Pass Index Trend
             </div>
-            <div className="text-[10px] font-mono text-white/40 mt-1">{latestSuccess.toFixed(1)}% pass index (last 30 days)</div>
+            <div className="text-[10px] font-mono text-white/40 mt-1">{latestSuccess.toFixed(1)}% pass index (current)</div>
           </div>
           <div className="pt-1 space-y-2 flex-1 flex flex-col justify-end">
             <MiniLineChart data={data.successRateTrend} valueKey="rate" color="#34d399" height={76} />
             <div className="flex items-center justify-between text-[10px] font-mono text-white/40 pt-1 border-t border-white/5">
-              <span>30d ago</span>
-              <span className="text-emerald-400 font-semibold">{latestSuccess.toFixed(1)}% now</span>
-              <span>Today</span>
+              <span>Current</span>
+              <span className="text-emerald-400 font-semibold">{latestSuccess.toFixed(1)}%</span>
+              <span>Current</span>
             </div>
           </div>
         </div>
@@ -172,35 +185,43 @@ export const AnalyticsGridComponent: React.FC<Props> = ({ data }) => {
             </div>
             <div className="text-[10px] font-mono text-white/40 mt-1">{currentQueue} jobs currently queued</div>
           </div>
-          <div className="pt-1 space-y-2 flex-1 flex flex-col justify-end">
-            <MiniLineChart data={data.queueLengthTrend} valueKey="length" color="#818cf8" height={76} />
-            <div className="flex items-center justify-between text-[10px] font-mono text-white/40 pt-1 border-t border-white/5">
-              <span>00:00</span>
-              <span className="text-indigo-400 font-semibold">{currentQueue} queued</span>
-              <span>24:00</span>
+<div className="pt-1 space-y-2 flex-1 flex flex-col justify-end">
+              <MiniLineChart data={data.queueLengthTrend} valueKey="length" color="#818cf8" height={76} />
+              <div className="flex items-center justify-between text-[10px] font-mono text-white/40 pt-1 border-t border-white/5">
+                <span>Now</span>
+                <span className="text-indigo-400 font-semibold">{currentQueue} queued</span>
+                <span>Now</span>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Failure Reasons */}
-        <div className="p-4 sm:p-5 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between space-y-3 h-full">
-          <div>
-            <div className="text-xs font-semibold text-white/90 font-mono">Failure Diagnostics</div>
-            <div className="text-[10px] font-mono text-white/40 mt-1">Top Failure: Token Limit (42%)</div>
-          </div>
-          <div className="pt-1 flex-1 flex items-center">
-            <DonutChart data={data.failureDistribution} />
-          </div>
-          <div className="space-y-1.5 pt-1 border-t border-white/5 text-[10px] font-mono">
-            <div className="text-amber-300/90 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 truncate">
-              Rec: Increase Window / Batch Size
+          {/* Failure Reasons */}
+          <div className="p-4 sm:p-5 rounded-xl border border-white/5 bg-white/[0.02] flex flex-col justify-between space-y-3 h-full">
+            <div>
+              <div className="text-xs font-semibold text-white/90 font-mono">Failure Diagnostics</div>
+              <div className="text-[10px] font-mono text-white/40 mt-1">
+                {topFailure && topFailure.count > 0
+                  ? `Top Failure: ${topFailure.reason} (${topFailure.count})`
+                  : 'No failed executions recorded'}
+              </div>
             </div>
-            <div className="flex items-center justify-between text-white/35">
-              <span>Models: Llama-3-70B, Qwen</span>
-              <span>Bench: HumanEval</span>
+            <div className="pt-1 flex-1 flex items-center">
+              <DonutChart data={data.failureDistribution} />
+            </div>
+            <div className="space-y-1.5 pt-1 border-t border-white/5 text-[10px] font-mono">
+              {topFailure && topFailure.count > 0 ? (
+                <div className="flex items-center justify-between text-white/35">
+                  <span>{topFailure.count} failed execution{topFailure.count !== 1 ? 's' : ''}</span>
+                  <span>Review queue table for details</span>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-white/35">
+                  <span>No failures</span>
+                  <span>All executions healthy</span>
+                </div>
+              )}
             </div>
           </div>
-        </div>
       </div>
     </section>
   );

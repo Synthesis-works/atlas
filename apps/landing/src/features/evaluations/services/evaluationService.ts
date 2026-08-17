@@ -8,6 +8,7 @@ import { apiClient } from '@/core/api/client';
 import type { ServiceResult } from '@/core/types/service';
 import type { EvaluationRun } from '@/domain/evaluations/types';
 import { ensureAuthenticatedSession } from '@/features/auth/services/authService';
+import { getReportRuns } from '@/features/reporting/services/reportingService';
 
 export interface BackendExecutionCreatePayload {
   benchmark_version_id: string;
@@ -143,6 +144,16 @@ export async function cancelExecution(
   }
 }
 
+function deriveProvider(model: string | undefined | null): string {
+  const lowered = (model ?? '').toLowerCase();
+  if (lowered.includes('gemini')) return 'Google AI';
+  if (lowered.includes('gpt')) return 'OpenAI';
+  if (lowered.includes('claude')) return 'Anthropic';
+  if (lowered.includes('grok')) return 'xAI';
+  if (lowered.includes('llama') || lowered.includes('qwen') || lowered.includes('mistral') || lowered.includes('deepseek')) return 'Open Source';
+  return 'Unknown';
+}
+
 export async function getEvaluations(): Promise<ServiceResult<EvaluationRun[]>> {
   try {
     await ensureAuthenticatedSession();
@@ -158,76 +169,120 @@ export async function getEvaluations(): Promise<ServiceResult<EvaluationRun[]>> 
       dtos = rawRes.data;
     }
 
+    // Resolve real benchmark/version labels from dispatch targets (by benchmark_version_id)
+    // and real persisted scores from the reporting service (by execution run id).
+    const [targetsRes, reportRes] = await Promise.all([getDispatchTargets(), getReportRuns()]);
+
+    const targetByBv = new Map<
+      string,
+      { benchmarkName: string; versionString: string; datasetVersionId: string | null }
+    >();
+    (targetsRes.data ?? []).forEach((t) => {
+      targetByBv.set(t.benchmark_version_id, {
+        benchmarkName: t.benchmark_name,
+        versionString: t.version_string,
+        datasetVersionId: t.dataset_version_id ?? null,
+      });
+    });
+
+    const scoreByRun = new Map<string, number>();
+    (reportRes.data?.items ?? []).forEach((r: any) => {
+      if (r && r.run_id && typeof r.overall_score === 'number') {
+        scoreByRun.set(r.run_id, r.overall_score);
+      }
+    });
+
+    // Exact contract from packages/execution_engine ExecutionState. Unknown backend
+    // statuses pass through verbatim so a real backend state is never relabelled or
+    // silently collapsed into a fabricated value.
+    const statusMap: Record<string, EvaluationRun['status']> = {
+      QUEUED: 'Queued',
+      SCHEDULED: 'Queued',
+      STARTING: 'Running',
+      RUNNING: 'Running',
+      EVALUATING: 'Scoring',
+      COMPLETED: 'Completed',
+      FAILED: 'Failed',
+      RETRYING: 'Retrying',
+      CANCELLING: 'Cancelled',
+      CANCELLED: 'Cancelled',
+    };
+
     const mapped: EvaluationRun[] = dtos.map((dto: any, i: number) => {
       const config = dto.execution_config || {};
-      const isVerified = config.is_verified ?? true;
-      const source = config.source ?? 'live';
-      const passAt1 = config.pass_at_1 ?? (dto.status === 'COMPLETED' ? 85.0 : 0);
-      const statusMap: Record<string, EvaluationRun['status']> = {
-        COMPLETED: 'Completed',
-        RUNNING: 'Running',
-        QUEUED: 'Queued',
-        CANCELLED: 'Cancelled',
-        FAILED: 'Failed',
-        RETRYING: 'Running',
-      };
-      const status = statusMap[dto.status] || 'Queued';
+      const status = (statusMap[dto.status] ?? dto.status ?? 'Queued') as EvaluationRun['status'];
+
+      const target = targetByBv.get(dto.benchmark_version_id);
+      const benchmarkName = target?.benchmarkName ?? 'Unknown benchmark';
+      const benchmarkVersion = target?.versionString ?? '';
+
+      const passAt1 = typeof config.pass_at_1 === 'number' ? config.pass_at_1 : undefined;
+      const latencyMs = typeof config.latency_ms === 'number' ? config.latency_ms : undefined;
+      const reportScore = scoreByRun.get(dto.id);
+
+      const startedAt = dto.started_at || dto.created_at;
+      const completedAt = status === 'Completed' ? dto.completed_at || undefined : undefined;
+      let durationMs: number | undefined;
+      if (startedAt && dto.completed_at) {
+        const ms = new Date(dto.completed_at).getTime() - new Date(startedAt).getTime();
+        if (!Number.isNaN(ms) && ms >= 0) durationMs = ms;
+      }
+
+      const totalItems = typeof dto.total_items === 'number' ? dto.total_items : undefined;
+      const completedItems =
+        typeof dto.completed_items === 'number' ? dto.completed_items : undefined;
+      const progress =
+        status === 'Completed'
+          ? 100
+          : status === 'Queued'
+            ? 0
+            : totalItems && totalItems > 0 && completedItems !== undefined
+              ? Math.min(100, Math.round((completedItems / totalItems) * 100))
+              : 0;
+
+      // Only persist real metric values. Nothing is invented here: a score comes from
+      // the reporting service or the execution config; otherwise the run has no metrics.
+      const metrics: any = {};
+      if (reportScore !== undefined) metrics.overallScore = reportScore / 100;
+      if (passAt1 !== undefined) {
+        metrics.passAt1 = passAt1 / 100;
+        metrics.accuracy = passAt1 / 100;
+        if (metrics.overallScore === undefined) metrics.overallScore = passAt1 / 100;
+      }
+      if (latencyMs !== undefined) metrics.latencyMs = latencyMs;
+
+      const isVerified = config.is_verified ?? false;
+      const source = config.source ?? 'real';
 
       return {
         id: dto.id || `eval-${i}`,
-        name: `${dto.target_model || 'Model'} on ${dto.benchmark_version_id === '00000000-0000-0000-0000-000000000005' ? 'HumanEval Benchmark' : (dto.benchmark_version_id || 'Benchmark')}`,
-        benchmark: dto.benchmark_version_id === '00000000-0000-0000-0000-000000000005' ? 'HumanEval Benchmark' : (dto.benchmark_version_id || 'HumanEval'),
-        benchmarkCategory: 'coding',
+        name: `${dto.target_model || 'Unknown model'} on ${benchmarkName}`,
+        benchmark: benchmarkName,
+        benchmarkCategory: '',
+        benchmarkVersion,
         priority: 'normal',
-        dataset: 'Test Set',
-        model: dto.target_model || 'groq/llama-3.1-8b-instant',
-        modelProvider: dto.target_model?.includes('groq') ? 'Groq' : 'Live Provider',
+        dataset: '',
+        model: dto.target_model || 'Unknown model',
+        modelProvider: deriveProvider(dto.target_model),
         status,
-        progress: status === 'Completed' ? 100 : (status === 'Running' ? 45 : 0),
-        currentStage: status === 'Completed' ? 'Reporting' : (status === 'Running' ? 'Executing' : 'Queued'),
-        worker: 'worker-node-01',
-        workerStatus: 'busy',
+        progress,
+        currentStage: status === 'Queued' ? 'Queued' : status,
+        worker: '',
+        workerStatus: 'idle',
         queuedAt: dto.created_at || new Date().toISOString(),
-        startedAt: dto.started_at || dto.created_at || new Date().toISOString(),
-        completedAt: status === 'Completed' ? dto.completed_at || new Date().toISOString() : undefined,
-        durationMs: config.latency_ms || 2350,
-        owner: 'Atlas Admin',
-        metrics: {
-          passAt1,
-          accuracy: passAt1,
-          latencyMs: config.latency_ms || 2350,
-        },
+        startedAt,
+        completedAt,
+        durationMs,
+        totalItems,
+        completedItems,
+        owner: '—',
+        metrics: Object.keys(metrics).length > 0 ? metrics : undefined,
         stages: [],
         logs: [],
         artifacts: [],
-        config: {
-          temperature: 0.2,
-          topP: 0.9,
-          seed: 42,
-          maxTokens: 2048,
-          batchSize: 8,
-          threads: 4,
-          timeout: '300s',
-          retries: 3,
-          provider: 'Groq API',
-        },
-        reproducibility: {
-          modelVersion: '1.0',
-          datasetVersion: '1.0',
-          benchmarkVersion: '1.0',
-          promptVersion: '1.0',
-          commitSha: 'a1b2c3d',
-          dockerImage: 'atlas-runner:v1',
-          runtime: 'python-3.11',
-          seed: 42,
-          os: 'Linux',
-          pythonVersion: '3.11',
-          cudaVersion: '12.1',
-          engineVersion: '2.1.0',
-        },
+        tags: [source],
         isVerified,
         source,
-        tags: [source, 'verified'],
       };
     });
 

@@ -1,11 +1,5 @@
 import React, { memo } from 'react';
-import { Activity, ShieldCheck, Clock, Cpu, TrendingUp, Info } from 'lucide-react';
-import {
-  MOCK_SPARK_RUNNING,
-  MOCK_SPARK_SUCCESS,
-  MOCK_SPARK_QUEUE,
-  MOCK_SPARK_COST,
-} from '@/domain/evaluations/mock';
+import { Activity, ShieldCheck, Clock, Cpu, Info } from 'lucide-react';
 
 interface KPIsProps {
   kpis: {
@@ -79,7 +73,7 @@ export const EvaluationKPIsComponent: React.FC<KPIsProps> = ({ kpis }) => {
                 <span className="text-[10px] font-mono text-white/40">{kpis.queued} queued in backlog</span>
               </div>
             </div>
-            <MiniSparkline data={MOCK_SPARK_RUNNING} color="#34d399" />
+            <MiniSparkline data={[]} color="#34d399" />
           </div>
         </div>
 
@@ -95,13 +89,11 @@ export const EvaluationKPIsComponent: React.FC<KPIsProps> = ({ kpis }) => {
             <div className="min-w-0">
               <div className="text-2xl font-bold text-white font-mono tabular-nums leading-none">{kpis.successRate}%</div>
               <div className="flex items-center gap-1.5 mt-2 whitespace-nowrap">
-                <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-0.5">
-                  <TrendingUp className="w-3 h-3" aria-hidden="true" /> +0.3%
-                </span>
+                <span className="text-[10px] font-mono text-emerald-400">{kpis.successRate}% pass index</span>
                 <span className="text-[10px] font-mono text-white/30">• {kpis.failureRate}% failures</span>
               </div>
             </div>
-            <MiniSparkline data={MOCK_SPARK_SUCCESS} color="#2dd4bf" />
+            <MiniSparkline data={[]} color="#2dd4bf" />
           </div>
         </div>
 
@@ -120,7 +112,7 @@ export const EvaluationKPIsComponent: React.FC<KPIsProps> = ({ kpis }) => {
                 <span className="text-[10px] font-mono text-white/40">{fmtTokens(kpis.tokensProcessed)} tokens processed</span>
               </div>
             </div>
-            <MiniSparkline data={MOCK_SPARK_QUEUE} color="#fbbf24" />
+            <MiniSparkline data={[]} color="#fbbf24" />
           </div>
         </div>
 
@@ -140,7 +132,7 @@ export const EvaluationKPIsComponent: React.FC<KPIsProps> = ({ kpis }) => {
                 <span className="text-[10px] font-mono text-white/30">• {kpis.gpuHours} GPU hrs</span>
               </div>
             </div>
-            <MiniSparkline data={MOCK_SPARK_COST} color="#c084fc" />
+            <MiniSparkline data={[]} color="#c084fc" />
           </div>
         </div>
       </div>

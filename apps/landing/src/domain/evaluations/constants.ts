@@ -3,8 +3,7 @@ import type { EvaluationStatus, EvaluationPriority } from './types';
 export const EVALUATION_STATUS_MAP: Record<
   EvaluationStatus,
   { label: string; badgeClass: string; dotClass: string }
-> = {
-  Queued: { label: 'Queued', badgeClass: 'bg-white/5 text-white/50 border-white/10', dotClass: 'bg-white/40' },
+> = {  Queued: { label: 'Queued', badgeClass: 'bg-white/5 text-white/50 border-white/10', dotClass: 'bg-white/40' },
   Loading: { label: 'Loading', badgeClass: 'bg-blue-500/10 text-blue-400 border-blue-500/20', dotClass: 'bg-blue-400 animate-pulse' },
   Preparing: { label: 'Preparing', badgeClass: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20', dotClass: 'bg-indigo-400 animate-pulse' },
   Running: { label: 'Running', badgeClass: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', dotClass: 'bg-emerald-400 animate-pulse' },
@@ -17,6 +16,18 @@ export const EVALUATION_STATUS_MAP: Record<
   Paused: { label: 'Paused', badgeClass: 'bg-amber-500/10 text-amber-400 border-amber-500/20', dotClass: 'bg-amber-400' },
   Retrying: { label: 'Retrying', badgeClass: 'bg-sky-500/10 text-sky-400 border-sky-500/20', dotClass: 'bg-sky-400 animate-ping' },
 };
+
+const UNKNOWN_STATUS_STYLE = {
+  label: 'Unknown',
+  badgeClass: 'bg-white/5 text-white/40 border-white/10',
+  dotClass: 'bg-white/30',
+};
+
+/** Status badge styling with a safe fallback so a real-but-unmapped backend
+ * status never crashes a renderer or silently displays a fabricated label. */
+export function getStatusStyle(status: string): { label: string; badgeClass: string; dotClass: string } {
+  return EVALUATION_STATUS_MAP[status as EvaluationStatus] ?? UNKNOWN_STATUS_STYLE;
+}
 
 export const EVALUATION_PRIORITY_MAP: Record<EvaluationPriority, { label: string; class: string; dot: string }> = {
   critical: { label: 'Critical', class: 'text-rose-400', dot: 'bg-rose-400' },
