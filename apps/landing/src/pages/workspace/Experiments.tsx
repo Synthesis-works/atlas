@@ -1,12 +1,16 @@
 import { Suspense } from 'react';
 import { PageLoader } from '@/components/layout/PageLoader';
-import { AtlasExperimentCatalog } from '@/features/experiments';
+import { EvaluationsFeature } from '@/features/evaluations';
 
-export function WorkspaceExperimentsPage() {
+interface Props {
+  openNewModal?: boolean;
+}
+
+export function WorkspaceExperimentsPage({ openNewModal = false }: Props) {
   return (
     <Suspense fallback={<PageLoader />}>
-      <div className="h-[calc(100vh-4rem)] p-4">
-        <AtlasExperimentCatalog />
+      <div className="min-h-full p-4">
+        <EvaluationsFeature openNewModal={openNewModal} />
       </div>
     </Suspense>
   );

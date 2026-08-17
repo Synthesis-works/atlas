@@ -12,8 +12,14 @@ class UserRegister(BaseModel):
 
 
 class UserLogin(BaseModel):
-    email: EmailStr = Field(..., description="User's email address")
+    email: str | None = Field(None, description="User's email address")
+    username: str | None = Field(None, description="User's username")
+    identifier: str | None = Field(None, description="User's username or email")
     password: str = Field(..., description="User's password")
+
+    @property
+    def login_identifier(self) -> str:
+        return (self.email or self.username or self.identifier or "").strip()
 
 
 class TokenResponse(BaseModel):

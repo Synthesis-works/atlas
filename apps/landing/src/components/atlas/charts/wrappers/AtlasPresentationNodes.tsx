@@ -1,4 +1,3 @@
-import React from 'react';
 import type { Recommendation } from '@/domain/intelligence/types';
 
 export interface OperationalImpactProps {

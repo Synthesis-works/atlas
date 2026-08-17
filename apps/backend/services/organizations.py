@@ -43,7 +43,7 @@ class OrganizationService:
             .all()
         )
         org_ids = [m.organization_id for m in memberships]
-        return self.org_repo.db.query(Organization).filter(Organization.id.in_(org_ids)).all()
+        return list(self.org_repo.db.query(Organization).filter(Organization.id.in_(org_ids)).all())
 
     def create(self, user_id: UUID, data: OrganizationCreate) -> Organization:
         org = self.org_repo.create(
@@ -65,7 +65,7 @@ class OrganizationService:
         return self.org_repo.get(org_id)
 
     def list_members(self, org_id: UUID) -> list[OrganizationMember]:
-        return (
+        return list(
             self.member_repo.db.query(OrganizationMember)
             .filter(OrganizationMember.organization_id == org_id)
             .all()

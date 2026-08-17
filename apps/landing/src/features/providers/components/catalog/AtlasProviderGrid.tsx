@@ -1,5 +1,5 @@
-import { useId, useRef, useEffect } from "react";
-import { Check, Server, Activity, ArrowRight, ShieldCheck } from "lucide-react";
+import { useId, useEffect } from "react";
+import { Check, Server, Activity, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { useProviderCatalog } from "../../hooks/useProviderCatalog";
 
@@ -40,7 +40,6 @@ export function AtlasProviderGrid({ catalog }: { catalog: ReturnType<typeof useP
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-4">
         {cards.map((card) => {
           const isSelected = selectedIds.includes(card.id);
-          const isExpanded = expandedId === card.id;
 
           return (
             <motion.div

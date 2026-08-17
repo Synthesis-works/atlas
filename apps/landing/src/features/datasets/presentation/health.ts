@@ -33,7 +33,7 @@ export const buildHealthPresentation = () => {
     primaryKpi: { value: '92', label: 'Quality Index' },
     insight: 'Completeness and Compliance are optimal. Diversity remains below target.',
     recommendations: [
-      { priority: 3, text: 'Consider augmenting underrepresented classes in vision sets' }
+      { priority: 3 as const, text: 'Consider augmenting underrepresented classes in vision sets' }
     ],
     metadata: [
       { label: 'Observation Period', value: 'Rolling 7 Days' },

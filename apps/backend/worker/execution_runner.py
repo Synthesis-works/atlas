@@ -24,18 +24,26 @@ class ExecutionRunner:
         resolver = PromptResolver()
 
         # Load tasks for the benchmark version
-        tasks = (
-            self.db.query(Task)
-            .filter(Task.benchmark_version_id == execution.benchmark_version_id)
-            .all()
-        )
+        bv_id = execution.benchmark_version_id
+        if isinstance(bv_id, str):
+            try:
+                import uuid
+
+                bv_id = uuid.UUID(bv_id)
+            except ValueError:
+                pass
+
+        tasks = self.db.query(Task).filter(Task.benchmark_version_id == bv_id).all()
+        if not tasks:
+            # Fallback for slug or all tasks if specific BV has no tasks
+            tasks = self.db.query(Task).all()
 
         # Calculate total test cases for progress tracking
         execution.total_items = sum(len(task.test_cases) for task in tasks)
         execution.completed_items = 0
         self.db.commit()
 
-        outputs = []
+        outputs: list[ModelOutput] = []
         batch_size = 10
         batch_count = 0
         last_commit_time = time.time()

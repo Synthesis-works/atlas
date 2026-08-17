@@ -1,6 +1,7 @@
 import React from 'react';
-import { Play, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
+import { Play, CheckCircle, AlertTriangle, Clock, XCircle } from 'lucide-react';
 import type { QueueItem } from '@/store/workspaceStore';
+import { useWorkspaceStore } from '@/store/workspaceStore';
 import { cn } from '@/lib/utils';
 
 interface EvaluationQueueProps {
@@ -8,6 +9,8 @@ interface EvaluationQueueProps {
 }
 
 export const EvaluationQueue: React.FC<EvaluationQueueProps> = ({ queue }) => {
+  const { cancelEvaluationRun } = useWorkspaceStore();
+
   const getStatusIcon = (status: QueueItem['status']) => {
     if (status === 'Running') return <Play className="w-3.5 h-3.5 text-emerald-400 fill-current animate-pulse" />;
     if (status === 'Completed') return <CheckCircle className="w-3.5 h-3.5 text-teal-400" />;
@@ -40,17 +43,28 @@ export const EvaluationQueue: React.FC<EvaluationQueueProps> = ({ queue }) => {
                 <span className="text-white/30">•</span>
                 <span className="text-white/60">{item.benchmarkName}</span>
               </div>
-              <span
-                className={cn(
-                  'text-[10px] px-2 py-0.5 rounded font-mono',
-                  item.status === 'Running' && 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
-                  item.status === 'Queued' && 'bg-white/5 text-white/40',
-                  item.status === 'Completed' && 'bg-teal-500/10 text-teal-400',
-                  item.status === 'Failed' && 'bg-rose-500/10 text-rose-400'
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    'text-[10px] px-2 py-0.5 rounded font-mono',
+                    item.status === 'Running' && 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20',
+                    item.status === 'Queued' && 'bg-white/5 text-white/40',
+                    item.status === 'Completed' && 'bg-teal-500/10 text-teal-400',
+                    item.status === 'Failed' && 'bg-rose-500/10 text-rose-400'
+                  )}
+                >
+                  {item.status}
+                </span>
+                {(item.status === 'Running' || item.status === 'Queued') && (
+                  <button
+                    onClick={() => cancelEvaluationRun(item.id)}
+                    title="Cancel execution"
+                    className="p-1 rounded hover:bg-rose-500/20 text-white/40 hover:text-rose-400 transition-colors"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                  </button>
                 )}
-              >
-                {item.status}
-              </span>
+              </div>
             </div>
 
             {/* Progress bar */}

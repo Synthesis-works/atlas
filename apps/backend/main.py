@@ -1,3 +1,16 @@
+import os
+import sys
+
+# Ensure packages/database and project root are in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "packages", "database"))
+)
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -36,7 +49,7 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # Adjust this in production
+        allow_origins=settings.cors_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -66,6 +79,8 @@ def create_app() -> FastAPI:
         search,
         system,
         leaderboard,
+        agent,
+        billing,
     )
 
     # We will mount these under /api/v1 for the actual domain routes
@@ -87,6 +102,15 @@ def create_app() -> FastAPI:
     app.include_router(search.router, prefix="/api/v1")
     app.include_router(system.router, prefix="/api/v1")
     app.include_router(leaderboard.router, prefix="/api/v1")
+    app.include_router(agent.router, prefix="/api/v1")
+    app.include_router(billing.router, prefix="/api/v1")
+
+    import os
+    from fastapi.staticfiles import StaticFiles
+
+    web_public_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "web", "public"))
+    if os.path.exists(web_public_dir):
+        app.mount("/agent-ui", StaticFiles(directory=web_public_dir, html=True), name="agent-ui")
 
     return app
 

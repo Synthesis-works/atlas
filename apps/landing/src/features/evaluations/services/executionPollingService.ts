@@ -6,6 +6,7 @@
 
 import { apiClient } from '@/core/api/client';
 import type { BackendExecutionResponse } from './evaluationService';
+import { ensureAuthenticatedSession } from '@/features/auth/services/authService';
 
 export type StatusUpdateCallback = (executions: BackendExecutionResponse[]) => void;
 
@@ -96,6 +97,7 @@ class ExecutionPollingService {
     const seq = ++this.currentSeq;
 
     try {
+      await ensureAuthenticatedSession();
       // Query list of executions for status update
       const items = await apiClient.get<BackendExecutionResponse[]>('/api/v1/executions', {
         signal: this.abortController.signal,

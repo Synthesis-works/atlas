@@ -4,6 +4,8 @@ x-backend-base: &backend-base
   build:
     context: .
     dockerfile: docker/backend/Dockerfile
+  env_file:
+    - .env
   volumes:
     - .:/app
   environment:

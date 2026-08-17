@@ -13,7 +13,7 @@ class ProjectService:
         self.project_repo = project_repo
 
     def list_for_org(self, org_id: UUID) -> list[Project]:
-        return self.project_repo.db.query(Project).filter(Project.org_id == org_id).all()
+        return list(self.project_repo.db.query(Project).filter(Project.org_id == org_id).all())
 
     def create(self, org_id: UUID, member_id: UUID, data: ProjectCreate) -> Project:
         # We handle unique constraint explicitly for clear error messages, or rely on IntegrityError

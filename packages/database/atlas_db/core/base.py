@@ -12,6 +12,11 @@ def compile_jsonb_sqlite(type_, compiler, **kw):
     return "JSON"
 
 
+@compiles(UUID, "sqlite")
+def compile_uuid_sqlite(type_, compiler, **kw):
+    return "CHAR(36)"
+
+
 convention = {
     "ix": "ix_%(column_0_label)s",
     "uq": "uq_%(table_name)s_%(column_0_name)s",

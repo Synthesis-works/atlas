@@ -1,5 +1,5 @@
 /**
- * RecentActivity — append-style timeline from domain/workspace
+ * RecentActivity — dynamic activity timeline from GET /api/v1/dashboard
  */
 
 import { motion } from 'framer-motion';
@@ -13,10 +13,17 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { fadeUp, stagger } from '@/lib/motion';
-import { ACTIVITY_FEED, type ActivityType } from '@/domain/workspace/types';
 import { ScrambleSectionTitle } from '@/components/motion';
 
-const ACTIVITY_ICONS: Record<ActivityType, LucideIcon> = {
+export interface ActivityEventItem {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  timestamp: string;
+}
+
+const ACTIVITY_ICONS: Record<string, LucideIcon> = {
   evaluation_completed: CheckCircle,
   evaluation_started: Play,
   benchmark_published: Upload,
@@ -27,7 +34,9 @@ const ACTIVITY_ICONS: Record<ActivityType, LucideIcon> = {
 
 function formatRelativeTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
+  if (isNaN(diff) || diff < 0) return 'Just now';
   const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return 'Just now';
   if (minutes < 60) return `${minutes}m ago`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
@@ -35,7 +44,9 @@ function formatRelativeTime(iso: string): string {
   return `${days}d ago`;
 }
 
-export function RecentActivity() {
+export function RecentActivity({ events = [] }: { events?: ActivityEventItem[] }) {
+  const items = events.slice(0, 6);
+
   return (
     <section className="liquid-glass-card rounded-2xl p-5 border border-white/10 flex flex-col h-full min-h-0">
       <ScrambleSectionTitle text="Activity Timeline" className="text-xs tracking-[0.2em] uppercase text-white/20 mb-4" />
@@ -46,8 +57,8 @@ export function RecentActivity() {
         animate="visible"
         className="relative pl-6 border-l border-white/[0.06] space-y-4"
       >
-        {ACTIVITY_FEED.slice(0, 6).map((event) => {
-          const Icon = ACTIVITY_ICONS[event.type];
+        {items.map((event) => {
+          const Icon = ACTIVITY_ICONS[event.type] || CheckCircle;
           return (
             <motion.div key={event.id} variants={fadeUp} className="relative">
               <div className="absolute -left-[calc(1.5rem+1px)] top-1 w-2.5 h-2.5 rounded-full border border-white/[0.08] flex items-center justify-center" style={{ background: 'var(--color-ink-3)' }}>

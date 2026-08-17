@@ -30,7 +30,8 @@ function stageStatusForPipeline(
     'Completed': ['Completed'],
   };
   const names = stageMap[pipelineName] ?? [];
-  const stage = ev.stages.find(s => names.some(n => s.name.includes(n.split(' ')[0])));
+  const stages = ev.stages || [];
+  const stage = stages.find(s => names.some(n => s.name?.includes(n.split(' ')[0])));
   if (!stage) {
     // Infer from overall status
     if (pipelineName === 'Completed' && ev.status === 'Completed') return 'completed';
@@ -48,6 +49,8 @@ export const EvaluationTimeline: React.FC<Props> = ({ evaluation }) => {
       </div>
     );
   }
+
+  const stages = evaluation.stages || [];
 
   return (
     <div className="space-y-3">
@@ -85,7 +88,7 @@ export const EvaluationTimeline: React.FC<Props> = ({ evaluation }) => {
         {STAGE_PIPELINE.map((pStage, idx) => {
           const isLast = idx === STAGE_PIPELINE.length - 1;
           const status = stageStatusForPipeline(pStage.name, evaluation);
-          const evStage = evaluation.stages.find(s => s.name.includes(pStage.name.split(' ')[0]));
+          const evStage = stages.find(s => s.name?.includes(pStage.name.split(' ')[0]));
 
           const dotColor =
             status === 'completed' ? 'bg-emerald-400 ring-emerald-400/20'
@@ -99,10 +102,11 @@ export const EvaluationTimeline: React.FC<Props> = ({ evaluation }) => {
             : status === 'failed' ? 'text-rose-400'
             : 'text-white/25';
 
+          const dockerImg = evaluation.reproducibility?.dockerImage ?? 'atlas-runner:v1';
           const stageDetailMap: Record<string, string> = {
-            'Queued': `worker: ${evaluation.worker} · prio: ${evaluation.priority}`,
+            'Queued': `worker: ${evaluation.worker ?? 'node-01'} · prio: ${evaluation.priority ?? 'normal'}`,
             'Downloading Dataset': `16,000 samples indexed`,
-            'Preparing Runtime': `container: ${evaluation.reproducibility.dockerImage}`,
+            'Preparing Runtime': `container: ${dockerImg}`,
             'Loading Model': `vRAM: ${evaluation.metrics?.memoryGb ?? 18} GB · GPU util: ${evaluation.metrics?.gpuUtilPct ?? 72}%`,
             'Running Tests': `throughput: ${evaluation.metrics?.tokensPerSec ?? 65} tok/s`,
             'Scoring': evaluation.metrics ? `pass@1: ${Math.round((evaluation.metrics.passAt1 ?? 0.88) * 100)}%` : 'computing score',

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDatasetCatalog } from '../../hooks/useDatasetCatalog';
 import { AtlasDatasetGovernance } from '../governance/AtlasDatasetGovernance';

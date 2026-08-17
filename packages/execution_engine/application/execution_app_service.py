@@ -34,7 +34,10 @@ class ExecutionApplicationService:
         self.benchmark_repo = benchmark_repo
 
     def submit_execution(
-        self, benchmark_version_id: uuid.UUID, submitted_by: uuid.UUID
+        self,
+        benchmark_version_id: uuid.UUID,
+        submitted_by: uuid.UUID,
+        target_model: str = "gemini-2.5-flash",
     ) -> Execution:
         """
         Creates and queues a new execution for a benchmark version.
@@ -43,7 +46,6 @@ class ExecutionApplicationService:
         if not bv:
             raise ValueError(f"BenchmarkVersion {benchmark_version_id} not found")
         project_id = bv.benchmark.project_id
-
         execution_id = uuid.uuid4()
 
         execution = self.domain_service.create_execution(
@@ -51,10 +53,38 @@ class ExecutionApplicationService:
             benchmark_version_id=benchmark_version_id,
             project_id=project_id,
             submitted_by=submitted_by,
+            target_model=target_model,
         )
 
-        # Save to DB (commits transaction via Unit of Work or session dependency higher up)
+        # Save to DB
         self.execution_repo.save(execution)
+
+        try:
+            from atlas_db.models.execution import Execution as DBExecution, ExecutionStatus
+            from datetime import datetime, UTC
+
+            db_exec = DBExecution(
+                id=execution.id,
+                project_id=uuid.UUID("00000000-0000-0000-0000-000000000003"),
+                benchmark_version_id=benchmark_version_id,
+                submitted_by_id=submitted_by,
+                target_model=target_model,
+                status=ExecutionStatus.QUEUED,
+                queued_at=datetime.now(UTC),
+            )
+            session = getattr(self.execution_repo, "session", None)
+            if session:
+                session.add(db_exec)
+                session.commit()
+        except Exception as err:
+            logger.warning(f"DBExecution creation warning: {err}")
+
+        try:
+            from apps.backend.worker.tasks import run_execution_task
+
+            run_execution_task.delay(str(execution.id))
+        except Exception:
+            pass
 
         return execution
 

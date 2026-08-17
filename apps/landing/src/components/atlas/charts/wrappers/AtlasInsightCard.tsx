@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { AtlasInsight } from '@/domain/intelligence/types';
 import { AnimatedCard } from '@/components/atlas/motion/AnimatedCard';
-import { AlertTriangle, CheckCircle2, Info, Activity } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface AtlasInsightCardProps {

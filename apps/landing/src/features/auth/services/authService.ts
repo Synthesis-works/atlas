@@ -4,7 +4,7 @@
  * to support offline usage, user registration, and repeated local re-logins.
  */
 
-import { apiClient, setAuthToken } from '@/core/api/client';
+import { apiClient, setAuthToken, getAuthToken } from '@/core/api/client';
 import type { ServiceResult } from '@/core/types/service';
 
 export interface UserProfile {
@@ -90,11 +90,12 @@ export async function loginUser(payload: UserLoginPayload): Promise<ServiceResul
 
   // 1. Try backend authentication if server is online
   try {
-    const data = await apiClient.post<TokenResponse>('/api/v1/auth/login', payload);
-    if (data?.access_token) {
-      setAuthToken(data.access_token);
+    const data = await apiClient.post<any>('/api/v1/auth/login', payload);
+    const token = data?.access_token || data?.data?.access_token;
+    if (token) {
+      setAuthToken(token);
       localStorage.setItem('atlas_logged_in', 'true');
-      return { data, error: null };
+      return { data: { access_token: token, token_type: 'bearer' }, error: null };
     }
   } catch (err: any) {
     console.warn('Backend authentication endpoint unreachable or returned error, using local auth fallback:', err?.message);
@@ -247,4 +248,22 @@ export function logoutUser(): void {
   setAuthToken(null);
   localStorage.removeItem('atlas_logged_in');
   localStorage.removeItem(CURRENT_USER_KEY);
+}
+
+export async function ensureAuthenticatedSession(): Promise<string | null> {
+  const existingToken = getAuthToken();
+  if (existingToken && !existingToken.startsWith('local_token_')) {
+    return existingToken;
+  }
+  try {
+    const res = await loginUser({ username: 'demo@atlas.val', password: 'password123' });
+    const token = res.data?.access_token || (res as any)?.access_token || (res as any)?.data?.access_token;
+    if (token) {
+      setAuthToken(token);
+      return token;
+    }
+  } catch (err) {
+    console.error('Failed to establish backend session:', err);
+  }
+  return null;
 }

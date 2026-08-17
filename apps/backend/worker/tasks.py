@@ -32,7 +32,7 @@ class ExecutionQueuedSubscriber:
     soft_time_limit=3600,  # 1 hour soft limit for executions
     time_limit=3660,  # Hard kill after 1h 1m
 )
-def run_execution_task(self, execution_id_str: str, correlation_id: str = None):
+def run_execution_task(self, execution_id_str: str, correlation_id: str | None = None):
     print("*" * 50)
     print(f"!!! CELERY EXECUTING run_execution_task FOR {execution_id_str}")
     print("*" * 50)

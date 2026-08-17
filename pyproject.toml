@@ -32,6 +32,8 @@ dependencies = [
     "redis>=8.0.1",
     "minio>=7.2.0",
     "atlas-db",
+    "stripe>=15.4.0",
+    "razorpay>=2.0.1",
 ]
 
 

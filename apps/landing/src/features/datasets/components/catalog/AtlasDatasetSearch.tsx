@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useDatasetCatalog } from '../../hooks/useDatasetCatalog';
-import { Search, X } from 'lucide-react';
 
 interface AtlasDatasetSearchProps {
   catalog: ReturnType<typeof useDatasetCatalog>;
