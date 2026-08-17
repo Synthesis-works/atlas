@@ -11,3 +11,4 @@ from atlas_db.models.system import *
 from atlas_db.models.tasks import *
 from atlas_db.models.leaderboard import *
 from atlas_db.models.billing import *
+from atlas_db.models.agent import *

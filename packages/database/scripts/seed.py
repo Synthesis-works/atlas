@@ -1,4 +1,3 @@
-import asyncio
 import os
 
 from atlas_db.models.core import (
@@ -9,7 +8,8 @@ from atlas_db.models.core import (
     Project,
     User,
 )
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 DEMO_PASSWORD_HASH = (
     "$argon2id$v=19$m=65536,t=3,p=4$Gdesz3DdjBSFPJHo+2/tuQ"
@@ -17,25 +17,23 @@ DEMO_PASSWORD_HASH = (
 )
 
 
-async def main():
+def main():
     db_url = os.environ.get(
-        "DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/atlas"
+        "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/atlas"
     )
-    if db_url.startswith("postgresql://"):
-        db_url = db_url.replace("postgresql://", "postgresql+asyncpg://")
-    elif db_url.startswith("postgresql+psycopg2://"):
-        db_url = db_url.replace("postgresql+psycopg2://", "postgresql+asyncpg://")
 
-    engine = create_async_engine(db_url, echo=True)
-    async_session = async_sessionmaker(engine, expire_on_commit=False)
-
+    engine = create_engine(db_url)
     print("Starting database seeding...")
 
-    async with async_session() as session:
+    with Session(engine) as session:
+        if session.query(User).filter(User.email == "demo@atlas.val").first():
+            print("Seed already applied (demo@atlas.val present); skipping.")
+            return
+
         # Create an Organization
-        org = Organization(name="Atlas Development Team")
+        org = Organization(name="Atlas Development Team", slug="atlas-dev")
         session.add(org)
-        await session.commit()
+        session.commit()
 
         # Create a User
         admin_user = User(
@@ -46,7 +44,7 @@ async def main():
             password_hash="$argon2id$v=19$m=65536,t=3,p=4$g4pnVKod3E0CzEDKN26z+g$UicSqlEoaoTeYZp8bM7erzPSnkwOs/pHEMucZVQXfw8",
         )
         session.add(admin_user)
-        await session.commit()
+        session.commit()
 
         # Create the demo user the frontend auto-login relies on
         # (demo@atlas.val / password123). Without this user every browser
@@ -60,7 +58,7 @@ async def main():
             is_verified=True,
         )
         session.add(demo_user)
-        await session.commit()
+        session.commit()
 
         session.add(
             OrganizationMember(
@@ -70,16 +68,17 @@ async def main():
                 status=MembershipStatus.ACTIVE,
             )
         )
-        await session.commit()
+        session.commit()
 
         # Create a Project
         project = Project(
             name="Demo Project",
+            slug="demo-project",
             description="A sample project for development and testing",
             org_id=org.id,
         )
         session.add(project)
-        await session.commit()
+        session.commit()
 
         print(f"Seeded Organization: {org.name} ({org.id})")
         print(f"Seeded User: {admin_user.email} ({admin_user.id})")
@@ -90,4 +89,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

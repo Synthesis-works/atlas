@@ -81,6 +81,7 @@ def create_app() -> FastAPI:
         leaderboard,
         agent,
         billing,
+        dashboard,
     )
 
     # We will mount these under /api/v1 for the actual domain routes
@@ -104,6 +105,7 @@ def create_app() -> FastAPI:
     app.include_router(leaderboard.router, prefix="/api/v1")
     app.include_router(agent.router, prefix="/api/v1")
     app.include_router(billing.router, prefix="/api/v1")
+    app.include_router(dashboard.router, prefix="/api/v1")
 
     import os
     from fastapi.staticfiles import StaticFiles
