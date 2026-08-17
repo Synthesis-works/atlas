@@ -5,7 +5,7 @@
  * Fabric. All copy says "Workspace" — never "Dashboard".
  */
 
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useEffect, useRef } from 'react';
 import { WorkspaceStoreProvider } from '@/store/workspaceStore';
@@ -27,7 +27,7 @@ import { FloatingDock } from '@/components/ui/floating-dock';
 import { WorkspaceWidgets } from '@/features/workspace/widgets/WorkspaceWidgets';
 import { WorkspaceLauncher } from '@/components/ui/WorkspaceLauncher';
 
-import { getAuthToken } from '@/core/api/client';
+
 
 /** Derive page title from pathname for the topbar */
 function getPageTitle(pathname: string): string {
@@ -38,17 +38,10 @@ function getPageTitle(pathname: string): string {
 
 export function WorkspaceLayout() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { setPageTransitionKey, exitAtlas } = useExperience();
   const mainRef = useRef<HTMLElement>(null);
 
-  useEffect(() => {
-    const token = getAuthToken();
-    const isLoggedIn = Boolean(token) || localStorage.getItem('atlas_logged_in') === 'true';
-    if (!isLoggedIn) {
-      navigate('/', { replace: true });
-    }
-  }, [navigate]);
+
 
   useEffect(() => {
     setPageTransitionKey(location.pathname);

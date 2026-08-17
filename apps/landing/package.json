@@ -4,9 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/check-port.js && vite --host 127.0.0.1 --port 5173",
-    "dev:safe": "node scripts/check-port.js && vite --host 127.0.0.1 --port 5173",
+    "dev": "node scripts/check-port.js && vite --host 0.0.0.0 --port 5173",
+    "dev:safe": "node scripts/check-port.js && vite --host 0.0.0.0 --port 5173",
     "build": "tsc -b && vite build",
+    "test:routes": "node scripts/test-routes.js",
     "lint": "oxlint",
     "preview": "vite preview"
   },
@@ -44,6 +45,7 @@
     "@vitejs/plugin-react": "^6.0.3",
     "autoprefixer": "^10.5.4",
     "oxlint": "^1.71.0",
+    "playwright": "^1.62.1",
     "postcss": "^8.5.19",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",

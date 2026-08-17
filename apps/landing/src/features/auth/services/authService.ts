@@ -1,7 +1,13 @@
 /**
  * Features — Authentication Service
- * Communicates with backend authentication endpoints with automatic local storage fallback
- * to support offline usage, user registration, and repeated local re-logins.
+ *
+ * CANONICAL AUTHENTICATION AUTHORITY — Single source of truth for obtaining JWTs.
+ *
+ * INVARIANTS (must never be violated):
+ *   1. Only real backend-issued JWTs may be stored in localStorage.
+ *   2. local_token_* strings MUST NEVER be written. If detected, an error is thrown.
+ *   3. loginUser() returns a real JWT or a real error — no silent fallback.
+ *   4. No auto-registration. No offline user store. No mock tokens.
  */
 
 import { apiClient, setAuthToken, getAuthToken } from '@/core/api/client';
@@ -32,204 +38,98 @@ export interface UserRegisterPayload {
   full_name?: string;
 }
 
-const USERS_STORAGE_KEY = 'atlas_registered_users';
 const CURRENT_USER_KEY = 'atlas_current_user';
 
-interface StoredUser {
-  id: string;
-  username: string;
-  email: string;
-  password: string;
-  full_name?: string;
-  created_at: string;
-}
-
-function getStoredUsers(): StoredUser[] {
+/**
+ * Validates that a token is a structurally valid JWT (3-part dot-separated).
+ * Does NOT verify the signature — that is the backend's job.
+ * Returns false for any local_token_* strings or malformed tokens.
+ */
+export function isStructurallyValidJwt(token: string | null): boolean {
+  if (!token) return false;
+  if (token.startsWith('local_token_')) return false;
+  const parts = token.split('.');
+  if (parts.length !== 3) return false;
   try {
-    const data = localStorage.getItem(USERS_STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    JSON.parse(atob(parts[1]));
+    return true;
   } catch {
-    return [];
+    return false;
   }
 }
 
-function saveStoredUser(user: StoredUser): void {
-  try {
-    const users = getStoredUsers();
-    const normUser = user.username.toLowerCase();
-    const normEmail = user.email.toLowerCase();
-
-    const existingIndex = users.findIndex(
-      (u) =>
-        u.username.toLowerCase() === normUser ||
-        u.email.toLowerCase() === normEmail ||
-        (normUser && u.username.toLowerCase() === normEmail)
+/**
+ * Sets auth token with mandatory validation.
+ * THROWS if a non-JWT token (e.g. local_token_*) is provided.
+ * This is the enforcement point that prevents fake tokens from ever entering localStorage.
+ */
+export function setValidatedAuthToken(token: string | null): void {
+  if (token !== null && !isStructurallyValidJwt(token)) {
+    throw new Error(
+      `[AuthService] INVARIANT VIOLATION: Attempted to store non-JWT token: "${token.substring(0, 30)}...". ` +
+      `Only real backend-issued JWTs may be stored.`
     );
-
-    if (existingIndex >= 0) {
-      users[existingIndex] = { ...users[existingIndex], ...user };
-    } else {
-      users.push(user);
-    }
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-  } catch (err) {
-    console.error('Failed to save user locally', err);
   }
+  setAuthToken(token);
 }
 
-function findStoredUser(identifier: string): StoredUser | undefined {
-  const norm = identifier.trim().toLowerCase();
-  return getStoredUsers().find(
-    (u) => u.username.toLowerCase() === norm || u.email.toLowerCase() === norm
-  );
-}
-
+/**
+ * Login via the canonical backend. Returns a real JWT or a ServiceResult error.
+ * NEVER generates fake tokens. NEVER auto-registers users.
+ * If the backend is unavailable, returns an error — that is the correct behavior.
+ */
 export async function loginUser(payload: UserLoginPayload): Promise<ServiceResult<TokenResponse>> {
   const identifier = payload.username.trim();
   const password = payload.password;
 
-  // 1. Try backend authentication if server is online
   try {
-    const data = await apiClient.post<any>('/api/v1/auth/login', payload);
-    const token = data?.access_token || data?.data?.access_token;
-    if (token) {
-      setAuthToken(token);
-      localStorage.setItem('atlas_logged_in', 'true');
-      return { data: { access_token: token, token_type: 'bearer' }, error: null };
-    }
-  } catch (err: any) {
-    console.warn('Backend authentication endpoint unreachable or returned error, using local auth fallback:', err?.message);
-  }
-
-  // 2. Check local registered users store
-  const storedUser = findStoredUser(identifier);
-  if (storedUser) {
-    if (storedUser.password === password) {
-      const token = `local_token_${storedUser.id}_${Date.now()}`;
-      setAuthToken(token);
-      localStorage.setItem('atlas_logged_in', 'true');
-      localStorage.setItem(
-        CURRENT_USER_KEY,
-        JSON.stringify({
-          id: storedUser.id,
-          email: storedUser.email,
-          username: storedUser.username,
-          full_name: storedUser.full_name,
-          is_active: true,
-        })
-      );
-      return {
-        data: { access_token: token, token_type: 'bearer' },
-        error: null,
-      };
-    } else {
-      return { data: null as any, error: 'Incorrect password. Please check your credentials.' };
-    }
-  }
-
-  // 3. Demo fast access default credentials (e.g. admin@example.com / Password123!)
-  if (
-    (identifier === 'admin@example.com' || identifier === 'admin') &&
-    (password === 'Password123!' || password === '123')
-  ) {
-    const token = `local_token_demo_${Date.now()}`;
-    setAuthToken(token);
-    localStorage.setItem('atlas_logged_in', 'true');
-    localStorage.setItem(
-      CURRENT_USER_KEY,
-      JSON.stringify({
-        id: 'usr_demo_admin',
-        email: 'admin@example.com',
-        username: 'admin',
-        full_name: 'Atlas Administrator',
-        is_active: true,
-      })
-    );
-    return {
-      data: { access_token: token, token_type: 'bearer' },
-      error: null,
-    };
-  }
-
-  // 4. Auto-register & persist user locally if they attempt login with non-empty username & password
-  if (identifier && password) {
-    const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const userEmail = identifier.includes('@') ? identifier : `${identifier}@atlas.local`;
-    const newUser: StoredUser = {
-      id: userId,
+    const backendPayload = {
       username: identifier,
-      email: userEmail,
+      email: identifier.includes('@') ? identifier : undefined,
+      identifier: identifier,
       password: password,
-      full_name: identifier,
-      created_at: new Date().toISOString(),
     };
-    saveStoredUser(newUser);
+    // apiClient.post handles the /auth/login endpoint and will NOT attach an Authorization header.
+    const data = await apiClient.post<any>('/api/v1/auth/login', backendPayload);
+    const token = data?.access_token || data?.data?.access_token;
 
-    const token = `local_token_${userId}_${Date.now()}`;
-    setAuthToken(token);
+    if (!token) {
+      return { data: null as any, error: 'Backend did not return an access token.' };
+    }
+
+    // Validate before storing — this is the invariant enforcement point.
+    setValidatedAuthToken(token);
     localStorage.setItem('atlas_logged_in', 'true');
-    localStorage.setItem(
-      CURRENT_USER_KEY,
-      JSON.stringify({
-        id: userId,
-        email: userEmail,
-        username: identifier,
-        full_name: identifier,
-        is_active: true,
-      })
-    );
-    return {
-      data: { access_token: token, token_type: 'bearer' },
-      error: null,
-    };
+    return { data: { access_token: token, token_type: 'bearer' }, error: null };
+  } catch (err: any) {
+    // Surface the real error — no fallback to fake tokens.
+    const message = err?.message || 'Authentication failed. Please check your credentials.';
+    return { data: null as any, error: message };
   }
-
-  return { data: null as any, error: 'Invalid username/email or password' };
 }
 
 export async function registerUser(payload: UserRegisterPayload): Promise<ServiceResult<UserProfile>> {
-  const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-  const localUser: StoredUser = {
-    id: userId,
-    username: payload.username.trim(),
-    email: payload.email.trim(),
-    password: payload.password,
-    full_name: payload.full_name || payload.username,
-    created_at: new Date().toISOString(),
-  };
-
-  // Save to local storage first to guarantee persistence
-  saveStoredUser(localUser);
-
-  const profile: UserProfile = {
-    id: userId,
-    email: localUser.email,
-    username: localUser.username,
-    full_name: localUser.full_name,
-    is_active: true,
-  };
-
-  // Try backend registration if available
   try {
     const data = await apiClient.post<UserProfile>('/api/v1/auth/register', payload);
     if (data?.id) {
       localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(data));
       return { data, error: null };
     }
+    return { data: null as any, error: 'Registration failed: no user profile returned.' };
   } catch (err: any) {
-    console.warn('Backend registration offline, user saved locally:', err?.message);
+    return { data: null as any, error: err?.message || 'Registration failed.' };
   }
-
-  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(profile));
-  return { data: profile, error: null };
 }
 
 export async function getCurrentUser(): Promise<ServiceResult<UserProfile | null>> {
   try {
     const data = await apiClient.get<UserProfile>('/api/v1/auth/me');
-    if (data) return { data, error: null };
+    if (data) {
+      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(data));
+      return { data, error: null };
+    }
   } catch {
-    // Fall back to local user profile
+    // Session invalid or backend unavailable — fall through to stored profile.
   }
 
   try {
@@ -238,7 +138,7 @@ export async function getCurrentUser(): Promise<ServiceResult<UserProfile | null
       return { data: JSON.parse(localUserRaw), error: null };
     }
   } catch {
-    // ignore
+    // ignore malformed storage
   }
 
   return { data: null, error: 'No active session' };
@@ -248,54 +148,45 @@ export function logoutUser(): void {
   setAuthToken(null);
   localStorage.removeItem('atlas_logged_in');
   localStorage.removeItem(CURRENT_USER_KEY);
+  // Clear any legacy local user store keys that may have been written by old code.
+  localStorage.removeItem('atlas_registered_users');
+  localStorage.removeItem('atlas_current_user');
+}
+
+export function isTokenExpired(token: string): boolean {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return true;
+    const payload = JSON.parse(atob(parts[1]));
+    if (!payload.exp) return false;
+    return Date.now() >= payload.exp * 1000 - 10000;
+  } catch {
+    return true;
+  }
 }
 
 /**
- * Establish a real backend session (JWT) so authenticated endpoints such as the
- * report export endpoint can authorize legitimate downloads.
- *
- * The Agent workspace relies on real JWTs — local fallback tokens (`local_token_*`)
- * are never accepted by the backend and would make protected endpoints 401.
+ * Ensures there is a valid backend-authenticated session.
+ * Used by auth context on app load.
+ * Returns the current valid token, or performs ONE login attempt, or returns null.
  */
-export async function ensureAuthenticatedSession(): Promise<string | null> {
+export async function ensureAuthenticatedSession(forceRefresh = false): Promise<string | null> {
   const existingToken = getAuthToken();
-  if (existingToken && !existingToken.startsWith('local_token_')) {
-    return existingToken;
+
+  // Reject any legacy fake tokens that might still be in localStorage from old code.
+  if (existingToken && !isStructurallyValidJwt(existingToken)) {
+    console.warn('[AuthService] Removing non-JWT token from localStorage (legacy cleanup).');
+    setAuthToken(null);
   }
 
-  const username = 'admin@example.com';
-  const password = 'password123';
-
-  const isRealToken = (token: string | undefined | null): token is string =>
-    !!token && !token.startsWith('local_token_');
-
-  // 1. Try a real backend login first. loginUser falls back to a local fake token
-  //    when the backend rejects the credentials, so inspect the returned token.
-  let res = await loginUser({ username, password });
-  let token = res.data?.access_token;
-  if (isRealToken(token)) {
-    setAuthToken(token);
-    return token;
+  const cleanToken = getAuthToken();
+  if (!forceRefresh && cleanToken && !isTokenExpired(cleanToken)) {
+    return cleanToken;
   }
 
-  // 2. No real session yet — register the demo Agent user once, then log in again.
-  try {
-    await registerUser({
-      email: username,
-      username: 'admin',
-      password,
-      full_name: 'Atlas Administrator',
-    });
-  } catch (err) {
-    console.warn('Demo Agent user registration failed (may already exist):', err);
+  const res = await loginUser({ username: 'demo@atlas.val', password: 'password123' });
+  if (res.data?.access_token) {
+    return res.data.access_token;
   }
-  res = await loginUser({ username, password });
-  token = res.data?.access_token;
-  if (isRealToken(token)) {
-    setAuthToken(token);
-    return token;
-  }
-
-  console.error('Failed to establish a real backend session for the Agent workspace.');
   return null;
 }

@@ -9,7 +9,7 @@ interface Props {
 export function WorkspaceExperimentsPage({ openNewModal = false }: Props) {
   return (
     <Suspense fallback={<PageLoader />}>
-      <div className="min-h-full p-4">
+      <div className="min-h-full p-4" data-canonical-marker="ATLAS_CANONICAL_WORKTREE_MARKER">
         <EvaluationsFeature openNewModal={openNewModal} />
       </div>
     </Suspense>
