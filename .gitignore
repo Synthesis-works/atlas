@@ -18,3 +18,7 @@ report.md
 .ruff_cache/
 build/
 dist/
+.coverage
+htmlcov/
+*.coverage.*
+apps/landing/scripts/screenshot_*.png

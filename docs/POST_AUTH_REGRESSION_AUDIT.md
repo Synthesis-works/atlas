@@ -232,3 +232,65 @@ No application code was modified. No test artifacts, `.env`, DB files, screensho
 > - Auth recovery is single-flight and correct; the layered `evaluationService` 401 path is redundant but harmless.
 > - Environment is canonical; ports are clean; no foreign processes; `D:\atlas` untouched.
 > - Audit committed as `audit(atlas): verify post-auth regression integrity` (or similar) and pushed to `origin/wire_real_llm_adapter`.
+
+---
+
+## 11. Follow-Up Incident: `HTTP 401` on "Run Evaluation" (2026-08-17)
+
+### 11.1 Symptom
+
+A real browser click on "Run Evaluation" at `http://localhost:5173/dashboard/evaluations/new` surfaced **"Dispatch Error HTTP Error 401: Unauthorized"** — even though this audit's automated E2E suite had passed on the previous day. A live forensics mission was launched to find the exact 401 source before changing any application code.
+
+### 11.2 Root cause chain (TWO independent 401 sources)
+
+The 401 was **not** an authentication-code regression. Two environmental faults combined:
+
+**Source A — the canonical DB had been wiped by the test suite.**
+
+- `apps/backend/main.py:1-3` calls `load_dotenv()` at import time.
+- Any test that imports the FastAPI app (e.g. via `TestClient`) therefore loads `.env` into the pytest process, setting `DATABASE_URL=sqlite:///./atlas_dev.db`.
+- `tests/execution/test_persistence.py:29-36` reads `os.getenv("DATABASE_URL")` at module scope. Because SQLite always "connects" (file created lazily), the fixture saw `has_postgres=False` yet kept its engine bound to the **file-based** URL.
+- The module-scoped `setup_database` fixture ran `Base.metadata.create_all()` then `Base.metadata.drop_all()` at teardown — **wiping every table in the canonical `atlas_dev.db`** (DB mtime `21:20:42`, matching the second pytest run `pytest2.txt` written `21:20:58`).
+- A repro script reproduced the exact `SAWarning` from `pytest2.txt:50`, proving the mechanism. The audit's §6.1 DB evidence was captured *before* that pytest run, which is why the original audit missed the wipe.
+
+**Source B — a foreign backend had squatted port 8000.**
+
+- A backend from the **`implement_atlas_agent_loop` worktree** (PID 18500) was running on port 8000 against its own `atlas_dev.db`, which contained only `admin@example.com`, `agent@atlas.local`, `execution-agent@atlas.local` — **no `demo@atlas.val`**.
+- Any login attempt therefore returned **401**, so the browser's "Run Evaluation" dispatch never reached the canonical stack. This is runbook historical failure **#2** (foreign process holding port 8000).
+- A foreign Vite dev server (PID 15984, bound to `127.0.0.1:5173`) also held port 5173; the canonical frontend was not serving the marker page.
+
+### 11.3 Fixes applied
+
+1. **`tests/execution/test_persistence.py`** — the root-cause fix: when `has_postgres` is `False`, the engine is **always** re-bound to `sqlite:///:memory:`, never a file-based SQLite. Verified: with `DATABASE_URL` pointed at a scratch file, the module engine now falls back to in-memory (`FILE_BOUND: False`). A comment documents why file-based SQLite must never be used here.
+2. **Environment restored (no application code involved):**
+   - Killed foreign backend (PID 18500) and foreign Vite (PID 15984).
+   - Restored canonical `atlas_dev.db` schema + seed via a rerun-safe script (org, project, `demo@atlas.val`, benchmark "HumanEval Lite" v1.0.0, task, prompt, test case) using `Base.metadata.create_all` on the canonical URL.
+   - Restarted canonical backend from the canonical `.venv` with CWD = worktree (so `.env`'s `sqlite:///./atlas_dev.db` resolves to the canonical DB); `/health` OK.
+   - Restarted canonical frontend Vite on `0.0.0.0:5173`; both origins render `ATLAS_CANONICAL_WORKTREE_MARKER`.
+
+### 11.4 Post-fix verification (all against the restored canonical stack)
+
+| Check | Result |
+|---|---|
+| `POST /api/v1/auth/login` (`demo@atlas.val`) | ✅ HTTP 200, real 3-segment JWT |
+| `GET /api/v1/executions`, `/api/v1/benchmarks` (JWT) | ✅ HTTP 200 |
+| Dispatch `POST /api/v1/benchmarks/{bv_id}/executions` | ✅ HTTP 201 → `QUEUED` → `COMPLETED` |
+| Real Groq output persisted (`model_outputs`) | ✅ e.g. 2227ms, 371 tokens, genuine Python output |
+| `auth-e2e-dispatch.js` (4 scenarios, incl. invalid-JWT recovery + 3 sequential dispatches) | ✅ ALL PASSED |
+| `browser-forensic-test.js` dual-origin | ✅ zero divergence, canonical marker on both origins |
+| `test-routes.js` / `runtime-route-check.js` | ✅ all pass |
+| Frontend production build (`vite build` from `apps/landing`) | ✅ built in 6.03s |
+| `uv run ruff check .` / `ruff format --check .` | ✅ clean |
+| `uv run python -m pytest` (post-fix) | ✅ 136 passed, 1 skipped (PostgreSQL-only), 0 failed |
+| Canonical DB survives pytest | ✅ users=1, benchmarks=1, executions=9, model_outputs=9 |
+
+### 11.5 Final verdict on the incident
+
+> **The 401 was environmental, not a code regression.** Both sources are now fixed and the fix is proven: the test suite no longer wipes the canonical DB, and the canonical stack (backend + frontend) is the sole owner of ports 8000/5173. The `local_token_*` rejection, single-flight re-auth, and dispatch-to-COMPLETED behavior all verified green against the restored environment.
+
+### 11.6 Files changed in the follow-up
+
+| File | Change |
+|---|---|
+| `tests/execution/test_persistence.py` | Root-cause fix: in-memory SQLite fallback when not PostgreSQL |
+| `docs/POST_AUTH_REGRESSION_AUDIT.md` | **Updated** — this incident section |
