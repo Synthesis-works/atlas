@@ -136,7 +136,7 @@ def test_d2_ambiguity_fails_loudly(session):
     service = DatasetExtractionService(session)
     try:
         service.get_training_examples(dv1)
-        assert False, "Should have raised ValueError"
+        raise AssertionError("Should have raised ValueError")
     except ValueError:
         pass
     print("PASS test_d2_ambiguity_fails_loudly")

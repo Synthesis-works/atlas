@@ -66,7 +66,7 @@ async def test_d5_export_lifecycle_api(pg_session):
             url = f"/api/v1/projects/{project_id}/datasets/{dataset_id}/exports"
             resp = await client.post(url)
             if resp.status_code != 202:
-                assert False, f"FAILED POST: {resp.status_code} - {resp.text}"
+                pytest.fail(f"FAILED POST: {resp.status_code} - {resp.text}")
             print(f"Error detail: {resp.text}")
             assert resp.status_code == status.HTTP_202_ACCEPTED
             export_data = resp.json()
@@ -76,7 +76,7 @@ async def test_d5_export_lifecycle_api(pg_session):
             # 2. Get list of exports
             list_resp = await client.get(url)
             if list_resp.status_code != 200:
-                assert False, f"FAILED GET LIST: {list_resp.status_code} - {list_resp.text}"
+                pytest.fail(f"FAILED GET LIST: {list_resp.status_code} - {list_resp.text}")
             assert list_resp.status_code == status.HTTP_200_OK
             assert len(list_resp.json()) == 1
             assert list_resp.json()[0]["id"] == export_id
@@ -84,7 +84,7 @@ async def test_d5_export_lifecycle_api(pg_session):
             # 3. Get single export
             get_resp = await client.get(f"{url}/{export_id}")
             if get_resp.status_code != 200:
-                assert False, f"FAILED GET SINGLE: {get_resp.status_code} - {get_resp.text}"
+                pytest.fail(f"FAILED GET SINGLE: {get_resp.status_code} - {get_resp.text}")
             assert get_resp.status_code == status.HTTP_200_OK
             assert get_resp.json()["id"] == export_id
             
