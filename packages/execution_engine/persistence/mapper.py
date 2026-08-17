@@ -46,6 +46,7 @@ class ExecutionMapper:
         return Execution.rehydrate(
             id=model.id,
             project_id=model.project_id,
+            target_model=model.target_model,
             benchmark_version_id=model.benchmark_version_id,
             status=model.status,
             created_by=model.created_by_id,  # type: ignore
@@ -53,6 +54,8 @@ class ExecutionMapper:
             updated_at=model.updated_at,
             max_retries=model.max_retries,
             attempts=attempts,
+            total_items=model.total_items,
+            completed_items=model.completed_items,
         )
 
     @staticmethod
@@ -61,6 +64,8 @@ class ExecutionMapper:
         model.status = execution.status
         model.updated_at = execution.updated_at
         model.max_retries = execution.max_retries
+        model.total_items = execution.total_items
+        model.completed_items = execution.completed_items
 
         # Rebuild attempts
         model_attempts_dict = {a.id: a for a in model.attempts}
@@ -116,12 +121,15 @@ class ExecutionMapper:
         model = ExecutionModel(
             id=execution.id,
             project_id=execution.project_id,
+            target_model=execution.target_model,
             benchmark_version_id=execution.benchmark_version_id,
             status=execution.status,
             created_by_id=execution.created_by,
             created_at=execution.created_at,
             updated_at=execution.updated_at,
             max_retries=execution.max_retries,
+            total_items=execution.total_items,
+            completed_items=execution.completed_items,
         )
         ExecutionMapper.update_model(execution, model)
         return model

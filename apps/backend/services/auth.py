@@ -51,15 +51,23 @@ class AuthService:
             "is_active": True,
             "is_verified": False,
         }
-        user = self.user_repo.create(user_data)
+        user = self.user_repo.create(obj_in=user_data)
         return user
 
     def authenticate_user(self, data: UserLogin) -> TokenResponse:
-        user = self.user_repo.get_by_email(data.email)
+        identifier = data.login_identifier
+        user = self.user_repo.get_by_email(identifier)
+        if not user:
+            user = (
+                self.user_repo.db.query(User)
+                .filter((User.email == identifier) | (User.full_name == identifier))
+                .first()
+            )
+
         if not user or not user.password_hash:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password",
+                detail="Invalid username/email or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 

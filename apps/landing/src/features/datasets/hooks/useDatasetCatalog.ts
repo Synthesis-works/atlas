@@ -2,33 +2,18 @@ import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { DatasetHealth, DatasetQuality } from '../domain/types';
 import type { FilterState, SortState, ViewMode, PaginationState } from '../types/catalog';
-import { filterDatasets, sortDatasets, selectCatalogCards, selectCatalogRows, selectDatasetPreview, selectDatasetComparison } from '../selectors/catalog';
+import { selectCatalogCards, selectCatalogRows, selectDatasetPreview, selectDatasetComparison } from '../selectors/catalog';
 import { useWorkspaceInteractionStore } from '@/store/workspace/interaction/store';
+import { useQuery } from '@tanstack/react-query';
+import { datasetApi } from '../api/datasetApi';
+import { mapDatasetDtoToDomain } from '../api/mapper';
+import { useProjectStore } from '../../projects/store/projectStore';
 
-// Normally these would come from an API hook (e.g. useQuery)
-import { mockDatasets } from '../domain/mock';
+const EMPTY_ARRAY: string[] = [];
 
-// We mock related data maps for health and quality
-const mockHealthMap: Record<string, DatasetHealth> = mockDatasets.reduce((acc, ds) => {
-  acc[ds.id] = { datasetId: ds.id, readinessScore: Math.floor(Math.random() * 40) + 60, issues: [] };
-  return acc;
-}, {} as Record<string, DatasetHealth>);
-
-const mockQualityMap: Record<string, DatasetQuality> = mockDatasets.reduce((acc, ds) => {
-  acc[ds.id] = { datasetId: ds.id, annotationCoverage: 85, duplicateCount: 12, classBalanceScore: 92 };
-  return acc;
-}, {} as Record<string, DatasetQuality>);
-/**
- * The Dataset Catalog Coordinator Hook.
- * 
- * Responsible for orchestrating domain data fetching, filtering, sorting, and pagination.
- * Delegates all interaction state (selection, preview, expansion) to the global 
- * Workspace Interaction Store to prevent local state duplication and ensure generic interaction logic.
- *
- * @returns Catalog state, derived presentation models, and explicit interaction handlers.
- */
 export function useDatasetCatalog() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { activeProjectId } = useProjectStore();
   
   // 1. View Mode (URL -> localStorage -> default)
   const initialView = searchParams.get('view') as ViewMode 
@@ -47,6 +32,8 @@ export function useDatasetCatalog() {
   };
 
   // 2. Filters & Sort State
+  // Note: Client-side filtering over a paginated API response is misleading.
+  // We maintain this state for UI compatibility but it does not filter the server data.
   const [filters, setFilters] = useState<FilterState>({
     searchQuery: searchParams.get('q') || '',
     status: [],
@@ -61,34 +48,17 @@ export function useDatasetCatalog() {
   // 3. Pagination
   const [pagination, setPagination] = useState<PaginationState>({ page: 1, pageSize: 25, total: 0 });
 
-  // 3.5 Loading and Error State (Mocking async behavior)
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<{ message: string, recoverable: boolean } | null>(null);
+  const limit = pagination.pageSize;
+  const offset = (pagination.page - 1) * limit;
 
-  useEffect(() => {
-    let mounted = true;
-    setIsLoading(true);
-    setError(null);
-    
-    // Simulate network delay
-    const timer = setTimeout(() => {
-      if (mounted) {
-        setIsLoading(false);
-      }
-    }, 1200);
-
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
-  }, []);
+  const { data: rawDtoData, isLoading, isError, refetch } = useQuery({
+    queryKey: ['datasets', activeProjectId, limit, offset],
+    queryFn: () => datasetApi.listDatasets(activeProjectId!, limit, offset),
+    enabled: !!activeProjectId,
+  });
 
   const handleRetry = () => {
-    setIsLoading(true);
-    setError(null);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1200);
+    refetch();
   };
 
   // 4. Interaction State (Zustand)
@@ -100,7 +70,7 @@ export function useDatasetCatalog() {
     initWorkspace(ns);
   }, [initWorkspace]);
 
-  const selectedIds = ws?.selection.selectedIds || [];
+  const selectedIds = ws?.selection.selectedIds || EMPTY_ARRAY;
   const previewId = ws?.view.previewId || null;
   const expandedId = ws?.navigation.expandedIds[0] || null;
 
@@ -136,11 +106,8 @@ export function useDatasetCatalog() {
   const handleSelectAll = (ids: string[]) => {
     const allSelected = ids.every(id => selectedIds.includes(id));
     if (allSelected) {
-      // If all selected, clear those
-      // (This requires custom logic, but for simplicity, if all are selected, we just clear)
       clearSelectionStore(ns);
     } else {
-      // Add all
       ids.forEach(id => {
         if (!selectedIds.includes(id)) {
           selectItem(ns, id, true);
@@ -163,44 +130,51 @@ export function useDatasetCatalog() {
 
   // Pipeline execution (Memoized)
   const pipelineResult = useMemo(() => {
-    const rawData = mockDatasets; // In real life, from data source
-    const filtered = filterDatasets(rawData, filters);
-    const sorted = sortDatasets(filtered, sort, mockHealthMap);
+    const domainData = (rawDtoData || []).map(mapDatasetDtoToDomain);
     
-    // Pagination slicing
-    const startIndex = (pagination.page - 1) * pagination.pageSize;
-    const paginated = sorted.slice(startIndex, startIndex + pagination.pageSize);
+    // We intentionally DO NOT apply client-side filterDatasets or sortDatasets here
+    // because we only have a partial page from the backend.
+    const paginated = domainData;
+    
+    // Mock health/quality maps (Since backend doesn't provide them, we provide empty records to safely avoid UI crashes)
+    const emptyHealthMap: Record<string, DatasetHealth> = {};
+    const emptyQualityMap: Record<string, DatasetQuality> = {};
 
     // Presentation Mapping
-    const cards = selectCatalogCards(paginated, mockHealthMap);
-    const rows = selectCatalogRows(paginated, mockHealthMap);
+    const cards = selectCatalogCards(paginated, emptyHealthMap);
+    const rows = selectCatalogRows(paginated, emptyHealthMap);
 
     return {
-      filteredCount: filtered.length,
+      fetchedCount: domainData.length,
       cards,
       rows,
-      rawVisible: paginated // needed for select all filtered
+      rawVisible: paginated,
+      emptyHealthMap,
+      emptyQualityMap
     };
-  }, [filters, sort, pagination.page, pagination.pageSize]);
+  }, [rawDtoData]);
 
-  // Update pagination total when filtered count changes
+  // Update pagination total (approximation since backend has no count endpoint)
   useEffect(() => {
-    setPagination(p => ({ ...p, total: pipelineResult.filteredCount }));
-  }, [pipelineResult.filteredCount]);
+    setPagination(p => ({ 
+      ...p, 
+      total: offset + pipelineResult.fetchedCount + (pipelineResult.fetchedCount === limit ? 1 : 0) 
+    }));
+  }, [pipelineResult.fetchedCount, offset, limit]);
 
   // Derive Preview & Comparison Models
   const previewModel = useMemo(() => {
-    if (!previewId) return null;
-    const ds = mockDatasets.find(d => d.id === previewId);
+    if (!previewId || !rawDtoData) return null;
+    const ds = rawDtoData.map(mapDatasetDtoToDomain).find(d => d.id === previewId);
     if (!ds) return null;
-    return selectDatasetPreview(ds, mockHealthMap[ds.id], mockQualityMap[ds.id]);
-  }, [previewId]);
+    return selectDatasetPreview(ds, pipelineResult.emptyHealthMap[ds.id], pipelineResult.emptyQualityMap[ds.id]);
+  }, [previewId, rawDtoData, pipelineResult.emptyHealthMap, pipelineResult.emptyQualityMap]);
 
   const comparisonModels = useMemo(() => {
-    if (selectedIds.length !== 2) return [];
-    const dsToCompare = mockDatasets.filter(d => selectedIds.includes(d.id));
-    return selectDatasetComparison(dsToCompare, mockHealthMap, mockQualityMap);
-  }, [selectedIds]);
+    if (selectedIds.length !== 2 || !rawDtoData) return [];
+    const dsToCompare = rawDtoData.map(mapDatasetDtoToDomain).filter(d => selectedIds.includes(d.id));
+    return selectDatasetComparison(dsToCompare, pipelineResult.emptyHealthMap, pipelineResult.emptyQualityMap);
+  }, [selectedIds, rawDtoData, pipelineResult.emptyHealthMap, pipelineResult.emptyQualityMap]);
 
   return {
     // State
@@ -217,10 +191,10 @@ export function useDatasetCatalog() {
     rows: pipelineResult.rows,
     previewModel,
     comparisonModels,
-    totalItems: pipelineResult.filteredCount,
+    totalItems: pagination.total,
     
     // Virtualization flag (>100 datasets)
-    shouldVirtualize: pipelineResult.filteredCount > 100,
+    shouldVirtualize: false,
 
     // Actions
     setViewMode,
@@ -240,7 +214,7 @@ export function useDatasetCatalog() {
 
     // Data Fetching States
     isLoading,
-    error,
+    error: isError ? { message: 'Failed to fetch datasets', recoverable: true } : null,
     retry: handleRetry
   };
 }

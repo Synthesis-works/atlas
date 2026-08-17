@@ -74,7 +74,7 @@ export function AtlasBenchmarkPreview({ catalog }: { catalog: ReturnType<typeof 
                 <div className="flex flex-col gap-2 border-l border-white/10 pl-4">
                   <h4 className="text-[10px] text-white/30 uppercase tracking-widest font-semibold">Health</h4>
                   <div className="flex flex-col gap-1">
-                    <span className="text-xs text-white/50">Score: <span className="text-emerald-400">{previewModel.verificationScore}%</span></span>
+                    <span className="text-xs text-white/50">Score: <span className="text-emerald-400">{previewModel.verificationScore}</span></span>
                     <span className="text-xs text-white/50">Status: <span className="text-white/80">{previewModel.status}</span></span>
                   </div>
                 </div>

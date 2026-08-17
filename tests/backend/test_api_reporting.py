@@ -5,7 +5,8 @@ from unittest.mock import Mock
 import pytest
 from fastapi.testclient import TestClient
 
-from apps.backend.dependencies import get_reporting_service, require_authenticated
+from apps.backend.dependencies import get_reporting_service, require_authenticated, get_execution_app_service
+from apps.backend.authz import get_project_authz_service
 from apps.backend.main import app
 from apps.backend.schemas.auth import TokenClaims
 from apps.backend.schemas.reporting import (
@@ -23,10 +24,21 @@ from services.report.services.reporting import ReportingService
 def mock_reporting_service():
     return Mock(spec=ReportingService)
 
+@pytest.fixture
+def mock_project_authz():
+    return Mock()
 
 @pytest.fixture
-def test_client(mock_reporting_service):
+def mock_execution_service():
+    exec_service = Mock()
+    exec_service.get_execution.return_value.project_id = uuid.uuid4()
+    return exec_service
+
+@pytest.fixture
+def test_client(mock_reporting_service, mock_project_authz, mock_execution_service):
     app.dependency_overrides[get_reporting_service] = lambda: mock_reporting_service
+    app.dependency_overrides[get_project_authz_service] = lambda: mock_project_authz
+    app.dependency_overrides[get_execution_app_service] = lambda: mock_execution_service
     app.dependency_overrides[require_authenticated] = lambda: TokenClaims(
         sub=uuid.uuid4(), exp=9999999999, iat=1000000000, jti=uuid.uuid4()
     )

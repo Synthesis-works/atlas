@@ -5,19 +5,10 @@ import type { FilterState, SortState, ViewMode, PaginationState } from '../types
 import { filterModels, sortModels, selectCatalogCards, selectCatalogRows, selectModelPreview, selectModelComparison } from '../selectors/catalog';
 import { useWorkspaceInteractionStore } from '@/store/workspace/interaction/store';
 
-// Normally these would come from an API hook (e.g. useQuery)
-import { MOCK_MODELS } from '../../../domain/models/mock';
+// Mock related data maps for health and cost
+const mockHealthMap: Record<string, ModelHealth> = {};
 
-// We mock related data maps for health and cost
-const mockHealthMap: Record<string, ModelHealth> = MOCK_MODELS.reduce((acc, model) => {
-  acc[model.id] = model.health;
-  return acc;
-}, {} as Record<string, ModelHealth>);
-
-const mockCostMap: Record<string, ModelCost> = MOCK_MODELS.reduce((acc, model) => {
-  acc[model.id] = model.cost;
-  return acc;
-}, {} as Record<string, ModelCost>);
+const mockCostMap: Record<string, ModelCost> = {};
 
 /**
  * The Model Catalog Coordinator Hook.
@@ -161,9 +152,9 @@ export function useModelCatalog() {
 
   // Pipeline execution (Memoized)
   const pipelineResult = useMemo(() => {
-    const rawData = MOCK_MODELS; // In real life, from data source
+    const rawData: any[] = []; // Disconnected: Backend contract missing
     const filtered = filterModels(rawData, filters);
-    const sorted = sortModels(filtered, sort, mockHealthMap);
+    const sorted = sortModels(filtered, sort);
     
     // Pagination slicing
     const startIndex = (pagination.page - 1) * pagination.pageSize;
@@ -189,15 +180,15 @@ export function useModelCatalog() {
   // Derive Preview & Comparison Models
   const previewModel = useMemo(() => {
     if (!previewId) return null;
-    const model = MOCK_MODELS.find(m => m.id === previewId);
+    const model = [].find((m: any) => m.id === previewId);
     if (!model) return null;
-    return selectModelPreview(model, mockHealthMap[model.id], mockCostMap[model.id]);
+    return selectModelPreview(model, mockHealthMap[previewId], mockCostMap[previewId]);
   }, [previewId]);
 
   const comparisonModels = useMemo(() => {
     if (selectedIds.length < 2) return [];
-    const modelsToCompare = MOCK_MODELS.filter(m => selectedIds.includes(m.id));
-    return selectModelComparison(modelsToCompare, mockHealthMap, mockCostMap);
+    const modelsToCompare = [].filter((m: any) => selectedIds.includes(m.id));
+    return selectModelComparison(modelsToCompare, mockCostMap);
   }, [selectedIds]);
 
   return {

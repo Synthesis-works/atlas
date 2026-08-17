@@ -11,6 +11,7 @@ from apps.backend.schemas.auth import TokenClaims
 from packages.execution_engine.application.execution_app_service import ExecutionApplicationService
 from packages.execution_engine.domain.exceptions import ExecutionNotFoundError
 from packages.execution_engine.domain.models import Execution, ExecutionState
+from apps.backend.routers.executions import get_project_authz_service
 
 client = TestClient(app)
 
@@ -40,6 +41,13 @@ def mock_exec_service():
     yield service
     app.dependency_overrides.pop(get_execution_service, None)
 
+@pytest.fixture
+def mock_project_authz():
+    service = MagicMock()
+    app.dependency_overrides[get_project_authz_service] = lambda: service
+    yield service
+    app.dependency_overrides.pop(get_project_authz_service, None)
+
 
 def test_create_execution(mock_exec_service):
     bv_id = uuid.uuid4()
@@ -59,16 +67,18 @@ def test_create_execution(mock_exec_service):
     assert mock_exec_service.submit_execution.called
 
 
-def test_get_execution(mock_exec_service):
+def test_get_execution(mock_exec_service, mock_project_authz):
     exec_id = uuid.uuid4()
+    project_id = uuid.uuid4()
     mock_execution = Execution(
         id=exec_id,
+        project_id=project_id,
         benchmark_version_id=uuid.uuid4(),
         status=ExecutionState.RUNNING,
     )
     mock_exec_service.get_execution.return_value = mock_execution
 
-    response = client.get(f"/api/v1/executions/{exec_id}")
+    response = client.get(f"/api/v1/projects/{project_id}/executions/{exec_id}")
 
     assert response.status_code == 200
     assert response.json()["id"] == str(exec_id)

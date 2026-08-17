@@ -41,15 +41,15 @@ export function filterBenchmarksByQuery(benchmarks: Benchmark[], query: string):
 
   return benchmarks.filter((bm) => {
     if (criteria.status && bm.status.toLowerCase() !== criteria.status) return false;
-    if (criteria.category && bm.category.toLowerCase() !== criteria.category) return false;
-    if (criteria.tag && !bm.tags.some((t) => t.toLowerCase().includes(criteria.tag!))) return false;
-    if (criteria.author && !bm.author.toLowerCase().includes(criteria.author)) return false;
-    if (criteria.minVerification && bm.verificationScore < criteria.minVerification) return false;
+    if (criteria.category && bm.category?.toLowerCase() !== criteria.category) return false;
+    if (criteria.tag && (!bm.tags || !bm.tags.some((t) => t.toLowerCase().includes(criteria.tag!)))) return false;
+    if (criteria.author && (!bm.author || !bm.author.toLowerCase().includes(criteria.author))) return false;
+    if (criteria.minVerification && (bm.verificationScore === undefined || bm.verificationScore < criteria.minVerification)) return false;
 
     if (criteria.textQuery) {
       const matchesName = bm.name.toLowerCase().includes(criteria.textQuery);
-      const matchesDesc = bm.description.toLowerCase().includes(criteria.textQuery);
-      const matchesTag = bm.tags.some((t) => t.toLowerCase().includes(criteria.textQuery));
+      const matchesDesc = bm.description?.toLowerCase().includes(criteria.textQuery) ?? false;
+      const matchesTag = bm.tags?.some((t) => t.toLowerCase().includes(criteria.textQuery)) ?? false;
       if (!matchesName && !matchesDesc && !matchesTag) return false;
     }
 

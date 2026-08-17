@@ -120,7 +120,7 @@ interface PersistedRootState {
  */
 export const useWorkspaceInteractionStore = create<RootStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       workspaces: {},
       
       initWorkspace: (ns) => set((state) => {
@@ -339,8 +339,8 @@ export const useWorkspaceInteractionStore = create<RootStore>()(
     {
       name: 'atlas-interaction-storage',
       version: 1,
-      migrate: (persistedState: unknown, version: number) => {
-        // Example schema evolution: if (version === 0) { ...migrate }
+      migrate: (persistedState: unknown, _version: number) => {
+        // Example schema evolution: if (_version === 0) { ...migrate }
         return persistedState as PersistedRootState;
       },
       // ONLY persist these specific fields (private state). 

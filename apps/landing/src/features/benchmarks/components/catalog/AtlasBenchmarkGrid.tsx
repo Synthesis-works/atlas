@@ -134,7 +134,7 @@ export function AtlasBenchmarkGrid({ catalog }: { catalog: ReturnType<typeof use
                       </div>
                       <div className="flex flex-col gap-1">
                         <span className="text-xs uppercase tracking-wider text-white/40">Score</span>
-                        <span className="text-white">{activeCard.verificationScore}%</span>
+                        <span className="text-white">{activeCard.verificationScore}</span>
                       </div>
                       <div className="flex flex-col gap-1">
                         <span className="text-xs uppercase tracking-wider text-white/40">Runtime</span>
@@ -150,7 +150,7 @@ export function AtlasBenchmarkGrid({ catalog }: { catalog: ReturnType<typeof use
       </AnimatePresence>
       
       <ul className="w-full grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] items-start gap-6">
-        {cards.map((card) => {
+        {catalog.cards.map((card: any) => {
           const isSelected = selectedIds.includes(card.id);
           const handleClick = (e: React.MouseEvent) => {
             if (e.detail === 2) {

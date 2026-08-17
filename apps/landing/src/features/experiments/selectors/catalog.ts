@@ -43,7 +43,7 @@ export function buildExperimentPreviewModel(entity: MockExperimentEntity): Exper
     owner: entity.owner,
     startedAt: entity.startedAt || null,
     durationText: formatDuration(entity.durationMs),
-    stages: entity.stages,
+    timeline: [],
     logs: entity.logs,
     metrics: entity.metrics,
     config: entity.config

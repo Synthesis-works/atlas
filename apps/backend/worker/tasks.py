@@ -5,7 +5,7 @@ import structlog
 from atlas_db.core.session import SessionLocal
 from celery.exceptions import SoftTimeLimitExceeded
 
-from apps.backend.core.telemetry import NullTelemetrySink
+
 from apps.backend.worker.celery_app import celery_app
 from apps.backend.worker.execution_worker import ExecutionWorker
 from packages.execution_engine.application.outbox_dispatcher import OutboxDispatcher
@@ -77,7 +77,6 @@ def outbox_sweep_task(self):
             # Note: We construct a CompositeEventPublisher here.
             # In a real DI container this would be injected.
             publisher = CompositeEventPublisher(
-                telemetry_sink=NullTelemetrySink(),
                 subscribers=[EvaluationSubscriber()],  # Hook the new evaluation subsystem
             )
             dispatcher = OutboxDispatcher(session=db, publisher=publisher)

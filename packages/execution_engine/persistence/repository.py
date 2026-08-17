@@ -92,3 +92,36 @@ class SqlAlchemyExecutionRepository(ExecutionRepository):
         )
         models = self.session.execute(stmt).scalars().unique().all()
         return [ExecutionMapper.to_domain(m) for m in models]
+
+    def find_by_project_paginated(
+        self,
+        project_id: uuid.UUID,
+        limit: int = 50,
+        offset: int = 0,
+        status: str | None = None,
+        target_model: str | None = None,
+        benchmark_version_id: uuid.UUID | None = None,
+    ) -> tuple[list[Execution], int]:
+        from sqlalchemy import func
+        
+        stmt = select(ExecutionModel).where(ExecutionModel.project_id == project_id)
+        count_stmt = select(func.count()).select_from(ExecutionModel).where(ExecutionModel.project_id == project_id)
+        
+        if status:
+            stmt = stmt.where(ExecutionModel.status == ExecutionState(status))
+            count_stmt = count_stmt.where(ExecutionModel.status == ExecutionState(status))
+            
+        if target_model:
+            stmt = stmt.where(ExecutionModel.target_model == target_model)
+            count_stmt = count_stmt.where(ExecutionModel.target_model == target_model)
+            
+        if benchmark_version_id:
+            stmt = stmt.where(ExecutionModel.benchmark_version_id == benchmark_version_id)
+            count_stmt = count_stmt.where(ExecutionModel.benchmark_version_id == benchmark_version_id)
+            
+        stmt = stmt.order_by(ExecutionModel.created_at.desc()).limit(limit).offset(offset)
+        
+        total = self.session.execute(count_stmt).scalar_one()
+        models = self.session.execute(stmt).scalars().all()
+        
+        return [ExecutionMapper.to_domain(m) for m in models], total

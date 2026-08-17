@@ -7,8 +7,10 @@ interface Props {
 }
 
 export const ArtifactSection: React.FC<Props> = ({ benchmark }) => {
+  const artifacts = benchmark.artifacts || [];
+
   const [selectedArtifact, setSelectedArtifact] = useState<ArtifactItem | null>(
-    benchmark.artifacts[0] || null
+    artifacts[0] || null
   );
 
   const getIcon = (type: ArtifactItem['type']) => {
@@ -17,12 +19,14 @@ export const ArtifactSection: React.FC<Props> = ({ benchmark }) => {
     return <FileText className="w-4 h-4 text-blue-400" />;
   };
 
+  if (artifacts.length === 0) return null;
+
   return (
     <div className="p-4 rounded-xl border border-white/5 bg-black/40 space-y-3">
       <h4 className="text-xs font-semibold text-white">Evaluation Artifacts & Exports</h4>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        {benchmark.artifacts.map((art) => (
+        {artifacts.map((art) => (
           <button
             key={art.id}
             onClick={() => setSelectedArtifact(art)}

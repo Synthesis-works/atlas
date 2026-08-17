@@ -10,7 +10,7 @@ export const MetricsSection: React.FC<Props> = ({ benchmark }) => {
     <div className="space-y-3">
       <h4 className="text-xs font-semibold text-white">Evaluation Metrics Overview</h4>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-        {benchmark.metrics.map((metric) => (
+        {(benchmark.metrics || []).map((metric) => (
           <div
             key={metric.id}
             className="p-3 rounded-xl border border-white/5 bg-black/40 space-y-1 hover:border-white/10 transition-colors"

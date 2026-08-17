@@ -6,7 +6,7 @@ import { AtlasDatasetAnalytics } from '../components/analytics/AtlasDatasetAnaly
 import { AtlasDatasetStorage } from '../components/storage/AtlasDatasetStorage';
 import { AtlasDatasetHierarchy } from '../components/hierarchy/AtlasDatasetHierarchy';
 import { getDatasetHeroMetrics } from '../selectors/hero';
-import { mockDatasets } from '../domain/mock';
+
 import { selectStorageMetrics } from '../selectors/storage';
 import { ScrambleSectionTitle } from '@/components/motion';
 import { AtlasDatasetCatalog } from '../components/catalog/AtlasDatasetCatalog';
@@ -15,7 +15,7 @@ export default function DatasetsPage() {
   const storageMetrics = selectStorageMetrics();
   const mockStorageArray = [{ compressedSizeBytes: storageMetrics.totalBytes }];
   
-  const heroMetrics = getDatasetHeroMetrics(mockDatasets as any, mockStorageArray as any);
+  const heroMetrics = getDatasetHeroMetrics([], mockStorageArray as any);
 
   return (
     <div className="w-full py-12 flex flex-col pb-32">

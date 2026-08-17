@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useDatasetCatalog } from '../../hooks/useDatasetCatalog';
-import { Search, X } from 'lucide-react';
+
 
 interface AtlasDatasetSearchProps {
   catalog: ReturnType<typeof useDatasetCatalog>;
@@ -35,19 +35,14 @@ export function AtlasDatasetSearch({ catalog, inputRef }: AtlasDatasetSearchProp
       <input
         ref={inputRef}
         type="text"
-        className="block w-full pl-10 pr-3 py-2 border border-white/10 rounded-lg leading-5 bg-black/50 text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-        placeholder="Search datasets by name, tags, or provider... (Press / to focus)"
-        value={localQuery}
+        className="block w-full pl-10 pr-3 py-2 border border-white/10 rounded-lg leading-5 bg-black/50 text-white/40 placeholder-white/20 focus:outline-none sm:text-sm cursor-not-allowed"
+        placeholder="Search is temporarily unavailable (Awaiting Backend Support)"
+        value=""
+        disabled
+        title="Search is temporarily unavailable because the backend does not currently support it."
         onChange={(e) => setLocalQuery(e.target.value)}
       />
-      {localQuery && (
-        <button 
-          className="absolute inset-y-0 right-0 pr-3 flex items-center text-white/40 hover:text-white"
-          onClick={() => setLocalQuery('')}
-        >
-          ✕
-        </button>
-      )}
+      {/* Search is disabled, hide the clear button */}
     </div>
   );
 }

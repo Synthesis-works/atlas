@@ -7,7 +7,8 @@ interface Props {
 }
 
 export const HistorySection: React.FC<Props> = ({ benchmark }) => {
-  const timelineItems: TimelineItem[] = benchmark.versionsHistory.map((ver, idx) => ({
+  const versionsHistory = benchmark.versionsHistory || [];
+  const timelineItems: TimelineItem[] = versionsHistory.map((ver, idx) => ({
     id: ver.version,
     title: `Version ${ver.version}`,
     subtitle: `Hash: ${ver.hash}`,

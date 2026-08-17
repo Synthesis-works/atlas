@@ -1,12 +1,12 @@
 import React from 'react';
 import { CheckCircle2, AlertCircle } from 'lucide-react';
-import type { Benchmark } from '@/domain/benchmarks/types';
+import type { Benchmark, VerificationChecklist } from '@/domain/benchmarks/types';
 
 interface Props {
   benchmark: Benchmark;
 }
 
-const CHECKLIST_ITEMS: { key: keyof Benchmark['verification']; label: string }[] = [
+const CHECKLIST_ITEMS: { key: keyof VerificationChecklist; label: string }[] = [
   { key: 'datasetLicense', label: 'Dataset License Verified' },
   { key: 'metadata', label: 'Structured Metadata' },
   { key: 'promptSchema', label: 'Prompt Schema Defined' },
@@ -19,20 +19,21 @@ const CHECKLIST_ITEMS: { key: keyof Benchmark['verification']; label: string }[]
 ];
 
 export const VerificationSection: React.FC<Props> = ({ benchmark }) => {
-  const verifiedCount = Object.values(benchmark.verification).filter(Boolean).length;
+  const verification = benchmark.verification || {} as Partial<VerificationChecklist>;
+  const verifiedCount = Object.values(verification).filter(Boolean).length;
 
   return (
     <div className="p-4 rounded-xl border border-white/5 bg-black/40 space-y-3">
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-semibold text-white">9-Point Verification Checklist</h4>
         <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-          {verifiedCount} / 9 Verified ({benchmark.verificationScore}%)
+          {verifiedCount} / 9 Verified ({benchmark.verificationScore ?? 0}%)
         </span>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pt-1">
         {CHECKLIST_ITEMS.map((item) => {
-          const isPassed = benchmark.verification[item.key];
+          const isPassed = verification[item.key];
           return (
             <div
               key={item.key}

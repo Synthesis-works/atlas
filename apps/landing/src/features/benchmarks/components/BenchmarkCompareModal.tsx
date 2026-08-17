@@ -82,25 +82,31 @@ export const BenchmarkCompareModal: React.FC<BenchmarkCompareModalProps> = ({
                 <div key={bm.id} className="py-2"><StatusBadge status={bm.status} /></div>
               ))}
 
-              {/* Tasks / Samples */}
-              <div className="font-semibold text-white/40 py-2">Tasks / Samples</div>
+              {/* Tasks */}
+              <div className="font-semibold text-white/40 py-2">Tasks</div>
               {benchmarks.map((bm) => (
-                <div key={bm.id} className="py-2 text-white/80">{bm.tasksCount.toLocaleString()} / {bm.samplesCount.toLocaleString()}</div>
+                <div key={bm.id} className="py-2 text-white/80">{bm.tasksCount !== undefined ? bm.tasksCount.toLocaleString() : '—'}</div>
               ))}
 
               {/* Verification */}
               <div className="font-semibold text-white/40 py-2">Verification Score</div>
               {benchmarks.map((bm) => (
                 <div key={bm.id} className="py-2 flex items-center gap-1.5 text-emerald-400 font-bold">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>{bm.verificationScore}%</span>
+                  {bm.verificationScore !== undefined ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>{bm.verificationScore}%</span>
+                    </>
+                  ) : (
+                    <span className="text-white/40">—</span>
+                  )}
                 </div>
               ))}
 
               {/* Estimated Runtime */}
               <div className="font-semibold text-white/40 py-2">Estimated Runtime</div>
               {benchmarks.map((bm) => (
-                <div key={bm.id} className="py-2 text-white/80">{bm.estimatedRuntime}</div>
+                <div key={bm.id} className="py-2 text-white/80">{bm.estimatedRuntime ?? '—'}</div>
               ))}
 
               {/* License */}

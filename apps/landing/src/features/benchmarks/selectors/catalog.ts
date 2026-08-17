@@ -23,8 +23,8 @@ export function filterBenchmarks(benchmarks: Benchmark[], filters: BenchmarkFilt
     if (filters.searchQuery) {
       const q = filters.searchQuery.toLowerCase();
       if (!benchmark.name.toLowerCase().includes(q) && 
-          !benchmark.description.toLowerCase().includes(q) &&
-          !benchmark.tags.some(t => t.toLowerCase().includes(q))) {
+          !(benchmark.description && benchmark.description.toLowerCase().includes(q)) &&
+          !(benchmark.tags && benchmark.tags.some(t => t.toLowerCase().includes(q)))) {
         return false;
       }
     }
@@ -54,13 +54,13 @@ export function sortBenchmarks(benchmarks: Benchmark[], sort: BenchmarkSortState
         comparison = a.name.localeCompare(b.name);
         break;
       case 'verificationScore':
-        comparison = a.verificationScore - b.verificationScore;
+        comparison = (a.verificationScore ?? -1) - (b.verificationScore ?? -1);
         break;
       case 'tasksCount':
-        comparison = a.tasksCount - b.tasksCount;
+        comparison = (a.tasksCount ?? -1) - (b.tasksCount ?? -1);
         break;
       case 'updatedAt':
-        comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+        comparison = new Date(a.updatedAt ?? 0).getTime() - new Date(b.updatedAt ?? 0).getTime();
         if (isNaN(comparison)) comparison = 0;
         break;
     }

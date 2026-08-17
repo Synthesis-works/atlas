@@ -20,10 +20,8 @@ import AtlasRuntimeWidget from './AtlasRuntimeWidget';
 
 export const BenchmarksFeature: React.FC = () => {
   const {
-    benchmarks,
     kpis,
     searchQuery,
-    selectedCategory,
     activeDrawerBenchmark,
     compareBenchmarkIds,
     compareBenchmarks,
@@ -31,8 +29,6 @@ export const BenchmarksFeature: React.FC = () => {
     queue,
     terminalLogs,
     setSearchQuery,
-    setSelectedCategory,
-    openDrawer,
     closeDrawer,
     toggleCompare,
     toggleViewMode,
@@ -78,15 +74,7 @@ export const BenchmarksFeature: React.FC = () => {
 
         {/* 5. Benchmark Registry Table */}
         <WorkspaceRegistry>
-          <BenchmarkRegistry
-            benchmarks={benchmarks}
-            selectedCategory={selectedCategory}
-            onSelectCategory={setSelectedCategory}
-            onRowClick={openDrawer}
-            onRunClick={(id) => triggerRun(id, 'GPT-5')}
-            onToggleCompare={toggleCompare}
-            compareIds={compareBenchmarkIds}
-          />
+          <BenchmarkRegistry />
         </WorkspaceRegistry>
 
         {/* Supporting Drawers & Modals */}

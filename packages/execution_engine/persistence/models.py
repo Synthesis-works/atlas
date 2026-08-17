@@ -21,6 +21,8 @@ class ExecutionModel(Base, BaseMixin):
     max_retries: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
     project_id: Mapped[uuid.UUID] = mapped_column(default=uuid.uuid4)
     target_model: Mapped[str] = mapped_column(String(255), default="test-model")
+    total_items: Mapped[int] = mapped_column(Integer, default=0)
+    completed_items: Mapped[int] = mapped_column(Integer, default=0)
 
     attempts: Mapped[list["ExecutionAttemptModel"]] = relationship(
         "ExecutionAttemptModel",

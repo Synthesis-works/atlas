@@ -30,17 +30,28 @@ class ExecutionResponse(BaseModel):
     updated_at: datetime
     created_by: uuid.UUID
     max_retries: int
+    total_items: int = 0
+    completed_items: int = 0
     attempts: list[ExecutionAttemptResponse]
 
 
 class ExecutionCreateRequest(BaseModel):
-    # Benchmark version ID goes in the path usually, but this is the request body?
-    # Actually, path is /benchmarks/{id}/executions. No body is strictly required,
-    # but maybe we can allow passing config here.
-    # We will just use an empty body for now.
     pass
 
 
+class ProjectExecutionListEntry(BaseModel):
+    id: uuid.UUID
+    benchmark_name: str
+    target_model: str
+    status: ExecutionState
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    duration: int | None = None
+    total_items: int = 0
+    completed_items: int = 0
+    created_at: datetime
+
+
 class ExecutionListResponse(BaseModel):
-    items: list[ExecutionResponse]
+    items: list[ProjectExecutionListEntry]
     total: int

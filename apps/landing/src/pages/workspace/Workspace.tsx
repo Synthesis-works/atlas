@@ -39,11 +39,12 @@ const hierarchyData = [
 const stagesData = createTimelineStages('Running');
 
 import { WorkspaceStatusBoard } from '@/components/workspace/WorkspaceStatusBoard';
-import { ACTIVE_EVALUATIONS } from '@/domain/evaluations/mock';
+import { useEvaluations } from '@/features/evaluations/hooks/useEvaluations';
 import { AI_MODELS } from '@/domain/models/types';
 
 export default function Workspace() {
-  const activeCount = ACTIVE_EVALUATIONS.filter(
+  const { activeEvaluations } = useEvaluations();
+  const activeCount = activeEvaluations.filter(
     (e) => e.status === 'Running' || e.status === 'Scoring' || e.status === 'Loading' || e.status === 'Preparing',
   ).length;
 

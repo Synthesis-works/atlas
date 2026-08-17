@@ -29,3 +29,16 @@ class ExecutionRepository(abc.ABC):
     def find_expired_active_attempts(self, limit: int = 50) -> list[Execution]:
         """Finds executions with expired leases on their active attempt, applying SKIP LOCKED."""
         pass
+
+    @abc.abstractmethod
+    def find_by_project_paginated(
+        self,
+        project_id: uuid.UUID,
+        limit: int = 50,
+        offset: int = 0,
+        status: str | None = None,
+        target_model: str | None = None,
+        benchmark_version_id: uuid.UUID | None = None,
+    ) -> tuple[list[Execution], int]:
+        """Find executions for a project with optional filters and pagination, returning (items, total_count)."""
+        pass

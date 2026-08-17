@@ -81,26 +81,26 @@ export interface ArtifactItem {
 export interface Benchmark {
   id: string;
   name: string;
-  description: string;
-  category: BenchmarkCategory;
-  difficulty: BenchmarkDifficulty;
+  description?: string;
+  category?: BenchmarkCategory;
+  difficulty?: BenchmarkDifficulty;
   status: BenchmarkStatus;
-  version: string;
-  tasksCount: number;
-  samplesCount: number;
-  estimatedRuntime: string;
-  license: string;
-  author: string;
-  verificationScore: number; // Percentage (e.g. 100 for 9/9)
-  verification: VerificationChecklist;
-  tags: string[];
-  metrics: MetricCardItem[];
-  compatibleModels: string[];
-  details: string;
-  methodology: string[];
-  datasetSamples: DatasetSample[];
-  versionsHistory: VersionRecord[];
-  artifacts: ArtifactItem[];
-  relatedIds: string[];
-  updatedAt: string;
+  version?: string;
+  tasksCount?: number;
+  samplesCount?: number;
+  estimatedRuntime?: string;
+  license?: string;
+  author?: string;
+  verificationScore?: number; // Percentage (e.g. 100 for 9/9)
+  verification?: VerificationChecklist;
+  tags?: string[];
+  metrics?: MetricCardItem[];
+  compatibleModels?: string[];
+  details?: string;
+  methodology?: string[];
+  datasetSamples?: DatasetSample[];
+  versionsHistory?: VersionRecord[];
+  artifacts?: ArtifactItem[];
+  relatedIds?: string[];
+  updatedAt?: string;
 }

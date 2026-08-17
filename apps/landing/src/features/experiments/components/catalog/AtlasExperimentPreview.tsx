@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, CheckCircle2, Circle, Clock, PlayCircle, XCircle, ChevronRight, Activity, Terminal, AlertTriangle, AlertCircle } from 'lucide-react';
+import { X, CheckCircle2, Circle, Clock, PlayCircle, XCircle, ChevronRight, Activity, Terminal, AlertTriangle } from 'lucide-react';
 import { useWorkspaceInteractionStore } from '@/store/workspace/interaction/store';
-import type { useExperimentCatalog } from '../../hooks/useExperimentCatalog';
-import type { MockExperimentStage, MockExperimentStatus } from '../../mocks/mock';
+import type { useExperimentCatalog } from "../../hooks/useExperimentCatalog";
+import type { ExperimentStatus } from "../../types/catalog";
 
 interface Props {
   catalog: ReturnType<typeof useExperimentCatalog>;
@@ -41,7 +41,7 @@ export function AtlasExperimentPreview({ catalog }: Props) {
     setActiveTab('experiments', 'Logs');
   };
 
-  const StatusIcon = ({ status }: { status: MockExperimentStatus }) => {
+  const StatusIcon = ({ status }: { status: ExperimentStatus }) => {
     switch (status) {
       case 'Queued': return <div className="w-2 h-2 rounded-full bg-white/40" />;
       case 'Running': return <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />;
@@ -52,7 +52,7 @@ export function AtlasExperimentPreview({ catalog }: Props) {
     }
   };
 
-  const StageIcon = ({ status }: { status: MockExperimentStage['status'] }) => {
+  const StageIcon = ({ status }: { status: 'pending' | 'active' | 'completed' | 'failed' | 'skipped' }) => {
     switch (status) {
       case 'completed': return <CheckCircle2 className="w-5 h-5 text-emerald-400" />;
       case 'active': return <PlayCircle className="w-5 h-5 text-indigo-400 fill-indigo-400/20 animate-pulse" />;
@@ -140,7 +140,7 @@ export function AtlasExperimentPreview({ catalog }: Props) {
           {activeTab === 'Timeline' && (
             <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="relative border-l border-white/10 ml-2.5 pb-4 space-y-6">
-                {previewModel.stages.map((stage, idx) => {
+                {previewModel.timeline.map((stage) => {
                   const isHovered = hoveredStageId === stage.id;
                   const isFailed = stage.status === 'failed';
                   const isSkipped = stage.status === 'skipped';
@@ -187,7 +187,7 @@ export function AtlasExperimentPreview({ catalog }: Props) {
                         
                         {isFailed && (
                           <div className="mt-2 text-xs text-red-300/80 bg-red-500/10 p-2 rounded border border-red-500/20">
-                            Execution halted at this stage. Remaining stages skipped.
+                            Execution halted at this attempt.
                           </div>
                         )}
                       </div>
@@ -235,21 +235,23 @@ export function AtlasExperimentPreview({ catalog }: Props) {
                 <Terminal className="w-4 h-4" /> Live Execution Logs
               </div>
               <div className="p-4 space-y-2">
-                {previewModel.logs.length === 0 ? (
-                  <div className="text-white/30 text-center py-4">No logs available.</div>
+                {!previewModel.logs ? (
+                  <div className="text-white/30 text-center py-4">Logs unavailable for this execution.</div>
+                ) : previewModel.logs.length === 0 ? (
+                  <div className="text-white/30 text-center py-4">Logs are empty.</div>
                 ) : (
-                  previewModel.logs.map(log => {
-                    const isRelated = hoveredStageId === log.stageId || selectedStageId === log.stageId;
+                  previewModel.logs.map((log: any, idx: number) => {
+                    const isRelated = hoveredStageId === log.eventId || selectedStageId === log.eventId;
                     return (
                       <div 
-                        key={log.id} 
-                        id={`log-stage-${log.stageId}`}
+                        key={log.id || idx} 
+                        id={log.eventId ? `log-stage-${log.eventId}` : undefined}
                         className={`
                           flex gap-3 py-1 px-2 rounded transition-colors
                           ${isRelated ? 'bg-indigo-500/20' : 'hover:bg-white/5'}
                         `}
-                        onMouseEnter={() => setHoveredStageId(log.stageId)}
-                        onMouseLeave={() => setHoveredStageId(null)}
+                        onMouseEnter={() => log.eventId && setHoveredStageId(log.eventId)}
+                        onMouseLeave={() => log.eventId && setHoveredStageId(null)}
                       >
                         <span className="text-white/30 shrink-0">
                           {new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}

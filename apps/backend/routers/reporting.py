@@ -12,6 +12,9 @@ from apps.backend.schemas.reporting import (
 )
 from services.report.models.read_models import ReportRunsFilter, ReportRunStatus
 from services.report.services.reporting import ReportingService
+from apps.backend.authz import get_project_authz_service, ProjectAuthorizationService
+from packages.execution_engine.application.execution_app_service import ExecutionApplicationService
+from apps.backend.dependencies import get_execution_app_service
 
 router = APIRouter(prefix="/reports", tags=["reporting"])
 
@@ -58,7 +61,25 @@ def get_run_summary(
     run_id: uuid.UUID = Path(..., description="Unique ID of the execution run"),
     service: ReportingService = Depends(get_reporting_service),
     current_user: dict[str, Any] = Depends(require_permission("report:read")),
+    project_authz: ProjectAuthorizationService = Depends(get_project_authz_service),
+    exec_service: ExecutionApplicationService = Depends(get_execution_app_service),
 ) -> ReportSummaryRead:
+    from atlas_db.models.core import OrganizationRole
+
+    # 1. Resolve the execution associated with the report
+    try:
+        execution = exec_service.get_execution(run_id)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"Execution not found for run '{run_id}'")
+        
+    # 2. Determine its project_id and authorize
+    user_id = uuid.UUID(current_user["sub"])
+    project_authz.authorize_project_access(
+        project_id=execution.project_id,
+        user_id=user_id,
+        allowed_roles=[OrganizationRole.VIEWER, OrganizationRole.MEMBER, OrganizationRole.ADMIN, OrganizationRole.OWNER],
+    )
+
     summary = service.get_run_summary(run_id)
     if not summary:
         raise HTTPException(
@@ -84,17 +105,29 @@ def export_run_results(
     current_user: dict[str, Any] = Depends(require_permission("report:read")),
 ) -> Response:
     try:
+        # Truthful agent-run context (steps, tool calls, provider chain, duration)
+        # when the execution belongs to an in-memory agent task; {} otherwise.
+        execution_meta = _collect_agent_execution_meta(run_id)
+        document = service.build_report_export(
+            run_id,
+            include_prompt=include_prompt,
+            include_expected_output=include_expected_output,
+            execution_meta=execution_meta,
+        )
         export_result = service.export_run_results(
             run_id=run_id,
             format_type=format,
             include_prompt=include_prompt,
             include_expected_output=include_expected_output,
+            execution_meta=execution_meta,
+            document=document,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
+    filename = export_result.filename_stem or f"run_{run_id}"
     headers = {
-        "Content-Disposition": f'attachment; filename="run_{run_id}.{export_result.filename_extension}"'
+        "Content-Disposition": f'attachment; filename="{filename}.{export_result.filename_extension}"'
     }
 
     return Response(
@@ -102,6 +135,49 @@ def export_run_results(
         media_type=export_result.mime_type,
         headers=headers,
     )
+
+
+def _collect_agent_execution_meta(run_id: uuid.UUID) -> dict[str, Any]:
+    """Collect truthful agent-run context for an execution id when an in-memory
+    agent task produced it. Returns {} when no agent task matches, so exports
+    only ever include what genuinely exists."""
+    from apps.backend.routers.agent import _agent_tasks_db
+
+    run_id_str = str(run_id)
+    for task in _agent_tasks_db.values():
+        if run_id_str not in task.execution_ids:
+            continue
+
+        providers: list[str] = []
+        if task.primary_provider:
+            providers.append(task.primary_provider)
+        for trace_event in task.execution_trace:
+            details = trace_event.details or {}
+            if trace_event.event_type.startswith("provider_decision_"):
+                provider = details.get("provider")
+                if provider and str(provider) not in providers:
+                    providers.append(str(provider))
+            elif trace_event.event_type == "provider_fallback":
+                next_provider = details.get("next_provider")
+                if (
+                    next_provider
+                    and str(next_provider) != "NONE"
+                    and str(next_provider) not in providers
+                ):
+                    providers.append(str(next_provider))
+
+        meta: dict[str, Any] = {
+            "steps": task.step_count,
+            "tool_calls": task.total_tool_calls,
+            "provider_chain": providers,
+        }
+        if task.started_at and task.completed_at:
+            delta = task.completed_at - task.started_at
+            if delta.total_seconds() >= 0:
+                meta["duration_seconds"] = delta.total_seconds()
+        return meta
+
+    return {}
 
 
 @router.get(

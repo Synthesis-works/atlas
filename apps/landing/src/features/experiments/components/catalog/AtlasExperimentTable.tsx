@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, Clock, AlertTriangle } from "lucide-react";
 import type { useExperimentCatalog } from "../../hooks/useExperimentCatalog";
-import type { MockExperimentStatus } from "../../mocks/mock";
+import type { ExperimentStatus } from "../../types/catalog";
 
 export function AtlasExperimentTable({ catalog }: { catalog: ReturnType<typeof useExperimentCatalog> }) {
   const { 
@@ -30,7 +30,7 @@ export function AtlasExperimentTable({ catalog }: { catalog: ReturnType<typeof u
     return sort.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />;
   };
 
-  const StatusBadge = ({ status }: { status: MockExperimentStatus }) => {
+  const StatusBadge = ({ status }: { status: ExperimentStatus }) => {
     switch (status) {
       case 'Queued': return <span className="text-white/60 bg-white/5 px-2 py-0.5 rounded text-xs border border-white/10 font-medium">Queued</span>;
       case 'Running': return <span className="text-indigo-400 bg-indigo-400/10 px-2 py-0.5 rounded text-xs border border-indigo-400/20 font-medium animate-pulse">Running</span>;
@@ -54,7 +54,11 @@ export function AtlasExperimentTable({ catalog }: { catalog: ReturnType<typeof u
     return (
       <div className="flex flex-col gap-1.5 w-full max-w-[200px]">
         <div className="flex justify-between items-center text-xs">
-          <span className="font-medium text-white/90">{row.progressPercentage}%</span>
+          {row.progressPercentage !== null ? (
+            <span className="font-medium text-white/90">{row.progressPercentage}%</span>
+          ) : (
+            <span className="font-medium text-white/50">—</span>
+          )}
           {row.status === 'Running' && (
             <span className="text-indigo-300 font-medium text-[10px] uppercase tracking-wider">{row.currentStage}</span>
           )}
@@ -62,18 +66,24 @@ export function AtlasExperimentTable({ catalog }: { catalog: ReturnType<typeof u
             <span className="text-red-400 font-medium text-[10px] uppercase tracking-wider flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> {row.currentStage}</span>
           )}
         </div>
-        <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-          <div 
-            className={`h-full ${barColor} ${row.status === 'Running' ? 'relative overflow-hidden' : 'transition-all duration-500'}`}
-            style={{ width: `${Math.max(row.progressPercentage, 2)}%` }}
-          >
-            {row.status === 'Running' && (
-              <div className="absolute inset-0 bg-white/20 w-full animate-[shimmer_1.5s_infinite]" style={{ transform: 'skewX(-20deg) translateX(-150%)' }} />
-            )}
-          </div>
+        <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden relative">
+          {row.progressPercentage !== null ? (
+            <div 
+              className={`h-full ${barColor} ${row.status === 'Running' ? 'relative overflow-hidden' : 'transition-all duration-500'}`}
+              style={{ width: `${Math.max(row.progressPercentage, 2)}%` }}
+            >
+              {row.status === 'Running' && (
+                <div className="absolute inset-0 bg-white/20 w-full animate-[shimmer_1.5s_infinite]" style={{ transform: 'skewX(-20deg) translateX(-150%)' }} />
+              )}
+            </div>
+          ) : row.status === 'Running' || row.status === 'Queued' ? (
+            <div className={`h-full ${barColor} w-1/3 animate-[shimmer_1.5s_infinite] relative`} />
+          ) : (
+            <div className={`h-full ${barColor} w-full opacity-30`} />
+          )}
         </div>
         <div className="flex justify-between items-center text-[10px] text-white/40 font-medium">
-          <span>{row.stageCountText}</span>
+          <span>{row.stageCountText || 'Processing...'}</span>
           {row.etaText && <span>{row.etaText}</span>}
         </div>
       </div>

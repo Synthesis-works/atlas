@@ -71,7 +71,7 @@ export const BenchmarkDrawer: React.FC<BenchmarkDrawerProps> = ({
         <div className="p-4 rounded-xl border border-white/5 bg-black/40 space-y-2">
           <h4 className="text-xs font-semibold text-white">Compatible ML Models & Engines</h4>
           <div className="flex flex-wrap gap-1.5 pt-1">
-            {benchmark.compatibleModels.map((model) => (
+            {(benchmark.compatibleModels || []).map((model) => (
               <span
                 key={model}
                 className="px-2.5 py-1 rounded-lg text-xs font-mono bg-white/5 text-white/70 border border-white/5"

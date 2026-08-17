@@ -9,7 +9,8 @@ interface Props {
 export const DatasetSection: React.FC<Props> = ({ benchmark }) => {
   const [split, setSplit] = useState<'train' | 'validation' | 'test'>('test');
 
-  const sample = benchmark.datasetSamples.find((s) => s.split === split) || benchmark.datasetSamples[0];
+  const samples = benchmark.datasetSamples || [];
+  const sample = samples.find((s) => s.split === split) || samples[0];
 
   return (
     <div className="p-4 rounded-xl border border-white/5 bg-black/40 space-y-3">

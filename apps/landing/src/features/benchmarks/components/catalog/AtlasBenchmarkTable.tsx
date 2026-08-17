@@ -3,7 +3,7 @@ import { useBenchmarkCatalog } from '../../hooks/useBenchmarkCatalog';
 export function AtlasBenchmarkTable({ catalog }: { catalog: ReturnType<typeof useBenchmarkCatalog> }) {
   const { rows, selectedIds, handleSelect, handleSelectAll, sort, setSort, rawVisibleIds } = catalog;
 
-  const allSelected = rawVisibleIds.length > 0 && rawVisibleIds.every(id => selectedIds.includes(id));
+  const allSelected = rawVisibleIds.length > 0 && rawVisibleIds.every((id: string) => selectedIds.includes(id));
   const someSelected = selectedIds.length > 0 && !allSelected;
 
   const SortIcon = ({ field }: { field: typeof sort.field }) => {
@@ -52,7 +52,7 @@ export function AtlasBenchmarkTable({ catalog }: { catalog: ReturnType<typeof us
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
-            {rows.map(row => {
+            {rows.map((row: any) => {
               const isSelected = selectedIds.includes(row.id);
               const handleClick = (e: React.MouseEvent) => {
                 if (e.detail === 2) {
@@ -81,7 +81,7 @@ export function AtlasBenchmarkTable({ catalog }: { catalog: ReturnType<typeof us
                   <td className="p-4">
                     <span className="text-white font-medium">{row.name}</span>
                   </td>
-                  <td className="p-4 whitespace-nowrap">{row.verificationScore}%</td>
+                  <td className="p-4 whitespace-nowrap">{row.verificationScore}</td>
                   <td className="p-4 whitespace-nowrap">{row.tasksCountFormatted}</td>
                   <td className="p-4 whitespace-nowrap">{row.updatedAt}</td>
                   <td className="p-4 capitalize">{row.category}</td>

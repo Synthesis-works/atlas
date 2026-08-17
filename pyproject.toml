@@ -26,6 +26,9 @@ dependencies = [
     "pwdlib[argon2]>=0.2.0",
     "python-multipart>=0.0.6",
     "redis>=8.0.1",
+    "stripe>=15.4.0",
+    "razorpay>=2.0.1",
+    "httpx>=0.25.0",
 ]
 
 [project.optional-dependencies]
@@ -34,8 +37,7 @@ dev = [
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.1.0",
     "ruff>=0.1.0",
-    "mypy>=1.5.0",
-    "httpx>=0.25.0"
+    "mypy>=1.5.0"
 ]
 
 [tool.ruff]

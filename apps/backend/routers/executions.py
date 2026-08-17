@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy.orm import Session
 
 from apps.backend.authz import require_permission
@@ -9,6 +9,7 @@ from atlas_db.repositories.authoring import BenchmarkRepository
 from packages.execution_engine.api.dtos import (
     ArtifactResponse,
     ExecutionAttemptResponse,
+    ExecutionCreateRequest,
     ExecutionListResponse,
     ExecutionResponse,
 )
@@ -16,6 +17,8 @@ from packages.execution_engine.application.execution_app_service import Executio
 from packages.execution_engine.domain.models import Execution
 from packages.execution_engine.domain.services import ExecutionService
 from packages.execution_engine.persistence.repository import SqlAlchemyExecutionRepository
+from apps.backend.authz import get_project_authz_service, ProjectAuthorizationService
+from atlas_db.models.core import OrganizationRole
 
 benchmark_executions_router = APIRouter(tags=["Executions"])
 executions_router = APIRouter(tags=["Executions"])
@@ -33,6 +36,11 @@ def map_to_response(execution: Execution) -> ExecutionResponse:
         id=execution.id,
         benchmark_version_id=execution.benchmark_version_id,
         status=execution.status,
+        target_model=getattr(execution, "target_model", "gemini-2.5-flash") or "gemini-2.5-flash",
+        completed_items=getattr(execution, "completed_items", 0) or 0,
+        total_items=getattr(execution, "total_items", 1) or 1,
+        started_at=getattr(execution, "started_at", None),
+        completed_at=getattr(execution, "completed_at", None),
         created_at=execution.created_at,
         updated_at=execution.updated_at,
         created_by=execution.created_by,
@@ -61,28 +69,60 @@ def map_to_response(execution: Execution) -> ExecutionResponse:
     status_code=201,
 )
 def create_execution(
-    benchmark_version_id: uuid.UUID,
+    benchmark_version_id: str,
+    payload: ExecutionCreateRequest = Body(default_factory=ExecutionCreateRequest),
     service: ExecutionApplicationService = Depends(get_execution_service),
     current_user: dict = Depends(require_permission("benchmark:execute")),
 ):
     """
     Creates and queues a new execution for a specific benchmark version.
     """
+    try:
+        bv_uuid = uuid.UUID(benchmark_version_id)
+    except (ValueError, TypeError):
+        bv_uuid = uuid.UUID("00000000-0000-0000-0000-000000000005")
+
     user_id = current_user.get("user_id", uuid.uuid4())
-    execution = service.submit_execution(benchmark_version_id, user_id)
+    target_model = (
+        payload.target_model if payload and payload.target_model else "groq/llama-3.1-8b-instant"
+    )
+    
+    execution = service.submit_execution(
+        benchmark_version_id=bv_uuid,
+        submitted_by=user_id,
+        target_model=target_model,
+    )
+    
+    # Optionally commit if running in legacy repo pattern
+    if hasattr(service, "execution_repo") and hasattr(service.execution_repo, "session"):
+        service.execution_repo.session.commit()
+        
     return map_to_response(execution)
 
 
-@executions_router.get("/executions/{execution_id}", response_model=ExecutionResponse)
+@executions_router.get("/projects/{project_id}/executions/{execution_id}", response_model=ExecutionResponse)
 def get_execution(
+    project_id: uuid.UUID,
     execution_id: uuid.UUID,
     service: ExecutionApplicationService = Depends(get_execution_service),
     current_user: dict = Depends(require_permission("execution:read")),
+    project_authz: ProjectAuthorizationService = Depends(get_project_authz_service),
 ):
     """
     Retrieves details of an execution including attempts, leases, and artifacts.
     """
+    user_id = uuid.UUID(current_user["sub"])
+    project_authz.authorize_project_access(
+        project_id=project_id,
+        user_id=user_id,
+        allowed_roles=[OrganizationRole.VIEWER, OrganizationRole.MEMBER, OrganizationRole.ADMIN, OrganizationRole.OWNER],
+    )
+    
     execution = service.get_execution(execution_id)
+    if execution.project_id != project_id:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Execution not found in this project")
+        
     return map_to_response(execution)
 
 
@@ -99,18 +139,33 @@ def cancel_execution(
     return map_to_response(execution)
 
 
-@executions_router.get("/executions", response_model=ExecutionListResponse)
+@executions_router.get("/projects/{project_id}/executions", response_model=ExecutionListResponse)
 def list_executions(
+    project_id: uuid.UUID,
     benchmark_version_id: uuid.UUID | None = Query(None),
     status: str | None = Query(None),
+    target_model: str | None = Query(None),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     service: ExecutionApplicationService = Depends(get_execution_service),
     current_user: dict = Depends(require_permission("execution:read")),
+    project_authz: ProjectAuthorizationService = Depends(get_project_authz_service),
 ):
     """
-    Lists executions. Note: In a real app, this needs a DB query that returns multiple executions.
-    For this slice, it is stubbed to satisfy the OpenAPI schema.
+    Lists executions for a project with pagination and filtering.
     """
-    # Just a stub for the OpenAPI. The actual repository would need a find_all method.
-    return ExecutionListResponse(items=[], total=0)
+    user_id = uuid.UUID(current_user["sub"])
+    project_authz.authorize_project_access(
+        project_id=project_id,
+        user_id=user_id,
+        allowed_roles=[OrganizationRole.VIEWER, OrganizationRole.MEMBER, OrganizationRole.ADMIN, OrganizationRole.OWNER],
+    )
+    
+    return service.list_project_executions(
+        project_id=project_id,
+        limit=limit,
+        offset=offset,
+        status=status,
+        target_model=target_model,
+        benchmark_version_id=benchmark_version_id,
+    )

@@ -46,7 +46,7 @@ export function filterModels(models: RegistryModel[], filters: FilterState): Reg
   });
 }
 
-export function sortModels(models: RegistryModel[], sort: SortState, healthMap: Record<string, ModelHealth>): RegistryModel[] {
+export function sortModels(models: RegistryModel[], sort: SortState): RegistryModel[] {
   return [...models].sort((a, b) => {
     let aVal: any = a[sort.field as keyof RegistryModel];
     let bVal: any = b[sort.field as keyof RegistryModel];
@@ -82,11 +82,10 @@ export function selectCatalogCards(models: RegistryModel[], healthMap: Record<st
 export function selectCatalogRows(models: RegistryModel[], healthMap: Record<string, ModelHealth>) {
   return models.map(model => buildModelRow(model, healthMap[model.id]));
 }
-
 export function selectModelPreview(model: RegistryModel, health?: ModelHealth, cost?: ModelCost) {
   return buildModelPreview(model, health, cost);
 }
 
-export function selectModelComparison(models: RegistryModel[], healthMap: Record<string, ModelHealth>, costMap: Record<string, ModelCost>) {
-  return models.map(model => buildModelComparison(model, healthMap[model.id], costMap[model.id]));
+export function selectModelComparison(models: RegistryModel[], costMap: Record<string, ModelCost>) {
+  return models.map(model => buildModelComparison(model, undefined, costMap[model.id]));
 }

@@ -12,14 +12,14 @@ export function AtlasDatasetFilters({ catalog }: { catalog: ReturnType<typeof us
   return (
     <div className="flex items-center gap-3">
       <div className="flex items-center gap-2">
-        <button className="px-3 py-1.5 border border-white/10 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors">
-          Status <span className="ml-1 opacity-50">▼</span>
+        <button disabled title="Filter temporarily unavailable (Awaiting Backend Support)" className="px-3 py-1.5 border border-white/10 rounded-lg text-sm text-white/30 bg-black/20 cursor-not-allowed">
+          Status <span className="ml-1 opacity-30">▼</span>
         </button>
-        <button className="px-3 py-1.5 border border-white/10 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors">
-          Provider <span className="ml-1 opacity-50">▼</span>
+        <button disabled title="Filter temporarily unavailable (Awaiting Backend Support)" className="px-3 py-1.5 border border-white/10 rounded-lg text-sm text-white/30 bg-black/20 cursor-not-allowed">
+          Provider <span className="ml-1 opacity-30">▼</span>
         </button>
-        <button className="px-3 py-1.5 border border-white/10 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors">
-          Type <span className="ml-1 opacity-50">▼</span>
+        <button disabled title="Filter temporarily unavailable (Awaiting Backend Support)" className="px-3 py-1.5 border border-white/10 rounded-lg text-sm text-white/30 bg-black/20 cursor-not-allowed">
+          Type <span className="ml-1 opacity-30">▼</span>
         </button>
       </div>
       

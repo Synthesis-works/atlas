@@ -1,8 +1,8 @@
 import { useId, useEffect } from "react";
-import { Check, Clock, Activity, ArrowRight, AlertTriangle } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Check, Clock } from "lucide-react";
+import { motion } from "framer-motion";
 import type { useExperimentCatalog } from "../../hooks/useExperimentCatalog";
-import type { MockExperimentStatus } from "../../mocks/mock";
+import type { ExperimentStatus } from "../../types/catalog";
 
 export function AtlasExperimentGrid({ catalog }: { catalog: ReturnType<typeof useExperimentCatalog> }) {
   const { rows, selectedIds, previewId, handleSelect, handleOpenPreview, handleClosePreview } = catalog;
@@ -18,7 +18,7 @@ export function AtlasExperimentGrid({ catalog }: { catalog: ReturnType<typeof us
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [previewId, handleClosePreview]);
 
-  const StatusIcon = ({ status }: { status: MockExperimentStatus }) => {
+  const StatusIcon = ({ status }: { status: ExperimentStatus }) => {
     switch (status) {
       case 'Queued': return <div className="w-2 h-2 rounded-full bg-white/40" />;
       case 'Running': return <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />;
@@ -99,16 +99,26 @@ export function AtlasExperimentGrid({ catalog }: { catalog: ReturnType<typeof us
                 <span className={`font-medium ${isFailed ? 'text-red-400' : row.status === 'Running' ? 'text-indigo-300' : 'text-white/60'}`}>
                   {row.currentStage}
                 </span>
-                <span className="text-white/50">{row.progressPercentage}%</span>
+                {row.progressPercentage !== null && (
+                  <span className="text-white/50">{row.progressPercentage}%</span>
+                )}
               </div>
-              <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mb-1.5">
-                <div 
-                  className={`h-full ${barColor} transition-all duration-500`}
-                  style={{ width: `${Math.max(row.progressPercentage, 2)}%` }}
-                />
+              
+              <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden mb-1.5 relative">
+                {row.progressPercentage !== null ? (
+                  <div 
+                    className={`h-full ${barColor} transition-all duration-500`}
+                    style={{ width: `${Math.max(row.progressPercentage, 2)}%` }}
+                  />
+                ) : row.status === 'Running' || row.status === 'Queued' ? (
+                  <div className={`h-full ${barColor} w-1/3 animate-[shimmer_1.5s_infinite] relative`} />
+                ) : (
+                  <div className={`h-full ${barColor} w-full opacity-30`} />
+                )}
               </div>
+              
               <div className="text-[10px] text-white/40 flex justify-between">
-                <span>{row.stageCountText}</span>
+                <span>{row.stageCountText || 'Processing...'}</span>
                 {row.etaText && <span>{row.etaText}</span>}
               </div>
             </div>

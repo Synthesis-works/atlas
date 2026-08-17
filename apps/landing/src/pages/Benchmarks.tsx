@@ -12,7 +12,7 @@ import { pageCrossfade, fadeUp, stagger } from '@/lib/motion';
 import { PageHero } from '@/components/layout/PageHero';
 import { Card, Badge } from '@/design/primitives';
 import { CardFlip } from '@/components/ui/CardFlip';
-import { MOCK_BENCHMARKS as BENCHMARKS } from '@/domain/benchmarks/mock';
+import { useBenchmarks } from '@/features/benchmarks/hooks/useBenchmarks';
 import { BENCHMARK_CATEGORIES } from '@/domain/benchmarks/constants';
 import type { Benchmark } from '@/domain/benchmarks/types';
 import { CapabilitySelector } from '@/components/ui/CapabilitySelector';
@@ -29,6 +29,8 @@ const SCHEMA_STEPS = [
 ];
 
 export default function Benchmarks() {
+  const { benchmarks: BENCHMARKS } = useBenchmarks();
+  
   const gridRef = useRef(null);
   const capabilityBoundsRef = useRef<HTMLDivElement>(null);
   const gridInView = useInView(gridRef, { once: false, margin: '-80px' });
@@ -69,7 +71,8 @@ export default function Benchmarks() {
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
         >
           {BENCHMARKS.map((bm: Benchmark) => {
-            const cat = BENCHMARK_CATEGORIES[bm.category];
+            const catKey = (bm.category || 'General') as keyof typeof BENCHMARK_CATEGORIES;
+            const cat = BENCHMARK_CATEGORIES[catKey] || { color: 'text-white/60', label: bm.category || 'General' };
             return (
               <motion.div key={bm.id} variants={fadeUp}>
                 <CardFlip minHeight="h-[350px]">
@@ -77,8 +80,8 @@ export default function Benchmarks() {
                     <div className="group h-full p-6 flex flex-col justify-between">
                       <div>
                         <div className="flex items-start justify-between mb-3">
-                          <span className={`text-xs uppercase tracking-widest ${cat?.color || 'text-white/60'}`}>
-                            {cat?.label || bm.category}
+                          <span className={`text-xs uppercase tracking-widest ${cat.color}`}>
+                            {cat.label}
                           </span>
                           <div className="liquid-glass rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                             <ArrowUpRight className="w-3.5 h-3.5 text-white/50" />
@@ -89,14 +92,14 @@ export default function Benchmarks() {
                       </div>
                       <div>
                         <div className="flex flex-wrap gap-1.5 mb-4">
-                          {bm.tags.map((tag: string) => (
+                          {(bm.tags || []).map((tag: string) => (
                             <Badge key={tag}>{tag}</Badge>
                           ))}
                         </div>
                         <div className="flex items-center gap-4 text-xs text-white/15">
-                          <span>v{bm.version}</span>
-                          <span>{bm.tasksCount.toLocaleString()} tasks</span>
-                          <span>{bm.estimatedRuntime}</span>
+                          <span>v{bm.version || '1.0.0'}</span>
+                          <span>{(bm.tasksCount || 0).toLocaleString()} tasks</span>
+                          <span>{bm.estimatedRuntime || 'Unknown'}</span>
                         </div>
                       </div>
                     </div>

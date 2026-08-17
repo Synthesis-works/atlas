@@ -1,35 +1,51 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useWorkspaceStore } from '@/store/workspaceStore';
-import { filterBenchmarksByQuery } from '../lib/searchParser';
+import { useProjectStore } from '@/features/projects/store/projectStore';
+import { benchmarkApi } from '../api/benchmarkApi';
 import type { BenchmarkCategory } from '@/domain/benchmarks/types';
 
 export function useBenchmarks() {
   const store = useWorkspaceStore();
+  const { activeProjectId } = useProjectStore();
+
+  const [pagination, setPagination] = useState({ limit: 50, offset: 0 });
+
+  const { data: serverData, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['benchmarks', activeProjectId, store.selectedCategory, pagination.limit, pagination.offset],
+    queryFn: async () => {
+      if (!activeProjectId) return { items: [], total: 0 };
+      const res = await benchmarkApi.listBenchmarks(activeProjectId, pagination.limit, pagination.offset);
+      return {
+        items: res.items,
+        total: res.total,
+      };
+    },
+    enabled: !!activeProjectId,
+  });
+
+  const allBenchmarks = serverData?.items || [];
+  const totalBenchmarks = serverData?.total || 0;
 
   const filteredBenchmarks = useMemo(() => {
-    let items = store.benchmarks;
+    let items = allBenchmarks;
 
-    if (store.selectedCategory && store.selectedCategory !== 'all') {
-      items = items.filter((b) => b.category === store.selectedCategory);
-    }
-
-    if (store.searchQuery) {
-      items = filterBenchmarksByQuery(items, store.searchQuery);
-    }
+    // We do NOT perform client-side filtering over a single remote page to pretend it represents the complete dataset.
+    // However, since we don't have backend search or category_id mappings, 
+    // the user said: "Do not perform client-side filtering over a single remote page and pretend it represents the complete dataset."
+    // So we should NOT filter locally if it misrepresents the total.
+    // Actually, we can just return items as is, and disable unsupported filters.
 
     return items;
-  }, [store.benchmarks, store.selectedCategory, store.searchQuery]);
+  }, [allBenchmarks]);
 
   const kpis = useMemo(() => {
-    const total = store.benchmarks.length;
-    const categoriesCount = new Set(store.benchmarks.map((b) => b.category)).size;
+    const total = totalBenchmarks; // Real total from backend
+    const categoriesCount = 0; // Not available from backend
     const activeEvaluations = store.queue.filter((q) => q.status === 'Running').length;
-    const avgVerification =
-      total > 0
-        ? Math.round(
-            store.benchmarks.reduce((acc, b) => acc + b.verificationScore, 0) / total
-          )
-        : 100;
+    
+    // Average verification is not provided by backend. 
+    const avgVerification = 0; 
 
     return {
       total,
@@ -37,17 +53,17 @@ export function useBenchmarks() {
       activeEvaluations,
       avgVerification,
     };
-  }, [store.benchmarks, store.queue]);
+  }, [totalBenchmarks, store.queue]);
 
   const compareBenchmarks = useMemo(() => {
-    return store.benchmarks.filter((b) => store.compareBenchmarkIds.includes(b.id));
-  }, [store.benchmarks, store.compareBenchmarkIds]);
+    return allBenchmarks.filter((b) => store.compareBenchmarkIds.includes(b.id));
+  }, [allBenchmarks, store.compareBenchmarkIds]);
 
   return {
-    benchmarks: filteredBenchmarks,
-    allBenchmarks: store.benchmarks,
+    benchmarks: filteredBenchmarks, // Real data
+    allBenchmarks,
     kpis,
-    searchQuery: store.searchQuery,
+    searchQuery: store.searchQuery, // We can keep the state but disable its effect if unsupported
     selectedCategory: store.selectedCategory,
     activeDrawerBenchmark: store.activeDrawerBenchmark,
     compareBenchmarkIds: store.compareBenchmarkIds,
@@ -66,6 +82,14 @@ export function useBenchmarks() {
     toggleViewMode: store.toggleViewMode,
     togglePin: store.togglePinBenchmark,
     triggerRun: store.triggerEvaluationRun,
+    // Pagination specific exposes
+    pagination,
+    setPagination,
+    totalBenchmarks,
+    isLoading,
+    isError,
+    error,
+    refetch
   };
 }
 

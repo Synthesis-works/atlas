@@ -76,6 +76,7 @@ class Execution:
     id: uuid.UUID
     benchmark_version_id: uuid.UUID
     project_id: uuid.UUID = field(default_factory=uuid.uuid4)
+    target_model: str = "unknown"
     status: ExecutionState = ExecutionState.QUEUED
     created_by: uuid.UUID = field(default_factory=uuid.uuid4)
     created_at: datetime = field(default_factory=Clock.now)
@@ -83,6 +84,8 @@ class Execution:
     _attempts: list[ExecutionAttempt] = field(default_factory=list)
     _events: list[DomainEvent] = field(default_factory=list)
     max_retries: int = 3
+    total_items: int = 0
+    completed_items: int = 0
 
     @classmethod
     def rehydrate(
@@ -90,23 +93,29 @@ class Execution:
         id: uuid.UUID,
         benchmark_version_id: uuid.UUID,
         project_id: uuid.UUID,
+        target_model: str,
         status: ExecutionState,
         created_by: uuid.UUID,
         created_at: datetime,
         updated_at: datetime,
         max_retries: int,
         attempts: list[ExecutionAttempt],
+        total_items: int = 0,
+        completed_items: int = 0,
     ) -> "Execution":
         """Reconstructs the aggregate from persistence without triggering domain invariants."""
         instance = cls(
             id=id,
             benchmark_version_id=benchmark_version_id,
             project_id=project_id,
+            target_model=target_model,
             status=status,
             created_by=created_by,
             created_at=created_at,
             updated_at=updated_at,
             max_retries=max_retries,
+            total_items=total_items,
+            completed_items=completed_items,
         )
         instance._attempts = attempts
         # Pending events are purely transient and should not be persisted or rehydrated.

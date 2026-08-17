@@ -5,6 +5,7 @@ import { WorkspaceLayout } from '@/layouts/WorkspaceLayout';
 
 import { useExperience } from '@/core/ExperienceController';
 import { MultiStepLoader } from '@/components/ui/multi-step-loader';
+import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 
 /* Marketing pages (lazy-loaded for perf) */
 import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react';
@@ -27,6 +28,12 @@ const WorkspaceProviders = lazy(() => import('@/pages/workspace/Providers'));
 const WorkspaceModels = lazy(() => import('@/pages/workspace/Models'));
 const DatasetsPage = lazy(() => import('@/features/datasets/page/DatasetsPage'));
 const WorkspaceSection = lazy(() => import('@/pages/workspace/WorkspaceSection'));
+
+/* Agent Workspace */
+const AgentLayout = lazy(() => import('@/pages/workspace/agent/AgentLayout'));
+const AgentDashboard = lazy(() => import('@/pages/workspace/agent/AgentDashboard'));
+const AgentWorkspaceRun = lazy(() => import('@/pages/workspace/agent/AgentWorkspaceRun'));
+const AgentReportPage = lazy(() => import('@/pages/workspace/agent/AgentReportPage'));
 
 class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
@@ -75,8 +82,9 @@ function AppRoutes() {
       <Route path="login" element={<Suspense fallback={<PageLoader />}><Login /></Suspense>} />
 
       {/* Workspace — WorkspaceLayout with ambient Fabric */}
-      <Route path="dashboard" element={<WorkspaceLayout />}>
-        <Route index element={<Suspense fallback={<PageLoader />}><Workspace /></Suspense>} />
+      <Route path="dashboard" element={<ProtectedRoute />}>
+        <Route element={<WorkspaceLayout />}>
+          <Route index element={<Suspense fallback={<PageLoader />}><Workspace /></Suspense>} />
         <Route path="benchmarks" element={<Suspense fallback={<PageLoader />}><WorkspaceBenchmarks /></Suspense>} />
         <Route path="datasets" element={<Suspense fallback={<PageLoader />}><DatasetsPage /></Suspense>} />
         <Route path="evaluations" element={<Suspense fallback={<PageLoader />}><WorkspaceExperiments /></Suspense>} />
@@ -86,6 +94,14 @@ function AppRoutes() {
         <Route path="reports" element={<Suspense fallback={<WorkspaceSection title="Reports" description="View and compare evaluation reports." />}><WorkspaceSection title="Reports" description="View and compare evaluation reports." /></Suspense>} />
         <Route path="leaderboard" element={<Suspense fallback={<WorkspaceSection title="Leaderboard" description="Compare model rankings across capabilities." />}><WorkspaceSection title="Leaderboard" description="Compare model rankings across capabilities." /></Suspense>} />
         <Route path="settings" element={<Suspense fallback={<WorkspaceSection title="Settings" description="Configure your Workspace preferences." />}><WorkspaceSection title="Settings" description="Configure your Workspace preferences." /></Suspense>} />
+        
+        {/* Agent Workspace Routes */}
+        <Route path="agent" element={<Suspense fallback={<PageLoader />}><AgentLayout /></Suspense>}>
+          <Route index element={<Suspense fallback={<PageLoader />}><AgentDashboard /></Suspense>} />
+          <Route path="run/:taskId" element={<Suspense fallback={<PageLoader />}><AgentWorkspaceRun /></Suspense>} />
+          <Route path="report/:reportId" element={<Suspense fallback={<PageLoader />}><AgentReportPage /></Suspense>} />
+        </Route>
+        </Route>
       </Route>
     </Routes>
   );

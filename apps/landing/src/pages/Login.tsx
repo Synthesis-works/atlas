@@ -14,6 +14,8 @@ import { Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { useExperience } from '@/core/ExperienceController';
 import { EnterAtlasTransition } from '@/components/network/EnterAtlasTransition';
 import { Glass, Button, Input } from '@/design/primitives';
+import { authApi } from '@/features/auth/api/authApi';
+import { useMutation } from '@tanstack/react-query';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -34,9 +36,34 @@ export default function Login() {
   
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isFadingForm, setIsFadingForm] = useState(false);
+
+  const loginMutation = useMutation({
+    mutationFn: (vars: {email: string, password: string}) => authApi.login(vars.email, vars.password),
+    onSuccess: (data) => {
+      localStorage.setItem('atlas_auth_token', data.access_token);
+      setIsSuccess(true);
+      setTimeout(() => {
+        setIsFadingForm(true);
+        const WORKSPACE_LOADER_STATES = [
+          { text: "Connecting to Atlas Core API..." },
+          { text: "Loading registered AI models..." },
+          { text: "Mounting evaluation workspaces..." },
+          { text: "Verifying active runtime loops..." },
+          { text: "Atlas Workspace ready." }
+        ];
+        startLoader(WORKSPACE_LOADER_STATES, 500, () => {
+          enterAtlas();
+        });
+      }, 800);
+    },
+    onError: (err: any) => {
+      setPasswordError(err?.response?.data?.detail || 'Authentication failed');
+    }
+  });
+
+  const isSubmitting = loginMutation.isPending;
 
   // Validation
   const validateEmail = (value: string) => {
@@ -103,33 +130,7 @@ export default function Login() {
 
     if (!isValid) return;
 
-    setIsSubmitting(true);
-
-    // Simulate network authentication request
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1400));
-      localStorage.setItem('atlas_logged_in', 'true');
-      setIsSuccess(true);
-
-      // Phase 1: Fade out the form elements first
-      setTimeout(() => {
-        setIsFadingForm(true);
-        // Phase 2: Trigger Multi-Step Loader before boundary crossing
-        const WORKSPACE_LOADER_STATES = [
-          { text: "Connecting to Atlas Core API..." },
-          { text: "Loading registered AI models..." },
-          { text: "Mounting evaluation workspaces..." },
-          { text: "Verifying active runtime loops..." },
-          { text: "Atlas Workspace ready." }
-        ];
-        startLoader(WORKSPACE_LOADER_STATES, 500, () => {
-          enterAtlas();
-        });
-      }, 800);
-    } catch {
-      setPasswordError('Authentication failed');
-      setIsSubmitting(false);
-    }
+    loginMutation.mutate({ email, password });
   };
 
   // Demo fast login bypass
@@ -140,29 +141,7 @@ export default function Login() {
     setPassword('password123');
     setEmailError('');
     setPasswordError('');
-    setIsSubmitting(true);
-
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 900));
-      localStorage.setItem('atlas_logged_in', 'true');
-      setIsSuccess(true);
-
-      setTimeout(() => {
-        setIsFadingForm(true);
-        const WORKSPACE_LOADER_STATES = [
-          { text: "Connecting to Atlas Core API..." },
-          { text: "Loading registered AI models..." },
-          { text: "Mounting evaluation workspaces..." },
-          { text: "Verifying active runtime loops..." },
-          { text: "Atlas Workspace ready." }
-        ];
-        startLoader(WORKSPACE_LOADER_STATES, 500, () => {
-          enterAtlas();
-        });
-      }, 600);
-    } catch {
-      setIsSubmitting(false);
-    }
+    loginMutation.mutate({ email: 'demo@atlas.io', password: 'password123' });
   };
 
   // Switch Mode Helper

@@ -1,13 +1,14 @@
 import { useMemo, useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useProjectStore } from '@/features/projects/store/projectStore';
+import { executionApi } from '../api/executionApi';
 import {
-  MOCK_EVALUATIONS,
   MOCK_RUNTIME_LOGS,
   MOCK_REPORTS,
   MOCK_RUNTIME_DISTRIBUTION,
   MOCK_SUCCESS_RATE_TREND,
   MOCK_QUEUE_LENGTH_TREND,
   MOCK_FAILURE_DISTRIBUTION,
-  ACTIVE_EVALUATIONS,
 } from '@/domain/evaluations/mock';
 import type { EvaluationRun, EvaluationReport } from '@/domain/evaluations/types';
 import { filterEvaluations } from '../lib/searchParser';
@@ -15,7 +16,17 @@ import { filterEvaluations } from '../lib/searchParser';
 type ViewMode = 'queue' | 'analytics';
 
 export function useEvaluations() {
-  const [evaluations] = useState<EvaluationRun[]>(MOCK_EVALUATIONS);
+  const { activeProjectId } = useProjectStore();
+
+  const { data: realExecutions, isLoading, refetch } = useQuery({
+    queryKey: ['executions', activeProjectId],
+    queryFn: () => activeProjectId 
+      ? executionApi.getProjectExecutions(activeProjectId)
+      : executionApi.getRecentExecutions(),
+  });
+
+  const evaluations = realExecutions || [];
+  
   const [reports] = useState<EvaluationReport[]>(MOCK_REPORTS);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -90,8 +101,8 @@ export function useEvaluations() {
 
   // Active evaluations (for live panel and timeline)
   const activeEvaluations = useMemo(
-    () => ACTIVE_EVALUATIONS.slice(0, 8),
-    []
+    () => evaluations.filter(e => !['Completed', 'Failed', 'Cancelled'].includes(e.status)).slice(0, 8),
+    [evaluations]
   );
 
   // Comparison evaluations
@@ -106,7 +117,7 @@ export function useEvaluations() {
     );
   }, []);
 
-  // Analytics data (static from mock)
+    // Analytics data (static from mock)
   const analyticsData = {
     runtimeDistribution: MOCK_RUNTIME_DISTRIBUTION,
     successRateTrend: MOCK_SUCCESS_RATE_TREND,
@@ -130,6 +141,8 @@ export function useEvaluations() {
     viewMode,
     runtimeLogs,
     terminalPaused,
+    isLoading, // Export loading state
+    refetch,
 
     setSearchQuery,
     setStatusFilter,

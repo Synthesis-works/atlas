@@ -7,7 +7,7 @@ import { Link } from 'react-router-dom';
 import { Loader2, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { fadeUp, stagger } from '@/lib/motion';
 import { Card, Badge } from '@/design/primitives';
-import { ACTIVE_EVALUATIONS } from '@/domain/evaluations/mock';
+import { useEvaluations } from '@/features/evaluations/hooks/useEvaluations';
 import { ScrambleSectionTitle } from '@/components/motion';
 import type { EvaluationStatus } from '@/domain/evaluations/types';
 
@@ -42,7 +42,8 @@ const STATUS_COLOR: Record<EvaluationStatus, string> = {
 };
 
 export function ActiveEvaluations() {
-  const active = ACTIVE_EVALUATIONS.filter((e) => e.status !== 'Completed' && e.status !== 'Failed');
+  const { activeEvaluations } = useEvaluations();
+  const active = activeEvaluations.filter((e) => e.status !== 'Completed' && e.status !== 'Failed');
   const runs = active.slice(0, 4);
 
   return (

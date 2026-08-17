@@ -35,16 +35,16 @@ export const getDatasetHeroMetrics = (datasets: Dataset[], storage: DatasetStora
       id: 'total-datasets',
       title: 'Total Datasets',
       value: totalDatasets.toString(),
-      trend: '+2 this month',
-      trendUp: true,
+      trend: totalDatasets > 0 ? '+2 this month' : '--',
+      trendUp: totalDatasets > 0,
       icon: 'Database', // Maps to Lucide icon in presentation
       description: 'Registered active datasets',
     },
     {
       id: 'storage-used',
       title: 'Storage Used',
-      value: formatBytes(totalStorage),
-      trend: '+150 GB',
+      value: totalStorage > 0 ? formatBytes(totalStorage) : '--',
+      trend: totalStorage > 0 ? '+150 GB' : '--',
       trendUp: false, // More storage isn't necessarily "good" up trend
       icon: 'HardDrive',
       description: 'Compressed storage on disk',
@@ -53,11 +53,11 @@ export const getDatasetHeroMetrics = (datasets: Dataset[], storage: DatasetStora
       id: 'healthy-datasets',
       title: 'Healthy Datasets',
       value: healthyDatasets.toString(),
-      trend: `${Math.round((healthyDatasets / totalDatasets) * 100)}% readiness`,
-      trendUp: true,
+      trend: totalDatasets > 0 ? `${Math.round((healthyDatasets / totalDatasets) * 100)}% readiness` : '--',
+      trendUp: healthyDatasets > 0,
       icon: 'Activity',
       description: 'Datasets ready for benchmarks',
-      status: 'success',
+      status: healthyDatasets > 0 ? 'success' : 'neutral',
     },
     {
       id: 'running-pipelines',
@@ -70,14 +70,14 @@ export const getDatasetHeroMetrics = (datasets: Dataset[], storage: DatasetStora
     {
       id: 'total-samples',
       title: 'Total Samples',
-      value: formatSamples(totalSamples),
+      value: totalSamples > 0 ? formatSamples(totalSamples) : '0',
       icon: 'Images',
       description: 'Data points across all datasets',
     },
     {
       id: 'last-sync',
       title: 'Last Synchronization',
-      value: '2 hrs ago',
+      value: totalDatasets > 0 ? '2 hrs ago' : '--',
       icon: 'Clock',
       description: 'Last metadata sync from providers',
     }

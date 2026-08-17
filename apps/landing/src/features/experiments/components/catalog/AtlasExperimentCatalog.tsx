@@ -46,14 +46,14 @@ export function AtlasExperimentCatalog() {
         <div className="flex-none p-4 border-b border-white/5 bg-[#0F1117] flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-1">
             <div className="relative max-w-sm w-full group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 group-focus-within:text-indigo-400 transition-colors" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
               <input 
                 ref={searchRef}
                 type="text"
-                placeholder="Search experiments... (/)"
-                className="w-full bg-[#1A1D24] border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
-                value={catalog.filters.searchQuery}
-                onChange={e => catalog.setFilters({ ...catalog.filters, searchQuery: e.target.value })}
+                placeholder="Search unavailable — backend support pending."
+                className="w-full bg-[#1A1D24] border border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-white/30 placeholder:text-white/30 focus:outline-none cursor-not-allowed transition-all"
+                value=""
+                readOnly
               />
             </div>
 

@@ -1,13 +1,13 @@
-import type { BenchmarkCategory, BenchmarkDifficulty, BenchmarkStatus, MetricCardItem } from '../../../domain/benchmarks/types';
+import type { BenchmarkStatus, MetricCardItem } from '../../../domain/benchmarks/types';
 
 export interface BenchmarkCardModel {
   id: string;
   name: string;
   description: string;
-  category: BenchmarkCategory;
-  difficulty: BenchmarkDifficulty;
+  category: string;
+  difficulty: string;
   status: BenchmarkStatus;
-  verificationScore: number;
+  verificationScore: string;
   tasksCountFormatted: string;
   estimatedRuntime: string;
 }
@@ -15,10 +15,10 @@ export interface BenchmarkCardModel {
 export interface BenchmarkRowModel {
   id: string;
   name: string;
-  category: BenchmarkCategory;
-  difficulty: BenchmarkDifficulty;
+  category: string;
+  difficulty: string;
   status: BenchmarkStatus;
-  verificationScore: number;
+  verificationScore: string;
   tasksCountFormatted: string;
   estimatedRuntime: string;
   updatedAt: string;
@@ -28,15 +28,15 @@ export interface BenchmarkPreviewModel {
   id: string;
   name: string;
   description: string;
-  category: BenchmarkCategory;
-  difficulty: BenchmarkDifficulty;
+  category: string;
+  difficulty: string;
   status: BenchmarkStatus;
   version: string;
   tasksCountFormatted: string;
   estimatedRuntime: string;
   license: string;
   author: string;
-  verificationScore: number;
+  verificationScore: string;
   tags: string[];
   metrics: MetricCardItem[];
   compatibleModels: string[];
@@ -47,8 +47,8 @@ export interface BenchmarkPreviewModel {
 export interface BenchmarkComparisonModel {
   id: string;
   name: string;
-  category: BenchmarkCategory;
-  difficulty: BenchmarkDifficulty;
+  category: string;
+  difficulty: string;
   tasksCountFormatted: string;
   metrics: MetricCardItem[];
 }

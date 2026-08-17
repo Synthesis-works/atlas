@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useWorkspaceInteractionStore } from '@/store/workspace/interaction/store';
-import { MOCK_PROVIDERS } from '../mocks/mock';
 import { selectProviderCatalog, selectProviderPreview } from '../selectors/catalog';
 import type { ProviderFilterState, ProviderSortState } from '../types/catalog';
 
@@ -57,13 +56,13 @@ export function useProviderCatalog() {
 
   // Compute Presentation Models
   const catalog = useMemo(() => {
-    return selectProviderCatalog(MOCK_PROVIDERS, filters, sort, page, pageSize);
+    return selectProviderCatalog([], filters, sort, page, pageSize);
   }, [filters, sort, page, pageSize]);
 
   // Compute Active Preview Model
   const previewModel = useMemo(() => {
     if (!previewId) return null;
-    const provider = MOCK_PROVIDERS.find(p => p.id === previewId);
+    const provider = [].find((p: any) => p.id === previewId);
     return selectProviderPreview(provider || null);
   }, [previewId]);
 

@@ -7,10 +7,11 @@ from fastapi.testclient import TestClient
 
 from apps.backend.authz import require_permission
 from apps.backend.main import app
-from apps.backend.routers.executions import get_execution_service
+from apps.backend.routers.executions import get_execution_service, get_project_authz_service
 from packages.execution_engine.api.dtos import (
     ExecutionAttemptResponse,
     ExecutionListResponse,
+    ProjectExecutionListEntry,
     ExecutionResponse,
 )
 from packages.execution_engine.application.execution_app_service import ExecutionApplicationService
@@ -23,8 +24,13 @@ def mock_execution_service():
 
 
 @pytest.fixture
-def test_client(mock_execution_service):
+def mock_project_authz():
+    return Mock()
+
+@pytest.fixture
+def test_client(mock_execution_service, mock_project_authz):
     app.dependency_overrides[get_execution_service] = lambda: mock_execution_service
+    app.dependency_overrides[get_project_authz_service] = lambda: mock_project_authz
 
     from apps.backend.dependencies import require_authenticated
     from apps.backend.schemas.auth import TokenClaims
@@ -52,8 +58,10 @@ def test_create_execution(test_client, mock_execution_service):
     assert response.json()["status"] == "QUEUED"
 
 
-def test_list_executions(test_client):
-    response = test_client.get("/api/v1/executions")
+def test_list_executions(test_client, mock_execution_service, mock_project_authz):
+    project_id = uuid.uuid4()
+    mock_execution_service.list_project_executions.return_value = ExecutionListResponse(items=[], total=0)
+    response = test_client.get(f"/api/v1/projects/{project_id}/executions")
     assert response.status_code == 200
     assert response.json()["items"] == []
 

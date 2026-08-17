@@ -1,35 +1,50 @@
-import type { MockExperimentStatus, MockExperimentStage, MockExperimentLog, MockExperimentMetrics, MockExperimentConfig } from '../mocks/mock';
+export type ExperimentStatus = 'Queued' | 'Running' | 'Completed' | 'Failed' | 'Cancelled';
 
 export interface ExperimentRowModel {
   id: string;
   name: string;
-  status: MockExperimentStatus;
-  progressPercentage: number;
+  status: ExperimentStatus;
+  progressPercentage: number | null;
   currentStage: string;
-  stageCountText: string;
-  etaText: string;
+  stageCountText: string | null;
+  etaText: string | null;
   durationText: string;
   queuedAt: string;
   tags: string[];
 }
 
+export interface ExperimentTimelineEvent {
+  id: string;
+  name: string;
+  status: 'pending' | 'active' | 'completed' | 'failed' | 'skipped';
+  durationMs?: number;
+}
+
+export interface ExperimentLogEntry {
+  id: string;
+  timestamp: string;
+  level: 'info' | 'warn' | 'error' | 'debug';
+  message: string;
+  eventId?: string;
+}
+
 export interface ExperimentPreviewModel {
   id: string;
   name: string;
-  status: MockExperimentStatus;
+  status: ExperimentStatus;
   owner: string;
   startedAt: string | null;
   durationText: string;
   
-  stages: MockExperimentStage[];
-  logs: MockExperimentLog[];
-  metrics: MockExperimentMetrics;
-  config: MockExperimentConfig;
+  timeline: ExperimentTimelineEvent[];
+  logs: ExperimentLogEntry[] | null;
+  metrics: Record<string, any>;
+  config: Record<string, any>;
 }
 
 export interface ExperimentFilterState {
   searchQuery: string;
-  status: 'all' | MockExperimentStatus;
+  status: 'all' | ExperimentStatus;
 }
 
 export interface ExperimentSortState {
