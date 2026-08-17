@@ -35,8 +35,13 @@ def service(test_clock):
 
 
 def test_create_execution(service):
-    exec_id, bv_id, user_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-    execution = service.create_execution(exec_id, bv_id, user_id)
+    exec_id, bv_id, dv_id, user_id = (
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+    )
+    execution = service.create_execution(exec_id, bv_id, dv_id, user_id)
 
     assert execution.id == exec_id
     assert execution.status == ExecutionState.QUEUED
@@ -47,8 +52,13 @@ def test_create_execution(service):
 
 
 def test_acquire_lease(service, test_clock):
-    exec_id, bv_id, user_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-    execution = service.create_execution(exec_id, bv_id, user_id)
+    exec_id, bv_id, dv_id, user_id = (
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+    )
+    execution = service.create_execution(exec_id, bv_id, dv_id, user_id)
     execution.pull_events()
 
     worker_id = uuid.uuid4()
@@ -64,8 +74,13 @@ def test_acquire_lease(service, test_clock):
 
 
 def test_double_acquire_lease_fails(service):
-    exec_id, bv_id, user_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-    execution = service.create_execution(exec_id, bv_id, user_id)
+    exec_id, bv_id, dv_id, user_id = (
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+    )
+    execution = service.create_execution(exec_id, bv_id, dv_id, user_id)
     worker_id = uuid.uuid4()
     service.acquire_lease(execution, worker_id)
 
@@ -74,8 +89,13 @@ def test_double_acquire_lease_fails(service):
 
 
 def test_start_and_run(service):
-    exec_id, bv_id, user_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-    execution = service.create_execution(exec_id, bv_id, user_id)
+    exec_id, bv_id, dv_id, user_id = (
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+    )
+    execution = service.create_execution(exec_id, bv_id, dv_id, user_id)
     worker_id = uuid.uuid4()
     service.acquire_lease(execution, worker_id)
 
@@ -87,8 +107,13 @@ def test_start_and_run(service):
 
 
 def test_wrong_worker_fails_invariants(service):
-    exec_id, bv_id, user_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-    execution = service.create_execution(exec_id, bv_id, user_id)
+    exec_id, bv_id, dv_id, user_id = (
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+    )
+    execution = service.create_execution(exec_id, bv_id, dv_id, user_id)
     worker_id = uuid.uuid4()
     service.acquire_lease(execution, worker_id)
 
@@ -98,8 +123,13 @@ def test_wrong_worker_fails_invariants(service):
 
 
 def test_complete_execution(service):
-    exec_id, bv_id, user_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-    execution = service.create_execution(exec_id, bv_id, user_id)
+    exec_id, bv_id, dv_id, user_id = (
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+    )
+    execution = service.create_execution(exec_id, bv_id, dv_id, user_id)
     worker_id = uuid.uuid4()
     service.acquire_lease(execution, worker_id)
     service.start_execution(execution, worker_id)
@@ -114,8 +144,13 @@ def test_complete_execution(service):
 
 
 def test_duplicate_complete_is_idempotent(service):
-    exec_id, bv_id, user_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-    execution = service.create_execution(exec_id, bv_id, user_id)
+    exec_id, bv_id, dv_id, user_id = (
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+    )
+    execution = service.create_execution(exec_id, bv_id, dv_id, user_id)
     worker_id = uuid.uuid4()
     service.acquire_lease(execution, worker_id)
     service.start_execution(execution, worker_id)
@@ -130,8 +165,13 @@ def test_duplicate_complete_is_idempotent(service):
 
 
 def test_fail_and_retry(service, test_clock):
-    exec_id, bv_id, user_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-    execution = service.create_execution(exec_id, bv_id, user_id)
+    exec_id, bv_id, dv_id, user_id = (
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+    )
+    execution = service.create_execution(exec_id, bv_id, dv_id, user_id)
     worker_id = uuid.uuid4()
     service.acquire_lease(execution, worker_id)
     service.start_execution(execution, worker_id)
@@ -163,8 +203,13 @@ def test_fail_and_retry(service, test_clock):
 
 
 def test_immutable_terminal_states(service):
-    exec_id, bv_id, user_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-    execution = service.create_execution(exec_id, bv_id, user_id)
+    exec_id, bv_id, dv_id, user_id = (
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+    )
+    execution = service.create_execution(exec_id, bv_id, dv_id, user_id)
     worker_id = uuid.uuid4()
     service.acquire_lease(execution, worker_id)
     service.start_execution(execution, worker_id)
@@ -179,8 +224,13 @@ def test_immutable_terminal_states(service):
 
 
 def test_expire_lease_exhausts_retries(service, test_clock):
-    exec_id, bv_id, user_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-    execution = service.create_execution(exec_id, bv_id, user_id)
+    exec_id, bv_id, dv_id, user_id = (
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+    )
+    execution = service.create_execution(exec_id, bv_id, dv_id, user_id)
 
     # Attempt 1
     worker_id = uuid.uuid4()
@@ -227,8 +277,13 @@ def test_expire_lease_exhausts_retries(service, test_clock):
 
 
 def test_expire_lease_unexpired_fails(service, test_clock):
-    exec_id, bv_id, user_id = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
-    execution = service.create_execution(exec_id, bv_id, user_id)
+    exec_id, bv_id, dv_id, user_id = (
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+        uuid.uuid4(),
+    )
+    execution = service.create_execution(exec_id, bv_id, dv_id, user_id)
     worker_id = uuid.uuid4()
     service.acquire_lease(execution, worker_id)
 

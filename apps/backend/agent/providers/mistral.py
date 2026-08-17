@@ -7,6 +7,10 @@ from typing import Any, Dict, List, Optional
 from packages.llm.clients.mistral import MistralClient
 from packages.llm.models.prompt import Prompt
 from apps.backend.agent.providers.base import BaseLLMProvider
+from apps.backend.agent.providers.schema_utils import (
+    extract_json_object,
+    normalize_tools_for_openai,
+)
 from apps.backend.agent.state import AgentDecision, AgentDecisionType, AgentTask
 
 logger = logging.getLogger(__name__)
@@ -30,19 +34,8 @@ class MistralAgentProvider(BaseLLMProvider):
     def decide(
         self, task: AgentTask, prompt_context: str, available_tools: list[dict[str, Any]]
     ) -> AgentDecision:
-        tools_payload = []
-        if available_tools:
-            tools_payload = [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": t.get("name"),
-                        "description": t.get("description", ""),
-                        "parameters": t.get("parameters", {"type": "object", "properties": {}}),
-                    },
-                }
-                for t in available_tools
-            ]
+        # Normalize Gemini-style UPPERCASE types to JSON Schema lowercase before sending to Mistral
+        tools_payload = normalize_tools_for_openai(available_tools) if available_tools else []
 
         system_instruction = (
             "You are the Atlas Agent powered by Mistral AI, an autonomous execution engine for AI benchmarking.\n"
@@ -60,8 +53,7 @@ class MistralAgentProvider(BaseLLMProvider):
             response = self.client.generate(self.model, prompt, tools=tools_payload)
             latency = int((time.time() - start_t) * 1000)
 
-            raw = response.raw or {}
-            raw_choice = raw.get("choices", [{}])[0]
+            raw_choice = (response.raw or {}).get("choices", [{}])[0]
             message = raw_choice.get("message", {})
 
             # 1. Native Tool Calling Response Parsing
@@ -81,35 +73,20 @@ class MistralAgentProvider(BaseLLMProvider):
                         reasoning=f"Mistral selected native tool '{tool_name}'",
                     )
 
-            # 2. Secondary Fallback: Regex JSON extraction from content
+            # 2. Secondary Fallback: balanced-JSON extraction from content
             content = (message.get("content") or "").strip()
             if content:
-                import re
-
-                json_str = content
-                if "```" in content:
-                    match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", content, re.DOTALL)
-                    if match:
-                        json_str = match.group(1)
-                elif "{" in content and "}" in content:
-                    match = re.search(r"(\{.*?\})", content, re.DOTALL)
-                    if match:
-                        json_str = match.group(1)
-
-                if "tool_name" in json_str:
-                    try:
-                        data = json.loads(json_str)
-                        tool_name = data.get("tool_name")
-                        arguments = data.get("arguments", {})
-                        if tool_name:
-                            return AgentDecision(
-                                type=AgentDecisionType.TOOL_CALL,
-                                tool_name=tool_name,
-                                arguments=arguments,
-                                reasoning=f"Mistral selected tool '{tool_name}' via JSON text",
-                            )
-                    except Exception:
-                        pass
+                parsed = extract_json_object(content)
+                if parsed and "tool_name" in parsed:
+                    tool_name = parsed.get("tool_name")
+                    arguments = parsed.get("arguments", {})
+                    if tool_name:
+                        return AgentDecision(
+                            type=AgentDecisionType.TOOL_CALL,
+                            tool_name=tool_name,
+                            arguments=arguments,
+                            reasoning=f"Mistral selected tool '{tool_name}' via JSON text",
+                        )
 
             return AgentDecision(
                 type=AgentDecisionType.FINAL_RESPONSE,

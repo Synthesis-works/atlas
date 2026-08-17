@@ -5,6 +5,20 @@ from fastapi.testclient import TestClient
 
 dotenv.load_dotenv()
 
+
+@pytest.fixture(autouse=True)
+def setup_db():
+    from atlas_db.core.engine import engine
+
+    if "sqlite" in str(engine.url):
+        from atlas_db.core.initialize import initialize_database_schema
+
+        initialize_database_schema(engine)
+    from apps.backend.routers.agent import _agent_tasks_db
+
+    _agent_tasks_db.clear()
+
+
 from apps.backend.main import app
 from apps.backend.agent.providers.gemini import GeminiAgentProvider
 from apps.backend.agent.state import AgentDecisionType, AgentPermission, AgentTask, AgentTaskStatus
@@ -128,3 +142,159 @@ def test_real_gemini_provider_smoke():
             assert decision.tool_name is not None
     except Exception as e:
         pytest.skip(f"Gemini API request skipped due to network/connectivity error: {e}")
+
+
+def test_agent_clarification_loop_protection():
+    payload = {
+        "goal": "Need clarification test",
+        "provider": "mock",
+        "permissions": ["READ", "WRITE", "EXECUTE", "PUBLISH"],
+    }
+    response = client.post("/api/v1/agent/tasks", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    task_id = data["task_id"]
+    assert data["status"] == "WAITING_FOR_CLARIFICATION"
+    assert data["clarification_id"] is not None
+    assert data["clarification_request"] == "Should we test addition or subtraction?"
+
+    # Poll task details 10 times to verify no state change or duplicates are added
+    for _ in range(10):
+        poll_resp = client.get(f"/api/v1/agent/tasks/{task_id}")
+        assert poll_resp.status_code == 200
+        poll_data = poll_resp.json()
+        assert poll_data["status"] == "WAITING_FOR_CLARIFICATION"
+        assert poll_data["clarification_request"] == "Should we test addition or subtraction?"
+        # Ensure no tool calls are created for request_clarification
+        tool_calls = [c["tool_name"] for c in poll_data["tool_calls"]]
+        assert "request_clarification" not in tool_calls
+
+
+def test_agent_clarification_resume_flow():
+    payload = {
+        "goal": "Need clarification test and completed",
+        "provider": "mock",
+        "permissions": ["READ", "WRITE", "EXECUTE", "PUBLISH"],
+    }
+    response = client.post("/api/v1/agent/tasks", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    task_id = data["task_id"]
+    clarify_id = data["clarification_id"]
+
+    # Submit clarification response
+    clarify_resp = client.post(
+        f"/api/v1/agent/tasks/{task_id}/clarify",
+        json={"clarification_id": clarify_id, "answer": "Test addition"},
+    )
+    assert clarify_resp.status_code == 200
+    assert clarify_resp.json()["status"] in ["PLANNING", "EXECUTING", "COMPLETED"]
+
+    # Poll until completed
+    poll_resp = client.get(f"/api/v1/agent/tasks/{task_id}")
+    poll_data = poll_resp.json()
+    assert poll_data["status"] == "COMPLETED"
+    assert len(poll_data["past_clarifications"]) == 1
+    assert poll_data["past_clarifications"][0]["answer"] == "Test addition"
+
+
+def test_agent_clarification_serialization_persistence():
+    from apps.backend.agent.state import AgentTask
+
+    task = AgentTask(
+        goal="Serialization persistence test",
+        clarification_request="Confirm target?",
+        clarification_id="clarify_xyz123",
+        clarification_attempts=1,
+        clarification_answer="Yes",
+        past_clarifications=[
+            {
+                "question": "Confirm target?",
+                "answer": "Yes",
+                "fingerprint": "confirmtarget",
+                "answered_at": "2026-08-13T12:00:00Z",
+            }
+        ],
+    )
+
+    # Serialize to dict and load back
+    task_dict = task.model_dump()
+    reloaded_task = AgentTask(**task_dict)
+
+    assert reloaded_task.clarification_request == "Confirm target?"
+    assert reloaded_task.clarification_id == "clarify_xyz123"
+    assert reloaded_task.clarification_attempts == 1
+    assert reloaded_task.clarification_answer == "Yes"
+    assert len(reloaded_task.past_clarifications) == 1
+    assert reloaded_task.past_clarifications[0]["answer"] == "Yes"
+
+
+def test_delete_individual_agent_task():
+    # 1. Create a task
+    payload = {
+        "goal": "Task to delete",
+        "provider": "mock",
+    }
+    response = client.post("/api/v1/agent/tasks", json=payload)
+    assert response.status_code == 201
+    task_id = response.json()["task_id"]
+
+    # 2. Delete it
+    del_resp = client.delete(f"/api/v1/agent/tasks/{task_id}")
+    assert del_resp.status_code == 200
+    assert del_resp.json()["status"] == "success"
+
+    # 3. Verify it is gone
+    get_resp = client.get(f"/api/v1/agent/tasks/{task_id}")
+    assert get_resp.status_code == 404
+
+
+def test_clear_all_agent_tasks():
+    # 1. Create a task
+    payload = {
+        "goal": "Task to clear",
+        "provider": "mock",
+    }
+    response = client.post("/api/v1/agent/tasks", json=payload)
+    assert response.status_code == 201
+
+    # 2. Clear all tasks
+    clear_resp = client.delete("/api/v1/agent/tasks")
+    assert clear_resp.status_code == 200
+    assert clear_resp.json()["status"] == "success"
+
+    # 3. Verify list is empty
+    list_resp = client.get("/api/v1/agent/tasks")
+    assert list_resp.status_code == 200
+    assert len(list_resp.json()) == 0
+
+
+def test_providers_endpoint_never_exposes_mock():
+    """Requirement E: Atlas Mock must never appear in the user-facing provider selector."""
+    response = client.get("/api/v1/agent/providers")
+    assert response.status_code == 200
+    providers = response.json()
+    values = [p["value"] for p in providers]
+    assert "mock" not in values
+
+
+def test_providers_endpoint_never_exposes_grok():
+    """Requirement E/D: xAI Grok is excluded from the production chain, so it must not appear."""
+    response = client.get("/api/v1/agent/providers")
+    assert response.status_code == 200
+    providers = response.json()
+    values = [p["value"] for p in providers]
+    assert "grok" not in values
+
+
+def test_providers_endpoint_returns_configured_providers_only():
+    """Requirement E: only configured (API-key-present) providers are returned."""
+    response = client.get("/api/v1/agent/providers")
+    assert response.status_code == 200
+    providers = response.json()
+    for p in providers:
+        assert p["value"] in {"gemini", "groq", "mistral"}
+        assert p["configured"] is True
+        assert p["is_test_only"] is False
+        assert p["model"]
+        assert p["label"]

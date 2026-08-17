@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const artAccuracy = document.getElementById('artAccuracy');
     const artBestPerformer = document.getElementById('artBestPerformer');
     const artViewReportBtn = document.getElementById('artViewReportBtn');
+    const artRunAgainBtn = document.getElementById('artRunAgainBtn');
     
     const recentActivityList = document.getElementById('recentActivityList');
     const taskCountLabel = document.getElementById('taskCountLabel');
@@ -61,6 +62,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentReportId = null;
     let pollInterval = null;
     let currentApprovalToken = null;
+    let currentClarificationId = null;
+    let currentFilter = 'all';
+    let autoSelectedOnStart = false;
 
     // Helper for safe element style mutation
     function setDisplay(element, value) {
@@ -69,8 +73,30 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Helper for formatting relative time
+    function formatTimeAgo(dateStr) {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        const seconds = Math.floor((new Date() - date) / 1000);
+        if (seconds < 60) return 'just now';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        return date.toLocaleDateString();
+    }
+
     // Toggle Drawer Panel
-    if (openBtn) openBtn.addEventListener('click', () => drawer?.classList.add('open'));
+    if (openBtn) {
+        openBtn.addEventListener('click', () => {
+            drawer?.classList.add('open');
+            // If no task is selected yet, force auto-selection on opening the panel
+            if (!currentTaskId) {
+                autoSelectedOnStart = false;
+                fetchRecentActivity();
+            }
+        });
+    }
     if (closeBtn) closeBtn.addEventListener('click', () => drawer?.classList.remove('open'));
     if (closeFailureBtn) closeFailureBtn.addEventListener('click', () => setDisplay(failureCard, 'none'));
     if (closeReportModalBtn) closeReportModalBtn.addEventListener('click', () => setDisplay(reportModal, 'none'));
@@ -87,6 +113,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (submitBtn) submitBtn.addEventListener('click', () => submitTask());
 
+    // Filter Buttons Event Listeners
+    const filterBtns = ['filterAllBtn', 'filterActiveBtn', 'filterCompletedBtn', 'filterFailedBtn'];
+    filterBtns.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(id => document.getElementById(id)?.classList.remove('active'));
+                btn.classList.add('active');
+                
+                if (btnId === 'filterAllBtn') currentFilter = 'all';
+                else if (btnId === 'filterActiveBtn') currentFilter = 'active';
+                else if (btnId === 'filterCompletedBtn') currentFilter = 'completed';
+                else if (btnId === 'filterFailedBtn') currentFilter = 'failed';
+                
+                fetchRecentActivity();
+            });
+        }
+    });
+
+    // Clear History Button Listener
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to clear all agent task execution history? This cannot be undone.')) {
+                return;
+            }
+            try {
+                const resp = await fetch('/api/v1/agent/tasks', { method: 'DELETE' });
+                if (resp.ok) {
+                    currentTaskId = null;
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                    
+                    // Reset UI drawer state
+                    setDisplay(goalBannerCard, 'none');
+                    if (activitySection) activitySection.innerHTML = '';
+                    setDisplay(modelResultsSection, 'none');
+                    setDisplay(dataLineageSection, 'none');
+                    setDisplay(resultArtifactCard, 'none');
+                    setDisplay(approvalCard, 'none');
+                    setDisplay(clarificationCard, 'none');
+                    setDisplay(failureCard, 'none');
+                    
+                    autoSelectedOnStart = false;
+                    fetchRecentActivity();
+                } else {
+                    alert('Failed to clear history');
+                }
+            } catch (e) {
+                alert(`Error: ${e.message}`);
+            }
+        });
+    }
+
     // Fetch Recent Workspace Tasks
     fetchRecentActivity();
 
@@ -94,37 +174,66 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const resp = await fetch('/api/v1/agent/tasks');
             if (!resp.ok) return;
-            const tasks = await resp.json();
+            const allTasks = await resp.json();
             
+            // Filter tasks dynamically
+            let filteredTasks = allTasks;
+            if (currentFilter === 'active') {
+                filteredTasks = allTasks.filter(t => ['EXECUTING', 'WAITING_FOR_CLARIFICATION', 'WAITING_FOR_APPROVAL', 'PLANNING', 'REPAIRING'].includes(t.status));
+            } else if (currentFilter === 'completed') {
+                filteredTasks = allTasks.filter(t => t.status === 'COMPLETED');
+            } else if (currentFilter === 'failed') {
+                filteredTasks = allTasks.filter(t => ['FAILED', 'CANCELLED'].includes(t.status));
+            }
+
             if (taskCountLabel) {
-                taskCountLabel.textContent = `${tasks.length} task${tasks.length === 1 ? '' : 's'}`;
+                taskCountLabel.textContent = `${filteredTasks.length} task${filteredTasks.length === 1 ? '' : 's'}`;
+            }
+
+            // Auto-select latest active task or latest completed on initial load
+            if (!autoSelectedOnStart && allTasks.length > 0) {
+                const activeTask = allTasks.find(t => ['EXECUTING', 'WAITING_FOR_CLARIFICATION', 'WAITING_FOR_APPROVAL', 'PLANNING', 'REPAIRING'].includes(t.status));
+                if (activeTask) {
+                    currentTaskId = activeTask.task_id;
+                    startPolling();
+                } else {
+                    currentTaskId = allTasks[0].task_id;
+                    fetchTaskDetails(); // render once without full interval polling if completed
+                }
+                autoSelectedOnStart = true;
             }
 
             if (!recentActivityList) return;
 
-            if (tasks.length === 0) {
+            if (filteredTasks.length === 0) {
                 recentActivityList.innerHTML = `
-                    <div style="padding: 2rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: 14px; border: 1px solid var(--border-subtle);">
-                        No agent tasks executed yet. Click <strong>✦ Ask Atlas</strong> above to run your first task.
+                    <div style="padding: 2rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: 14px; border: 1px solid var(--border-subtle); width: 100%;">
+                        No tasks match the selected filter.
                     </div>
                 `;
                 return;
             }
 
-            recentActivityList.innerHTML = tasks.map(t => {
+            recentActivityList.innerHTML = filteredTasks.map(t => {
                 const statusClass = (t.status || 'PENDING').toLowerCase();
                 const provider = (t.current_provider || 'gemini').toUpperCase();
+                const timeAgo = formatTimeAgo(t.created_at);
+                const isActive = t.task_id === currentTaskId;
+                
                 return `
-                    <div class="activity-item-card" onclick="window.openTaskDetails('${t.task_id}')">
+                    <div class="activity-item-card ${isActive ? 'active-selection' : ''}" 
+                         style="${isActive ? 'border-color: var(--accent-indigo); background: rgba(99, 102, 241, 0.08); shadow: 0 4px 12px rgba(99, 102, 241, 0.15);' : ''}" 
+                         onclick="window.openTaskDetails('${t.task_id}')">
                         <div class="activity-info">
-                            <div class="activity-goal">${t.goal}</div>
-                            <div class="activity-meta">
-                                <span>Provider: ${provider}</span>
-                                <span>Steps: ${t.step_count || 0}</span>
-                                <span>Tool Calls: ${t.total_tool_calls || 0}</span>
+                            <div class="activity-goal" style="font-weight: 500; margin-bottom: 0.35rem; font-size: 0.95rem;">${t.goal}</div>
+                            <div class="activity-meta" style="font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                <span>Provider: <strong style="color: var(--text-main);">${provider}</strong></span>
+                                <span>Steps: <strong style="color: var(--text-main);">${t.step_count || 0}</strong></span>
+                                <span>Calls: <strong style="color: var(--text-main);">${t.total_tool_calls || 0}</strong></span>
+                                ${timeAgo ? `<span style="color: var(--accent-cyan); font-weight: 500;">✦ ${timeAgo}</span>` : ''}
                             </div>
                         </div>
-                        <div>
+                        <div style="display: flex; align-items: center; justify-content: flex-end; min-width: 90px;">
                             <span class="status-pill ${statusClass}">${t.status}</span>
                         </div>
                     </div>
@@ -138,6 +247,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.openTaskDetails = function(taskId) {
         currentTaskId = taskId;
         drawer?.classList.add('open');
+        // Fetch task details to update highlight in list instantly
+        fetchRecentActivity();
         startPolling();
     };
 
@@ -225,6 +336,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Goal Banner
         setDisplay(goalBannerCard, 'block');
         if (goalText) goalText.textContent = task.goal;
+
+        // Disable run task button if active or paused
+        if (submitBtn) {
+            if (task.status === 'WAITING_FOR_CLARIFICATION' || task.status === 'WAITING_FOR_APPROVAL' || task.status === 'EXECUTING' || task.status === 'PLANNING' || task.status === 'REPAIRING') {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.5';
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+            }
+        }
 
         // Benchmark Interpretation
         const bmObs = task.observations ? task.observations.find(o => o.tool_name === 'create_benchmark') : null;
@@ -355,55 +477,158 @@ AgentTask: ${task.task_id}
         }
 
         // Render Activity Timeline & Tool Execution Cards
-        if (task.tool_calls && task.tool_calls.length > 0) {
-            if (activitySection) {
-                activitySection.innerHTML = task.tool_calls.map((call, idx) => {
-                    const obs = task.observations ? task.observations.find(o => o.call_id === call.call_id) : null;
-                    const toolName = call.tool_name;
-                    const meta = getToolHumanMetadata(toolName, call.arguments, obs ? obs.output : null);
+        let events = [];
 
-                    return `
-                        <div class="action-card">
-                            <div class="action-card-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
-                                <div class="action-title-group">
-                                    <span class="action-icon">⚙</span>
-                                    <div>
-                                        <div class="action-name">${meta.title}</div>
-                                        <div class="action-summary">${meta.summary}</div>
-                                    </div>
-                                </div>
-                                <span class="action-badge ${obs ? (obs.success ? 'success' : 'failed') : ''}">
-                                    ${obs ? (obs.success ? '✓ SUCCESS' : '✕ FAILED') : 'EXECUTING'}
-                                </span>
+        // 1. Add tool calls (except request_clarification)
+        if (task.tool_calls) {
+            task.tool_calls.forEach(call => {
+                if (call.tool_name !== 'request_clarification') {
+                    events.push({
+                        type: 'tool',
+                        timestamp: call.timestamp || new Date().toISOString(),
+                        call: call
+                    });
+                }
+            });
+        }
+
+        // 2. Add past clarifications
+        if (task.past_clarifications) {
+            task.past_clarifications.forEach(item => {
+                events.push({
+                    type: 'past_clarification',
+                    timestamp: item.answered_at || new Date().toISOString(),
+                    question: item.question,
+                    answer: item.answer
+                });
+            });
+        }
+
+        // 3. Add active clarification if waiting
+        if (task.status === 'WAITING_FOR_CLARIFICATION') {
+            events.push({
+                type: 'active_clarification',
+                timestamp: task.clarification_requested_at || new Date().toISOString(),
+                question: task.clarification_request || task.clarification_prompt
+            });
+        }
+
+        // Sort events by timestamp
+        events.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        // Generate HTML
+        let timelineHtml = `
+            <div class="action-card" style="border-left: 4px solid var(--success);">
+                <div class="action-card-header">
+                    <div class="action-title-group">
+                        <span class="action-icon">✓</span>
+                        <div>
+                            <div class="action-name">Atlas analyzed request</div>
+                            <div class="action-summary">Parsed input intent and context</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        if (task.plan && task.plan.length > 0) {
+            timelineHtml += `
+                <div class="action-card" style="border-left: 4px solid var(--success);">
+                    <div class="action-card-header">
+                        <div class="action-title-group">
+                            <span class="action-icon">✓</span>
+                            <div>
+                                <div class="action-name">Atlas generated execution plan</div>
+                                <div class="action-summary">Structured ${task.plan.length} steps to completion</div>
                             </div>
-                            <div class="action-card-body" style="display: none;">
-                                <div style="font-weight: 600; color: var(--text-muted); margin-bottom: 0.3rem;">Inputs:</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        timelineHtml += events.map(evt => {
+            if (evt.type === 'tool') {
+                const call = evt.call;
+                const obs = task.observations ? task.observations.find(o => o.call_id === call.call_id) : null;
+                const toolName = call.tool_name;
+                const meta = getToolHumanMetadata(toolName, call.arguments, obs ? obs.output : null);
+
+                return `
+                    <div class="action-card">
+                        <div class="action-card-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+                            <div class="action-title-group">
+                                <span class="action-icon">⚙</span>
+                                <div>
+                                    <div class="action-name">${meta.title}</div>
+                                    <div class="action-summary">${meta.summary}</div>
+                                </div>
+                            </div>
+                            <span class="action-badge ${obs ? (obs.success ? 'success' : 'failed') : ''}">
+                                ${obs ? (obs.success ? '✓ SUCCESS' : '✕ FAILED') : 'EXECUTING'}
+                            </span>
+                        </div>
+                        <div class="action-card-body" style="display: none;">
+                            <div style="font-weight: 600; color: var(--text-muted); margin-bottom: 0.3rem;">Inputs:</div>
+                            <table class="detail-table">
+                                ${Object.entries(call.arguments).map(([k, v]) => `
+                                    <tr>
+                                        <td class="key-col">${k}</td>
+                                        <td class="val-col">${typeof v === 'object' ? JSON.stringify(v, null, 2) : v}</td>
+                                    </tr>
+                                `).join('')}
+                            </table>
+                            ${obs ? `
+                                <div style="font-weight: 600; color: var(--text-muted); margin-top: 0.8rem; margin-bottom: 0.3rem;">Output:</div>
                                 <table class="detail-table">
-                                    ${Object.entries(call.arguments).map(([k, v]) => `
+                                    ${typeof obs.output === 'object' && obs.output !== null ? Object.entries(obs.output).map(([k, v]) => `
                                         <tr>
                                             <td class="key-col">${k}</td>
                                             <td class="val-col">${typeof v === 'object' ? JSON.stringify(v, null, 2) : v}</td>
                                         </tr>
-                                    `).join('')}
+                                    `).join('') : `<tr><td colspan="2" class="val-col">${obs.output || obs.error}</td></tr>`}
                                 </table>
-                                ${obs ? `
-                                    <div style="font-weight: 600; color: var(--text-muted); margin-top: 0.8rem; margin-bottom: 0.3rem;">Output:</div>
-                                    <table class="detail-table">
-                                        ${typeof obs.output === 'object' && obs.output !== null ? Object.entries(obs.output).map(([k, v]) => `
-                                            <tr>
-                                                <td class="key-col">${k}</td>
-                                                <td class="val-col">${typeof v === 'object' ? JSON.stringify(v, null, 2) : v}</td>
-                                            </tr>
-                                        `).join('') : `<tr><td colspan="2" class="val-col">${obs.output || obs.error}</td></tr>`}
-                                    </table>
-                                ` : ''}
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            } else if (evt.type === 'past_clarification') {
+                return `
+                    <div class="action-card" style="border-left: 4px solid var(--success);">
+                        <div class="action-card-header" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+                            <div class="action-title-group">
+                                <span class="action-icon">✓</span>
+                                <div>
+                                    <div class="action-name">Clarification received</div>
+                                    <div class="action-summary">Resuming benchmark creation</div>
+                                </div>
                             </div>
                         </div>
-                    `;
-                }).join('');
+                        <div class="action-card-body" style="display: none; padding: 0.5rem 1rem; color: var(--text-muted);">
+                            <div style="margin-bottom: 0.3rem;"><strong>Question:</strong> ${evt.question}</div>
+                            <div><strong>Answer:</strong> ${evt.answer}</div>
+                        </div>
+                    </div>
+                `;
+            } else if (evt.type === 'active_clarification') {
+                return `
+                    <div class="action-card" style="border-left: 4px solid #60a5fa; background: rgba(59, 130, 246, 0.05);">
+                        <div class="action-card-header">
+                            <div class="action-title-group">
+                                <span class="action-icon" style="color: #60a5fa; font-weight: bold;">⏸</span>
+                                <div>
+                                    <div class="action-name" style="color: #60a5fa;">Atlas paused</div>
+                                    <div class="action-summary">Clarification required: "${evt.question}"</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
             }
-        } else {
-            if (activitySection) activitySection.innerHTML = '';
+            return '';
+        }).join('');
+
+        if (activitySection) {
+            activitySection.innerHTML = timelineHtml;
         }
 
         // Render Approval Prompt
@@ -417,7 +642,8 @@ AgentTask: ${task.task_id}
 
         // Render Clarification Card
         if (task.status === 'WAITING_FOR_CLARIFICATION') {
-            if (clarificationText) clarificationText.textContent = task.clarification_prompt || 'Atlas Agent needs more details.';
+            currentClarificationId = task.clarification_id;
+            if (clarificationText) clarificationText.textContent = task.clarification_request || task.clarification_prompt || 'Atlas Agent needs more details.';
             setDisplay(clarificationCard, 'block');
         } else {
             setDisplay(clarificationCard, 'none');
@@ -557,6 +783,56 @@ AgentTask: ${taskData.task_id}
         });
     }
 
+    if (artRunAgainBtn) {
+        artRunAgainBtn.addEventListener('click', async () => {
+            if (!currentTaskId) {
+                alert('No active task to run again.');
+                return;
+            }
+
+            if (confirm('Launch a new benchmark execution from this configuration?')) {
+                try {
+                    artRunAgainBtn.disabled = true;
+                    artRunAgainBtn.textContent = 'Launching...';
+
+                    const resp = await fetch(`/api/v1/agent/tasks/${currentTaskId}/run-again`, {
+                        method: 'POST'
+                    });
+
+                    if (!resp.ok) {
+                        const errData = await resp.json();
+                        throw new Error(errData.detail || 'Server error');
+                    }
+
+                    const data = await resp.json();
+                    currentTaskId = data.task_id;
+
+                    // Reset UI panels to clean state
+                    if (activitySection) activitySection.innerHTML = '';
+                    setDisplay(modelResultsSection, 'none');
+                    setDisplay(dataLineageSection, 'none');
+                    setDisplay(resultArtifactCard, 'none');
+                    setDisplay(approvalCard, 'none');
+                    setDisplay(clarificationCard, 'none');
+                    setDisplay(failureCard, 'none');
+
+                    // Open panel drawer, trigger polling and activity reload
+                    if (drawer && !drawer.classList.contains('open')) {
+                        drawer.classList.add('open');
+                    }
+                    startPolling();
+                    fetchRecentActivity();
+
+                } catch (err) {
+                    alert(`Error running again: ${err.message}`);
+                } finally {
+                    artRunAgainBtn.disabled = false;
+                    artRunAgainBtn.textContent = 'Run Again';
+                }
+            }
+        });
+    }
+
     // Tool Human Metadata Helper
     function getToolHumanMetadata(toolName, args, output) {
         switch (toolName) {
@@ -659,7 +935,11 @@ AgentTask: ${taskData.task_id}
                 const resp = await fetch(`/api/v1/agent/tasks/${currentTaskId}/clarify`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ response: userResponse })
+                    body: JSON.stringify({
+                        clarification_id: currentClarificationId,
+                        answer: userResponse,
+                        response: userResponse
+                    })
                 });
                 if (resp.ok) {
                     clarificationInput.value = '';

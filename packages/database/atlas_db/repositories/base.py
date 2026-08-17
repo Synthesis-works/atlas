@@ -18,12 +18,40 @@ class BaseRepository(Generic[ModelType]):
             query = query.filter(self.model.archived_at.is_(None))
         return query.first()  # type: ignore
 
-    def create(self, *, obj_in: dict, commit: bool = True) -> ModelType:
-        obj = self.model(**obj_in)
+    def get_by(self, include_archived: bool = False, **kwargs: Any) -> ModelType | None:
+        query = self.db.query(self.model).filter_by(**kwargs)
+        if not include_archived and hasattr(self.model, "archived_at"):
+            query = query.filter(self.model.archived_at.is_(None))
+        return query.first()  # type: ignore
+
+    def list(self, include_archived: bool = False, **kwargs: Any) -> list[ModelType]:
+        query = self.db.query(self.model).filter_by(**kwargs)
+        if not include_archived and hasattr(self.model, "archived_at"):
+            query = query.filter(self.model.archived_at.is_(None))
+        return query.all()  # type: ignore
+
+    def create(self, obj_in: Any = None, *, commit: bool = True, **kwargs: Any) -> ModelType:
+        if obj_in is None:
+            obj_in = kwargs.pop("obj_in", None)
+
+        if obj_in is not None:
+            if isinstance(obj_in, self.model):
+                obj = obj_in
+            elif isinstance(obj_in, dict):
+                obj_in.update(kwargs)
+                obj = self.model(**obj_in)
+            else:
+                obj = obj_in
+        else:
+            obj = self.model(**kwargs)
+
         self.db.add(obj)
         if commit:
             self.db.commit()
-            self.db.refresh(obj)
+            try:
+                self.db.refresh(obj)
+            except Exception:
+                pass
         else:
             self.db.flush()
         return obj  # type: ignore

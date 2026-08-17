@@ -74,9 +74,11 @@ def setup_database():
         _truncate_execution_tables()
 
     yield
-
     if has_postgres:
         _truncate_execution_tables()
+    elif engine.dialect.name == "sqlite":
+        # On SQLite the engine is isolated, so dropping is safe.
+        Base.metadata.drop_all(bind=engine)
     # Note: we intentionally do NOT call drop_all here — that would leave
     # downstream tests with a dead mapper pointing at non-existent tables.
 
@@ -200,6 +202,12 @@ def test_concurrency_skip_locked(setup_database):
     """
     # Setup record
     session_setup = SessionLocal()
+    # Remove executions left behind by prior runs so the test is deterministic
+    # on a shared Postgres database (SQLite engine is isolated per run).
+    from sqlalchemy import text
+
+    session_setup.execute(text("TRUNCATE TABLE ee_executions CASCADE"))
+    session_setup.commit()
     repo_setup = SqlAlchemyExecutionRepository(session_setup)
     clock = TestClock(datetime.now(UTC))
     project_id, bv_id, user_id = create_parent_records(session_setup)

@@ -125,6 +125,73 @@ class CreateDatasetTool(BaseTool):
         )
         db.add(version)
 
+        # Seed Tasks, Prompts, and TestCases in DB mapped to BenchmarkVersion
+        from atlas_db.models.authoring import BenchmarkVersion
+        from atlas_db.models.tasks import (
+            Task as DBTask,
+            TestCase as DBTestCase,
+            Prompt as DBTaskPrompt,
+        )
+
+        bv = (
+            db.query(BenchmarkVersion)
+            .filter(BenchmarkVersion.benchmark_id == uuid.UUID(benchmark_id))
+            .order_by(BenchmarkVersion.created_at.desc())
+            .first()
+        )
+        if not bv:
+            bv = BenchmarkVersion(
+                id=uuid.uuid4(), benchmark_id=uuid.UUID(benchmark_id), version_string="1.0.0"
+            )
+            db.add(bv)
+            db.flush()
+
+        bv_uuid = bv.id
+
+        for idx, task_item in enumerate(parsed_tasks):
+            task_uid = uuid.uuid4()
+            task_id_str = task_item.get("id")
+            if task_id_str:
+                try:
+                    task_uid = uuid.UUID(task_id_str)
+                except ValueError:
+                    pass
+
+            db_task = DBTask(
+                id=task_uid,
+                benchmark_version_id=bv_uuid,
+                name=f"task_{idx}",
+                description=task_item.get("description", f"Task item {idx}"),
+                order_index=idx,
+            )
+            db.add(db_task)
+            db.flush()
+
+            db_prompt = DBTaskPrompt(id=uuid.uuid4(), task_id=db_task.id, template="{text}")
+            db.add(db_prompt)
+
+            db_test_case = DBTestCase(
+                id=uuid.uuid4(),
+                task_id=db_task.id,
+                dataset_version_id=version_id,
+                input_data={"text": task_item.get("input", "")},
+                expected_output={"expected_answer": task_item.get("expected_output", "")},
+            )
+            db.add(db_test_case)
+
+        # Update AgentTask with dataset_id if task_id exists in kwargs
+        agent_task_id = kwargs.get("task_id")
+        if agent_task_id:
+            from apps.backend.routers.agent import _agent_tasks_db
+
+            try:
+                task_obj = _agent_tasks_db.get(uuid.UUID(agent_task_id))
+                if task_obj:
+                    task_obj.dataset_id = str(dataset_id)
+                    task_obj.dataset_version_id = str(version_id)
+            except Exception:
+                pass
+
         try:
             db.commit()
         except Exception as e:

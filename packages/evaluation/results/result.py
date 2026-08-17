@@ -3,6 +3,7 @@ from typing import Optional
 from datetime import datetime
 from .status import EvaluationStatus
 
+
 class EvaluationResult(BaseModel):
     id: str = Field(..., description="Unique evaluation ID")
     benchmark_id: str = Field(..., description="Benchmark identifier")

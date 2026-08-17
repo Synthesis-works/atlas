@@ -16,6 +16,7 @@ def test_execution_runner_success():
     execution = Mock()
     execution.id = uuid.uuid4()
     execution.benchmark_version_id = uuid.uuid4()
+    execution.dataset_version_id = uuid.uuid4()
     execution.target_model = "mock"
     execution.cancellation_requested = False
 
@@ -28,9 +29,9 @@ def test_execution_runner_success():
 
     mock_task = Mock()
     mock_task.prompts = [mock_prompt]
-    mock_task.test_cases = [mock_test_case]
+    mock_test_case.task = mock_task
 
-    db.query.return_value.filter.return_value.all.return_value = [mock_task]
+    db.query.return_value.filter.return_value.all.return_value = [mock_test_case]
 
     # Run
     outputs = runner.run(execution)

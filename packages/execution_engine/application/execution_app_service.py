@@ -36,6 +36,7 @@ class ExecutionApplicationService:
     def submit_execution(
         self,
         benchmark_version_id: uuid.UUID,
+        dataset_version_id: uuid.UUID,
         submitted_by: uuid.UUID,
         target_model: str = "gemini-2.5-flash",
     ) -> Execution:
@@ -52,6 +53,7 @@ class ExecutionApplicationService:
             execution_id=execution_id,
             benchmark_version_id=benchmark_version_id,
             project_id=project_id,
+            dataset_version_id=dataset_version_id,
             submitted_by=submitted_by,
             target_model=target_model,
         )
@@ -67,6 +69,7 @@ class ExecutionApplicationService:
                 id=execution.id,
                 project_id=uuid.UUID("00000000-0000-0000-0000-000000000003"),
                 benchmark_version_id=benchmark_version_id,
+                dataset_version_id=dataset_version_id,
                 submitted_by_id=submitted_by,
                 target_model=target_model,
                 status=ExecutionStatus.QUEUED,
