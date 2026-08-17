@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from atlas_db.core.session import SessionLocal
 from atlas_db.models.evaluation import CapabilityProfile, CapabilityScore
@@ -61,10 +62,10 @@ class SnapshotSubscriber(EventSubscriber):
 
                         for row in capability_ids:
                             self.snapshot_dispatcher.dispatch_capability_snapshot(
-                                capability_id=row[0], execution_id_trigger=event.execution_id
+                                capability_id=row[0], execution_id_trigger=execution_id
                             )
             except Exception as e:
                 logger.error(
-                    f"Failed to dispatch snapshots for validated execution {event.execution_id}: {e}"
+                    f"Failed to dispatch snapshots for validated execution {execution_id}: {e}"
                 )
                 raise

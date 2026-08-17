@@ -1,6 +1,11 @@
 from __future__ import annotations
 import uuid
-
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from atlas_db.models.dataset import DatasetVersion
+    from atlas_db.models.core import Project
+    from atlas_db.models.evaluation import EvaluationRule
+    # Note: Prompt, TestCase, Constraint are inside tasks.py or evaluation.py. We'll use strings below just in case.
 from atlas_db.core.base import Base, BaseMixin
 from sqlalchemy import Boolean, CheckConstraint, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB

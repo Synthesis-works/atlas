@@ -61,7 +61,7 @@ def _normalize_answer(raw_text: str, expected: str) -> str:
     if exp_clean.isdigit():
         numbers = re.findall(r"\b\d+\b", text)
         if numbers:
-            return numbers[0]
+            return str(numbers[0])
 
     # Clean markdown formatting and return first meaningful non-empty line
     lines = [

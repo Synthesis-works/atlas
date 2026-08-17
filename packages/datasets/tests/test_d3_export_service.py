@@ -9,7 +9,7 @@ from packages.datasets.infrastructure.artifact_store import LocalTrainingArtifac
 class DummyExtractionService:
     def __init__(self, expected_examples: list[TrainingExample]):
         self.expected_examples = expected_examples
-        self.called_with = None
+        self.called_with: uuid.UUID | None = None
 
     def get_training_examples(self, dataset_version_id: uuid.UUID) -> list[TrainingExample]:
         self.called_with = dataset_version_id

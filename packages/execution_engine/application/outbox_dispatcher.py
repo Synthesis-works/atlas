@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 from uuid import UUID
 
 from atlas_db.models.outbox import OutboxMessage
@@ -79,7 +80,7 @@ class OutboxDispatcher:
                 except ValueError:
                     pass
 
-        return event_cls(timestamp=occurred_at, **kwargs)
+        return cast(DomainEvent, event_cls(timestamp=occurred_at, **kwargs))
 
     def sweep(self) -> int:
         """

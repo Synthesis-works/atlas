@@ -114,15 +114,13 @@ class CreateBenchmarkTool(BaseTool):
         "required": ["name"],
     }
 
-    def execute(
-        self,
-        db: Session,
-        name: str,
-        description: str = "",
-        task_type: str = "general",
-        evaluation_method: str = "exact_match",
-        **kwargs: Any,
-    ) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        name = kwargs.get("name")
+        if name is None:
+            raise ValueError("name is required")
+        description = kwargs.get("description", "")
+        task_type = kwargs.get("task_type", "general")
+        evaluation_method = kwargs.get("evaluation_method", "exact_match")
         proj_id = kwargs.get("project_id") or uuid.UUID("00000000-0000-0000-0000-000000000001")
         bm_id = uuid.uuid4()
         version_id = uuid.uuid4()

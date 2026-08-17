@@ -433,7 +433,7 @@ class AtlasAgent:
                     if repair_count < 1:
                         task._prose_repairs[current_p] = repair_count + 1  # type: ignore[attr-defined]
                         repair_msg = (
-                            f"ATTENTION: Your previous response returned conversational text ('{decision.response[:120]}...') "
+                            f"ATTENTION: Your previous response returned conversational text ('{(decision.response or '')[:120]}...') "
                             f"instead of executing a required tool call. The task is NOT complete: {reason}. "
                             "You MUST select and execute the next required tool call (e.g. create_benchmark). Do NOT return conversational text."
                         )

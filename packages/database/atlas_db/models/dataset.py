@@ -2,6 +2,10 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from atlas_db.models.tasks import Task
+    from atlas_db.models.core import Project
 
 from atlas_db.core.base import Base, BaseMixin, utcnow
 from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, Index, text

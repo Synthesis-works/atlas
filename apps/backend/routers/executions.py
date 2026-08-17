@@ -46,7 +46,10 @@ def map_to_response(execution: Execution) -> ExecutionResponse:
         attempts=[
             ExecutionAttemptResponse(
                 id=a.id,
-                status=a.status.value if hasattr(a.status, "value") else a.status,
+                run_id=execution.id,
+                task_id=uuid.UUID("00000000-0000-0000-0000-000000000000"),
+                worker_id=a.lease.worker_id if getattr(a, "lease", None) else uuid.UUID("00000000-0000-0000-0000-000000000000"),
+                status=str(a.status.value) if hasattr(a.status, "value") else str(a.status),
                 started_at=a.started_at,
                 finished_at=a.finished_at,
                 error_message=a.error_message,
@@ -89,8 +92,13 @@ def create_execution(
         payload.target_model if payload and payload.target_model else "groq/llama-3.1-8b-instant"
     )
 
+    dataset_version_id = getattr(payload, "dataset_version_id", None)
+    if not dataset_version_id:
+        dataset_version_id = uuid.UUID("00000000-0000-0000-0000-000000000006")
+
     execution = service.submit_execution(
         benchmark_version_id=bv_uuid,
+        dataset_version_id=dataset_version_id,
         submitted_by=user_id,
         target_model=target_model,
     )

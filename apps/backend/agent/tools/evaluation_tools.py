@@ -195,6 +195,7 @@ class EvaluateRunTool(BaseTool):
             raise ValueError("execution_id is required")
 
         import uuid
+        from apps.backend.agent.tools.execution_tools import _benchmark_execution_store
 
         rec = _benchmark_execution_store.get(execution_id)
 
