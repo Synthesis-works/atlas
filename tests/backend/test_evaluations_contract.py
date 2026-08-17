@@ -44,6 +44,7 @@ def test_execution_creation_payload_compatibility(test_client):
     """Verify execution creation payload returns 201 created status."""
     payload = {
         "benchmark_version_id": "00000000-0000-0000-0000-000000000005",
+        "dataset_version_id": "00000000-0000-0000-0000-000000000006",
         "target_model": "groq/llama-3.1-8b-instant",
     }
     response = test_client.post(
