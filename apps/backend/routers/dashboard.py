@@ -41,7 +41,7 @@ def _iso(value: datetime | None) -> str | None:
 def _status_title(status: ExecutionStatus) -> str:
     if status == ExecutionStatus.TIMED_OUT:
         return "Failed"
-    return status.value.capitalize()
+    return str(status.value).capitalize()
 
 
 def _execution_item(execution: Execution, benchmark_name: str | None) -> dict[str, Any]:
