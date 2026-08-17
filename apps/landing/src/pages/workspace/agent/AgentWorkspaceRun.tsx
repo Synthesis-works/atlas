@@ -11,6 +11,8 @@ import {
   buildExportFilename,
 } from '@/features/agent/services/agentService';
 import type { AgentReport, AgentTask } from '@/features/agent/types';
+import { getExecutionStatus } from '@/features/evaluations/services/evaluationService';
+import { getReportRunById } from '@/features/reporting/services/reportingService';
 import { AgentStatusBadge } from '@/features/agent/status';
 import { AgentTimeline } from './components/AgentTimeline';
 import { AgentClarificationCard } from './components/AgentClarificationCard';
@@ -109,6 +111,50 @@ export default function AgentWorkspaceRun() {
   const [report, setReport] = useState<AgentReport | null>(null);
   const [reportState, setReportState] = useState<'idle' | 'loading' | 'loaded' | 'missing'>('idle');
   const [downloading, setDownloading] = useState(false);
+  const [executions, setExecutions] = useState<Array<{
+    id: string;
+    status: string;
+    target_model: string;
+    total_items: number;
+    completed_items: number;
+    benchmark_name: string | null;
+    overall_score: number | null;
+  }>>([]);
+
+  // Represent ALL executions linked to this agent task, not just the most recent one.
+  // Each execution gets its real persisted status/items plus, when a report run
+  // summary exists, its real overall score.
+  useEffect(() => {
+    if (!taskId) return;
+    let cancelled = false;
+    const execIds = task?.execution_ids ?? [];
+    setExecutions([]);
+    if (execIds.length === 0) return;
+    Promise.all(
+      execIds.map((id) =>
+        Promise.all([
+          getExecutionStatus(id).then((res) => res.data ?? null),
+          getReportRunById(id).then((res) => res.data ?? null),
+        ]).then(([exec, report]) => ({ id, exec, report }))
+      )
+    ).then((results) => {
+      if (cancelled) return;
+      setExecutions(
+        results
+          .filter(({ exec }) => exec)
+          .map(({ id, exec, report }) => ({
+            id,
+            status: exec?.status ?? 'QUEUED',
+            target_model: exec?.target_model ?? '—',
+            total_items: exec?.total_items ?? 0,
+            completed_items: exec?.completed_items ?? 0,
+            benchmark_name: report?.benchmark_name ?? null,
+            overall_score: typeof report?.overall_score === 'number' ? report.overall_score : null,
+          }))
+      );
+    });
+    return () => { cancelled = true; };
+  }, [taskId, task?.execution_ids]);
 
   // Sync task from store whenever agentTasks updates (live polling), preferring richer snapshots.
   useEffect(() => {
@@ -226,6 +272,29 @@ export default function AgentWorkspaceRun() {
     }
   };
 
+  const handleDownloadExecution = async (execId: string) => {
+    setDownloading(true);
+    try {
+      const { data, error } = await downloadExecutionReport(execId, 'json');
+      if (!data || error) {
+        addNotification('Download failed', error?.message || 'Report export failed. Please try again.', 'error');
+        return;
+      }
+      const filename = buildExportFilename('json', report?.title, report?.version_string);
+      const url = URL.createObjectURL(data);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      addNotification('Report Downloaded', `${filename} saved.`, 'success');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (!task) {
     return (
       <div className="flex h-full w-full items-center justify-center text-white/50">
@@ -261,6 +330,8 @@ export default function AgentWorkspaceRun() {
   const benchmarkId = task.benchmark_id ?? report?.benchmark_id ?? null;
 
   const metric = (name: string) => (report?.metrics ?? []).find((m) => m.metric_name === name)?.metric_value;
+  const reportMetric = (rep: AgentReport | null, name: string) =>
+    (rep?.metrics ?? []).find((m) => m.metric_name === name)?.metric_value;
   const accuracy = metric('accuracy');
   const evaluated = metric('total_evaluated');
   const passed = metric('total_passed');
@@ -511,6 +582,106 @@ export default function AgentWorkspaceRun() {
                   </div>
                 </div>
               </div>
+
+              {/* EXECUTIONS — every run linked to this task, each with its own result set */}
+              {(task.execution_ids?.length ?? 0) > 0 && (
+                <div className="mt-5 bg-black/30 rounded-xl border border-white/5 p-5 space-y-3">
+                  <p className="text-xs text-white/40 uppercase tracking-wider mb-1 font-semibold flex items-center gap-2">
+                    <ListChecks className="w-3.5 h-3.5" /> Executions ({executions.length || (task.execution_ids?.length ?? 0)})
+                  </p>
+                  <div className="space-y-3">
+                    {(executions.length > 0
+                      ? executions
+                      : (task.execution_ids ?? []).map((id) => ({
+                          id, status: 'QUEUED', target_model: '—', total_items: 0, completed_items: 0,
+                          benchmark_name: null, overall_score: null,
+                        }))
+                    ).map((ex) => {
+                      const exHasReport = report !== null && report.execution_id === ex.id && (report.metrics.length ?? 0) > 0;
+                      const exAccuracy = exHasReport ? reportMetric(report, 'accuracy') : undefined;
+                      const exEvaluated = exHasReport ? reportMetric(report, 'total_evaluated') : undefined;
+                      const exPassed = exHasReport ? reportMetric(report, 'total_passed') : undefined;
+                      const exFailed = exHasReport ? reportMetric(report, 'total_failed') : undefined;
+
+                      return (
+                        <div key={ex.id} className="p-4 rounded-xl border border-white/5 bg-white/[0.02] space-y-3">
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <div className="min-w-0">
+                              <div className="text-xs font-mono text-white/70 break-all truncate">{ex.id}</div>
+                              <div className="text-[11px] text-white/40 mt-0.5 flex items-center gap-2 flex-wrap">
+                                <span>{ex.target_model}</span>
+                                <span>·</span>
+                                <span>{ex.status.replace(/_/g, ' ')}</span>
+                                {ex.benchmark_name && (
+                                  <>
+                                    <span>·</span>
+                                    <span>{ex.benchmark_name}</span>
+                                  </>
+                                )}
+                                {ex.total_items > 0 && (
+                                  <>
+                                    <span>·</span>
+                                    <span>{ex.completed_items}/{ex.total_items} items</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleDownloadExecution(ex.id)}
+                              disabled={downloading}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors shrink-0 disabled:opacity-50"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              Export
+                            </button>
+                          </div>
+
+                          {/* Per-execution result set — only real persisted values */}
+                          {exHasReport ? (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              {exAccuracy !== undefined && (
+                                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                                  <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Accuracy</p>
+                                  <p className="text-xl font-bold text-emerald-300">{exAccuracy}%</p>
+                                </div>
+                              )}
+                              {exEvaluated !== undefined && (
+                                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                                  <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Evaluated</p>
+                                  <p className="text-xl font-bold text-white">{exEvaluated}</p>
+                                </div>
+                              )}
+                              {exPassed !== undefined && (
+                                <div className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20">
+                                  <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Passed</p>
+                                  <p className="text-xl font-bold text-sky-300">{exPassed}</p>
+                                </div>
+                              )}
+                              {exFailed !== undefined && (
+                                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                                  <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Failed</p>
+                                  <p className="text-xl font-bold text-red-300">{exFailed}</p>
+                                </div>
+                              )}
+                            </div>
+                          ) : ex.overall_score != null ? (
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                                <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Overall Score</p>
+                                <p className="text-xl font-bold text-emerald-300">{Math.round(ex.overall_score)}%</p>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-xs font-mono text-white/30">
+                              No evaluation results persisted for this execution.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* ARTIFACT — the report destination */}
               {reportState === 'loaded' && report && (
