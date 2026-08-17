@@ -1,8 +1,20 @@
 import asyncio
 import os
 
-from atlas_db.models.core import Organization, Project, User
+from atlas_db.models.core import (
+    MembershipStatus,
+    Organization,
+    OrganizationMember,
+    OrganizationRole,
+    Project,
+    User,
+)
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+DEMO_PASSWORD_HASH = (
+    "$argon2id$v=19$m=65536,t=3,p=4$Gdesz3DdjBSFPJHo+2/tuQ"
+    "$DPrwn1ucpjF244zJt7DfdLLeUzcbalm7Dktn3TBXCCE"
+)
 
 
 async def main():
@@ -36,6 +48,30 @@ async def main():
         session.add(admin_user)
         await session.commit()
 
+        # Create the demo user the frontend auto-login relies on
+        # (demo@atlas.val / password123). Without this user every browser
+        # session fails re-auth and all authenticated API calls return 401.
+        demo_user = User(
+            email="demo@atlas.val",
+            full_name="Demo User",
+            org_id=org.id,
+            password_hash=DEMO_PASSWORD_HASH,
+            is_active=True,
+            is_verified=True,
+        )
+        session.add(demo_user)
+        await session.commit()
+
+        session.add(
+            OrganizationMember(
+                user_id=demo_user.id,
+                organization_id=org.id,
+                role=OrganizationRole.ADMIN,
+                status=MembershipStatus.ACTIVE,
+            )
+        )
+        await session.commit()
+
         # Create a Project
         project = Project(
             name="Demo Project",
@@ -47,6 +83,7 @@ async def main():
 
         print(f"Seeded Organization: {org.name} ({org.id})")
         print(f"Seeded User: {admin_user.email} ({admin_user.id})")
+        print(f"Seeded User: {demo_user.email} ({demo_user.id})")
         print(f"Seeded Project: {project.name} ({project.id})")
 
     print("Database seeding completed.")
