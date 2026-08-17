@@ -86,9 +86,7 @@ def create_execution(
 
     from atlas_db.models.authoring import BenchmarkVersion
 
-    benchmark_version = (
-        db.query(BenchmarkVersion).filter(BenchmarkVersion.id == bv_uuid).first()
-    )
+    benchmark_version = db.query(BenchmarkVersion).filter(BenchmarkVersion.id == bv_uuid).first()
     if not benchmark_version:
         raise HTTPException(
             status_code=404, detail=f"BenchmarkVersion {benchmark_version_id} not found"
@@ -130,9 +128,7 @@ def create_execution(
     return map_to_response(execution)
 
 
-@executions_router.get(
-    "/executions/dispatch-targets", response_model=list[DispatchTargetResponse]
-)
+@executions_router.get("/executions/dispatch-targets", response_model=list[DispatchTargetResponse])
 def list_dispatch_targets(
     db: Session = Depends(get_db_session),
     current_user: dict = Depends(require_permission("execution:read")),
