@@ -28,12 +28,13 @@ const WorkspaceProviders = lazy(() => import('@/pages/workspace/Providers'));
 const WorkspaceModels = lazy(() => import('@/pages/workspace/Models'));
 const DatasetsPage = lazy(() => import('@/features/datasets/page/DatasetsPage'));
 const WorkspaceSection = lazy(() => import('@/pages/workspace/WorkspaceSection'));
+const WorkspaceNotFound = lazy(() => import('@/pages/workspace/WorkspaceNotFound'));
 
-class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
-  state = { hasError: false };
+class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
+  state: { hasError: boolean; error: Error | null } = { hasError: false, error: null };
 
-  static getDerivedStateFromError(): { hasError: boolean } {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error): { hasError: boolean; error: Error } {
+    return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
@@ -44,13 +45,21 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: bo
     if (!this.state.hasError) return this.props.children;
 
     return (
-      <div className="relative min-h-screen w-full overflow-hidden flex items-center justify-center bg-black font-sans">
-        <img src="/loader-bg.jpg" alt="" className="absolute inset-0 w-full h-full object-cover opacity-70" />
-        <div className="absolute inset-0 bg-black/65 backdrop-blur-md" />
-        <div className="relative z-10 flex flex-col items-center gap-4 text-center px-6">
-          <p className="text-xs uppercase tracking-[0.2em] text-white/40">Atlas could not open this view</p>
-          <button type="button" onClick={() => window.location.reload()} className="rounded-lg border border-white/10 bg-white/[0.06] px-4 py-2 text-xs text-white/75 hover:bg-white/[0.1] transition-colors">
-            Reload view
+      <div className="relative min-h-screen w-full overflow-hidden flex items-center justify-center bg-black font-sans p-6">
+        <div className="relative z-10 max-w-md w-full bg-zinc-900/90 border border-red-500/30 rounded-xl p-6 text-center space-y-4 shadow-2xl backdrop-blur-xl">
+          <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-400 font-bold">
+            !
+          </div>
+          <h2 className="text-lg font-semibold text-white">Atlas View Render Error</h2>
+          <p className="text-xs text-white/60 font-mono bg-black/40 p-3 rounded border border-white/5 break-all text-left">
+            {this.state.error?.message || 'An unexpected rendering exception occurred inside the workspace component tree.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="w-full py-2.5 px-4 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-medium text-xs transition-colors"
+          >
+            Reload Atlas Engine
           </button>
         </div>
       </div>
@@ -89,13 +98,14 @@ function AppRoutes() {
             <Route path="new" element={<Suspense fallback={<PageLoader />}><WorkspaceExperiments openNewModal={true} /></Suspense>} />
             <Route path="*" element={<Suspense fallback={<PageLoader />}><WorkspaceExperiments /></Suspense>} />
           </Route>
-          
+
           <Route path="experiments" element={<Suspense fallback={<PageLoader />}><WorkspaceExperiments /></Suspense>} />
           <Route path="providers" element={<Suspense fallback={<PageLoader />}><WorkspaceProviders /></Suspense>} />
           <Route path="models" element={<Suspense fallback={<PageLoader />}><WorkspaceModels /></Suspense>} />
           <Route path="reports" element={<Suspense fallback={<WorkspaceSection title="Reports" description="View and compare evaluation reports." />}><WorkspaceSection title="Reports" description="View and compare evaluation reports." /></Suspense>} />
           <Route path="leaderboard" element={<Suspense fallback={<WorkspaceSection title="Leaderboard" description="Compare model rankings across capabilities." />}><WorkspaceSection title="Leaderboard" description="Compare model rankings across capabilities." /></Suspense>} />
           <Route path="settings" element={<Suspense fallback={<WorkspaceSection title="Settings" description="Configure your Workspace preferences." />}><WorkspaceSection title="Settings" description="Configure your Workspace preferences." /></Suspense>} />
+          <Route path="*" element={<Suspense fallback={<PageLoader />}><WorkspaceNotFound /></Suspense>} />
         </Route>
       </Route>
       
