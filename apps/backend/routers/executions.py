@@ -120,6 +120,20 @@ def create_execution(
         if row:
             dataset_version_id = row[0]
 
+    if dataset_version_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="A dataset_version_id could not be resolved for this execution",
+        )
+
+    try:
+        dataset_version_id = uuid.UUID(str(dataset_version_id))
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid dataset_version_id: {dataset_version_id}",
+        )
+
     execution = service.submit_execution(
         benchmark_version_id=bv_uuid,
         dataset_version_id=dataset_version_id,
