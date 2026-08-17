@@ -11,7 +11,7 @@ import { Play } from 'lucide-react';
 interface BenchmarkDrawerProps {
   benchmark: Benchmark | null;
   onClose: () => void;
-  onRun: (benchmarkId: string) => void;
+  onRun: (benchmarkName: string) => void;
 }
 
 export const BenchmarkDrawer: React.FC<BenchmarkDrawerProps> = ({
@@ -25,7 +25,7 @@ export const BenchmarkDrawer: React.FC<BenchmarkDrawerProps> = ({
     if (isSubmitting || !benchmark) return;
     setIsSubmitting(true);
     try {
-      await onRun(benchmark.id);
+      await onRun(benchmark.name);
       onClose();
     } finally {
       setIsSubmitting(false);
