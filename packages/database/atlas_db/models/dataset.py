@@ -3,6 +3,7 @@ import enum
 import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from atlas_db.models.tasks import Task
     from atlas_db.models.core import Project

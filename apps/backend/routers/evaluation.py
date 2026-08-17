@@ -27,7 +27,9 @@ def evaluate_execution(
     """
     # 1. Authorize (Write operation so OWNER, ADMIN, MEMBER only)
     authz = ProjectAuthorizationService(db)
-    if not authz.authorize_project_access(current_user, project_id, allowed_roles=["OWNER", "ADMIN", "MEMBER"]):
+    if not authz.authorize_project_access(
+        current_user, project_id, allowed_roles=["OWNER", "ADMIN", "MEMBER"]
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to evaluate executions in this project.",
