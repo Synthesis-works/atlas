@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Play, X, Cpu, Database, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { dispatchExecution } from '../services/evaluationService';
+import { dispatchExecution, getDispatchTargets, type DispatchTarget } from '../services/evaluationService';
 import { useWorkspaceStore } from '@/store/workspaceStore';
 import type { BackendExecutionResponse } from '../services/evaluationService';
 
@@ -11,7 +11,7 @@ interface NewEvaluationModalProps {
   onRunDispatched?: (execution: BackendExecutionResponse) => void;
 }
 
-const BENCHMARK_OPTIONS = [
+const FALLBACK_BENCHMARK_OPTIONS = [
   {
     id: '00000000-0000-0000-0000-000000000005',
     name: 'HumanEval Benchmark',
@@ -51,7 +51,9 @@ export const NewEvaluationModal: React.FC<NewEvaluationModalProps> = ({
   onClose,
   onRunDispatched,
 }) => {
-  const [selectedBenchmarkId, setSelectedBenchmarkId] = useState(BENCHMARK_OPTIONS[0].id);
+  const [benchmarkOptions, setBenchmarkOptions] = useState(FALLBACK_BENCHMARK_OPTIONS);
+  const [datasetByVersion, setDatasetByVersion] = useState<Record<string, string | null>>({});
+  const [selectedBenchmarkId, setSelectedBenchmarkId] = useState(FALLBACK_BENCHMARK_OPTIONS[0].id);
   const [selectedModel, setSelectedModel] = useState(PRESET_MODELS[0].id);
   const [customModel, setCustomModel] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -59,6 +61,31 @@ export const NewEvaluationModal: React.FC<NewEvaluationModalProps> = ({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const { triggerEvaluationRun } = useWorkspaceStore();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    getDispatchTargets().then((res) => {
+      if (cancelled) return;
+      if (res.data && res.data.length > 0) {
+        const options = res.data.map((t: DispatchTarget) => ({
+          id: t.benchmark_version_id,
+          name: t.benchmark_name,
+          version: t.version_string || '1.0.0',
+          description: 'Live benchmark version available for execution.',
+          dataset_version_id: t.dataset_version_id,
+        }));
+        setBenchmarkOptions(options);
+        setDatasetByVersion(
+          Object.fromEntries(options.map((o: any) => [o.id, o.dataset_version_id]))
+        );
+        setSelectedBenchmarkId(options[0].id);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -72,7 +99,11 @@ export const NewEvaluationModal: React.FC<NewEvaluationModalProps> = ({
 
     try {
       // 1. Dispatch execution request to API
-      const result = await dispatchExecution(selectedBenchmarkId, activeTargetModel);
+      const result = await dispatchExecution(
+        selectedBenchmarkId,
+        activeTargetModel,
+        datasetByVersion[selectedBenchmarkId]
+      );
 
       if (result.error) {
         setError(result.error);
@@ -152,7 +183,7 @@ export const NewEvaluationModal: React.FC<NewEvaluationModalProps> = ({
               <Database className="w-3.5 h-3.5 text-accent" /> Benchmark Suite
             </label>
             <div className="grid grid-cols-1 gap-2">
-              {BENCHMARK_OPTIONS.map((bm) => (
+              {benchmarkOptions.map((bm) => (
                 <label
                   key={bm.id}
                   className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${

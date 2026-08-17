@@ -12,6 +12,7 @@ import { ensureAuthenticatedSession } from '@/features/auth/services/authService
 export interface BackendExecutionCreatePayload {
   benchmark_version_id: string;
   target_model: string;
+  dataset_version_id?: string;
   execution_config?: Record<string, any>;
 }
 
@@ -27,9 +28,43 @@ export interface BackendExecutionResponse {
   created_at: string;
 }
 
+export interface DispatchTarget {
+  benchmark_version_id: string;
+  benchmark_name: string;
+  version_string: string;
+  dataset_version_id: string | null;
+}
+
+export async function getDispatchTargets(): Promise<ServiceResult<DispatchTarget[]>> {
+  try {
+    await ensureAuthenticatedSession();
+    const rawRes = await apiClient.get<any>('/api/v1/executions/dispatch-targets');
+    let items: any[] = [];
+    if (Array.isArray(rawRes)) {
+      items = rawRes;
+    } else if (rawRes && Array.isArray(rawRes.items)) {
+      items = rawRes.items;
+    } else if (rawRes && rawRes.data && Array.isArray(rawRes.data)) {
+      items = rawRes.data;
+    }
+    return {
+      data: items.map((d) => ({
+        benchmark_version_id: d.benchmark_version_id,
+        benchmark_name: d.benchmark_name,
+        version_string: d.version_string,
+        dataset_version_id: d.dataset_version_id ?? null,
+      })),
+      error: null,
+    };
+  } catch (err: any) {
+    return { data: [], error: err?.message || 'Failed to load dispatch targets' };
+  }
+}
+
 export async function dispatchExecution(
   benchmarkVersionId: string,
-  targetModel: string
+  targetModel: string,
+  datasetVersionId?: string | null
 ): Promise<ServiceResult<BackendExecutionResponse>> {
   try {
     await ensureAuthenticatedSession();
@@ -37,6 +72,9 @@ export async function dispatchExecution(
       benchmark_version_id: benchmarkVersionId,
       target_model: targetModel,
     };
+    if (datasetVersionId) {
+      payload.dataset_version_id = datasetVersionId;
+    }
 
     let res: BackendExecutionResponse;
     try {
