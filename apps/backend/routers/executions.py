@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Body, Depends, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from apps.backend.authz import require_permission
@@ -8,6 +8,7 @@ from apps.backend.dependencies import get_db_session
 from atlas_db.repositories.authoring import BenchmarkRepository
 from packages.execution_engine.api.dtos import (
     ArtifactResponse,
+    DispatchTargetResponse,
     ExecutionAttemptResponse,
     ExecutionCreateRequest,
     ExecutionListResponse,
@@ -69,6 +70,7 @@ def map_to_response(execution: Execution) -> ExecutionResponse:
 def create_execution(
     benchmark_version_id: str,
     payload: ExecutionCreateRequest = Body(default_factory=ExecutionCreateRequest),
+    db: Session = Depends(get_db_session),
     service: ExecutionApplicationService = Depends(get_execution_service),
     current_user: dict = Depends(require_permission("benchmark:execute")),
 ):
@@ -78,14 +80,47 @@ def create_execution(
     try:
         bv_uuid = uuid.UUID(benchmark_version_id)
     except (ValueError, TypeError):
-        bv_uuid = uuid.UUID("00000000-0000-0000-0000-000000000005")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid benchmark_version_id: {benchmark_version_id}"
+        )
 
-    user_id = current_user.get("user_id", uuid.uuid4())
+    from atlas_db.models.authoring import BenchmarkVersion
+
+    benchmark_version = (
+        db.query(BenchmarkVersion).filter(BenchmarkVersion.id == bv_uuid).first()
+    )
+    if not benchmark_version:
+        raise HTTPException(
+            status_code=404, detail=f"BenchmarkVersion {benchmark_version_id} not found"
+        )
+
+    sub = current_user.get("sub", str(uuid.uuid4()))
+    try:
+        user_id = uuid.UUID(sub)
+    except (ValueError, TypeError):
+        user_id = uuid.uuid4()
+
     target_model = (
         payload.target_model if payload and payload.target_model else "groq/llama-3.1-8b-instant"
     )
+
+    dataset_version_id = getattr(payload, "dataset_version_id", None)
+    if dataset_version_id is None:
+        dataset_version_id = benchmark_version.primary_dataset_version_id
+    if dataset_version_id is None:
+        from atlas_db.models.tasks import TestCase
+
+        row = (
+            db.query(TestCase.dataset_version_id)
+            .filter(TestCase.dataset_version_id.isnot(None))
+            .first()
+        )
+        if row:
+            dataset_version_id = row[0]
+
     execution = service.submit_execution(
         benchmark_version_id=bv_uuid,
+        dataset_version_id=dataset_version_id,
         submitted_by=user_id,
         target_model=target_model,
     )
@@ -93,6 +128,53 @@ def create_execution(
         service.execution_repo.session.commit()
 
     return map_to_response(execution)
+
+
+@executions_router.get(
+    "/executions/dispatch-targets", response_model=list[DispatchTargetResponse]
+)
+def list_dispatch_targets(
+    db: Session = Depends(get_db_session),
+    current_user: dict = Depends(require_permission("execution:read")),
+):
+    """
+    Lists benchmark versions that can be dispatched, each with a resolved dataset version.
+    """
+    from atlas_db.models.authoring import Benchmark, BenchmarkVersion
+    from atlas_db.models.tasks import TestCase
+
+    rows = (
+        db.query(
+            BenchmarkVersion.id,
+            Benchmark.name,
+            BenchmarkVersion.version_string,
+            BenchmarkVersion.primary_dataset_version_id,
+        )
+        .join(Benchmark, Benchmark.id == BenchmarkVersion.benchmark_id)
+        .order_by(Benchmark.name, BenchmarkVersion.created_at.desc())
+        .all()
+    )
+
+    targets = []
+    for bv_id, name, version_string, primary_dv in rows:
+        dataset_version_id = primary_dv
+        if dataset_version_id is None:
+            row = (
+                db.query(TestCase.dataset_version_id)
+                .filter(TestCase.dataset_version_id.isnot(None))
+                .first()
+            )
+            if row:
+                dataset_version_id = row[0]
+        targets.append(
+            DispatchTargetResponse(
+                benchmark_version_id=bv_id,
+                benchmark_name=name,
+                version_string=version_string,
+                dataset_version_id=dataset_version_id,
+            )
+        )
+    return targets
 
 
 @executions_router.get("/executions/{execution_id}", response_model=ExecutionResponse)
