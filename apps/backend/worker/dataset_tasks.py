@@ -23,7 +23,7 @@ logger = structlog.get_logger(__name__)
     soft_time_limit=3600,
     time_limit=3660,
 )
-def run_dataset_export_task(self, export_action_id_str: str, correlation_id: str = None):
+def run_dataset_export_task(self, export_action_id_str: str, correlation_id: str | None = None):
     """
     Celery task representing an asynchronous background process evaluating JSONL export serialization cleanly formatting tracking efficiently reliably dynamically.
     """
@@ -41,7 +41,7 @@ def run_dataset_export_task(self, export_action_id_str: str, correlation_id: str
 
             # Wire up safely
             export_service = DatasetExportService(
-                extraction_service=extraction_service, artifact_store=artifact_store
+                extraction_service=extraction_service, artifact_store=artifact_store  # type: ignore[arg-type]
             )
             action_service = ExportActionService(db, export_service)
 

@@ -46,8 +46,7 @@ def map_to_response(execution: Execution) -> ExecutionResponse:
         attempts=[
             ExecutionAttemptResponse(
                 id=a.id,
-                attempt_number=a.attempt_number,
-                status=a.status,
+                status=a.status.value if hasattr(a.status, "value") else a.status,
                 started_at=a.started_at,
                 finished_at=a.finished_at,
                 error_message=a.error_message,

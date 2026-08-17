@@ -24,4 +24,5 @@ class RequestClarificationTool(BaseTool):
     }
 
     def execute(self, db: Session, **kwargs: Any) -> Any:
+
         return {"suspended": True, "question": kwargs.get("question")}

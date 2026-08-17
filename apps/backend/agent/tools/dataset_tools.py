@@ -27,7 +27,11 @@ class GetDatasetTool(BaseTool):
         "required": ["dataset_id"],
     }
 
-    def execute(self, db: Session, dataset_id: str, **kwargs: Any) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        dataset_id = kwargs.get("dataset_id")
+        if dataset_id is None:
+            raise ValueError("dataset_id is required")
+
         try:
             d_uuid = uuid.UUID(dataset_id)
         except ValueError:
@@ -73,9 +77,17 @@ class CreateDatasetTool(BaseTool):
         "required": ["benchmark_id", "name", "tasks"],
     }
 
-    def execute(
-        self, db: Session, benchmark_id: str, name: str, tasks: list[Any], **kwargs: Any
-    ) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        benchmark_id = kwargs.get("benchmark_id")
+        if benchmark_id is None:
+            raise ValueError("benchmark_id is required")
+        name = kwargs.get("name")
+        if name is None:
+            raise ValueError("name is required")
+        tasks = kwargs.get("tasks")
+        if tasks is None:
+            raise ValueError("tasks is required")
+
         proj_id = kwargs.get("project_id") or uuid.UUID("00000000-0000-0000-0000-000000000001")
 
         parsed_tasks = []
@@ -150,9 +162,17 @@ class UpdateDatasetTool(BaseTool):
         "required": ["dataset_id", "repaired_tasks"],
     }
 
-    def execute(
-        self, db: Session, dataset_id: str, repaired_tasks: list[dict[str, Any]], **kwargs: Any
-    ) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        dataset_id = kwargs.get("dataset_id")
+        if dataset_id is None:
+            raise ValueError("dataset_id is required")
+        repaired_tasks = kwargs.get("repaired_tasks")
+        if repaired_tasks is None:
+            raise ValueError("repaired_tasks is required")
+        Any]] = kwargs.get("Any]]")
+        if Any]] is None:
+            raise ValueError("Any]] is required")
+
         try:
             d_uuid = uuid.UUID(dataset_id)
         except ValueError:
@@ -191,7 +211,11 @@ class ValidateBenchmarkDatasetTool(BaseTool):
         "required": ["dataset_id"],
     }
 
-    def execute(self, db: Session, dataset_id: str, **kwargs: Any) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        dataset_id = kwargs.get("dataset_id")
+        if dataset_id is None:
+            raise ValueError("dataset_id is required")
+
         try:
             d_uuid = uuid.UUID(dataset_id)
         except ValueError:

@@ -29,6 +29,7 @@ class MBPPMapper(BaseMapper):
                 extractor="code_block", normalizer="noop", judge="exact_match", metrics=["accuracy"]
             ),
             metadata={"test_setup_code": raw_record.get("test_setup_code", "")},
+            dataset_version_id=None,
         )
 
 

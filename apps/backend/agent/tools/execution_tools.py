@@ -88,6 +88,7 @@ class GetAvailableModelsTool(BaseTool):
     }
 
     def execute(self, db: Session, **kwargs: Any) -> Any:
+
         return get_configured_models()
 
 
@@ -139,9 +140,14 @@ class RunBenchmarkTool(BaseTool):
         "required": ["benchmark_version_id", "target_models"],
     }
 
-    def execute(
-        self, db: Session, benchmark_version_id: str, target_models: list[str], **kwargs: Any
-    ) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        benchmark_version_id = kwargs.get("benchmark_version_id")
+        if benchmark_version_id is None:
+            raise ValueError("benchmark_version_id is required")
+        target_models = kwargs.get("target_models")
+        if target_models is None:
+            raise ValueError("target_models is required")
+
         try:
             bv_uuid = uuid.UUID(benchmark_version_id)
         except ValueError:
@@ -288,7 +294,11 @@ class GetRunStatusTool(BaseTool):
         "required": ["execution_id"],
     }
 
-    def execute(self, db: Session, execution_id: str, **kwargs: Any) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        execution_id = kwargs.get("execution_id")
+        if execution_id is None:
+            raise ValueError("execution_id is required")
+
         rec = _benchmark_execution_store.get(execution_id)
         if rec:
             return rec

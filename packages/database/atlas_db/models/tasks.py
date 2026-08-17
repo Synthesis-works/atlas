@@ -1,3 +1,4 @@
+from __future__ import annotations
 import uuid
 
 from atlas_db.core.base import Base, BaseMixin

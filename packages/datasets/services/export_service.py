@@ -22,7 +22,7 @@ class DatasetExportService:
         self,
         extraction_service: DatasetExtractionService,
         artifact_store: BaseTrainingArtifactStore,
-        exporters: Mapping[str, DatasetExporter] = None,
+        exporters: Mapping[str, DatasetExporter] | None = None,
     ):
         self.extraction_service = extraction_service
         self.artifact_store = artifact_store

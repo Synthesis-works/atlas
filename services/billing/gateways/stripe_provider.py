@@ -39,7 +39,7 @@ class StripeGateway(PaymentGateway):
             client_reference_id=str(org_id),
             metadata={"org_id": str(org_id)},
         )
-        return CheckoutSessionResult(session_id=session.id, url=session.url)
+        return CheckoutSessionResult(session_id=session.id, url=session.url or "")
 
     def verify_webhook_signature(
         self,
@@ -49,7 +49,7 @@ class StripeGateway(PaymentGateway):
         webhook_secret = settings.stripe_webhook_secret
         try:
             event = stripe.Webhook.construct_event(payload, signature, webhook_secret)
-            return event
+            return dict(event)  # type: ignore[arg-type]
         except ValueError as e:
             raise ValueError("Invalid payload") from e
         except stripe.error.SignatureVerificationError as e:
@@ -57,7 +57,7 @@ class StripeGateway(PaymentGateway):
 
     def cancel_subscription(self, subscription_id: str) -> bool:
         try:
-            stripe.Subscription.delete(subscription_id)
+            stripe.Subscription.delete(subscription_id)  # type: ignore[arg-type]
             return True
         except Exception:
             return False

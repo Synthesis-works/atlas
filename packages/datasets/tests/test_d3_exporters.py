@@ -5,7 +5,7 @@ from packages.datasets.models import TrainingExample
 from packages.datasets.exporters.jsonl_exporter import JSONLDatasetExporter
 
 
-def dummy_example(prompt: str, answer: str, metadata: dict = None) -> TrainingExample:
+def dummy_example(prompt: str, answer: str, metadata: dict | None = None) -> TrainingExample:
     return TrainingExample(
         dataset_version_id=uuid.uuid4(),
         task_id=uuid.uuid4(),

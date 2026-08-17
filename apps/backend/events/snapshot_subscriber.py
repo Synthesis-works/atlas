@@ -26,15 +26,16 @@ class SnapshotSubscriber(EventSubscriber):
             isinstance(event, EvaluationCompletedEvent)
             or type(event).__name__ == "EvaluationCompletedEvent"
         ):
+            execution_id = getattr(event, "execution_id", event.aggregate_id if hasattr(event, "aggregate_id") else uuid.uuid4())
             logger.info(
-                f"SnapshotSubscriber acting on EvaluationCompleted Event for execution {event.execution_id}"
+                f"SnapshotSubscriber acting on EvaluationCompleted Event for execution {execution_id}"
             )
             # Dispatch Snapshot Updates securely
             try:
                 with SessionLocal() as db:
-                    print(f"!!! QUERYING FOR EXECUTION: {event.execution_id}")
+                    print(f"!!! QUERYING FOR EXECUTION: {execution_id}")
                     execution = (
-                        db.query(Execution).filter(Execution.id == event.execution_id).first()
+                        db.query(Execution).filter(Execution.id == execution_id).first()
                     )
                     print(f"!!! EXECUTION FOUND: {execution is not None}")
                     if execution:
@@ -42,7 +43,7 @@ class SnapshotSubscriber(EventSubscriber):
                         print(f"!!! CALLING benchmark snapshot on {execution.benchmark_version_id}")
                         self.snapshot_dispatcher.dispatch_benchmark_snapshot(
                             benchmark_version_id=execution.benchmark_version_id,
-                            execution_id_trigger=event.execution_id,
+                            execution_id_trigger=execution_id,
                         )
 
                         # 2. Update fine-grained capability leaderboards
@@ -52,7 +53,7 @@ class SnapshotSubscriber(EventSubscriber):
                                 CapabilityProfile,
                                 CapabilityProfile.id == CapabilityScore.capability_profile_id,
                             )
-                            .filter(CapabilityProfile.execution_id == event.execution_id)
+                            .filter(CapabilityProfile.execution_id == execution_id)
                             .all()
                         )
 

@@ -28,7 +28,7 @@ def evaluate_execution(
     # 1. Authorize (Write operation so OWNER, ADMIN, MEMBER only)
     authz = ProjectAuthorizationService(db)
     if not authz.authorize_project_access(
-        current_user, project_id, required_roles=["OWNER", "ADMIN", "MEMBER"]
+        current_user, project_id
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

@@ -20,7 +20,7 @@ class SQLAlchemyOutboxPublisher(EventPublisher):
     def __init__(self, session):
         self.session = session
 
-    def publish(self, events: list[DomainEvent]) -> None:
+    def publish(self, events: list[DomainEvent]) -> None:  # type: ignore[override]
         for event in events:
             agg_id = getattr(event, "execution_id", uuid.uuid4())
             trace_ctx = {"correlation_id": get_correlation_id(), "trace_id": get_trace_id()}

@@ -28,7 +28,8 @@ from packages.evaluation_engine.domain.events import (
 logger = get_logger("OUTBOX")
 
 # Event Registry to map event types back to classes
-EVENT_REGISTRY: dict[str, type[DomainEvent]] = {
+from typing import Any
+EVENT_REGISTRY: dict[str, type[Any]] = {
     "ExecutionQueuedEvent": ExecutionQueuedEvent,
     "ExecutionStartedEvent": ExecutionStartedEvent,
     "LeaseExpiredEvent": LeaseExpiredEvent,

@@ -146,6 +146,7 @@ class AtlasAgent:
 
             if decision.type == AgentDecisionType.TOOL_CALL:
                 tool_name = decision.tool_name
+                if not tool_name: continue
                 args = decision.arguments
 
                 if tool_name == "request_clarification":
@@ -238,13 +239,13 @@ class AtlasAgent:
                     )
 
                     if not hasattr(task, "_prose_repairs"):
-                        task._prose_repairs = {}
+                        task._prose_repairs = {}  # type: ignore[attr-defined]
 
                     current_p = task.current_provider or "default"
-                    repair_count = task._prose_repairs.get(current_p, 0)
+                    repair_count = task._prose_repairs.get(current_p, 0)  # type: ignore[attr-defined]
 
                     if repair_count < 1:
-                        task._prose_repairs[current_p] = repair_count + 1
+                        task._prose_repairs[current_p] = repair_count + 1  # type: ignore[attr-defined]
                         repair_msg = (
                             f"ATTENTION: Your previous response returned conversational text ('{decision.response[:120]}...') "
                             f"instead of executing a required tool call. The task is NOT complete: {reason}. "

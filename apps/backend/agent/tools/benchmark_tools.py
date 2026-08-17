@@ -25,7 +25,14 @@ class SearchBenchmarksTool(BaseTool):
         },
     }
 
-    def execute(self, db: Session, query: str = "", limit: int = 10, **kwargs: Any) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        query = kwargs.get("query")
+        if query is None:
+            raise ValueError("query is required")
+        limit = kwargs.get("limit")
+        if limit is None:
+            raise ValueError("limit is required")
+
         q = db.query(Benchmark)
         if query:
             q = q.filter(Benchmark.name.ilike(f"%{query}%"))
@@ -54,7 +61,11 @@ class GetBenchmarkTool(BaseTool):
         "required": ["benchmark_id"],
     }
 
-    def execute(self, db: Session, benchmark_id: str, **kwargs: Any) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        benchmark_id = kwargs.get("benchmark_id")
+        if benchmark_id is None:
+            raise ValueError("benchmark_id is required")
+
         try:
             b_uuid = uuid.UUID(benchmark_id)
         except ValueError:

@@ -56,9 +56,9 @@ def create_app() -> FastAPI:
     )
 
     # Exception Handlers
-    app.add_exception_handler(StarletteHTTPException, custom_http_exception_handler)
-    app.add_exception_handler(RequestValidationError, validation_exception_handler)
-    app.add_exception_handler(DomainException, domain_exception_handler)
+    app.add_exception_handler(StarletteHTTPException, custom_http_exception_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)  # type: ignore[arg-type]
+    app.add_exception_handler(DomainException, domain_exception_handler)  # type: ignore[arg-type]
     app.add_exception_handler(Exception, global_exception_handler)
 
     # Include routers

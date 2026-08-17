@@ -60,7 +60,8 @@ class MistralAgentProvider(BaseLLMProvider):
             response = self.client.generate(self.model, prompt, tools=tools_payload)
             latency = int((time.time() - start_t) * 1000)
 
-            raw_choice = response.raw.get("choices", [{}])[0]
+            raw = response.raw or {}
+            raw_choice = raw.get("choices", [{}])[0]
             message = raw_choice.get("message", {})
 
             # 1. Native Tool Calling Response Parsing

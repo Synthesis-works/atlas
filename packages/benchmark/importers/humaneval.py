@@ -38,6 +38,7 @@ class HumanEvalImporter(BaseImporter):
                         input=item.get("prompt", ""),
                         expected_output=item.get("canonical_solution", ""),
                         hidden_tests=item.get("test", ""),
+                        dataset_version_id=None,
                     )
                     tasks.append(task)
         except Exception as e:

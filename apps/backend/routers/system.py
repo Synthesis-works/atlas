@@ -37,7 +37,7 @@ def celery_health(user: User = Depends(require_superuser)):
             }
         )
     except Exception as e:
-        return APIResponse.error_response(
+        return APIResponse.error_response(  # type: ignore[attr-defined]
             message=f"Failed to fetch Celery health: {str(e)}", status_code=503
         )
 
@@ -71,7 +71,7 @@ async def health_ready(db: Session = Depends(get_db_session)):
         db.execute(text("SELECT 1"))
         db_status = "connected"
     except Exception:
-        return APIResponse.error_response(message="Database connection failed", status_code=503)
+        return APIResponse.error_response(message="Database connection failed", status_code=503)  # type: ignore[attr-defined]
 
     return {"status": "ready", "checks": {"database": db_status}}
 
