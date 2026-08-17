@@ -14,6 +14,7 @@ from packages.llm.clients.mistral import MistralClient
 from packages.llm.models.prompt import Prompt
 
 # Centralized model registry holds available target configurations
+_benchmark_execution_store: dict[str, dict[str, Any]] = {}
 
 
 def get_configured_models() -> dict[str, Any]:

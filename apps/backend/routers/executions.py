@@ -49,7 +49,7 @@ def map_to_response(execution: Execution) -> ExecutionResponse:
                 run_id=execution.id,
                 task_id=uuid.UUID("00000000-0000-0000-0000-000000000000"),
                 worker_id=a.lease.worker_id
-                if getattr(a, "lease", None)
+                if a.lease
                 else uuid.UUID("00000000-0000-0000-0000-000000000000"),
                 status=str(a.status.value) if hasattr(a.status, "value") else str(a.status),
                 started_at=a.started_at,
