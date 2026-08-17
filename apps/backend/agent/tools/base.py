@@ -53,7 +53,6 @@ class BaseTool(ABC):
 
     @abstractmethod
     def execute(self, db: Session, **kwargs: Any) -> Any:
-
         """
         Executes tool routine against Atlas database / application services.
         """

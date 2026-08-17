@@ -26,7 +26,11 @@ class SnapshotSubscriber(EventSubscriber):
             isinstance(event, EvaluationCompletedEvent)
             or type(event).__name__ == "EvaluationCompletedEvent"
         ):
-            execution_id = getattr(event, "execution_id", event.aggregate_id if hasattr(event, "aggregate_id") else uuid.uuid4())
+            execution_id = getattr(
+                event,
+                "execution_id",
+                event.aggregate_id if hasattr(event, "aggregate_id") else uuid.uuid4(),
+            )
             logger.info(
                 f"SnapshotSubscriber acting on EvaluationCompleted Event for execution {execution_id}"
             )
@@ -34,9 +38,7 @@ class SnapshotSubscriber(EventSubscriber):
             try:
                 with SessionLocal() as db:
                     print(f"!!! QUERYING FOR EXECUTION: {execution_id}")
-                    execution = (
-                        db.query(Execution).filter(Execution.id == execution_id).first()
-                    )
+                    execution = db.query(Execution).filter(Execution.id == execution_id).first()
                     print(f"!!! EXECUTION FOUND: {execution is not None}")
                     if execution:
                         # 1. Update overall benchmark tracking

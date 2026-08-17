@@ -41,7 +41,8 @@ def run_dataset_export_task(self, export_action_id_str: str, correlation_id: str
 
             # Wire up safely
             export_service = DatasetExportService(
-                extraction_service=extraction_service, artifact_store=artifact_store  # type: ignore[arg-type]
+                extraction_service=extraction_service,
+                artifact_store=artifact_store,  # type: ignore[arg-type]
             )
             action_service = ExportActionService(db, export_service)
 

@@ -110,4 +110,6 @@ class GeminiAgentProvider(BaseLLMProvider):
                     type=AgentDecisionType.FAIL,
                     error_message=f"Gemini provider decision failed: {str(e)}",
                 )
-        return AgentDecision(type=AgentDecisionType.FAIL, error_message="Exhausted task execution loop")
+        return AgentDecision(
+            type=AgentDecisionType.FAIL, error_message="Exhausted task execution loop"
+        )

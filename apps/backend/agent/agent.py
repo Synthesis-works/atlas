@@ -146,7 +146,8 @@ class AtlasAgent:
 
             if decision.type == AgentDecisionType.TOOL_CALL:
                 tool_name = decision.tool_name
-                if not tool_name: continue
+                if not tool_name:
+                    continue
                 args = decision.arguments
 
                 if tool_name == "request_clarification":

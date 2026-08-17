@@ -169,9 +169,6 @@ class UpdateDatasetTool(BaseTool):
         repaired_tasks = kwargs.get("repaired_tasks")
         if repaired_tasks is None:
             raise ValueError("repaired_tasks is required")
-        Any]] = kwargs.get("Any]]")
-        if Any]] is None:
-            raise ValueError("Any]] is required")
 
         try:
             d_uuid = uuid.UUID(dataset_id)

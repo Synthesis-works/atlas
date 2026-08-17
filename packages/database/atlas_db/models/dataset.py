@@ -28,7 +28,7 @@ class DatasetRegistry(Base, BaseMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
 
-    datasets: Mapped[list["Dataset"]] = relationship("Dataset", back_populates="registry")
+    datasets: Mapped[list[Dataset]] = relationship("Dataset", back_populates="registry")
 
 
 class DatasetSource(Base, BaseMixin):
@@ -38,7 +38,7 @@ class DatasetSource(Base, BaseMixin):
     url: Mapped[str | None] = mapped_column(String, nullable=True)
     type: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
-    datasets: Mapped[list["Dataset"]] = relationship("Dataset", back_populates="source")
+    datasets: Mapped[list[Dataset]] = relationship("Dataset", back_populates="source")
 
 
 class DatasetLicense(Base, BaseMixin):
@@ -47,7 +47,7 @@ class DatasetLicense(Base, BaseMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     url: Mapped[str | None] = mapped_column(String, nullable=True)
 
-    datasets: Mapped[list["Dataset"]] = relationship("Dataset", back_populates="license")
+    datasets: Mapped[list[Dataset]] = relationship("Dataset", back_populates="license")
 
 
 class Dataset(Base, BaseMixin):
@@ -75,17 +75,15 @@ class Dataset(Base, BaseMixin):
         ENUM(DatasetStatus, name="dataset_status"), nullable=False, default=DatasetStatus.ACTIVE
     )
 
-    project: Mapped["Project"] = relationship("Project")  # type: ignore
-    registry: Mapped["DatasetRegistry | None"] = relationship(
+    project: Mapped[Project] = relationship("Project")  # type: ignore
+    registry: Mapped[DatasetRegistry | None] = relationship(
         "DatasetRegistry", back_populates="datasets"
     )
-    source: Mapped["DatasetSource | None"] = relationship(
-        "DatasetSource", back_populates="datasets"
-    )
-    license: Mapped["DatasetLicense | None"] = relationship(
+    source: Mapped[DatasetSource | None] = relationship("DatasetSource", back_populates="datasets")
+    license: Mapped[DatasetLicense | None] = relationship(
         "DatasetLicense", back_populates="datasets"
     )
-    versions: Mapped[list["DatasetVersion"]] = relationship(
+    versions: Mapped[list[DatasetVersion]] = relationship(
         "DatasetVersion", back_populates="dataset"
     )
 
@@ -117,8 +115,8 @@ class DatasetVersion(Base):
         ForeignKey("users.id"), nullable=True, index=True
     )
 
-    dataset: Mapped["Dataset"] = relationship("Dataset", back_populates="versions")
-    tasks: Mapped[list["Task"]] = relationship("Task", back_populates="dataset_version")
+    dataset: Mapped[Dataset] = relationship("Dataset", back_populates="versions")
+    tasks: Mapped[list[Task]] = relationship("Task", back_populates="dataset_version")
 
     __mapper_args__ = {"version_id_col": version_number}
 

@@ -63,9 +63,6 @@ class CreateEvaluationCaseTool(BaseTool):
         evaluation_cases = kwargs.get("evaluation_cases")
         if evaluation_cases is None:
             raise ValueError("evaluation_cases is required")
-        Any]] = kwargs.get("Any]]")
-        if Any]] is None:
-            raise ValueError("Any]] is required")
 
         created_cases = []
         for case in evaluation_cases:

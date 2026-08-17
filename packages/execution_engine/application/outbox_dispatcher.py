@@ -29,6 +29,7 @@ logger = get_logger("OUTBOX")
 
 # Event Registry to map event types back to classes
 from typing import Any
+
 EVENT_REGISTRY: dict[str, type[Any]] = {
     "ExecutionQueuedEvent": ExecutionQueuedEvent,
     "ExecutionStartedEvent": ExecutionStartedEvent,
