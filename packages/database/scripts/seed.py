@@ -18,9 +18,7 @@ DEMO_PASSWORD_HASH = (
 
 
 def main():
-    db_url = os.environ.get(
-        "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/atlas"
-    )
+    db_url = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/atlas")
 
     engine = create_engine(db_url)
     print("Starting database seeding...")

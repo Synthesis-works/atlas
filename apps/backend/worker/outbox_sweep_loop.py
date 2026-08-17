@@ -43,10 +43,7 @@ def _run_sweep_once() -> None:
 def main() -> None:
     interval = max(int(settings.outbox_poll_interval), 1)
     print(f"[outbox-sweep-loop] starting; poll interval = {interval}s")
-    print(
-        "[outbox-sweep-loop] CELERY_TASK_ALWAYS_EAGER = "
-        f"{settings.celery_task_always_eager}"
-    )
+    print(f"[outbox-sweep-loop] CELERY_TASK_ALWAYS_EAGER = {settings.celery_task_always_eager}")
     while True:
         _run_sweep_once()
         time.sleep(interval)

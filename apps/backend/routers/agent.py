@@ -41,6 +41,7 @@ def _persist_task(db: Session, task: "AgentTask") -> None:
         record.snapshot = snapshot
     db.commit()
 
+
 # In-memory storage for active agent tasks (backed by DB models)
 _agent_tasks_db: dict[UUID, AgentTask] = {}
 _tool_registry = ToolRegistry()
@@ -240,14 +241,8 @@ def list_agent_tasks(db: Session = Depends(get_db_session)):
 
     live = list(_agent_tasks_db.values())
     live_ids = {t.task_id for t in live}
-    records = (
-        db.query(AgentTaskRecord).order_by(AgentTaskRecord.created_at.desc()).all()
-    )
-    persisted = [
-        AgentTask.model_validate(r.snapshot)
-        for r in records
-        if r.task_id not in live_ids
-    ]
+    records = db.query(AgentTaskRecord).order_by(AgentTaskRecord.created_at.desc()).all()
+    persisted = [AgentTask.model_validate(r.snapshot) for r in records if r.task_id not in live_ids]
     tasks = list(reversed(live)) + persisted
     return [_serialize_agent_task(t) for t in tasks]
 

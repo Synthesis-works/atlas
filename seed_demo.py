@@ -329,7 +329,11 @@ def seed_humaneval_dataset(session, user, project):
     if session.query(TestCase).filter(TestCase.dataset_version_id == dv.id).count() == 0:
         samples = [
             ("sum", "Write a Python function that returns the sum of two integers.", 4),
-            ("palindrome", "Write a Python function that checks if a string is a palindrome.", True),
+            (
+                "palindrome",
+                "Write a Python function that checks if a string is a palindrome.",
+                True,
+            ),
             ("length", "Write a Python function that returns the length of a list.", 3),
         ]
         for idx, (name, prompt_text, expected) in enumerate(samples):
