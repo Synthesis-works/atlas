@@ -12,9 +12,9 @@ class UserRegister(BaseModel):
 
 
 class UserLogin(BaseModel):
-    email: str | None = Field(None, description="User's email address")
-    username: str | None = Field(None, description="User's username")
-    identifier: str | None = Field(None, description="User's username or email")
+    email: str | None = Field(default=None, description="User's email address")
+    username: str | None = Field(default=None, description="User's username")
+    identifier: str | None = Field(default=None, description="User's username or email")
     password: str = Field(..., description="User's password")
 
     @property

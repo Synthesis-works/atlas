@@ -45,6 +45,13 @@ try:
         has_postgres = engine.dialect.name == "postgresql"
 except Exception:
     has_postgres = False
+
+if not has_postgres:
+    # NEVER bind to a file-based SQLite database: a DATABASE_URL that points
+    # at a real sqlite file (e.g. ./atlas_dev.db) would make the module-level
+    # engine create_all/drop_all fixtures DROP ALL TABLES in the dev DB.
+    # Only PostgreSQL (for the SKIP LOCKED concurrency test) or in-memory
+    # SQLite may be used here.
     engine = create_engine("sqlite:///:memory:")
 
 SessionLocal = sessionmaker(bind=engine)

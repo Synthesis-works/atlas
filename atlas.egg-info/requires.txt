@@ -17,6 +17,7 @@ minio>=7.2.0
 atlas-db
 stripe>=15.4.0
 razorpay>=2.0.1
+httpx>=0.28.1
 
 [dev]
 pytest>=7.0.0
