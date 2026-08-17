@@ -1,0 +1,1 @@
+{"dataset_version_id":"52a5204e-ea50-4683-b3d0-c252e774c275","task_id":"dbdcf37b-5572-4bdd-b129-ad62d0e34929","task_name":"mbpp-1","prompt":"Write dummy.\n\nExample:\nassert dummy()","canonical_answer":"def dummy(): pass","metadata":{}}

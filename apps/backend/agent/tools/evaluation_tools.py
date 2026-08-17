@@ -55,9 +55,14 @@ class CreateEvaluationCaseTool(BaseTool):
         "required": ["dataset_id", "evaluation_cases"],
     }
 
-    def execute(
-        self, db: Session, dataset_id: str, evaluation_cases: list[dict[str, Any]], **kwargs: Any
-    ) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        dataset_id = kwargs.get("dataset_id")
+        if dataset_id is None:
+            raise ValueError("dataset_id is required")
+        evaluation_cases = kwargs.get("evaluation_cases")
+        if evaluation_cases is None:
+            raise ValueError("evaluation_cases is required")
+
         # Resolve active benchmark version and dataset version
         from atlas_db.models.tasks import Task as DBTask, TestCase as DBTestCase
         from atlas_db.models.dataset import DatasetVersion
@@ -184,8 +189,15 @@ class EvaluateRunTool(BaseTool):
         "required": ["execution_id"],
     }
 
-    def execute(self, db: Session, execution_id: str, **kwargs: Any) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        execution_id = kwargs.get("execution_id")
+        if execution_id is None:
+            raise ValueError("execution_id is required")
+
         import uuid
+        from apps.backend.agent.tools.execution_tools import _benchmark_execution_store
+
+        rec = _benchmark_execution_store.get(execution_id)
 
         try:
             exec_uuid = uuid.UUID(execution_id)
@@ -321,7 +333,11 @@ class CompareResultsTool(BaseTool):
         "required": ["execution_ids"],
     }
 
-    def execute(self, db: Session, execution_ids: list[str], **kwargs: Any) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        execution_ids = kwargs.get("execution_ids")
+        if execution_ids is None:
+            raise ValueError("execution_ids is required")
+
         from atlas_db.models.execution import Execution as DBExecution
         from atlas_db.models.evaluation import CapabilityProfile as DBCapabilityProfile
         import uuid
@@ -379,9 +395,12 @@ class GenerateReportTool(BaseTool):
         "required": ["benchmark_id"],
     }
 
-    def execute(
-        self, db: Session, benchmark_id: str, title: str = "Benchmark Report", **kwargs: Any
-    ) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        benchmark_id = kwargs.get("benchmark_id")
+        if benchmark_id is None:
+            raise ValueError("benchmark_id is required")
+        title = kwargs.get("title", "Benchmark Report")
+
         import uuid
         from atlas_db.models.reporting import Report as DBReport, ReportVersion as DBReportVersion
 

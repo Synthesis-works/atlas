@@ -25,7 +25,14 @@ class SearchBenchmarksTool(BaseTool):
         },
     }
 
-    def execute(self, db: Session, query: str = "", limit: int = 10, **kwargs: Any) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        query = kwargs.get("query")
+        if query is None:
+            raise ValueError("query is required")
+        limit = kwargs.get("limit")
+        if limit is None:
+            raise ValueError("limit is required")
+
         q = db.query(Benchmark)
         if query:
             q = q.filter(Benchmark.name.ilike(f"%{query}%"))
@@ -54,7 +61,11 @@ class GetBenchmarkTool(BaseTool):
         "required": ["benchmark_id"],
     }
 
-    def execute(self, db: Session, benchmark_id: str, **kwargs: Any) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        benchmark_id = kwargs.get("benchmark_id")
+        if benchmark_id is None:
+            raise ValueError("benchmark_id is required")
+
         try:
             b_uuid = uuid.UUID(benchmark_id)
         except ValueError:
@@ -103,15 +114,13 @@ class CreateBenchmarkTool(BaseTool):
         "required": ["name"],
     }
 
-    def execute(
-        self,
-        db: Session,
-        name: str,
-        description: str = "",
-        task_type: str = "general",
-        evaluation_method: str = "exact_match",
-        **kwargs: Any,
-    ) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        name = kwargs.get("name")
+        if name is None:
+            raise ValueError("name is required")
+        description = kwargs.get("description", "")
+        task_type = kwargs.get("task_type", "general")
+        evaluation_method = kwargs.get("evaluation_method", "exact_match")
         proj_id = kwargs.get("project_id") or uuid.UUID("00000000-0000-0000-0000-000000000001")
         bm_id = uuid.uuid4()
         version_id = uuid.uuid4()

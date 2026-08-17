@@ -64,7 +64,7 @@ class RazorpayGateway(PaymentGateway):
 
         import json
 
-        return json.loads(payload_str)
+        return dict(json.loads(payload_str))
 
     def cancel_subscription(self, subscription_id: str) -> bool:
         try:

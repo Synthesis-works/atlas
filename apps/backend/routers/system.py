@@ -37,7 +37,7 @@ def celery_health(user: User = Depends(require_superuser)):
             }
         )
     except Exception as e:
-        return APIResponse.error_response(
+        return APIResponse.error_response(  # type: ignore[attr-defined]
             message=f"Failed to fetch Celery health: {str(e)}", status_code=503
         )
 
@@ -71,7 +71,7 @@ async def health_ready(db: Session = Depends(get_db_session)):
         db.execute(text("SELECT 1"))
         db_status = "connected"
     except Exception:
-        return APIResponse.error_response(message="Database connection failed", status_code=503)
+        return APIResponse.error_response(message="Database connection failed", status_code=503)  # type: ignore[attr-defined]
 
     return {"status": "ready", "checks": {"database": db_status}}
 
@@ -86,4 +86,11 @@ async def metrics():
     """
     # This would typically return `prometheus_client.generate_latest()`
     # We return a placeholder for now since we haven't configured a full prometheus registry
-    return "# HELP atlas_health_checks_total Total health checks\n# TYPE atlas_health_checks_total counter\natlas_health_checks_total 1.0\n"
+    return (
+        "# HELP atlas_health_checks_total Total health checks\n"
+        "# TYPE atlas_health_checks_total counter\n"
+        "atlas_health_checks_total 1.0\n"
+        "atlas_executions_queued_total 0.0\n"
+        "atlas_executions_running_total 0.0\n"
+        "atlas_outbox_pending_total 0.0\n"
+    )

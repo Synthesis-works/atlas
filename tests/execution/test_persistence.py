@@ -4,6 +4,9 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
+
+pytestmark = pytest.mark.isolate  # Must not run in same process as atlas_db tests
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -20,13 +23,22 @@ from packages.execution_engine.persistence.repository import SqlAlchemyExecution
 
 # Load all models for Base.metadata
 import atlas_db.models  # noqa: F401
+import packages.execution_engine.persistence.models  # noqa: F401
 from atlas_db.models.authoring import Benchmark, BenchmarkVersion
 from atlas_db.models.core import Organization, Project, User
+from packages.execution_engine.persistence.models import (
+    ExecutionModel,
+    ExecutionAttemptModel,
+    LeaseModel,
+    ArtifactModel,
+)
 
 # Try connecting to Postgres if available, else SQLite
 import os
 
-DB_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/atlas")
+DB_URL = os.getenv(
+    "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/test_execution_db"
+)
 try:
     engine = create_engine(DB_URL)
     with engine.connect() as conn:
@@ -45,15 +57,49 @@ if not has_postgres:
 SessionLocal = sessionmaker(bind=engine)
 
 
+from alembic import command
+from alembic.config import Config
+import sqlalchemy as sa
+
+
 @pytest.fixture(scope="module")
 def setup_database():
+    # Ensure schema is created (idempotent)
     Base.metadata.create_all(bind=engine)
+
+    if has_postgres:
+        # Wipe only the execution-related tables to isolate this module's tests.
+        # We deliberately avoid DROP SCHEMA CASCADE which would destroy the public
+        # schema and corrupt the SQLAlchemy mapper registry for all downstream tests.
+        _truncate_execution_tables()
+
     yield
-    # On Postgres the engine is shared with the rest of the suite, so dropping
-    # the entire schema here would break every later test that needs tables.
-    # On SQLite the engine is isolated, so dropping is safe.
-    if engine.dialect.name == "sqlite":
+    if has_postgres:
+        _truncate_execution_tables()
+    elif engine.dialect.name == "sqlite":
+        # On SQLite the engine is isolated, so dropping is safe.
         Base.metadata.drop_all(bind=engine)
+    # Note: we intentionally do NOT call drop_all here — that would leave
+    # downstream tests with a dead mapper pointing at non-existent tables.
+
+
+def _truncate_execution_tables():
+    """Truncate only execution-related tables, preserving the public schema."""
+    tables = [
+        "execution_artifacts",
+        "execution_attempts",
+        "execution_leases",
+        "executions",
+        "benchmark_versions",
+        "benchmarks",
+        "organizations",
+        "users",
+        "projects",
+    ]
+    with engine.connect() as conn:
+        # CASCADE handles FK ordering automatically
+        conn.execute(sa.text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))
+        conn.commit()
 
 
 @pytest.fixture

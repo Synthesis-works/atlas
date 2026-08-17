@@ -51,7 +51,13 @@ def test_create_execution(test_client, mock_execution_service):
     )
     mock_execution_service.submit_execution.return_value = execution
 
-    response = test_client.post(f"/api/v1/benchmarks/{benchmark_id}/executions")
+    payload = {
+        "benchmark_version_id": str(benchmark_id),
+        "dataset_version_id": "00000000-0000-0000-0000-000000000006",
+        "target_model": "groq/llama-3.1-8b-instant",
+    }
+
+    response = test_client.post(f"/api/v1/benchmarks/{benchmark_id}/executions", json=payload)
 
     assert response.status_code == 201
     assert response.json()["id"] == str(exec_id)

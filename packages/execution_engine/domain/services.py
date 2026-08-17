@@ -39,6 +39,7 @@ class ExecutionService:
         self,
         execution_id: uuid.UUID,
         benchmark_version_id: uuid.UUID,
+        project_id: uuid.UUID,
         dataset_version_id: uuid.UUID,
         submitted_by: uuid.UUID,
         target_model: str = "gemini-2.5-flash",
@@ -46,6 +47,7 @@ class ExecutionService:
         execution = Execution(
             id=execution_id,
             benchmark_version_id=benchmark_version_id,
+            project_id=project_id,
             dataset_version_id=dataset_version_id,
             created_by=submitted_by,
             target_model=target_model,

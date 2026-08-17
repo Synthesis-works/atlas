@@ -47,8 +47,12 @@ def map_to_response(execution: Execution) -> ExecutionResponse:
         attempts=[
             ExecutionAttemptResponse(
                 id=a.id,
-                attempt_number=a.attempt_number,
-                status=a.status,
+                run_id=execution.id,
+                task_id=uuid.UUID("00000000-0000-0000-0000-000000000000"),
+                worker_id=a.lease.worker_id
+                if a.lease
+                else uuid.UUID("00000000-0000-0000-0000-000000000000"),
+                status=str(a.status.value) if hasattr(a.status, "value") else str(a.status),
                 started_at=a.started_at,
                 finished_at=a.finished_at,
                 error_message=a.error_message,
@@ -104,7 +108,7 @@ def create_execution(
 
     dataset_version_id = getattr(payload, "dataset_version_id", None)
     if dataset_version_id is None:
-        dataset_version_id = benchmark_version.primary_dataset_version_id
+        dataset_version_id = getattr(benchmark_version, "primary_dataset_version_id", None)
     if dataset_version_id is None:
         from atlas_db.models.tasks import TestCase
 
@@ -115,6 +119,20 @@ def create_execution(
         )
         if row:
             dataset_version_id = row[0]
+
+    if dataset_version_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="A dataset_version_id could not be resolved for this execution",
+        )
+
+    try:
+        dataset_version_id = uuid.UUID(str(dataset_version_id))
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid dataset_version_id: {dataset_version_id}",
+        )
 
     execution = service.submit_execution(
         benchmark_version_id=bv_uuid,
@@ -183,6 +201,10 @@ def get_execution(
     Retrieves details of an execution including attempts, leases, and artifacts.
     """
     execution = service.get_execution(execution_id)
+    if not execution:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=404, detail="Execution not found")
     return map_to_response(execution)
 
 

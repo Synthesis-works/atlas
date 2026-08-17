@@ -25,7 +25,7 @@ class GrokAgentProvider(BaseLLMProvider):
         api_key_env: str = "XAI_API_KEY",
         client: Optional[GrokClient] = None,
     ):
-        self.model = model or os.getenv("GROK_MODEL", os.getenv("XAI_MODEL", "grok-2"))
+        self.model: str = model or os.getenv("GROK_MODEL") or os.getenv("XAI_MODEL") or "grok-2"
         self.client = client or GrokClient(api_key_env=api_key_env)
 
     def decide(
@@ -50,7 +50,8 @@ class GrokAgentProvider(BaseLLMProvider):
             response = self.client.generate(self.model, prompt, tools=tools_payload)
             latency = int((time.time() - start_t) * 1000)
 
-            raw_choice = response.raw.get("choices", [{}])[0]
+            raw = response.raw or {}
+            raw_choice = raw.get("choices", [{}])[0]
             message = raw_choice.get("message", {})
 
             # 1. Native Tool Calling Response Parsing

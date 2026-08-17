@@ -14,6 +14,7 @@ from packages.llm.clients.mistral import MistralClient
 from packages.llm.models.prompt import Prompt
 
 # Centralized model registry holds available target configurations
+_benchmark_execution_store: dict[str, dict[str, Any]] = {}
 
 
 def get_configured_models() -> dict[str, Any]:
@@ -41,6 +42,7 @@ class GetAvailableModelsTool(BaseTool):
     }
 
     def execute(self, db: Session, **kwargs: Any) -> Any:
+
         return get_configured_models()
 
 
@@ -60,7 +62,7 @@ def _normalize_answer(raw_text: str, expected: str) -> str:
     if exp_clean.isdigit():
         numbers = re.findall(r"\b\d+\b", text)
         if numbers:
-            return numbers[0]
+            return str(numbers[0])
 
     # Clean markdown formatting and return first meaningful non-empty line
     lines = [
@@ -96,14 +98,16 @@ class RunBenchmarkTool(BaseTool):
         "required": ["benchmark_version_id", "dataset_version_id", "target_models"],
     }
 
-    def execute(
-        self,
-        db: Session,
-        benchmark_version_id: str,
-        dataset_version_id: str,
-        target_models: list[str],
-        **kwargs: Any,
-    ) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        benchmark_version_id = kwargs.get("benchmark_version_id")
+        if benchmark_version_id is None:
+            raise ValueError("benchmark_version_id is required")
+        dataset_version_id = kwargs.get("dataset_version_id")
+        if dataset_version_id is None:
+            raise ValueError("dataset_version_id is required")
+        target_models = kwargs.get("target_models")
+        if target_models is None:
+            raise ValueError("target_models is required")
         try:
             bv_uuid = uuid.UUID(benchmark_version_id)
             dv_uuid = uuid.UUID(dataset_version_id)
@@ -194,7 +198,11 @@ class GetRunStatusTool(BaseTool):
         "required": ["execution_id"],
     }
 
-    def execute(self, db: Session, execution_id: str, **kwargs: Any) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        execution_id = kwargs.get("execution_id")
+        if execution_id is None:
+            raise ValueError("execution_id is required")
+
         try:
             exec_uuid = uuid.UUID(execution_id)
         except ValueError:

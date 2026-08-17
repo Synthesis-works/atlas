@@ -22,6 +22,7 @@ class HumanEvalMapper(BaseMapper):
                 extractor="code_block", normalizer="noop", judge="exact_match", metrics=["accuracy"]
             ),
             metadata={"entry_point": raw_record["entry_point"]},
+            dataset_version_id=None,
         )
 
 

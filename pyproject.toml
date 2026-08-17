@@ -3,7 +3,11 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["apps*", "packages*", "services*", "sdk*", "cli*"]
+include = ["apps*", "packages.execution_engine*", "packages.evaluation_engine*", "services*", "sdk*", "cli*", "atlas_db*"]
+exclude = [".venv*", "node_modules*", "atlas.egg-info*", ".pytest_cache*", "tests*"]
+
+[tool.setuptools.package-dir]
+"atlas_db" = "packages/database/atlas_db"
 
 [project]
 name = "atlas"
@@ -26,10 +30,13 @@ dependencies = [
     "pwdlib[argon2]>=0.2.0",
     "python-multipart>=0.0.6",
     "redis>=8.0.1",
+    "minio>=7.2.0",
+    "atlas-db",
     "stripe>=15.4.0",
     "razorpay>=2.0.1",
     "httpx>=0.28.1",
 ]
+
 
 [project.optional-dependencies]
 dev = [
@@ -53,11 +60,17 @@ ignore = ["E501", "B008", "E402", "SIM108", "F841", "W291", "W293", "N806", "N80
 minversion = "7.0"
 addopts = "-ra -q --cov=packages --cov=services"
 testpaths = [
-    "tests",
+    # execution-engine persistence tests (tests/execution/) must be run separately:
+    #   uv run pytest tests/execution -q
+    # They import packages.execution_engine.persistence.models which registers a
+    # second mapper for 'executions' table and corrupts the shared mapper registry.
+    "tests/backend",
+    "tests/benchmark",
     "packages/database/tests",
     "services/dataset/tests",
     "services/report/tests"
 ]
+
 pythonpath = [
     ".",
     "packages",

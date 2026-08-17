@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 from uuid import UUID
 
 from atlas_db.models.outbox import OutboxMessage
@@ -20,10 +21,17 @@ from packages.execution_engine.domain.events import (
     LeaseExpiredEvent,
 )
 
+from packages.evaluation_engine.domain.events import (
+    EvaluationCompletedEvent,
+    EvaluationStartedEvent,
+)
+
 logger = get_logger("OUTBOX")
 
 # Event Registry to map event types back to classes
-EVENT_REGISTRY: dict[str, type[DomainEvent]] = {
+from typing import Any
+
+EVENT_REGISTRY: dict[str, type[Any]] = {
     "ExecutionQueuedEvent": ExecutionQueuedEvent,
     "ExecutionStartedEvent": ExecutionStartedEvent,
     "LeaseExpiredEvent": LeaseExpiredEvent,
@@ -32,6 +40,8 @@ EVENT_REGISTRY: dict[str, type[DomainEvent]] = {
     "ExecutionFailedEvent": ExecutionFailedEvent,
     "ExecutionCompletedEvent": ExecutionCompletedEvent,
     "ExecutionCancelledEvent": ExecutionCancelledEvent,
+    "EvaluationStartedEvent": EvaluationStartedEvent,
+    "EvaluationCompletedEvent": EvaluationCompletedEvent,
 }
 
 
@@ -70,7 +80,7 @@ class OutboxDispatcher:
                 except ValueError:
                     pass
 
-        return event_cls(timestamp=occurred_at, **kwargs)
+        return cast(DomainEvent, event_cls(timestamp=occurred_at, **kwargs))
 
     def sweep(self) -> int:
         """

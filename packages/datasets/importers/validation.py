@@ -21,6 +21,7 @@ class ValidationImporter:
                 hidden_tests=tests.split("\n"),
                 evaluation=eval_conf,
                 metadata={"entry_point": name},
+                dataset_version_id=None,
             )
 
         self.tasks = [

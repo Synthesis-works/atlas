@@ -6,28 +6,29 @@ from sqlalchemy.orm import Session
 
 from apps.backend.authz import ProjectAuthorizationService
 from apps.backend.dependencies import get_current_user, get_db_session
-from apps.backend.schemas.evaluation import CapabilityProfileRead
+from apps.backend.schemas.evaluation import CapabilityProfileRead, EvaluationEnqueuedResponse
 from apps.backend.services.evaluation import EvaluationService
 
 router = APIRouter(prefix="/projects/{project_id}/executions/{execution_id}", tags=["evaluation"])
 
 
-@router.post("/evaluate", response_model=CapabilityProfileRead, status_code=status.HTTP_200_OK)
+@router.post(
+    "/evaluate", response_model=EvaluationEnqueuedResponse, status_code=status.HTTP_202_ACCEPTED
+)
 def evaluate_execution(
     project_id: uuid.UUID,
     execution_id: uuid.UUID,
-    force: bool = Query(False, description="Force recompute of the evaluation even if it exists"),
     db: Session = Depends(get_db_session),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Evaluates a completed execution synchronously.
+    Enqueues a background evaluation for a completed execution.
     Requires OWNER, ADMIN, or MEMBER roles on the project.
     """
     # 1. Authorize (Write operation so OWNER, ADMIN, MEMBER only)
     authz = ProjectAuthorizationService(db)
     if not authz.authorize_project_access(
-        current_user, project_id, required_roles=["OWNER", "ADMIN", "MEMBER"]
+        current_user, project_id, allowed_roles=["OWNER", "ADMIN", "MEMBER"]
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -45,12 +46,9 @@ def evaluate_execution(
         )
 
     try:
-        profile = eval_service.evaluate_execution(execution_id, force=force)
-        db.commit()
-        return profile
-    except HTTPException:
-        db.rollback()
-        raise
+        from apps.backend.worker.evaluation_tasks import run_evaluation_task
+
+        run_evaluation_task.delay(str(execution_id))
+        return EvaluationEnqueuedResponse(execution_id=execution_id)
     except Exception as e:
-        db.rollback()
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

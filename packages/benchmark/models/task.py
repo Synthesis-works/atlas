@@ -1,3 +1,4 @@
+import uuid
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -23,6 +24,9 @@ class EvaluationConfig(BaseModel):
 class Task(BaseModel):
     state: TaskState = Field(default=TaskState.IMPORTED, description="Current state of the task")
     task_id: str = Field(..., description="Unique identifier for the task")
+    dataset_version_id: uuid.UUID | None = Field(
+        None, description="Associated dataset version, if part of a dataset"
+    )
     title: str = Field(..., description="Title of the task")
     description: str = Field(..., description="Description of the task")
     input: Any = Field(..., description="Input data or prompt for the model")

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from atlas_db.models.dataset import DatasetLifecycle, DatasetStatus
+from atlas_db.models.dataset import DatasetLifecycle, DatasetStatus, DatasetExportState
 from pydantic import BaseModel, ConfigDict
 
 
@@ -47,5 +47,19 @@ class DatasetVersionRead(DatasetVersionBase):
     version_number: int
     created_at: datetime
     created_by_id: uuid.UUID | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DatasetExportResponse(BaseModel):
+    id: uuid.UUID
+    dataset_version_id: uuid.UUID
+    project_id: uuid.UUID
+    status: DatasetExportState
+    error_message: str | None = None
+    artifact_uri: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    created_by_id: uuid.UUID | None = None
 
     model_config = ConfigDict(from_attributes=True)

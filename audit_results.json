@@ -1,0 +1,91 @@
+{
+  "tasks_columns": [
+    [
+      "version_number",
+      "integer"
+    ],
+    [
+      "archived_at",
+      "timestamp with time zone"
+    ],
+    [
+      "benchmark_version_id",
+      "uuid"
+    ],
+    [
+      "order_index",
+      "integer"
+    ],
+    [
+      "id",
+      "uuid"
+    ],
+    [
+      "created_at",
+      "timestamp with time zone"
+    ],
+    [
+      "updated_at",
+      "timestamp with time zone"
+    ],
+    [
+      "created_by_id",
+      "uuid"
+    ],
+    [
+      "updated_by_id",
+      "uuid"
+    ],
+    [
+      "name",
+      "character varying"
+    ],
+    [
+      "description",
+      "character varying"
+    ]
+  ],
+  "er_columns": [
+    [
+      "version_number",
+      "integer"
+    ],
+    [
+      "task_id",
+      "uuid"
+    ],
+    [
+      "id",
+      "uuid"
+    ],
+    [
+      "created_at",
+      "timestamp with time zone"
+    ],
+    [
+      "updated_at",
+      "timestamp with time zone"
+    ],
+    [
+      "created_by_id",
+      "uuid"
+    ],
+    [
+      "updated_by_id",
+      "uuid"
+    ],
+    [
+      "archived_at",
+      "timestamp with time zone"
+    ],
+    [
+      "rule_definition",
+      "character varying"
+    ]
+  ],
+  "task_fk_dataset_version": [],
+  "task_check_constraint": [],
+  "alembic_version": [
+    "f98bddc0d5de"
+  ]
+}

@@ -22,10 +22,17 @@ class SearchMemoryTool(BaseTool):
         "required": ["query"],
     }
 
-    def __init__(self, semantic_store: SemanticMemoryStore = None):
+    def __init__(self, semantic_store: SemanticMemoryStore | None = None):
         self.semantic_store = semantic_store or SemanticMemoryStore()
 
-    def execute(self, db: Session, query: str, limit: int = 5, **kwargs: Any) -> Any:
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        query = kwargs.get("query")
+        if query is None:
+            raise ValueError("query is required")
+        limit = kwargs.get("limit")
+        if limit is None:
+            raise ValueError("limit is required")
+
         if not self.semantic_store.is_available:
             return {
                 "query": query,

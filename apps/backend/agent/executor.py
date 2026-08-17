@@ -27,7 +27,9 @@ class ToolExecutor:
 
         # Check permissions
         if not self.registry.check_permission(tool_name, task.granted_permissions):
-            err_msg = f"Task permission denied for tool '{tool_name}'. Required: {self.registry.get_tool(tool_name).required_permission.value}"
+            tool = self.registry.get_tool(tool_name)
+            req_perm = tool.required_permission.value if tool else "UNKNOWN"
+            err_msg = f"Task permission denied for tool '{tool_name}'. Required: {req_perm}"
             obs = ObservationRecord(
                 call_id=call_id, tool_name=tool_name, success=False, output=None, error=err_msg
             )

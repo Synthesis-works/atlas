@@ -3,6 +3,7 @@ import uuid
 from datetime import UTC, datetime
 
 from atlas_db.models.execution import Execution, ExecutionStatus
+from atlas_db.models.outbox import OutboxMessage
 from sqlalchemy.orm import Session
 
 from apps.backend.events.bus import (
@@ -123,12 +124,20 @@ class ExecutionWorker:
             )
             return
 
-        # 4. Trigger completion event downstream
-        self.event_bus.emit(
-            ExecutionCompleted(
-                execution_id=execution_id,
-                aggregate_id=execution_id,
-                correlation_id=correlation_id,
-                event_time=datetime.now(UTC),
-            )
+        # 4. Trigger completion event downstream natively via Outbox
+        outbox_msg = OutboxMessage(
+            event_id=uuid.uuid4(),
+            aggregate_id=execution_id,
+            aggregate_type="Execution",
+            event_type="ExecutionCompletedEvent",
+            event_version=1,
+            schema_version=1,
+            payload={"execution_id": str(execution_id), "attempt_id": str(uuid.uuid4())},
+            trace_context={
+                "trace_id": str(correlation_id) if correlation_id else "",
+                "correlation_id": str(correlation_id) if correlation_id else "",
+            },
+            occurred_at=datetime.now(UTC),
         )
+        self.db.add(outbox_msg)
+        self.db.commit()

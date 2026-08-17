@@ -59,7 +59,8 @@ class GeminiAgentProvider(BaseLLMProvider):
         for attempt in range(max_internal_attempts + 1):
             try:
                 response = self.client.generate(self.model, prompt, tools=tools_payload)
-                raw_candidate = response.raw.get("candidates", [{}])[0]
+                raw = response.raw or {}
+                raw_candidate = raw.get("candidates", [{}])[0]
                 parts = raw_candidate.get("content", {}).get("parts", [])
 
                 for part in parts:
@@ -109,3 +110,6 @@ class GeminiAgentProvider(BaseLLMProvider):
                     type=AgentDecisionType.FAIL,
                     error_message=f"Gemini provider decision failed: {str(e)}",
                 )
+        return AgentDecision(
+            type=AgentDecisionType.FAIL, error_message="Exhausted task execution loop"
+        )

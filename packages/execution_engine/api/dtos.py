@@ -14,9 +14,12 @@ class ArtifactResponse(BaseModel):
 
 class ExecutionAttemptResponse(BaseModel):
     id: uuid.UUID
-    attempt_number: int
-    status: AttemptStatus
-    started_at: datetime
+    run_id: uuid.UUID
+    task_id: uuid.UUID
+    worker_id: uuid.UUID | None
+    status: str
+    target_model: str | None = None
+    started_at: datetime | None
     finished_at: datetime | None
     error_message: str | None
     artifacts: list[ArtifactResponse]
