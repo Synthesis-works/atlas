@@ -87,6 +87,9 @@ class Execution(Base, BaseMixin):
     benchmark_version_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("benchmark_versions.id"), nullable=False, index=True
     )
+    dataset_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("dataset_versions.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     submitted_by_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("organization_members.id"), nullable=True, index=True
     )

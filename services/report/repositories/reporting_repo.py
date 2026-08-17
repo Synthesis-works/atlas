@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from atlas_db.models.authoring import Benchmark, BenchmarkVersion
+from atlas_db.models.reporting import Report, ReportMetric, ReportVersion
 from atlas_db.models.tasks import TestCase
 from atlas_db.models.evaluation import CapabilityProfile, EvaluationResult
 from atlas_db.models.execution import Execution as AtlasRun, ExecutionStatus, ModelOutput
@@ -234,3 +235,49 @@ class ReportingRepository:
             .where(AtlasRun.id == run_id)
         )
         return list(self.db.execute(stmt))  # type: ignore
+
+    def get_report_export(
+        self, run_id: UUID
+    ) -> (
+        tuple[
+            AtlasRun,
+            ReportVersion | None,
+            Report | None,
+            BenchmarkVersion | None,
+            Benchmark | None,
+            list[ReportMetric],
+        ]
+        | None
+    ):
+        """Resolve the persisted report artifact for an execution run.
+
+        Returns the Execution, its latest ReportVersion (if any), the Report it
+        belongs to, the resolved BenchmarkVersion/Benchmark (if the execution's
+        benchmark_version_id points at a real row), and the version's metrics.
+        Returns None when the execution itself does not exist.
+        """
+        execution = self.db.get(AtlasRun, run_id)
+        if not execution:
+            return None
+
+        report_version = (
+            self.db.query(ReportVersion)
+            .filter(ReportVersion.execution_id == run_id)
+            .order_by(desc(ReportVersion.created_at))
+            .first()
+        )
+
+        report = None
+        if report_version:
+            report = self.db.get(Report, report_version.report_id)
+
+        benchmark_version = None
+        benchmark = None
+        if execution.benchmark_version_id:
+            benchmark_version = self.db.get(BenchmarkVersion, execution.benchmark_version_id)
+            if benchmark_version:
+                benchmark = self.db.get(Benchmark, benchmark_version.benchmark_id)
+
+        metrics = list(report_version.metrics) if report_version else []
+
+        return execution, report_version, report, benchmark_version, benchmark, metrics

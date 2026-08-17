@@ -30,6 +30,12 @@ const DatasetsPage = lazy(() => import('@/features/datasets/page/DatasetsPage'))
 const WorkspaceSection = lazy(() => import('@/pages/workspace/WorkspaceSection'));
 const WorkspaceNotFound = lazy(() => import('@/pages/workspace/WorkspaceNotFound'));
 
+/* Agent Workspace */
+const AgentLayout = lazy(() => import('@/pages/workspace/agent/AgentLayout'));
+const AgentDashboard = lazy(() => import('@/pages/workspace/agent/AgentDashboard'));
+const AgentWorkspaceRun = lazy(() => import('@/pages/workspace/agent/AgentWorkspaceRun'));
+const AgentReportPage = lazy(() => import('@/pages/workspace/agent/AgentReportPage'));
+
 class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean; error: Error | null }> {
   state: { hasError: boolean; error: Error | null } = { hasError: false, error: null };
 
@@ -105,6 +111,12 @@ function AppRoutes() {
           <Route path="reports" element={<Suspense fallback={<WorkspaceSection title="Reports" description="View and compare evaluation reports." />}><WorkspaceSection title="Reports" description="View and compare evaluation reports." /></Suspense>} />
           <Route path="leaderboard" element={<Suspense fallback={<WorkspaceSection title="Leaderboard" description="Compare model rankings across capabilities." />}><WorkspaceSection title="Leaderboard" description="Compare model rankings across capabilities." /></Suspense>} />
           <Route path="settings" element={<Suspense fallback={<WorkspaceSection title="Settings" description="Configure your Workspace preferences." />}><WorkspaceSection title="Settings" description="Configure your Workspace preferences." /></Suspense>} />
+{/* Agent Workspace Routes */}
+          <Route path="agent" element={<Suspense fallback={<PageLoader />}><AgentLayout /></Suspense>}>
+            <Route index element={<Suspense fallback={<PageLoader />}><AgentDashboard /></Suspense>} />
+            <Route path="run/:taskId" element={<Suspense fallback={<PageLoader />}><AgentWorkspaceRun /></Suspense>} />
+            <Route path="report/:reportId" element={<Suspense fallback={<PageLoader />}><AgentReportPage /></Suspense>} />
+          </Route>
           <Route path="*" element={<Suspense fallback={<PageLoader />}><WorkspaceNotFound /></Suspense>} />
         </Route>
       </Route>

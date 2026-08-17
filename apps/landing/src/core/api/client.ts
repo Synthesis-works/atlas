@@ -39,6 +39,8 @@ const getBaseUrl = (): string => {
   return 'http://localhost:8000';
 };
 
+export const getApiBaseUrl = getBaseUrl;
+
 export const getAuthToken = (): string | null => {
   try {
     return localStorage.getItem('atlas_token');

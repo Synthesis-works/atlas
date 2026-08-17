@@ -39,12 +39,14 @@ class ExecutionService:
         self,
         execution_id: uuid.UUID,
         benchmark_version_id: uuid.UUID,
+        dataset_version_id: uuid.UUID,
         submitted_by: uuid.UUID,
         target_model: str = "gemini-2.5-flash",
     ) -> Execution:
         execution = Execution(
             id=execution_id,
             benchmark_version_id=benchmark_version_id,
+            dataset_version_id=dataset_version_id,
             created_by=submitted_by,
             target_model=target_model,
             status=ExecutionState.QUEUED,

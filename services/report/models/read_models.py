@@ -132,3 +132,50 @@ class RunExportRowRead(BaseModel):
     passed: bool = False
     confidence: float | None = None
     failure_reasons: list[str] | None = None
+
+
+#
+# Report Export Read Models
+# A machine-readable representation of the persisted report artifact the user
+# sees on the Report page, plus the execution/benchmark context that produced it.
+#
+
+
+class ReportExportReportRead(BaseModel):
+    report_id: UUID
+    title: str
+    version: str
+    summary: str | None = None
+    created_at: datetime | None = None
+    status: str = "published"
+
+
+class ReportExportExecutionRead(BaseModel):
+    id: UUID
+    status: str | None = None
+    target_model: str | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    duration_seconds: float | None = None
+    steps: int | None = None
+    tool_calls: int | None = None
+    provider_chain: list[str] = Field(default_factory=list)
+
+
+class ReportExportBenchmarkRead(BaseModel):
+    id: UUID
+    name: str | None = None
+    version: str | None = None
+
+
+class ReportMetricExportRead(BaseModel):
+    metric_name: str
+    metric_value: float
+
+
+class ReportExportRead(BaseModel):
+    report: ReportExportReportRead | None = None
+    execution: ReportExportExecutionRead | None = None
+    benchmark: ReportExportBenchmarkRead | None = None
+    metrics: list[ReportMetricExportRead] = Field(default_factory=list)
+    results: list[RunExportRowRead] = Field(default_factory=list)

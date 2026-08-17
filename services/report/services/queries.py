@@ -9,6 +9,11 @@ from ..models.read_models import (
     LeaderboardEntryRead,
     LeaderboardRead,
     PaginatedReportRunsRead,
+    ReportExportBenchmarkRead,
+    ReportExportExecutionRead,
+    ReportExportRead,
+    ReportExportReportRead,
+    ReportMetricExportRead,
     ReportRunEntryRead,
     ReportRunsFilter,
     ReportRunStatus,
@@ -194,6 +199,87 @@ class RunQueryService:
             results.append(row)
 
         return results
+
+    def get_report_export(
+        self,
+        run_id: uuid.UUID,
+        include_prompt: bool = False,
+        include_expected_output: bool = False,
+        execution_meta: dict | None = None,
+    ) -> ReportExportRead | None:
+        """Build a machine-readable export of the persisted report artifact.
+
+        Composes the ReportVersion/Report metadata, the Execution context,
+        resolved Benchmark linkage, metrics and (when present) per-case rows.
+        ``execution_meta`` optionally carries truthful agent-run context
+        (steps, tool calls, provider chain, duration) for executions that were
+        driven by an in-memory agent task; fields are only applied when present.
+        """
+        data = self.repo.get_report_export(run_id)
+        if not data:
+            return None
+
+        execution, report_version, report, benchmark_version, benchmark, metrics = data
+
+        duration_seconds = None
+        if execution.started_at and execution.completed_at:
+            delta = execution.completed_at - execution.started_at
+            duration_seconds = delta.total_seconds()
+
+        report_read = None
+        if report_version:
+            report_read = ReportExportReportRead(
+                report_id=report_version.id,
+                title=report.name if report else "Benchmark Report",
+                version=report_version.version_string,
+                summary=report_version.summary,
+                created_at=report_version.created_at,
+                status="published",
+            )
+
+        execution_read = ReportExportExecutionRead(
+            id=execution.id,
+            status=execution.status.value,
+            target_model=execution.target_model,
+            started_at=execution.started_at,
+            completed_at=execution.completed_at,
+            duration_seconds=duration_seconds,
+        )
+
+        if execution_meta:
+            if execution_meta.get("steps") is not None:
+                execution_read.steps = execution_meta["steps"]
+            if execution_meta.get("tool_calls") is not None:
+                execution_read.tool_calls = execution_meta["tool_calls"]
+            if execution_meta.get("provider_chain"):
+                execution_read.provider_chain = list(execution_meta["provider_chain"])
+            if execution_meta.get("duration_seconds") is not None:
+                execution_read.duration_seconds = execution_meta["duration_seconds"]
+            if execution_meta.get("status") is not None:
+                execution_read.status = execution_meta["status"]
+
+        benchmark_read = None
+        if benchmark_version:
+            benchmark_read = ReportExportBenchmarkRead(
+                id=benchmark_version.benchmark_id,
+                name=benchmark.name if benchmark else None,
+                version=benchmark_version.version_string,
+            )
+
+        metric_reads = [
+            ReportMetricExportRead(metric_name=m.metric_name, metric_value=m.metric_value)
+            for m in metrics
+        ]
+
+        results = self.get_run_export_data(run_id, include_prompt, include_expected_output)
+
+        return ReportExportRead(
+            report=report_read,
+            execution=execution_read,
+            benchmark=benchmark_read,
+            metrics=metric_reads,
+            results=results,
+        )
 
 
 class LeaderboardQueryService:

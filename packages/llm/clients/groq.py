@@ -64,6 +64,9 @@ class GroqClient(BaseLLMClient):
             "stream": False,
         }
 
+        if "tools" in kwargs and kwargs["tools"]:
+            payload["tools"] = kwargs["tools"]
+
         start_time = time.time()
         try:
             with httpx.Client(timeout=30.0) as client:
@@ -78,7 +81,7 @@ class GroqClient(BaseLLMClient):
             if "choices" not in data or not data["choices"]:
                 raise LLMError("No choices returned from Groq.")
 
-            text = data["choices"][0]["message"]["content"]
+            text = data["choices"][0]["message"].get("content") or ""
             usage = data.get("usage", {})
             prompt_tokens = usage.get("prompt_tokens", 0)
             completion_tokens = usage.get("completion_tokens", 0)
