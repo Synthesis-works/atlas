@@ -59,13 +59,21 @@ class EvaluationAppService:
             logger.error("Execution not found for evaluation", execution_id=str(execution_id))
             return
 
-        benchmark_version = self.session.query(BenchmarkVersion).filter(BenchmarkVersion.id == execution.benchmark_version_id).first()
+        benchmark_version = (
+            self.session.query(BenchmarkVersion)
+            .filter(BenchmarkVersion.id == execution.benchmark_version_id)
+            .first()
+        )
         if not benchmark_version or not benchmark_version.evaluation_strategy_id:
             logger.error("No strategy attached to execution", execution_id=str(execution.id))
             return
 
         strategy_version_id = benchmark_version.evaluation_strategy_id
-        strategy_version = self.session.query(EvaluationStrategyVersion).filter(EvaluationStrategyVersion.id == strategy_version_id).first()
+        strategy_version = (
+            self.session.query(EvaluationStrategyVersion)
+            .filter(EvaluationStrategyVersion.id == strategy_version_id)
+            .first()
+        )
         if not strategy_version:
             logger.error("Strategy configuration missing", execution_id=str(execution.id))
             return
@@ -80,14 +88,18 @@ class EvaluationAppService:
             evaluator, scorer, _ = self.registry.resolve(strategy_type)
 
             if not execution.model_outputs:
-                logger.warning("Execution has no outputs to evaluate", execution_id=str(execution_id))
+                logger.warning(
+                    "Execution has no outputs to evaluate", execution_id=str(execution_id)
+                )
                 return
 
             # 3. Measurement & Scoring Phase
             context = EvaluatorContext(
                 execution_id=execution_id,
                 benchmark_version=benchmark_version.version_string,
-                dataset_version=str(benchmark_version.primary_dataset_version_id) if benchmark_version.primary_dataset_version_id else "unknown",
+                dataset_version=str(benchmark_version.primary_dataset_version_id)
+                if benchmark_version.primary_dataset_version_id
+                else "unknown",
                 environment="prod",
             )
             evaluator.prepare(context)
@@ -126,7 +138,9 @@ class EvaluationAppService:
             self.session.flush()
 
             # Create ONE Capability Profile for the execution using the first evaluation_id as the anchor
-            final_score = overall_score_total / len(evaluation_results) if evaluation_results else 0.0
+            final_score = (
+                overall_score_total / len(evaluation_results) if evaluation_results else 0.0
+            )
             db_profile = CapabilityProfile(
                 execution_id=execution_id,
                 evaluation_id=evaluation_results[0].id,

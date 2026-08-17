@@ -8,12 +8,15 @@ from packages.datasets.services.export_service import DatasetExportService
 
 logger = structlog.get_logger(__name__)
 
+
 class ExportActionService:
     def __init__(self, db: Session, dataset_export_service: DatasetExportService):
         self.db = db
         self.export_service = dataset_export_service
 
-    def schedule_export(self, dataset_version_id: uuid.UUID, project_id: uuid.UUID, user_id: uuid.UUID | None = None) -> DatasetExportAction:
+    def schedule_export(
+        self, dataset_version_id: uuid.UUID, project_id: uuid.UUID, user_id: uuid.UUID | None = None
+    ) -> DatasetExportAction:
         """
         Creates (or retrieves an existing pending/running) export action.
         This provides strict idempotency bounds on duplicated asynchronous requests.
@@ -35,12 +38,21 @@ class ExportActionService:
             return action
         except sqlalchemy.exc.IntegrityError:
             self.db.rollback()
-            active_action = self.db.query(DatasetExportAction).filter(
-                DatasetExportAction.dataset_version_id == dataset_version_id,
-                DatasetExportAction.status.in_([DatasetExportState.PENDING, DatasetExportState.RUNNING])
-            ).first()
+            active_action = (
+                self.db.query(DatasetExportAction)
+                .filter(
+                    DatasetExportAction.dataset_version_id == dataset_version_id,
+                    DatasetExportAction.status.in_(
+                        [DatasetExportState.PENDING, DatasetExportState.RUNNING]
+                    ),
+                )
+                .first()
+            )
             if active_action:
-                logger.info("Retrieved existing active DatasetExportAction via constraint", action_id=str(active_action.id))
+                logger.info(
+                    "Retrieved existing active DatasetExportAction via constraint",
+                    action_id=str(active_action.id),
+                )
                 return active_action
 
             action.status = DatasetExportState.FAILED
@@ -51,21 +63,29 @@ class ExportActionService:
         """
         Execution abstraction converting a background Task state effectively gracefully natively.
         """
-        action = self.db.query(DatasetExportAction).filter(DatasetExportAction.id == action_id).first()
+        action = (
+            self.db.query(DatasetExportAction).filter(DatasetExportAction.id == action_id).first()
+        )
         if not action:
             logger.warning("DatasetExportAction missing", action_id=str(action_id))
             return
 
         # Do not override currently running or completed structurally safely mapping
         if action.status not in (DatasetExportState.PENDING, DatasetExportState.FAILED):
-            logger.warning("DatasetExportAction invalid transition", action_id=str(action_id), status=action.status)
+            logger.warning(
+                "DatasetExportAction invalid transition",
+                action_id=str(action_id),
+                status=action.status,
+            )
             return
 
         action.status = DatasetExportState.RUNNING
         self.db.commit()
 
         try:
-            uri = self.export_service.export_dataset(dataset_version_id=action.dataset_version_id, format_name="jsonl")
+            uri = self.export_service.export_dataset(
+                dataset_version_id=action.dataset_version_id, format_name="jsonl"
+            )
 
             action.artifact_uri = uri
             action.status = DatasetExportState.COMPLETED
@@ -76,5 +96,7 @@ class ExportActionService:
             action.status = DatasetExportState.FAILED
             action.error_message = str(e)
             self.db.commit()
-            logger.error("DatasetExportAction failed", action_id=str(action_id), error=str(e), exc_info=True)
+            logger.error(
+                "DatasetExportAction failed", action_id=str(action_id), error=str(e), exc_info=True
+            )
             raise e

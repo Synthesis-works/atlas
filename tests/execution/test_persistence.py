@@ -26,12 +26,19 @@ import atlas_db.models  # noqa: F401
 import packages.execution_engine.persistence.models  # noqa: F401
 from atlas_db.models.authoring import Benchmark, BenchmarkVersion
 from atlas_db.models.core import Organization, Project, User
-from packages.execution_engine.persistence.models import ExecutionModel, ExecutionAttemptModel, LeaseModel, ArtifactModel
+from packages.execution_engine.persistence.models import (
+    ExecutionModel,
+    ExecutionAttemptModel,
+    LeaseModel,
+    ArtifactModel,
+)
 
 # Try connecting to Postgres if available, else SQLite
 import os
 
-DB_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/test_execution_db")
+DB_URL = os.getenv(
+    "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/test_execution_db"
+)
 try:
     engine = create_engine(DB_URL)
     with engine.connect() as conn:
@@ -46,6 +53,7 @@ SessionLocal = sessionmaker(bind=engine)
 from alembic import command
 from alembic.config import Config
 import sqlalchemy as sa
+
 
 @pytest.fixture(scope="module")
 def setup_database():
@@ -81,11 +89,8 @@ def _truncate_execution_tables():
     ]
     with engine.connect() as conn:
         # CASCADE handles FK ordering automatically
-        conn.execute(sa.text(
-            f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"
-        ))
+        conn.execute(sa.text(f"TRUNCATE {', '.join(tables)} RESTART IDENTITY CASCADE"))
         conn.commit()
-
 
 
 @pytest.fixture

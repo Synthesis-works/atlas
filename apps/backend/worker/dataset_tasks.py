@@ -41,8 +41,7 @@ def run_dataset_export_task(self, export_action_id_str: str, correlation_id: str
 
             # Wire up safely
             export_service = DatasetExportService(
-                extraction_service=extraction_service,
-                artifact_store=artifact_store
+                extraction_service=extraction_service, artifact_store=artifact_store
             )
             action_service = ExportActionService(db, export_service)
 
@@ -54,7 +53,13 @@ def run_dataset_export_task(self, export_action_id_str: str, correlation_id: str
         )
         with SessionLocal() as db:
             from atlas_db.models.dataset import DatasetExportAction
-            action = db.query(DatasetExportAction).filter_by(id=export_action_id).with_for_update().first() # Explicit raw fallback
+
+            action = (
+                db.query(DatasetExportAction)
+                .filter_by(id=export_action_id)
+                .with_for_update()
+                .first()
+            )  # Explicit raw fallback
             if action and str(action.status.value).lower() in ("pending", "running"):
                 action.status = "failed"
                 action.error_message = "SoftTimeLimitExceeded"

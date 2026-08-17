@@ -67,7 +67,7 @@ def test_get_benchmarks_catalog_contract():
     assert "success" in payload, "Response payload missing 'success' key"
     assert payload["success"] is True, "Expected success: true"
     assert "data" in payload, "Response payload missing 'data' key"
-    
+
     data_env = payload["data"]
     assert "items" in data_env, "PageResponse missing 'items' key"
     benchmarks = data_env["items"]
@@ -80,7 +80,7 @@ def test_get_benchmarks_catalog_contract():
         assert "name" in item, "Benchmark item missing 'name'"
         assert "project_id" in item, "Benchmark item missing 'project_id'"
         assert "state" in item, "Benchmark item missing 'state'"
-        
+
         # Verify ID is a valid UUID
         try:
             val = uuid.UUID(item["id"])
@@ -92,4 +92,6 @@ def test_get_benchmarks_catalog_contract():
 def test_get_benchmark_detail_invalid_uuid_returns_422_or_404():
     """Verify GET /api/v1/benchmarks/{id} rejects non-UUID strings."""
     response = client.get("/api/v1/benchmarks/invalid-slug-string")
-    assert response.status_code in [404, 422], f"Expected 404 or 422 for non-UUID string, got {response.status_code}"
+    assert response.status_code in [404, 422], (
+        f"Expected 404 or 422 for non-UUID string, got {response.status_code}"
+    )

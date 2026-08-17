@@ -1,6 +1,8 @@
 import sys
 
-file_path = 'packages/database/alembic/versions/f20ab7bfab93_add_missing_evaluation_strategy_id_and_.py'
+file_path = (
+    "packages/database/alembic/versions/f20ab7bfab93_add_missing_evaluation_strategy_id_and_.py"
+)
 with open(file_path) as f:
     content = f.read()
 
@@ -15,5 +17,5 @@ replacement_downgrade = "    with op.batch_alter_table('dataset_versions', schem
 content = content.replace(target_upgrade, replacement_upgrade)
 content = content.replace(target_downgrade, replacement_downgrade)
 
-with open(file_path, 'w') as f:
+with open(file_path, "w") as f:
     f.write(content)

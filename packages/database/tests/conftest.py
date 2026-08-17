@@ -6,9 +6,11 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.dialects.postgresql import JSONB, ENUM
 
+
 @compiles(JSONB, "sqlite")
 def compile_jsonb(type_, compiler, **kw):
     return "JSON"
+
 
 @compiles(ENUM, "sqlite")
 def compile_enum(type_, compiler, **kw):
@@ -31,6 +33,7 @@ def engine():
 @pytest.fixture(scope="session")
 def init_db(engine):
     import packages.database.atlas_db.models  # Ensure all models are registered
+
     Base.metadata.create_all(engine)
     yield
     # No need to drop_all for an in-memory DB; avoids SQLite cyclic drop issues

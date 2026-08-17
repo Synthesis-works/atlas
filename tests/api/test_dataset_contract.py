@@ -35,7 +35,9 @@ def override_dataset_dependencies():
 
     mock_service = MagicMock()
     mock_service.list_datasets.return_value = [dataset_domain]
-    mock_service.get_dataset.side_effect = lambda ds_id: dataset_domain if ds_id == sample_dataset_id else None
+    mock_service.get_dataset.side_effect = lambda ds_id: (
+        dataset_domain if ds_id == sample_dataset_id else None
+    )
     mock_service.create_dataset.side_effect = lambda project_id, user_id, data: Dataset(
         id=uuid.uuid4(),
         project_id=project_id,
@@ -57,24 +59,23 @@ def override_dataset_dependencies():
     )
 
     from apps.backend.authz import get_project_authz_service
-    
+
     mock_authz = MagicMock()
     # Mock authorize_project_access to return a mock member instance with id
     mock_member = MagicMock()
     mock_member.id = uuid.uuid4()
     mock_authz.authorize_project_access.return_value = mock_member
-    
+
     app.dependency_overrides[get_db_session] = lambda: MagicMock()
     app.dependency_overrides[require_authenticated] = lambda: mock_claims
     app.dependency_overrides[get_dataset_service] = lambda: mock_service
     app.dependency_overrides[get_project_authz_service] = lambda: mock_authz
-    
+
     yield
     app.dependency_overrides.pop(get_db_session, None)
     app.dependency_overrides.pop(require_authenticated, None)
     app.dependency_overrides.pop(get_dataset_service, None)
     app.dependency_overrides.pop(get_project_authz_service, None)
-
 
 
 def test_get_datasets_catalog_contract():
@@ -84,7 +85,7 @@ def test_get_datasets_catalog_contract():
     datasets = response.json()
     assert isinstance(datasets, list), "Expected response to be a list"
     assert len(datasets) >= 1, "Expected at least 1 dataset"
-    
+
     ds = datasets[0]
     assert "id" in ds, "Dataset missing 'id'"
     assert "name" in ds, "Dataset missing 'name'"
@@ -95,7 +96,9 @@ def test_get_datasets_catalog_contract():
 def test_get_dataset_by_id_contract():
     """Verify GET /api/v1/datasets/{dataset_id} returns DatasetRead DTO."""
     valid_id = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-    response = client.get(f"/api/v1/projects/11111111-2222-3333-4444-555555555555/datasets/{valid_id}")
+    response = client.get(
+        f"/api/v1/projects/11111111-2222-3333-4444-555555555555/datasets/{valid_id}"
+    )
     assert response.status_code == 200, f"Expected 200, got {response.status_code}"
     ds = response.json()
     assert ds["id"] == valid_id
@@ -105,13 +108,17 @@ def test_get_dataset_by_id_contract():
 def test_get_dataset_not_found_returns_404():
     """Verify GET /api/v1/datasets/{non_existent_id} returns 404 Not Found."""
     random_id = str(uuid.uuid4())
-    response = client.get(f"/api/v1/projects/11111111-2222-3333-4444-555555555555/datasets/{random_id}")
+    response = client.get(
+        f"/api/v1/projects/11111111-2222-3333-4444-555555555555/datasets/{random_id}"
+    )
     assert response.status_code == 404, f"Expected 404, got {response.status_code}"
 
 
 def test_get_dataset_invalid_uuid_returns_422():
     """Verify GET /api/v1/datasets/invalid-uuid returns 422 Unprocessable Entity."""
-    response = client.get("/api/v1/projects/11111111-2222-3333-4444-555555555555/datasets/invalid-uuid")
+    response = client.get(
+        "/api/v1/projects/11111111-2222-3333-4444-555555555555/datasets/invalid-uuid"
+    )
     assert response.status_code == 422, f"Expected 422 for invalid UUID, got {response.status_code}"
 
 
@@ -122,9 +129,10 @@ def test_post_global_dataset_creation_contract():
         "description": "GSM8K evaluation math prompts",
         "is_public": True,
     }
-    response = client.post("/api/v1/projects/11111111-2222-3333-4444-555555555555/datasets", json=payload)
+    response = client.post(
+        "/api/v1/projects/11111111-2222-3333-4444-555555555555/datasets", json=payload
+    )
     assert response.status_code == 201, f"Expected 201, got {response.status_code}"
     ds = response.json()
     assert ds["name"] == "Custom Math Benchmark Dataset"
     assert "id" in ds
-

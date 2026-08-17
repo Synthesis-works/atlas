@@ -132,15 +132,12 @@ class ExecutionWorker:
             event_type="ExecutionCompletedEvent",
             event_version=1,
             schema_version=1,
-            payload={
-                "execution_id": str(execution_id),
-                "attempt_id": str(uuid.uuid4())
-            },
+            payload={"execution_id": str(execution_id), "attempt_id": str(uuid.uuid4())},
             trace_context={
                 "trace_id": str(correlation_id) if correlation_id else "",
-                "correlation_id": str(correlation_id) if correlation_id else ""
+                "correlation_id": str(correlation_id) if correlation_id else "",
             },
-            occurred_at=datetime.now(UTC)
+            occurred_at=datetime.now(UTC),
         )
         self.db.add(outbox_msg)
         self.db.commit()

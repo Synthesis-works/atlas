@@ -3,13 +3,19 @@ from unittest.mock import Mock, patch
 
 import pytest
 from atlas_db.models.authoring import BenchmarkVersion
-from atlas_db.models.evaluation import EvaluationStrategy, EvaluationStrategyVersion, CapabilityProfile, EvaluationResult
+from atlas_db.models.evaluation import (
+    EvaluationStrategy,
+    EvaluationStrategyVersion,
+    CapabilityProfile,
+    EvaluationResult,
+)
 from atlas_db.models.execution import Execution, ModelOutput, ExecutionStatus
 
 from packages.evaluation_engine.application.service import EvaluationAppService
 from packages.evaluation_engine.domain.registry import EvaluationRegistry
 from packages.evaluation_engine.infrastructure.artifact_store import LocalArtifactStore
 from packages.execution_engine.application.subscribers import CompositeEventPublisher
+
 
 def test_evaluation_app_service_evaluate_execution():
     from atlas_db.core.session import SessionLocal
@@ -26,20 +32,14 @@ def test_evaluation_app_service_evaluate_execution():
 
     # Setup the Execution Object
     mock_execution = Execution(
-        id=uuid.uuid4(),
-        benchmark_version_id=uuid.uuid4(),
-        status=ExecutionStatus.COMPLETED
+        id=uuid.uuid4(), benchmark_version_id=uuid.uuid4(), status=ExecutionStatus.COMPLETED
     )
 
     mock_output1 = ModelOutput(
-        id=uuid.uuid4(),
-        execution_id=mock_execution.id,
-        raw_output='{"exact_match": true}'
+        id=uuid.uuid4(), execution_id=mock_execution.id, raw_output='{"exact_match": true}'
     )
     mock_output2 = ModelOutput(
-        id=uuid.uuid4(),
-        execution_id=mock_execution.id,
-        raw_output='{"exact_match": false}'
+        id=uuid.uuid4(), execution_id=mock_execution.id, raw_output='{"exact_match": false}'
     )
     mock_execution.model_outputs = [mock_output1, mock_output2]
 
@@ -49,7 +49,7 @@ def test_evaluation_app_service_evaluate_execution():
     mock_benchmark_version = BenchmarkVersion(
         id=mock_execution.benchmark_version_id,
         evaluation_strategy_id=mock_strategy_version.id,
-        version_string="1.0"
+        version_string="1.0",
     )
 
     def mock_query_side_effect(model):
@@ -70,27 +70,26 @@ def test_evaluation_app_service_evaluate_execution():
         session=mock_session,
         registry=mock_registry,
         artifact_store=LocalArtifactStore(),
-        event_publisher=mock_publisher
+        event_publisher=mock_publisher,
     )
 
     from packages.evaluation_engine.domain.evaluator import RawMeasurements
-    from packages.evaluation_engine.domain.scoring import CapabilityProfile as DomainCapabilityProfile
+    from packages.evaluation_engine.domain.scoring import (
+        CapabilityProfile as DomainCapabilityProfile,
+    )
 
     # configure Mocks
     mock_evaluator.evaluate.return_value = RawMeasurements({"exact_match": True, "latency": 150})
     mock_scorer.score.return_value = DomainCapabilityProfile(
-        scores={"Reasoning": 100.0},
-        overall_score=100.0,
-        explanation={"overall": 100}
+        scores={"Reasoning": 100.0}, overall_score=100.0, explanation={"overall": 100}
     )
 
     service.evaluate_execution(mock_execution.id)
 
-    assert mock_session.add.call_count == 4 # 2 Results + 1 Profile + 1 Artifact
+    assert mock_session.add.call_count == 4  # 2 Results + 1 Profile + 1 Artifact
 
     # Verify the registry was resolved with the correct DB type
     mock_registry.resolve.assert_called_once_with("exact_match")
 
     # Verify Evaluator was invoked per model output
     assert mock_evaluator.evaluate.call_count == 2
-

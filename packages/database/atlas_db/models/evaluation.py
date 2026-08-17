@@ -138,8 +138,11 @@ class CapabilityProfile(Base, BaseMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint("execution_id", "strategy_version_id", name="uq_capability_profile_execution_strategy"),
+        UniqueConstraint(
+            "execution_id", "strategy_version_id", name="uq_capability_profile_execution_strategy"
+        ),
     )
+
 
 class CapabilityScore(Base, BaseMixin):
     __tablename__ = "capability_scores"

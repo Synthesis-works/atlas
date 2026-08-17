@@ -102,7 +102,7 @@ def test_post_execution_dispatch_contract():
     )
 
     assert response.status_code in [200, 201], f"Expected 200 or 201, got {response.status_code}"
-    
+
     exec_data = response.json()
     assert "id" in exec_data, "Execution payload missing 'id'"
     assert "status" in exec_data, "Execution payload missing 'status'"
@@ -131,7 +131,9 @@ def test_post_execution_idempotency():
 
     assert res1.status_code in [200, 201]
     assert res2.status_code in [200, 201]
-    assert res1.json()["id"] == res2.json()["id"], "Idempotent requests should yield the same execution ID"
+    assert res1.json()["id"] == res2.json()["id"], (
+        "Idempotent requests should yield the same execution ID"
+    )
 
 
 def test_post_execution_cancellation_contract():

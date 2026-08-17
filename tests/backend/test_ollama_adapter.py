@@ -3,6 +3,7 @@ from unittest.mock import patch, MagicMock
 from apps.backend.adapters.ollama import OllamaAdapter
 import urllib.error
 
+
 @pytest.fixture
 def adapter():
     with patch("apps.backend.adapters.ollama.settings") as mock_settings:
@@ -10,6 +11,7 @@ def adapter():
         mock_settings.ollama_default_model = "llama3.2:1b"
         mock_settings.ollama_timeout = 5
         yield OllamaAdapter(target_model="llama3.2:1b")
+
 
 @patch("urllib.request.urlopen")
 def test_ollama_predict_success(mock_urlopen, adapter):
@@ -24,14 +26,16 @@ def test_ollama_predict_success(mock_urlopen, adapter):
     assert result.token_usage == 14
     assert result.latency_ms >= 0
 
+
 @patch("urllib.request.urlopen")
 def test_ollama_predict_timeout(mock_urlopen, adapter):
     mock_urlopen.side_effect = urllib.error.URLError("Timeout")
-    
+
     result = adapter.predict("say hi")
     assert "Error: Could not reach Ollama" in result.output_text
     assert result.token_usage == 0
     assert result.latency_ms >= 0
+
 
 @patch("urllib.request.urlopen")
 @patch("apps.backend.adapters.ollama.settings")

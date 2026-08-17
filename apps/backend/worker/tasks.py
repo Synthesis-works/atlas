@@ -93,7 +93,11 @@ def outbox_sweep_task(self):
             # Note: We construct a CompositeEventPublisher here.
             # In a real DI container this would be injected.
             publisher = CompositeEventPublisher(
-                subscribers=[ExecutionQueuedSubscriber(), EvaluationSubscriber(), SnapshotSubscriber()],
+                subscribers=[
+                    ExecutionQueuedSubscriber(),
+                    EvaluationSubscriber(),
+                    SnapshotSubscriber(),
+                ],
             )
             dispatcher = OutboxDispatcher(session=db, publisher=publisher)
             processed_count = dispatcher.sweep()

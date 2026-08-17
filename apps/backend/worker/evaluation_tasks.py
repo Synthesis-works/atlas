@@ -15,10 +15,11 @@ from packages.execution_engine.domain.events import DomainEvent
 from atlas_db.models.outbox import OutboxMessage
 from apps.backend.core.telemetry import get_correlation_id, get_trace_id
 
+
 class SQLAlchemyOutboxPublisher(EventPublisher):
     def __init__(self, session):
         self.session = session
-        
+
     def publish(self, events: list[DomainEvent]) -> None:
         for event in events:
             agg_id = getattr(event, "execution_id", uuid.uuid4())
@@ -36,6 +37,7 @@ class SQLAlchemyOutboxPublisher(EventPublisher):
             )
             self.session.add(outbox_msg)
 
+
 @celery_app.task(
     bind=True,
     max_retries=3,
@@ -48,17 +50,21 @@ def run_evaluation_task(self, execution_id_str: str):
     """
     execution_id = uuid.UUID(execution_id_str)
     logger.info("Starting Evaluation Task", execution_id=str(execution_id))
-    
+
     # Needs registry to resolve strategies dynamically
     registry = EvaluationRegistry()
     # Registering out-of-the-box evaluators
-    # In a full-scale app, a bootstrapping module would do this. 
+    # In a full-scale app, a bootstrapping module would do this.
     # But as previously discovered, exact_match evaluator is declared inline in the subscriber for MVP currently.
     # We will declare it here to keep the domain registry populated during Celery lifecycle.
-    from packages.evaluation_engine.domain.evaluator import BaseEvaluator, EvaluatorContext, RawMeasurements
+    from packages.evaluation_engine.domain.evaluator import (
+        BaseEvaluator,
+        EvaluatorContext,
+        RawMeasurements,
+    )
     from packages.evaluation_engine.domain.scoring import BaseScoringStrategy
     from atlas_db.models.evaluation import CapabilityProfile as CapabilityProfileSchema
-    
+
     # Setup ExactMatchEvaluator mirroring the repo's MVP baseline
     class ExactMatchEvaluator(BaseEvaluator):
         def prepare(self, context: EvaluatorContext) -> None:
@@ -80,6 +86,7 @@ def run_evaluation_task(self, execution_id_str: str):
             # Note: the real CapabilityProfile in SQLAlchemy models uses `overall_score`
             # and `score_explanation` not a custom pydantic model for this return since MVP
             from packages.evaluation_engine.domain.scoring import CapabilityProfile
+
             overall = 100.0 if measurements.raw_data.get("exact_match") else 0.0
             return CapabilityProfile(
                 scores={"Reasoning": overall},
@@ -92,14 +99,14 @@ def run_evaluation_task(self, execution_id_str: str):
             )
 
     registry.register("exact_match", ExactMatchEvaluator, ExactMatchScoring)
-    
+
     try:
         with SessionLocal() as db:
             service = EvaluationAppService(
                 session=db,
                 registry=registry,
                 artifact_store=LocalArtifactStore(),
-                event_publisher=SQLAlchemyOutboxPublisher(session=db)
+                event_publisher=SQLAlchemyOutboxPublisher(session=db),
             )
             service.evaluate_execution(execution_id)
             db.commit()
@@ -113,5 +120,7 @@ def run_evaluation_task(self, execution_id_str: str):
         }
         logger.error("Evaluation task failed", dead_letter=dead_letter_payload, exc_info=True)
         if self.request.retries >= self.max_retries:
-            logger.error("Max retries exceeded for evaluation task", dead_letter=dead_letter_payload)
+            logger.error(
+                "Max retries exceeded for evaluation task", dead_letter=dead_letter_payload
+            )
         raise self.retry(exc=exc, countdown=2**self.request.retries)

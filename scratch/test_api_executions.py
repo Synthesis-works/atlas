@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.abspath("."))
 from fastapi.testclient import TestClient
 from apps.backend.main import app
 
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding="utf-8")
 
 client = TestClient(app)
 
@@ -18,12 +18,21 @@ print(f"HTTP Status: {response.status_code}")
 
 if response.status_code == 200:
     res_data = response.json()
-    items = res_data.get("data", {}).get("items", []) if isinstance(res_data, dict) and "data" in res_data else (res_data.get("items", []) if isinstance(res_data, dict) else res_data)
-    
+    items = (
+        res_data.get("data", {}).get("items", [])
+        if isinstance(res_data, dict) and "data" in res_data
+        else (res_data.get("items", []) if isinstance(res_data, dict) else res_data)
+    )
+
     print(f"Total executions returned by API: {len(items)}\n")
-    
+
     qwen_items = [item for item in items if "qwen" in str(item.get("target_model", "")).lower()]
-    real_items = [item for item in items if item.get("execution_config", {}).get("is_verified") or item.get("execution_config", {}).get("source") == "real"]
+    real_items = [
+        item
+        for item in items
+        if item.get("execution_config", {}).get("is_verified")
+        or item.get("execution_config", {}).get("source") == "real"
+    ]
 
     print(f"Qwen executions in API response: {len(qwen_items)}")
     print(f"Verified/Real executions in API response: {len(real_items)}\n")

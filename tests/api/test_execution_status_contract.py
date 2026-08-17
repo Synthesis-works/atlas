@@ -75,7 +75,7 @@ def test_get_execution_status_contract():
     response = client.get(f"/api/v1/executions/{exec_id}", headers=headers)
 
     assert response.status_code == 200, f"Expected 200 OK, got {response.status_code}"
-    
+
     data = response.json()
     assert data["id"] == exec_id, f"Expected ID {exec_id}, got {data['id']}"
     assert data["status"] == "RUNNING", f"Expected status RUNNING, got {data['status']}"
@@ -85,4 +85,6 @@ def test_get_execution_status_not_found():
     """Verify GET /api/v1/executions/{id} returns 404 for unknown execution ID."""
     unknown_id = str(uuid.uuid4())
     response = client.get(f"/api/v1/executions/{unknown_id}")
-    assert response.status_code == 404, f"Expected 404 for unknown execution, got {response.status_code}"
+    assert response.status_code == 404, (
+        f"Expected 404 for unknown execution, got {response.status_code}"
+    )

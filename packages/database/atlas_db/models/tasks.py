@@ -25,10 +25,12 @@ class Task(Base, BaseMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, server_default='{}', nullable=False)
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, server_default="{}", nullable=False)
 
     prompts: Mapped[list["Prompt"]] = relationship("Prompt", back_populates="task")
-    dataset_version: Mapped["DatasetVersion | None"] = relationship("DatasetVersion", back_populates="tasks")
+    dataset_version: Mapped["DatasetVersion | None"] = relationship(
+        "DatasetVersion", back_populates="tasks"
+    )
     test_cases: Mapped[list["TestCase"]] = relationship("TestCase", back_populates="task")
     constraints: Mapped[list["Constraint"]] = relationship("Constraint", back_populates="task")
     evaluation_rules: Mapped[list["EvaluationRule"]] = relationship(

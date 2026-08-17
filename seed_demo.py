@@ -12,7 +12,7 @@ import sys
 import uuid
 from datetime import datetime, timedelta, timezone, UTC
 
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.abspath("packages/database"))
 
 
@@ -23,16 +23,19 @@ from sqlalchemy.orm import sessionmaker
 from atlas_db.core.base import Base
 
 from atlas_db.core.config import config
-from atlas_db.models.core import User, Organization, Project, OrganizationRole, MembershipStatus, OrganizationMember
+from atlas_db.models.core import (
+    User,
+    Organization,
+    Project,
+    OrganizationRole,
+    MembershipStatus,
+    OrganizationMember,
+)
 from atlas_db.models.authoring import Benchmark, BenchmarkVersion, BenchmarkCategory, Capability
 from atlas_db.models.dataset import Dataset, DatasetVersion, DatasetStatus
 from atlas_db.models.execution import Execution, ExecutionStatus
 from atlas_db.models.leaderboard import LeaderboardSnapshot, LeaderboardSnapshotEntry, TargetType
 from atlas_db.models.reporting import Report, ReportVersion, ReportMetric
-
-
-
-
 
 
 def get_db_session():
@@ -77,14 +80,15 @@ def seed_users(session):
         )
         session.add(project)
 
-
     session.commit()
     return user, project
 
 
 def seed_real(session, user, project):
-    print("[2/5] Seeding Verified Real Evaluations (HumanEval & MBPP across Qwen 2.5B, Gemini, Grok, Mistral)...")
-    
+    print(
+        "[2/5] Seeding Verified Real Evaluations (HumanEval & MBPP across Qwen 2.5B, Gemini, Grok, Mistral)..."
+    )
+
     # Real Benchmarks
     humaneval = session.query(Benchmark).filter_by(name="HumanEval").first()
     if not humaneval:
@@ -142,21 +146,92 @@ def seed_real(session, user, project):
         session.add(mbpp_v1)
         session.commit()
 
-
     # Real Executions
     now = datetime.now(UTC)
     real_runs = [
         # HumanEval Runs
-        ("qwen2.5:2.5b", humaneval_v1.id, ExecutionStatus.COMPLETED, 31.2, 245, now - timedelta(hours=5), "real"),
-        ("qwen2.5:2.5b", humaneval_v1.id, ExecutionStatus.COMPLETED, 32.0, 238, now - timedelta(hours=4), "real"),
-        ("qwen2.5:2.5b", humaneval_v1.id, ExecutionStatus.CANCELLED, None, None, now - timedelta(hours=3), "real"),
-        ("gemini-1.5-pro", humaneval_v1.id, ExecutionStatus.COMPLETED, 84.5, 182, now - timedelta(hours=6), "real"),
-        ("gemini-1.5-pro", humaneval_v1.id, ExecutionStatus.FAILED, None, None, now - timedelta(hours=2), "real"),
-        ("grok-2", humaneval_v1.id, ExecutionStatus.COMPLETED, 79.2, 210, now - timedelta(hours=7), "real"),
-        ("mistral-large", humaneval_v1.id, ExecutionStatus.COMPLETED, 76.8, 230, now - timedelta(hours=8), "real"),
+        (
+            "qwen2.5:2.5b",
+            humaneval_v1.id,
+            ExecutionStatus.COMPLETED,
+            31.2,
+            245,
+            now - timedelta(hours=5),
+            "real",
+        ),
+        (
+            "qwen2.5:2.5b",
+            humaneval_v1.id,
+            ExecutionStatus.COMPLETED,
+            32.0,
+            238,
+            now - timedelta(hours=4),
+            "real",
+        ),
+        (
+            "qwen2.5:2.5b",
+            humaneval_v1.id,
+            ExecutionStatus.CANCELLED,
+            None,
+            None,
+            now - timedelta(hours=3),
+            "real",
+        ),
+        (
+            "gemini-1.5-pro",
+            humaneval_v1.id,
+            ExecutionStatus.COMPLETED,
+            84.5,
+            182,
+            now - timedelta(hours=6),
+            "real",
+        ),
+        (
+            "gemini-1.5-pro",
+            humaneval_v1.id,
+            ExecutionStatus.FAILED,
+            None,
+            None,
+            now - timedelta(hours=2),
+            "real",
+        ),
+        (
+            "grok-2",
+            humaneval_v1.id,
+            ExecutionStatus.COMPLETED,
+            79.2,
+            210,
+            now - timedelta(hours=7),
+            "real",
+        ),
+        (
+            "mistral-large",
+            humaneval_v1.id,
+            ExecutionStatus.COMPLETED,
+            76.8,
+            230,
+            now - timedelta(hours=8),
+            "real",
+        ),
         # MBPP Runs
-        ("qwen2.5:2.5b", mbpp_v1.id, ExecutionStatus.COMPLETED, 48.0, 310, now - timedelta(hours=4), "real"),
-        ("gemini-2.0-flash", mbpp_v1.id, ExecutionStatus.COMPLETED, 81.4, 145, now - timedelta(hours=3), "real"),
+        (
+            "qwen2.5:2.5b",
+            mbpp_v1.id,
+            ExecutionStatus.COMPLETED,
+            48.0,
+            310,
+            now - timedelta(hours=4),
+            "real",
+        ),
+        (
+            "gemini-2.0-flash",
+            mbpp_v1.id,
+            ExecutionStatus.COMPLETED,
+            81.4,
+            145,
+            now - timedelta(hours=3),
+            "real",
+        ),
     ]
 
     for model, bv_id, status, score, latency, ts, source in real_runs:
@@ -168,7 +243,9 @@ def seed_real(session, user, project):
             status=status,
             created_at=ts,
             started_at=ts + timedelta(seconds=2),
-            completed_at=ts + timedelta(seconds=15) if status == ExecutionStatus.COMPLETED else None,
+            completed_at=ts + timedelta(seconds=15)
+            if status == ExecutionStatus.COMPLETED
+            else None,
             execution_config={
                 "source": source,
                 "is_verified": True,
@@ -182,8 +259,10 @@ def seed_real(session, user, project):
 
 
 def seed_demo(session, user, project):
-    print("[3/5] Seeding UI Demo Benchmarks and Structured Executions (Flagged: source='demo', is_verified=false)...")
-    
+    print(
+        "[3/5] Seeding UI Demo Benchmarks and Structured Executions (Flagged: source='demo', is_verified=false)..."
+    )
+
     demo_benchmarks = [
         ("MMLU-Pro", "Massive Multitask Language Understanding Pro", "expert", "reasoning"),
         ("GSM8K", "Grade School Math 8K Benchmark", "medium", "mathematics"),
@@ -231,7 +310,7 @@ def seed_demo(session, user, project):
                 ExecutionStatus.FAILED,
                 ExecutionStatus.RETRYING,
             ]
-            
+
             for idx, m in enumerate(demo_models):
                 st = statuses[idx % len(statuses)]
                 ex = Execution(
@@ -241,8 +320,12 @@ def seed_demo(session, user, project):
                     target_model=m,
                     status=st,
                     created_at=now - timedelta(minutes=idx * 20),
-                    started_at=now - timedelta(minutes=idx * 20 - 1) if st != ExecutionStatus.QUEUED else None,
-                    completed_at=now - timedelta(minutes=idx * 15) if st == ExecutionStatus.COMPLETED else None,
+                    started_at=now - timedelta(minutes=idx * 20 - 1)
+                    if st != ExecutionStatus.QUEUED
+                    else None,
+                    completed_at=now - timedelta(minutes=idx * 15)
+                    if st == ExecutionStatus.COMPLETED
+                    else None,
                     execution_config={
                         "source": "demo",
                         "is_verified": False,
@@ -253,7 +336,6 @@ def seed_demo(session, user, project):
                 session.add(ex)
 
     session.commit()
-
 
 
 def seed_leaderboards(session):
@@ -296,7 +378,9 @@ def seed_leaderboards(session):
 
 def seed_reports(session, user, project):
     print("[5/5] Seeding Execution Run Reports...")
-    completed_executions = session.query(Execution).filter_by(status=ExecutionStatus.COMPLETED).all()
+    completed_executions = (
+        session.query(Execution).filter_by(status=ExecutionStatus.COMPLETED).all()
+    )
     for ex in completed_executions:
         rep = session.query(Report).filter_by(name=f"Report for {ex.target_model}").first()
         if not rep:
@@ -323,12 +407,13 @@ def seed_reports(session, user, project):
                 id=uuid.uuid4(),
                 report_version_id=rv.id,
                 metric_name="pass_at_1",
-                metric_value=ex.execution_config.get("pass_at_1", 75.0) if ex.execution_config else 75.0,
+                metric_value=ex.execution_config.get("pass_at_1", 75.0)
+                if ex.execution_config
+                else 75.0,
             )
             session.add(metric)
 
     session.commit()
-
 
 
 def main():

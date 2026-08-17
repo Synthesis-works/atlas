@@ -5,6 +5,7 @@ Revises: 02f16730fe4f
 Create Date: 2026-08-15 19:48:23.805131
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -12,8 +13,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'cb618b624b42'
-down_revision: str | Sequence[str] | None = '02f16730fe4f'
+revision: str = "cb618b624b42"
+down_revision: str | Sequence[str] | None = "02f16730fe4f"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -47,6 +48,6 @@ def upgrade() -> None:
         WHERE metadata->>'execution_id_trigger' IS NOT NULL
     """)
 
+
 def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS uq_snapshot_target_exec")
-

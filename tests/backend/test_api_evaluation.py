@@ -59,7 +59,6 @@ def test_evaluate_execution_authorized(test_client):
                 mock_task.delay.assert_called_once_with(str(execution_id))
 
 
-
 def test_evaluate_execution_forbidden(test_client):
     project_id = uuid.uuid4()
     execution_id = uuid.uuid4()

@@ -22,7 +22,7 @@ class LeaderboardSnapshot(Base):
             "target_id",
             text("(metadata->>'execution_id_trigger')"),
             unique=True,
-            postgresql_where=text("metadata->>'execution_id_trigger' IS NOT NULL")
+            postgresql_where=text("metadata->>'execution_id_trigger' IS NOT NULL"),
         ),
     )
 

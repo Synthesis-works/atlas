@@ -12,7 +12,7 @@ from atlas_db.core.config import config
 from atlas_db.models.execution import Execution
 from atlas_db.models.authoring import BenchmarkVersion, Benchmark
 
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding="utf-8")
 
 print("=== 1. POSTGRESQL DATABASE INSPECTION ===")
 engine = create_engine(config.database_url, echo=False)
@@ -23,7 +23,7 @@ try:
     # Query all executions
     all_executions = session.query(Execution).all()
     print(f"Total execution rows in database: {len(all_executions)}")
-    
+
     real_executions = []
     for ex in all_executions:
         cfg = ex.execution_config or {}

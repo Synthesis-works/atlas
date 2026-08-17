@@ -14,11 +14,11 @@ class StorageService:
             settings.minio_endpoint,
             access_key=settings.minio_access_key,
             secret_key=settings.minio_secret_key,
-            secure=settings.minio_secure
+            secure=settings.minio_secure,
         )
         self.bucket_name = settings.minio_bucket
         self._ensure_bucket()
-        
+
     def _ensure_bucket(self):
         try:
             if not self.client.bucket_exists(self.bucket_name):
@@ -27,18 +27,16 @@ class StorageService:
             # In a production app, logger should be used here.
             pass
 
-    def upload_file(self, object_name: str, file_data: bytes, content_type: str = "application/octet-stream") -> str:
+    def upload_file(
+        self, object_name: str, file_data: bytes, content_type: str = "application/octet-stream"
+    ) -> str:
         """
         Uploads file data and returns the object key.
         """
         data_stream = io.BytesIO(file_data)
         length = len(file_data)
         self.client.put_object(
-            self.bucket_name,
-            object_name,
-            data_stream,
-            length=length,
-            content_type=content_type
+            self.bucket_name, object_name, data_stream, length=length, content_type=content_type
         )
         return object_name
 

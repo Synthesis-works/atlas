@@ -12,7 +12,9 @@ from apps.backend.services.evaluation import EvaluationService
 router = APIRouter(prefix="/projects/{project_id}/executions/{execution_id}", tags=["evaluation"])
 
 
-@router.post("/evaluate", response_model=EvaluationEnqueuedResponse, status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/evaluate", response_model=EvaluationEnqueuedResponse, status_code=status.HTTP_202_ACCEPTED
+)
 def evaluate_execution(
     project_id: uuid.UUID,
     execution_id: uuid.UUID,
@@ -45,6 +47,7 @@ def evaluate_execution(
 
     try:
         from apps.backend.worker.evaluation_tasks import run_evaluation_task
+
         run_evaluation_task.delay(str(execution_id))
         return EvaluationEnqueuedResponse(execution_id=execution_id)
     except Exception as e:

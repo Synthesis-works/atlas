@@ -53,6 +53,7 @@ class EvaluationSummaryResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+
 class EvaluationEnqueuedResponse(BaseModel):
     execution_id: uuid.UUID
     status: str = "QUEUED"

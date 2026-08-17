@@ -4,6 +4,7 @@ from apps.backend.schemas.responses import APIResponse
 
 router = APIRouter(prefix="/models", tags=["Models"])
 
+
 @router.get("", response_model=APIResponse[list[dict]])
 def list_models():
     """

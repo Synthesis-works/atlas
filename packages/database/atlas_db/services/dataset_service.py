@@ -37,7 +37,7 @@ class DatasetPersistenceService:
         into the database ORM models and grouping them by dataset_version_id.
         """
         db = self.dataset_version_repo.db
-        
+
         try:
             for index, p_task in enumerate(pack.tasks):
                 # 1. Create the Task
@@ -49,48 +49,58 @@ class DatasetPersistenceService:
                     "metadata_": p_task.metadata,
                 }
                 db_task = self.task_repo.create(obj_in=task_data, commit=False)
-                
+
                 # 2. Create the Prompt
                 prompt_data = {
                     "task_id": db_task.id,
                     "template": str(p_task.input),
-                    "system_instruction": p_task.metadata.get("system_prompt", None)
+                    "system_instruction": p_task.metadata.get("system_prompt", None),
                 }
                 self.prompt_repo.create(obj_in=prompt_data, commit=False)
-                
+
                 # 3. Create the Main Test Case
                 expected_output_val = p_task.expected_output
                 tc_data = {
                     "task_id": db_task.id,
                     "input_data": {"input": str(p_task.input)},
-                    "expected_output": {"output": expected_output_val} if isinstance(expected_output_val, str) else expected_output_val,
+                    "expected_output": {"output": expected_output_val}
+                    if isinstance(expected_output_val, str)
+                    else expected_output_val,
                     "is_hidden": False,
                 }
                 self.test_case_repo.create(obj_in=tc_data, commit=False)
-                
+
                 # 4. Remove Hidden Test Case generation (moved to EvaluationRule)
                 # 5. Create Constraints (Time/Memory limits)
                 if p_task.constraints:
                     if p_task.constraints.time_limit is not None:
                         self.constraint_repo.create(
-                            obj_in={"task_id": db_task.id, "type": "time_limit", "value": str(p_task.constraints.time_limit)}, 
-                            commit=False
+                            obj_in={
+                                "task_id": db_task.id,
+                                "type": "time_limit",
+                                "value": str(p_task.constraints.time_limit),
+                            },
+                            commit=False,
                         )
                     if p_task.constraints.memory_limit is not None:
                         self.constraint_repo.create(
-                            obj_in={"task_id": db_task.id, "type": "memory_limit", "value": str(p_task.constraints.memory_limit)}, 
-                            commit=False
+                            obj_in={
+                                "task_id": db_task.id,
+                                "type": "memory_limit",
+                                "value": str(p_task.constraints.memory_limit),
+                            },
+                            commit=False,
                         )
-                        
+
                 # 6. Create Evaluation Rule based on tests and configs
                 # Base config rule
                 if p_task.evaluation:
                     rule_data = {
                         "task_id": db_task.id,
-                        "rule_definition": json.dumps(p_task.evaluation.model_dump())
+                        "rule_definition": json.dumps(p_task.evaluation.model_dump()),
                     }
                     self.evaluation_rule_repo.create(obj_in=rule_data, commit=False)
-                
+
                 # Executable evaluation bounds (public/private tests)
                 test_context = p_task.metadata.get("test_setup_code")
                 if p_task.hidden_tests:
@@ -103,11 +113,15 @@ class DatasetPersistenceService:
                         "is_challenge": False,
                     }
                     self.evaluation_rule_repo.create(obj_in=rule_data_test, commit=False)
-                
+
                 # Challenge tests
                 challenge_tests = p_task.metadata.get("challenge_tests")
                 if challenge_tests:
-                    c_def = challenge_tests if isinstance(challenge_tests, str) else json.dumps(challenge_tests)
+                    c_def = (
+                        challenge_tests
+                        if isinstance(challenge_tests, str)
+                        else json.dumps(challenge_tests)
+                    )
                     c_data = {
                         "task_id": db_task.id,
                         "rule_definition": c_def,
@@ -115,9 +129,9 @@ class DatasetPersistenceService:
                         "is_challenge": True,
                     }
                     self.evaluation_rule_repo.create(obj_in=c_data, commit=False)
-                    
+
             db.commit()
-            
+
         except Exception:
             db.rollback()
             raise

@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from atlas_db.core.config import config
 from atlas_db.models.execution import Execution
 
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding="utf-8")
 
 print("=== 1. DIRECT POSTGRESQL QUERY FOR EXECUTIONS ===")
 engine = create_engine(config.database_url, echo=False)
@@ -27,13 +27,13 @@ try:
         cfg = ex.execution_config or {}
         is_verified = cfg.get("is_verified", False)
         source = cfg.get("source", "unknown")
-        
+
         if is_verified or source == "real":
             real_count += 1
         else:
             demo_count += 1
 
-        print(f"Row #{i+1}: ID={ex.id}")
+        print(f"Row #{i + 1}: ID={ex.id}")
         print(f"  Target Model : {ex.target_model}")
         print(f"  Benchmark Ver: {ex.benchmark_version_id}")
         print(f"  Project ID   : {ex.project_id}")

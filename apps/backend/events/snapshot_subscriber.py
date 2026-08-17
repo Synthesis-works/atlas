@@ -22,7 +22,10 @@ class SnapshotSubscriber(EventSubscriber):
         self.snapshot_dispatcher = CelerySnapshotDispatcher()
 
     def handle(self, event: DomainEvent) -> None:
-        if isinstance(event, EvaluationCompletedEvent) or type(event).__name__ == "EvaluationCompletedEvent":
+        if (
+            isinstance(event, EvaluationCompletedEvent)
+            or type(event).__name__ == "EvaluationCompletedEvent"
+        ):
             logger.info(
                 f"SnapshotSubscriber acting on EvaluationCompleted Event for execution {event.execution_id}"
             )

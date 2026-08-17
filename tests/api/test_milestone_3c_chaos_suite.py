@@ -21,7 +21,12 @@ from apps.backend.dependencies import (
     get_db_session,
 )
 from apps.backend.routers.executions import get_execution_service
-from packages.execution_engine.domain.models import Execution, ExecutionState, Lease, ExecutionAttempt
+from packages.execution_engine.domain.models import (
+    Execution,
+    ExecutionState,
+    Lease,
+    ExecutionAttempt,
+)
 from packages.execution_engine.application.scheduler_service import SchedulerService
 
 client = TestClient(app)
@@ -78,9 +83,15 @@ def test_deliverable_4_prometheus_metrics_endpoint():
     response = client.get("/api/v1/system/metrics")
     assert response.status_code == 200, f"Expected 200, got {response.status_code}"
     content = response.text
-    assert "atlas_executions_queued_total" in content, "Metrics output missing atlas_executions_queued_total"
-    assert "atlas_executions_running_total" in content, "Metrics output missing atlas_executions_running_total"
-    assert "atlas_outbox_pending_total" in content, "Metrics output missing atlas_outbox_pending_total"
+    assert "atlas_executions_queued_total" in content, (
+        "Metrics output missing atlas_executions_queued_total"
+    )
+    assert "atlas_executions_running_total" in content, (
+        "Metrics output missing atlas_executions_running_total"
+    )
+    assert "atlas_outbox_pending_total" in content, (
+        "Metrics output missing atlas_outbox_pending_total"
+    )
 
 
 def test_chaos_scenario_duplicate_dispatch_idempotency():
@@ -95,7 +106,9 @@ def test_chaos_scenario_duplicate_dispatch_idempotency():
 
     assert res1.status_code in [200, 201]
     assert res2.status_code in [200, 201]
-    assert res1.json()["id"] == res2.json()["id"], "Idempotent dispatches must return the exact same execution UUID"
+    assert res1.json()["id"] == res2.json()["id"], (
+        "Idempotent dispatches must return the exact same execution UUID"
+    )
 
 
 def test_chaos_scenario_expired_lease_sweep_recovery():

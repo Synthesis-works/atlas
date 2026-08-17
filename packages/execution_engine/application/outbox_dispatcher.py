@@ -20,7 +20,10 @@ from packages.execution_engine.domain.events import (
     LeaseExpiredEvent,
 )
 
-from packages.evaluation_engine.domain.events import EvaluationCompletedEvent, EvaluationStartedEvent
+from packages.evaluation_engine.domain.events import (
+    EvaluationCompletedEvent,
+    EvaluationStartedEvent,
+)
 
 logger = get_logger("OUTBOX")
 

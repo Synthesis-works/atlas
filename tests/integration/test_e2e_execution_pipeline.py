@@ -14,7 +14,13 @@ from datetime import datetime, timezone, timedelta, UTC
 import pytest
 from unittest.mock import MagicMock
 
-from packages.execution_engine.domain.models import Execution, ExecutionState, Lease, ExecutionAttempt, AttemptStatus
+from packages.execution_engine.domain.models import (
+    Execution,
+    ExecutionState,
+    Lease,
+    ExecutionAttempt,
+    AttemptStatus,
+)
 from packages.execution_engine.domain.services import ExecutionService
 from packages.execution_engine.application.worker_app_service import WorkerApplicationService
 from packages.execution_engine.application.scheduler_service import SchedulerService
@@ -70,8 +76,14 @@ def test_full_e2e_worker_failover_and_outbox_pipeline():
     swept_count = scheduler.sweep_expired_leases(limit=50)
 
     assert swept_count == 1, "Scheduler failed to sweep expired lease"
-    assert execution.status in [ExecutionState.QUEUED, ExecutionState.FAILED, ExecutionState.RETRYING], "Execution should be retryable"
-    assert execution.current_attempt.status == AttemptStatus.FAILED, "Expired attempt should be marked FAILED"
+    assert execution.status in [
+        ExecutionState.QUEUED,
+        ExecutionState.FAILED,
+        ExecutionState.RETRYING,
+    ], "Execution should be retryable"
+    assert execution.current_attempt.status == AttemptStatus.FAILED, (
+        "Expired attempt should be marked FAILED"
+    )
 
     # Step 5: Worker 2 acquires task and completes execution
     execution_repo.find_schedulable.return_value = [execution]

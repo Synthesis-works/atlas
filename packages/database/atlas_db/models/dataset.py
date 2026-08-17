@@ -139,7 +139,9 @@ class DatasetExportAction(Base):
             "idx_unique_active_dataset_export",
             "dataset_version_id",
             unique=True,
-            postgresql_where=text("status IN ('PENDING'::dataset_export_state, 'RUNNING'::dataset_export_state)"),
+            postgresql_where=text(
+                "status IN ('PENDING'::dataset_export_state, 'RUNNING'::dataset_export_state)"
+            ),
         ),
     )
 
@@ -152,7 +154,9 @@ class DatasetExportAction(Base):
     )
 
     status: Mapped[DatasetExportState] = mapped_column(
-        ENUM(DatasetExportState, name="dataset_export_state"), nullable=False, default=DatasetExportState.PENDING
+        ENUM(DatasetExportState, name="dataset_export_state"),
+        nullable=False,
+        default=DatasetExportState.PENDING,
     )
     error_message: Mapped[str | None] = mapped_column(String, nullable=True)
     artifact_uri: Mapped[str | None] = mapped_column(String, nullable=True)
