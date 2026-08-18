@@ -27,7 +27,7 @@ local one-click environment uses.
 | `OUTBOX_POLL_INTERVAL` | no | seconds between sweeps (default `5`) |
 | `GROQ_API_KEY` | yes (Groq) | LLM provider for real executions |
 | `GEMINI_API_KEY` / `XAI_API_KEY` / `MISTRAL_API_KEY` / `OPENAI_API_KEY` / `NVIDIA_API_KEY` | optional | other providers |
-| `ATLAS_ARTIFACT_DIR` | no | artifact base dir (default `/var/lib/atlas/artifacts`) |
+| `ARTIFACT_BASE_DIR` | no | artifact base dir (default `/var/lib/atlas/artifacts`) |
 | `LOG_LEVEL` | no | `INFO` / `DEBUG` |
 | `JWT_SECRET` | no | unused by the worker, set anyway for safety |
 | `ENVIRONMENT` | no | leave unset or `development` |
