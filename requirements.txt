@@ -1,0 +1,12 @@
+# Atlas production dependency resolution (Vercel Python runtime / worker VM)
+#
+# Order matters:
+#   1. Install the LOCAL packages/database distribution first. The root
+#      project's pyproject.toml declares a dependency named "atlas-db", which
+#      would otherwise resolve to the unrelated package published on PyPI.
+#      Installing the local distribution satisfies that dependency so the
+#      bundled environment never contains the PyPI package.
+#   2. Install the project itself. This links apps.*, packages.*, services.*,
+#      and atlas_db (mapped to packages/database/atlas_db) into the bundle.
+-e packages/database
+-e .
