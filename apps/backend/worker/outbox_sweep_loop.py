@@ -17,6 +17,7 @@ Usage:
 
 import os
 import sys
+import threading
 import time
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -30,14 +31,22 @@ load_dotenv()
 from apps.backend.config import settings  # noqa: E402
 from apps.backend.worker.tasks import outbox_sweep_task  # noqa: E402
 
+# True while a sweep (and therefore any eager execution dispatched by it) is
+# running in this process. The Render HTTP entrypoint uses this to keep the
+# instance awake while there is actual work.
+sweep_active = threading.Event()
 
-def _run_sweep_once() -> None:
+
+def run_sweep_once() -> None:
+    sweep_active.set()
     try:
         outbox_sweep_task()
     except Exception:
         import traceback
 
         traceback.print_exc()
+    finally:
+        sweep_active.clear()
 
 
 def main() -> None:
@@ -45,7 +54,7 @@ def main() -> None:
     print(f"[outbox-sweep-loop] starting; poll interval = {interval}s")
     print(f"[outbox-sweep-loop] CELERY_TASK_ALWAYS_EAGER = {settings.celery_task_always_eager}")
     while True:
-        _run_sweep_once()
+        run_sweep_once()
         time.sleep(interval)
 
 
