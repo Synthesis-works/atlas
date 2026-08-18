@@ -46,13 +46,13 @@ def upgrade() -> None:
         sa.Column("metadata", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_leaderboard_snapshots")),
     )
-    with op.batch_alter_table("leaderboard_snapshots", schema=None) as batch_op:
-        batch_op.create_index(
-            "uq_snapshot_target_exec",
-            ["target_id", sa.literal_column("(metadata->>'execution_id_trigger')")],
-            unique=True,
-            postgresql_where=sa.text("metadata->>'execution_id_trigger' IS NOT NULL"),
-        )
+    op.create_index(
+        "uq_snapshot_target_exec",
+        "leaderboard_snapshots",
+        ["target_id", sa.literal_column("(metadata->>'execution_id_trigger')")],
+        unique=True,
+        postgresql_where=sa.text("metadata->>'execution_id_trigger' IS NOT NULL"),
+    )
 
     op.create_table(
         "organizations",
