@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     outbox_batch_size: int = Field(default=100)
     outbox_poll_interval: int = Field(default=5)
 
+    # Worker wake (API -> Render worker fire-and-forget nudge, post-commit)
+    worker_wake_url: str | None = Field(default=None)
+    # Worker self-keepalive (worker pings this public URL while a sweep runs)
+    worker_public_url: str | None = Field(default=None)
+    render_keepalive_interval_seconds: int = Field(default=300)
+
     # LLM & Agent Configuration
     gemini_api_key: str | None = Field(default=None)
     xai_api_key: str | None = Field(default=None)

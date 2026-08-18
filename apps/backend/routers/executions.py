@@ -18,6 +18,7 @@ from packages.execution_engine.application.execution_app_service import Executio
 from packages.execution_engine.domain.models import Execution
 from packages.execution_engine.domain.services import ExecutionService
 from packages.execution_engine.persistence.repository import SqlAlchemyExecutionRepository
+from apps.backend.worker.wake_client import notify_worker_wake
 
 benchmark_executions_router = APIRouter(tags=["Executions"])
 executions_router = APIRouter(tags=["Executions"])
@@ -142,6 +143,10 @@ def create_execution(
     )
     if hasattr(service, "execution_repo") and hasattr(service.execution_repo, "session"):
         service.execution_repo.session.commit()
+
+    # Post-commit, fire-and-forget: nudge the Render worker so it wakes and
+    # drains the outbox row committed above. Submission never fails on this.
+    notify_worker_wake()
 
     return map_to_response(execution)
 
