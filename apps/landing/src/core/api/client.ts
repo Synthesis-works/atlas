@@ -101,6 +101,14 @@ async function performReAuth(): Promise<string | null> {
 
   _reAuthInFlight = (async (): Promise<string | null> => {
     try {
+      // Production builds never auto-authenticate with built-in credentials.
+      // The re-auth flow below exists for local development (dev builds) only,
+      // where the seeded demo account is available.
+      if (import.meta.env.PROD) {
+        console.warn('[ApiClient] Re-auth is disabled in production builds. The user must sign in manually.');
+        return null;
+      }
+
       setAuthToken(null); // Clear stale token before re-authenticating.
 
       const baseUrl = getBaseUrl();

@@ -2,6 +2,7 @@ import uuid
 import structlog
 from atlas_db.core.session import SessionLocal
 
+from apps.backend.config import settings
 from apps.backend.worker.celery_app import celery_app
 from packages.evaluation_engine.application.service import EvaluationAppService
 from packages.evaluation_engine.domain.registry import EvaluationRegistry
@@ -105,7 +106,9 @@ def run_evaluation_task(self, execution_id_str: str):
             service = EvaluationAppService(
                 session=db,
                 registry=registry,
-                artifact_store=LocalArtifactStore(),
+                artifact_store=LocalArtifactStore(
+                    base_dir=settings.artifact_base_dir or "/var/lib/atlas/artifacts"
+                ),
                 event_publisher=SQLAlchemyOutboxPublisher(session=db),
             )
             service.evaluate_execution(execution_id)
