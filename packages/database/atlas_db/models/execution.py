@@ -91,7 +91,7 @@ class Execution(Base, BaseMixin):
         ForeignKey("dataset_versions.id", ondelete="CASCADE"), nullable=True, index=True
     )
     submitted_by_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("organization_members.id"), nullable=True, index=True
+        ForeignKey("users.id"), nullable=True, index=True
     )
 
     status: Mapped[ExecutionStatus] = mapped_column(
