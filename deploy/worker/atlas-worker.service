@@ -1,0 +1,17 @@
+[Unit]
+Description=Atlas Outbox Sweep Worker
+Documentation=https://github.com/Synthesis-works/atlas
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=atlas
+WorkingDirectory=/opt/atlas
+EnvironmentFile=/opt/atlas/.env
+ExecStart=/opt/atlas/.venv/bin/python -m apps.backend.worker.outbox_sweep_loop
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

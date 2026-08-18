@@ -15,7 +15,9 @@ if config.config_file_name is not None:
 import os
 import sys
 
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, REPO_ROOT)
 
 from atlas_db.core.base import Base
 from atlas_db.models import (
@@ -30,6 +32,7 @@ from atlas_db.models import (
     tasks,
     leaderboard,
 )
+import packages.execution_engine.persistence.models  # noqa: F401  (ee_executions et al.)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.compiler import compiles
 

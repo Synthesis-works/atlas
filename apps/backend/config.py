@@ -1,4 +1,4 @@
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -31,6 +31,12 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(default="HS256")
     jwt_access_expire_minutes: int = Field(default=60)
     admin_emails: list[str] = Field(default_factory=lambda: ["admin@example.com"])
+
+    # Worker authentication (bearer token for /api/v1/internal/workers)
+    worker_auth_token: str | None = Field(default=None)
+
+    # Artifact storage (evaluation artifact base directory)
+    artifact_base_dir: str | None = Field(default=None)
 
     # Logging
     log_level: str = Field(default="INFO")
@@ -72,6 +78,15 @@ class Settings(BaseSettings):
         return bool(self.razorpay_key_id and self.razorpay_key_secret)
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
+    @model_validator(mode="after")
+    def _guard_production_secrets(self) -> "Settings":
+        if (
+            self.environment == "production"
+            and self.jwt_secret == "dev-secret-key-do-not-use-in-production"
+        ):
+            raise ValueError("JWT_SECRET must be set to a unique value when ENVIRONMENT=production")
+        return self
 
 
 settings = Settings()
