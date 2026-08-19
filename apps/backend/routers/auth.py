@@ -7,6 +7,7 @@ from apps.backend.dependencies import get_auth_service, get_current_user
 from apps.backend.schemas.auth import AuthUserRead, TokenResponse, UserLogin, UserRegister
 from apps.backend.schemas.responses import APIResponse
 from apps.backend.services.auth import AuthService
+from apps.backend.worker.wake_client import notify_login_warmup
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -22,6 +23,9 @@ def register(data: UserRegister, auth_service: AuthService = Depends(get_auth_se
 @router.post("/login", response_model=APIResponse[TokenResponse], status_code=status.HTTP_200_OK)
 def login(data: UserLogin, auth_service: AuthService = Depends(get_auth_service)) -> Any:
     token = auth_service.authenticate_user(data)
+    # Best-effort worker warm-up: fire-and-forget, throttled, never blocks or
+    # fails the login response. Execution submission still sends its own wake.
+    notify_login_warmup()
     return APIResponse.success_response(data=token, message="Login successful")
 
 
