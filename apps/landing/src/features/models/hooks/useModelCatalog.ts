@@ -1,23 +1,11 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { ModelHealth, ModelCost } from '../../../domain/models/types';
+import type { RegistryModel } from '@/domain/models/types';
 import type { FilterState, SortState, ViewMode, PaginationState } from '../types/catalog';
 import { filterModels, sortModels, selectCatalogCards, selectCatalogRows, selectModelPreview, selectModelComparison } from '../selectors/catalog';
 import { useWorkspaceInteractionStore } from '@/store/workspace/interaction/store';
-
-// Normally these would come from an API hook (e.g. useQuery)
-import { MOCK_MODELS } from '../../../domain/models/mock';
-
-// We mock related data maps for health and cost
-const mockHealthMap: Record<string, ModelHealth> = MOCK_MODELS.reduce((acc, model) => {
-  acc[model.id] = model.health;
-  return acc;
-}, {} as Record<string, ModelHealth>);
-
-const mockCostMap: Record<string, ModelCost> = MOCK_MODELS.reduce((acc, model) => {
-  acc[model.id] = model.cost;
-  return acc;
-}, {} as Record<string, ModelCost>);
+import { getModels } from '../services/modelService';
 
 /**
  * The Model Catalog Coordinator Hook.
@@ -62,34 +50,45 @@ export function useModelCatalog() {
   // 3. Pagination
   const [pagination, setPagination] = useState<PaginationState>({ page: 1, pageSize: 25, total: 0 });
 
-  // 3.5 Loading and Error State (Mocking async behavior)
+  // 3.5 Loading, Error, and Data State (real API-backed)
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<{ message: string, recoverable: boolean } | null>(null);
+  const [models, setModels] = useState<RegistryModel[]>([]);
+
+  const loadModels = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    const res = await getModels();
+    if (res.error) {
+      setError({ message: res.error, recoverable: true });
+    } else {
+      setModels(res.data);
+    }
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
     setIsLoading(true);
     setError(null);
-    
-    // Simulate network delay
-    const timer = setTimeout(() => {
-      if (mounted) {
-        setIsLoading(false);
+
+    getModels().then((res) => {
+      if (!mounted) return;
+      if (res.error) {
+        setError({ message: res.error, recoverable: true });
+      } else {
+        setModels(res.data);
       }
-    }, 1200);
+      setIsLoading(false);
+    });
 
     return () => {
       mounted = false;
-      clearTimeout(timer);
     };
   }, []);
 
   const handleRetry = () => {
-    setIsLoading(true);
-    setError(null);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1200);
+    void loadModels();
   };
 
   // 4. Interaction State (Zustand)
@@ -159,19 +158,28 @@ export function useModelCatalog() {
     toggleExpandedStore(ns, id);
   };
 
+  // Derived health/cost maps from real data
+  const healthMap = useMemo(() => {
+    return Object.fromEntries(models.map((m) => [m.id, m.health])) as Record<string, ModelHealth>;
+  }, [models]);
+
+  const costMap = useMemo(() => {
+    return Object.fromEntries(models.map((m) => [m.id, m.cost])) as Record<string, ModelCost>;
+  }, [models]);
+
   // Pipeline execution (Memoized)
   const pipelineResult = useMemo(() => {
-    const rawData = MOCK_MODELS; // In real life, from data source
+    const rawData = models;
     const filtered = filterModels(rawData, filters);
-    const sorted = sortModels(filtered, sort, mockHealthMap);
+    const sorted = sortModels(filtered, sort, healthMap);
     
     // Pagination slicing
     const startIndex = (pagination.page - 1) * pagination.pageSize;
     const paginated = sorted.slice(startIndex, startIndex + pagination.pageSize);
 
     // Presentation Mapping
-    const cards = selectCatalogCards(paginated, mockHealthMap);
-    const rows = selectCatalogRows(paginated, mockHealthMap);
+    const cards = selectCatalogCards(paginated, healthMap);
+    const rows = selectCatalogRows(paginated, healthMap);
 
     return {
       filteredCount: filtered.length,
@@ -179,7 +187,7 @@ export function useModelCatalog() {
       rows,
       rawVisible: paginated // needed for select all filtered
     };
-  }, [filters, sort, pagination.page, pagination.pageSize]);
+  }, [filters, sort, pagination.page, pagination.pageSize, models, healthMap]);
 
   // Update pagination total when filtered count changes
   useEffect(() => {
@@ -189,16 +197,16 @@ export function useModelCatalog() {
   // Derive Preview & Comparison Models
   const previewModel = useMemo(() => {
     if (!previewId) return null;
-    const model = MOCK_MODELS.find(m => m.id === previewId);
+    const model = models.find(m => m.id === previewId);
     if (!model) return null;
-    return selectModelPreview(model, mockHealthMap[model.id], mockCostMap[model.id]);
-  }, [previewId]);
+    return selectModelPreview(model, healthMap[model.id], costMap[model.id]);
+  }, [previewId, models, healthMap, costMap]);
 
   const comparisonModels = useMemo(() => {
     if (selectedIds.length < 2) return [];
-    const modelsToCompare = MOCK_MODELS.filter(m => selectedIds.includes(m.id));
-    return selectModelComparison(modelsToCompare, mockHealthMap, mockCostMap);
-  }, [selectedIds]);
+    const modelsToCompare = models.filter(m => selectedIds.includes(m.id));
+    return selectModelComparison(modelsToCompare, healthMap, costMap);
+  }, [selectedIds, models, healthMap, costMap]);
 
   return {
     // State
