@@ -73,6 +73,7 @@ def create_app() -> FastAPI:
         executions,
         history,
         internal_workers,
+        models,
         organizations,
         projects,
         reporting,
@@ -103,6 +104,7 @@ def create_app() -> FastAPI:
     app.include_router(search.router, prefix="/api/v1")
     app.include_router(system.router, prefix="/api/v1")
     app.include_router(leaderboard.router, prefix="/api/v1")
+    app.include_router(models.router, prefix="/api/v1")
     app.include_router(agent.router, prefix="/api/v1")
     app.include_router(billing.router, prefix="/api/v1")
     app.include_router(dashboard.router, prefix="/api/v1")
