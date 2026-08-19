@@ -28,7 +28,9 @@ WAKE_TIMEOUT_SECONDS = 5.0
 WARMUP_COOLDOWN_SECONDS = 300
 
 _warmup_lock = threading.Lock()
-_last_warmup_sent: float = 0.0
+# -inf so the first warm-up is never throttled: monotonic() can be arbitrarily
+# small on freshly booted machines (CI runners, cold Vercel instances).
+_last_warmup_sent: float = float("-inf")
 
 
 def _send_wake() -> None:

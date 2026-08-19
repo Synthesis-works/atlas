@@ -46,7 +46,7 @@ def client():
 def warmup_isolation(monkeypatch):
     FakeThread.started.clear()
     monkeypatch.setattr(wake_client.threading, "Thread", FakeThread)
-    monkeypatch.setattr(wake_client, "_last_warmup_sent", 0.0)
+    monkeypatch.setattr(wake_client, "_last_warmup_sent", float("-inf"))
     monkeypatch.setattr(wake_client, "WARMUP_COOLDOWN_SECONDS", 300)
     monkeypatch.setattr(wake_client.settings, "worker_wake_url", UNREACHABLE_WAKE_URL)
     yield
