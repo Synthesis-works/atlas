@@ -229,7 +229,9 @@ class TestCaptureApi:
         response = client.post(f"/api/v1/billing/capture/{uuid.uuid4()}")
         assert response.status_code == 404
 
-    def test_capture_gateway_value_error_returns_structured_400(self, client, session, org_and_price):
+    def test_capture_gateway_value_error_returns_structured_400(
+        self, client, session, org_and_price
+    ):
         org, price = org_and_price
         checkout = client.post(
             "/api/v1/billing/checkout",
