@@ -68,7 +68,8 @@ testpaths = [
     "tests/benchmark",
     "packages/database/tests",
     "services/dataset/tests",
-    "services/report/tests"
+    "services/report/tests",
+    "services/billing/tests",
 ]
 
 pythonpath = [
