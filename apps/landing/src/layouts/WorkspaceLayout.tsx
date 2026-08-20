@@ -20,6 +20,7 @@ import {
   Cpu,
   Server,
   FlaskConical,
+  CreditCard,
 } from 'lucide-react';
 import { useExperience } from '@/core/ExperienceController';
 import { MotionProvider, ScrambleHeading } from '@/components/motion';
@@ -90,6 +91,11 @@ export function WorkspaceLayout() {
       title: 'Leaderboard',
       icon: <BarChart3 className="w-full h-full" />,
       href: '/dashboard/leaderboard',
+    },
+    {
+      title: 'Billing',
+      icon: <CreditCard className="w-full h-full" />,
+      href: '/dashboard/billing',
     },
     {
       title: 'Agent',

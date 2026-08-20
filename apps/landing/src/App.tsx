@@ -27,6 +27,7 @@ const WorkspaceExperiments = lazy(() => import('@/pages/workspace/Experiments'))
 const WorkspaceProviders = lazy(() => import('@/pages/workspace/Providers'));
 const WorkspaceModels = lazy(() => import('@/pages/workspace/Models'));
 const DatasetsPage = lazy(() => import('@/features/datasets/page/DatasetsPage'));
+const BillingPage = lazy(() => import('@/features/billing/pages/BillingPage'));
 const WorkspaceSection = lazy(() => import('@/pages/workspace/WorkspaceSection'));
 const WorkspaceNotFound = lazy(() => import('@/pages/workspace/WorkspaceNotFound'));
 
@@ -110,6 +111,7 @@ function AppRoutes() {
           <Route path="models" element={<Suspense fallback={<PageLoader />}><WorkspaceModels /></Suspense>} />
           <Route path="reports" element={<Suspense fallback={<WorkspaceSection title="Reports" description="View and compare evaluation reports." />}><WorkspaceSection title="Reports" description="View and compare evaluation reports." /></Suspense>} />
           <Route path="leaderboard" element={<Suspense fallback={<WorkspaceSection title="Leaderboard" description="Compare model rankings across capabilities." />}><WorkspaceSection title="Leaderboard" description="Compare model rankings across capabilities." /></Suspense>} />
+          <Route path="billing" element={<Suspense fallback={<PageLoader />}><BillingPage /></Suspense>} />
           <Route path="settings" element={<Suspense fallback={<WorkspaceSection title="Settings" description="Configure your Workspace preferences." />}><WorkspaceSection title="Settings" description="Configure your Workspace preferences." /></Suspense>} />
 {/* Agent Workspace Routes */}
           <Route path="agent" element={<Suspense fallback={<PageLoader />}><AgentLayout /></Suspense>}>
