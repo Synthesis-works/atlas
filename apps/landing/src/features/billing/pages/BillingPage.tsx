@@ -8,7 +8,7 @@
  * sends a price to the API.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { pageCrossfade } from '@/lib/motion';
 import { Badge, Card } from '@/design/primitives';
@@ -62,7 +62,13 @@ export default function BillingPage() {
   const [selectedPlan, setSelectedPlan] = useState<PricePlan | null>(null);
   const [phase, setPhase] = useState<CheckoutPhase>('idle');
   const [phaseDetail, setPhaseDetail] = useState<string | null>(null);
-  const [paymentId, setPaymentId] = useState<string | null>(null);
+  /**
+   * The PayPal SDK button binds its onApprove handler once at mount time, so a
+   * state-based closure would observe a stale (null) payment id. Read the id
+   * from a ref instead: the ref is updated when the checkout API responds and
+   * is always readable by whichever closure instance the SDK invokes.
+   */
+  const paymentIdRef = useRef<string | null>(null);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [reconciling, setReconciling] = useState<string | null>(null);
 
@@ -103,12 +109,13 @@ export default function BillingPage() {
       setPhaseDetail(result.error || 'Checkout could not be created');
       throw new Error(result.error || 'Checkout could not be created');
     }
-    setPaymentId(result.data.payment_id);
+    paymentIdRef.current = result.data.payment_id;
     setPhase('approving');
     return result.data.session_id;
   }, [selectedPlan]);
 
   const handleApprove = useCallback(async () => {
+    const paymentId = paymentIdRef.current;
     if (!paymentId) {
       setPhase('failure');
       setPhaseDetail('No payment reference available');
@@ -129,7 +136,7 @@ export default function BillingPage() {
       setPhase('failure');
       setPhaseDetail(`Payment ended in state: ${result.data.status}`);
     }
-  }, [paymentId, refreshPayments]);
+  }, [refreshPayments]);
 
   const handleCancel = useCallback(() => {
     setPhase('cancel');
@@ -211,7 +218,7 @@ export default function BillingPage() {
                 setSelectedPlan(plan);
                 setPhase('idle');
                 setPhaseDetail(null);
-                setPaymentId(null);
+                paymentIdRef.current = null;
               }}
               className={`text-left rounded-xl border p-5 transition-colors ${
                 selected
@@ -260,6 +267,7 @@ export default function BillingPage() {
           {phase !== 'success' && phase !== 'cancel' && (
             <div className="mt-5">
               <PayPalCheckoutButton
+                key={selectedPlan.id}
                 currency={selectedPlan.currency}
                 disabled={phase === 'creating' || phase === 'capturing'}
                 onCreateOrder={handleCreateOrder}

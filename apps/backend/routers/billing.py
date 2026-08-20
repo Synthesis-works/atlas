@@ -112,7 +112,12 @@ def capture(
     """
     org_id = _resolve_org_id(claims)
     service = BillingService(db)
-    result = service.capture_payment(org_id, payment_id)
+    try:
+        result = service.capture_payment(org_id, payment_id)
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     payment = service.repo.get_payment(payment_id)
     return CaptureResponse(
         payment_id=payment_id,

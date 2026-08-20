@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { fileURLToPath, URL } from 'node:url'
@@ -15,5 +16,9 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       '@bklitui/ui/charts': fileURLToPath(new URL('./src/design/charts', import.meta.url)),
     },
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
   },
 })
