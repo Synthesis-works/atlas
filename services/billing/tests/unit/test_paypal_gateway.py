@@ -45,7 +45,9 @@ def _token_handler(request: httpx.Request) -> httpx.Response:
     return httpx.Response(200, json={"access_token": "TOKEN-1", "expires_in": 3600})
 
 
-def _routed(api_handler: Callable[[httpx.Request], httpx.Response]) -> Callable[[httpx.Request], httpx.Response]:
+def _routed(
+    api_handler: Callable[[httpx.Request], httpx.Response],
+) -> Callable[[httpx.Request], httpx.Response]:
     """Dispatch OAuth calls to the token handler, everything else to the API handler."""
 
     def handler(request: httpx.Request) -> httpx.Response:
