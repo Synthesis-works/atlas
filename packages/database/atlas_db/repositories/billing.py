@@ -91,6 +91,10 @@ class BillingRepository:
         stmt = select(Payment).where(Payment.provider_payment_id == provider_payment_id)
         return self.session.scalars(stmt).first()
 
+    def get_payment_by_provider_order_id(self, provider_order_id: str) -> Payment | None:
+        stmt = select(Payment).where(Payment.provider_order_id == provider_order_id)
+        return self.session.scalars(stmt).first()
+
     def get_payment_by_idempotency_key(self, idempotency_key: str) -> Payment | None:
         stmt = select(Payment).where(Payment.idempotency_key == idempotency_key)
         return self.session.scalars(stmt).first()
@@ -98,6 +102,25 @@ class BillingRepository:
     def list_payments_for_org(self, org_id: uuid.UUID) -> Sequence[Payment]:
         stmt = select(Payment).where(Payment.org_id == org_id)
         return self.session.scalars(stmt).all()
+
+    # --- Credits ---
+    def get_credit_account(self, org_id: uuid.UUID) -> CreditAccount | None:
+        stmt = select(CreditAccount).where(CreditAccount.org_id == org_id)
+        return self.session.scalars(stmt).first()
+
+    def create_credit_account(self, account: CreditAccount) -> CreditAccount:
+        self.session.add(account)
+        self.session.flush()
+        return account
+
+    def get_credit_transaction_by_reference(
+        self, reference_type: str, reference_id: str
+    ) -> CreditTransaction | None:
+        stmt = select(CreditTransaction).where(
+            CreditTransaction.reference_type == reference_type,
+            CreditTransaction.reference_id == reference_id,
+        )
+        return self.session.scalars(stmt).first()
 
     # --- Webhooks ---
     def log_webhook_event(self, event: WebhookEvent) -> WebhookEvent:
