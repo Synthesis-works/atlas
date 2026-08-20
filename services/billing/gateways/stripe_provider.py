@@ -45,6 +45,7 @@ class StripeGateway(PaymentGateway):
         self,
         payload: str | bytes,
         signature: str,
+        headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         webhook_secret = settings.stripe_webhook_secret
         try:

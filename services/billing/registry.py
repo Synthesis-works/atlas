@@ -3,6 +3,7 @@ from apps.backend.config import settings
 from services.billing.gateways.base import PaymentGateway
 from services.billing.gateways.stripe_provider import StripeGateway
 from services.billing.gateways.razorpay_provider import RazorpayGateway
+from services.billing.gateways.paypal_provider import PayPalGateway
 
 
 class GatewayRegistry:
@@ -20,5 +21,9 @@ class GatewayRegistry:
             if not settings.razorpay_enabled:
                 raise NotImplementedError("Razorpay provider is not configured.")
             return RazorpayGateway()
+        elif provider == PaymentProvider.PAYPAL:
+            if not settings.paypal_enabled:
+                raise NotImplementedError("PayPal provider is not configured.")
+            return PayPalGateway()
         else:
             raise ValueError(f"Unsupported payment provider: {provider}")

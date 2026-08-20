@@ -23,6 +23,7 @@ from atlas_db.core.base import Base, BaseMixin, utcnow
 class PaymentProvider(str, enum.Enum):
     STRIPE = "stripe"
     RAZORPAY = "razorpay"
+    PAYPAL = "paypal"
     MANUAL = "manual"
 
 

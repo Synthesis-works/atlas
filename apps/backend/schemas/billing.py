@@ -27,6 +27,19 @@ class CheckoutRequest(BaseModel):
 class CheckoutResponse(BaseModel):
     session_id: str
     url: str
+    payment_id: Optional[uuid.UUID] = Field(
+        None, description="The Atlas payment id created for this checkout"
+    )
+    provider: Optional[PaymentProvider] = Field(None, description="The gateway used")
+
+
+class CaptureResponse(BaseModel):
+    payment_id: uuid.UUID
+    status: PaymentStatus
+    capture_id: Optional[str] = Field(None, description="Provider capture id")
+    provider_order_id: Optional[str] = None
+    amount: Optional[Decimal] = None
+    currency: Optional[str] = None
 
 
 class PlanResponse(BaseModel):
@@ -88,6 +101,9 @@ class PaymentResponse(BaseModel):
     currency: str
     status: PaymentStatus
     provider: PaymentProvider
+    provider_order_id: Optional[str] = None
+    provider_payment_id: Optional[str] = None
+    idempotency_key: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -1,4 +1,4 @@
-from pydantic import Field, model_validator
+from pydantic import AliasChoices, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -75,6 +75,17 @@ class Settings(BaseSettings):
     razorpay_key_secret: str = Field(default="")
     razorpay_webhook_secret: str = Field(default="")
 
+    # Billing Configuration (PayPal)
+    paypal_environment: str = Field(default="sandbox", validation_alias="PAYPAL_ENVIRONMENT")
+    paypal_client_id: str = Field(default="", validation_alias="PAYPAL_CLIENT_ID")
+    # Accept both conventional PAYPAL_CLIENT_SECRET and the pre-existing
+    # PAYPAL_SECRET name found on Atlas developer machines.
+    paypal_client_secret: str = Field(
+        default="",
+        validation_alias=AliasChoices("PAYPAL_CLIENT_SECRET", "PAYPAL_SECRET"),
+    )
+    paypal_webhook_id: str = Field(default="", validation_alias="PAYPAL_WEBHOOK_ID")
+
     @property
     def stripe_enabled(self) -> bool:
         return bool(self.stripe_api_key)
@@ -82,6 +93,10 @@ class Settings(BaseSettings):
     @property
     def razorpay_enabled(self) -> bool:
         return bool(self.razorpay_key_id and self.razorpay_key_secret)
+
+    @property
+    def paypal_enabled(self) -> bool:
+        return bool(self.paypal_client_id and self.paypal_client_secret)
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
