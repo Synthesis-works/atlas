@@ -21,12 +21,17 @@ from services.billing.gateways.base import CheckoutSessionResult
 
 
 class FakePayPalGateway:
+    fail_capture_with: str | None = None
+
     def create_checkout_session(self, price_id, org_id, amount, currency, success_url, cancel_url):
         return CheckoutSessionResult(
             session_id="ORDER-API-1", url="https://paypal.example/approve/ORDER-API-1"
         )
 
     def capture_payment(self, provider_order_id, amount, currency):
+        if self.fail_capture_with:
+            raise ValueError(self.fail_capture_with)
+
         from services.billing.gateways.base import CaptureResult
 
         return CaptureResult(
@@ -223,6 +228,33 @@ class TestCaptureApi:
     def test_capture_unknown_payment_returns_404(self, client, session, org_and_price):
         response = client.post(f"/api/v1/billing/capture/{uuid.uuid4()}")
         assert response.status_code == 404
+
+    def test_capture_gateway_value_error_returns_structured_400(
+        self, client, session, org_and_price
+    ):
+        org, price = org_and_price
+        checkout = client.post(
+            "/api/v1/billing/checkout",
+            json={
+                "plan_id": str(price.id),
+                "provider": "paypal",
+                "success_url": "https://atlas/success",
+                "cancel_url": "https://atlas/cancel",
+            },
+        ).json()
+        payment_id = checkout["payment_id"]
+
+        FakePayPalGateway.fail_capture_with = "PayPal capture failed"
+        try:
+            response = client.post(f"/api/v1/billing/capture/{payment_id}")
+        finally:
+            FakePayPalGateway.fail_capture_with = None
+
+        assert response.status_code == 400
+        body = response.json()
+        assert body["success"] is False
+        assert body["error"]["message"] == "PayPal capture failed"
+        assert "secret" not in body["error"]["message"].lower()
 
 
 class TestPaymentApi:
