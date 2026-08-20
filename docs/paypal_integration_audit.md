@@ -324,3 +324,42 @@ This implementation will NOT attempt:
 *Report end. Implementation has not begun; per the task, the next step is the Phase 3 implementation-readiness report.*
 
 ---
+---
+
+## Appendix — Implementation Status (Final)
+
+**Status:** Complete. All phases A–H delivered on branch `feature/paypal-payments` (worktree `D:\atlas-paypal`), based on `origin/main` @ `8284282cc55938229136491b63d41896b783140f`.
+
+### Delivered (vs. section 9 plan)
+
+| Planned item | Delivered |
+|---|---|
+| `PAYPAL` enum value + custom migration | `PaymentProvider.PAYPAL = "paypal"` in `packages/database/atlas_db/models/billing.py`; `3f9c71a2e8b4_add_paypal_to_payment_provider.py` (`autocommit_block` + `ALTER TYPE ... ADD VALUE 'paypal'`, irreversible downgrade, per ENUM_POLICY.md) |
+| PayPal settings + placeholders | `apps/backend/config.py`: `paypal_environment` (sandbox default), `paypal_client_id`, `paypal_client_secret` (AliasChoices `PAYPAL_SECRET`), `paypal_webhook_id`, `paypal_enabled` property; `.env.example` placeholders added |
+| `PayPalGateway` + ABC capture capability | `services/billing/gateways/paypal_provider.py` (httpx, OAuth token cache, Orders v2 create/capture/get, verify-webhook-signature API, refunds); `base.py` ABC + `capture_payment` default; Stripe/Razorpay unchanged behavior; `registry.py` PAYPAL branch |
+| Service layer | `services/billing/service.py`: idempotent checkout (returns existing `Payment` on idempotency-key reuse), `capture_payment` (amount/currency revalidation against DB `Price`), reconciliation (VOIDED/CANCELED/FAILED/EXPIRED → FAILED, capture-id extraction), PayPal webhook handling (`_find_payment_for_paypal_resource` with order-id fallback for `CHECKOUT.ORDER.*`), credit/entitlement activation (status-transition guard + `CreditTransaction` reference uniqueness + savepoint, partial unique index in `7d4a9c2f6e81_add_unique_credit_transaction_reference_index.py`) |
+| API | `apps/backend/routers/billing.py` + `schemas/billing.py`: real auth/org resolution from JWT on all org-scoped routes (mock `org_id` hole fixed), `POST /capture/{payment_id}`, `POST /webhooks/paypal` (transmission headers + webhook id, fail-closed), plans/checkout/subscriptions/invoices/payments preserved |
+| Frontend | `apps/landing/src/features/billing/` (`types.ts`, `billingService.ts`, `PayPalCheckoutButton.tsx`, `BillingPage.tsx`), route in `App.tsx` (lazy), dock item in `WorkspaceLayout.tsx`; `VITE_PAYPAL_CLIENT_ID` support; no new npm deps |
+| Tests | `services/billing/tests/` (conftest + unit: gateway/service/webhook; api: router) added to `testpaths` in `pyproject.toml` — **55 passed** |
+| Documentation | `docs/paypal_integration.md` + this appendix |
+
+### Validation results
+
+- `ruff check` + `ruff format --check`: clean (166 files).
+- `mypy` on `services/billing`, `apps/backend/routers/billing.py`, `apps/backend/schemas/billing.py`, `apps/backend/config.py`: no issues (pre-existing errors remain in `apps/backend/services/storage.py`, `apps/backend/adapters/ollama.py`, `apps/backend/agent/tests/test_provider_contracts.py` — untouched).
+- `pytest services/billing/tests`: **55 passed** (~6–10 s).
+- Full suite: 185 collected → **179 passed, 2 skipped** (Postgres integration), **4 errored** (`tests/backend/test_d7_reporting_async.py` — Postgres/Redis unavailable, pre-existing).
+- `npm run build` (`tsc -b && vite build`) in `apps/landing`: clean.
+- `npm run test:routes`: all PASS.
+
+### Residual gaps / out of scope
+
+- `PAYPAL_WEBHOOK_ID` not provisioned in `D:\atlas\.env` → webhook route fails closed until configured (by design). Sandbox webhook + verify-API credentials required before live testing.
+- `Payment` has no `price_id` column (pre-existing schema); amount is derived from `Price` at checkout, and the price link is not stored on the payment row (documented limitation).
+- Root `test_billing_integration.py` remains broken (imports nonexistent `services.billing.checkout`) — pre-existing, out of scope.
+- `tests/execution/test_domain.py` stale failure (`create_execution()` missing `submitted_by`) — pre-existing, out of scope.
+- Committed `razorpay_test_api_keys_1785679957258.csv` should be purged/rotated out of band.
+- Live PayPal testing not performed (no credentials authorized); manual sandbox procedure documented in `docs/paypal_integration.md`.
+- No PR opened per task constraints (branch left ready: 7 commits, conventional messages, pushed only on request).
+
+*Report end.*
