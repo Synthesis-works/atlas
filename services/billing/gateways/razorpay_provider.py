@@ -47,6 +47,7 @@ class RazorpayGateway(PaymentGateway):
         self,
         payload: str | bytes,
         signature: str,
+        headers: dict[str, str] | None = None,
     ) -> dict[str, Any]:
         """
         Verify the signature of the razorpay webhook.
