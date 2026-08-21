@@ -22,10 +22,17 @@ from services.billing.gateways.base import CheckoutSessionResult
 
 class FakePayPalGateway:
     fail_capture_with: str | None = None
+    created_invoices: list[str] = []
+    order_counter: int = 0
 
-    def create_checkout_session(self, price_id, org_id, amount, currency, success_url, cancel_url):
+    def create_checkout_session(
+        self, price_id, org_id, amount, currency, success_url, cancel_url, invoice_id=""
+    ):
+        FakePayPalGateway.created_invoices.append(invoice_id)
+        FakePayPalGateway.order_counter += 1
+        session_id = f"ORDER-API-{FakePayPalGateway.order_counter}"
         return CheckoutSessionResult(
-            session_id="ORDER-API-1", url="https://paypal.example/approve/ORDER-API-1"
+            session_id=session_id, url=f"https://paypal.example/approve/{session_id}"
         )
 
     def capture_payment(self, provider_order_id, amount, currency):
@@ -76,6 +83,8 @@ def client(session, monkeypatch):
         return FakePayPalGateway()
 
     monkeypatch.setattr(GatewayRegistry, "get_gateway", staticmethod(_get_gateway))
+    FakePayPalGateway.created_invoices = []
+    FakePayPalGateway.order_counter = 0
 
     # Plain TestClient (no context manager) so the lifespan's real database
     # initialization is skipped; DB access is overridden above.
@@ -153,7 +162,7 @@ class TestCheckoutApi:
         )
         assert response.status_code == 200
         body = response.json()
-        assert body["session_id"] == "ORDER-API-1"
+        assert body["session_id"].startswith("ORDER-API-")
         assert body["provider"] == "paypal"
         assert body["payment_id"] is not None
 
@@ -203,6 +212,27 @@ class TestCheckoutApi:
         assert second.status_code == 200
         assert first.json()["payment_id"] == second.json()["payment_id"]
 
+    def test_checkout_invoice_ids_are_unique_and_payment_tied(self, client, session, org_and_price):
+        """Regression: reusing the plan UUID as PayPal invoice_id made every
+        capture after the first fail with DUPLICATE_INVOICE_ID."""
+        org, price = org_and_price
+        payload = {
+            "plan_id": str(price.id),
+            "provider": "paypal",
+            "success_url": "https://atlas/success",
+            "cancel_url": "https://atlas/cancel",
+        }
+        first = client.post("/api/v1/billing/checkout", json=payload).json()
+        second = client.post("/api/v1/billing/checkout", json=payload).json()
+
+        invoices = list(FakePayPalGateway.created_invoices)
+        assert len(invoices) == 2
+        assert invoices[0] == f"ATLAS-{first['payment_id']}"
+        assert invoices[1] == f"ATLAS-{second['payment_id']}"
+        assert invoices[0] != invoices[1]
+        # The invoice id must never be the shared plan id.
+        assert str(price.id) not in invoices
+
 
 class TestCaptureApi:
     def test_capture_happy_path(self, client, session, org_and_price):
@@ -223,7 +253,7 @@ class TestCaptureApi:
         body = response.json()
         assert body["status"] == "succeeded"
         assert body["capture_id"] == "CAP-API-1"
-        assert body["provider_order_id"] == "ORDER-API-1"
+        assert body["provider_order_id"] == checkout["session_id"]
 
     def test_capture_unknown_payment_returns_404(self, client, session, org_and_price):
         response = client.post(f"/api/v1/billing/capture/{uuid.uuid4()}")
@@ -275,7 +305,7 @@ class TestPaymentApi:
         assert response.status_code == 200
         body = response.json()
         assert body["provider"] == "paypal"
-        assert body["provider_order_id"] == "ORDER-API-1"
+        assert body["provider_order_id"] == checkout["session_id"]
 
     def test_payment_of_other_org_is_hidden(self, client, session, org_and_price):
         org, price = org_and_price
@@ -323,7 +353,7 @@ class TestPaypalWebhookApi:
             "resource": {
                 "id": "CAP-API-1",
                 "status": "COMPLETED",
-                "supplementary_data": {"related_ids": {"order_id": "ORDER-API-1"}},
+                "supplementary_data": {"related_ids": {"order_id": checkout["session_id"]}},
             },
         }
         response = client.post(

@@ -39,8 +39,10 @@ class FakePayPalGateway:
         self.capture_result: CaptureResult | None = None
         self.order_lookup: dict | None = None
 
-    def create_checkout_session(self, price_id, org_id, amount, currency, success_url, cancel_url):
-        self.created.append((str(price_id), str(org_id), amount, currency))
+    def create_checkout_session(
+        self, price_id, org_id, amount, currency, success_url, cancel_url, invoice_id=""
+    ):
+        self.created.append((str(price_id), str(org_id), amount, currency, invoice_id))
         return CheckoutSessionResult(
             session_id="ORDER-1", url="https://paypal.example/approve/ORDER-1"
         )
@@ -157,9 +159,53 @@ class TestCheckout:
             success_url="https://atlas/success",
             cancel_url="https://atlas/cancel",
         )
-        price_id, _, amount, currency = fake_gateway.created[0]
+        gateway_price_id, gateway_org_id, amount, currency, _ = fake_gateway.created[0]
         assert Decimal(amount) == price.amount
         assert currency == price.currency
+        # reference_id (plan) and custom_id (org) semantics are preserved.
+        assert gateway_price_id == str(price.id)
+        assert gateway_org_id == str(org.id)
+
+    def test_invoice_id_is_unique_per_payment(self, service, session, org, price, fake_gateway):
+        service.create_checkout_session(
+            org_id=org.id,
+            price_id=price.id,
+            provider=PaymentProvider.PAYPAL,
+            success_url="https://atlas/success",
+            cancel_url="https://atlas/cancel",
+            idempotency_key="idem-inv-1",
+        )
+        service.create_checkout_session(
+            org_id=org.id,
+            price_id=price.id,
+            provider=PaymentProvider.PAYPAL,
+            success_url="https://atlas/success",
+            cancel_url="https://atlas/cancel",
+            idempotency_key="idem-inv-2",
+        )
+
+        invoice_ids = [created[4] for created in fake_gateway.created]
+        assert len(invoice_ids) == 2
+        assert invoice_ids[0] != invoice_ids[1]
+        # The regression: the invoice id must never be the shared plan id.
+        assert all(invoice != str(price.id) for invoice in invoice_ids)
+
+    def test_invoice_id_is_tied_to_the_atlas_payment(
+        self, service, session, org, price, fake_gateway
+    ):
+        result = service.create_checkout_session(
+            org_id=org.id,
+            price_id=price.id,
+            provider=PaymentProvider.PAYPAL,
+            success_url="https://atlas/success",
+            cancel_url="https://atlas/cancel",
+            idempotency_key="idem-inv-3",
+        )
+        payment = session.query(Payment).filter_by(idempotency_key="idem-inv-3").one()
+
+        assert fake_gateway.created[0][4] == f"ATLAS-{payment.id}"
+        # Traceability: the PayPal order id is also recorded on the payment.
+        assert payment.provider_order_id == result.session_id
 
     def test_same_idempotency_key_returns_existing_session(
         self, service, session, org, price, fake_gateway

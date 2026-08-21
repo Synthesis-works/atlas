@@ -122,10 +122,15 @@ class PayPalGateway(PaymentGateway):
         currency: str,
         success_url: str,
         cancel_url: str,
+        invoice_id: str,
     ) -> CheckoutSessionResult:
         """
         Create a PayPal Orders v2 order (intent=CAPTURE) and return its id plus
         the approval URL for the frontend.
+
+        `invoice_id` is stored on the purchase unit and must be unique per
+        Atlas payment: PayPal validates invoice_id uniqueness against already
+        captured transactions at capture time (DUPLICATE_INVOICE_ID).
         """
         payload = {
             "intent": "CAPTURE",
@@ -133,7 +138,7 @@ class PayPalGateway(PaymentGateway):
                 {
                     "reference_id": price_id,
                     "custom_id": str(org_id),
-                    "invoice_id": price_id[:127],
+                    "invoice_id": invoice_id[:127],
                     "amount": {
                         "currency_code": currency.upper(),
                         "value": _format_amount(amount, currency),
