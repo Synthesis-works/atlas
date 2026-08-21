@@ -230,10 +230,10 @@ async function request<T>(endpoint: string, options: RequestOptions = {}, isRetr
         setAuthToken(null);
       }
 
+      // statusText is frequently empty (HTTP/2, proxied responses), so the
+      // fallback deliberately carries only the numeric status.
       const errorMessage =
-        rawData?.detail ||
-        rawData?.message ||
-        `HTTP Error ${response.status}: ${response.statusText}`;
+        rawData?.detail || rawData?.message || rawData?.error?.message || `HTTP Error ${response.status}`;
 
       throw new ApiError(response.status, errorMessage, rawData);
     }

@@ -21,6 +21,7 @@ class RazorpayGateway(PaymentGateway):
         currency: str,
         success_url: str,
         cancel_url: str,
+        invoice_id: str,
     ) -> CheckoutSessionResult:
         # Razorpay expects amounts in smaller units (paise for INR)
         amount_paise = int(amount * 100)
@@ -30,8 +31,8 @@ class RazorpayGateway(PaymentGateway):
             {
                 "amount": amount_paise,
                 "currency": currency,
-                "receipt": str(org_id),
-                "notes": {"org_id": str(org_id), "price_id": price_id},
+                "receipt": invoice_id[:40],
+                "notes": {"org_id": str(org_id), "price_id": price_id, "invoice_id": invoice_id},
             }
         )
 

@@ -75,6 +75,20 @@ class BillingService:
 
         gateway_price_id = price.provider_price_id or str(price.id)
 
+        # The Payment row (and its UUID) must exist BEFORE the provider order is
+        # created: providers such as PayPal require an invoice_id that is unique
+        # per payment across the merchant account. Reusing the plan id here made
+        # every capture after the first fail with DUPLICATE_INVOICE_ID.
+        payment = Payment(
+            org_id=org_id,
+            amount=price.amount,
+            currency=price.currency,
+            status=PaymentStatus.CREATED,
+            provider=provider,
+            idempotency_key=idempotency_key,
+        )
+        self.repo.create_payment(payment)
+
         result = gateway.create_checkout_session(
             price_id=gateway_price_id,
             org_id=org_id,
@@ -82,23 +96,15 @@ class BillingService:
             currency=price.currency,
             success_url=success_url,
             cancel_url=cancel_url,
+            invoice_id=f"ATLAS-{payment.id}",
         )
 
-        payment = Payment(
-            org_id=org_id,
-            amount=price.amount,
-            currency=price.currency,
-            status=PaymentStatus.CREATED,
-            provider=provider,
-            provider_order_id=result.session_id,
-            idempotency_key=idempotency_key,
-        )
+        payment.provider_order_id = result.session_id
         if provider == PaymentProvider.PAYPAL:
             payment.metadata_json = {
                 "approve_url": result.url,
                 "provider_order_id": result.session_id,
             }
-        self.repo.create_payment(payment)
         self.session.commit()
 
         return result

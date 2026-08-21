@@ -40,10 +40,16 @@ class PaymentGateway(abc.ABC):
         currency: str,
         success_url: str,
         cancel_url: str,
+        invoice_id: str,
     ) -> CheckoutSessionResult:
         """
         Creates a checkout session for the customer.
         For subscriptions, price_id corresponds to the provider's plan ID.
+
+        `invoice_id` must be unique per Atlas payment (never per plan): some
+        providers (e.g. PayPal) reject a capture whose invoice_id was already
+        used by a previously captured transaction in the merchant account.
+        Callers pass a stable, traceable identifier such as ``ATLAS-<payment_id>``.
         """
         pass
 

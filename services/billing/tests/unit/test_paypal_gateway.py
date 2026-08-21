@@ -87,6 +87,7 @@ class TestOAuth:
             currency="USD",
             success_url="https://atlas/success",
             cancel_url="https://atlas/cancel",
+            invoice_id="ATLAS-TEST-1",
         )
         result2 = gateway.create_checkout_session(
             price_id="P-1",
@@ -95,6 +96,7 @@ class TestOAuth:
             currency="USD",
             success_url="https://atlas/success",
             cancel_url="https://atlas/cancel",
+            invoice_id="ATLAS-TEST-1",
         )
 
         assert result1.session_id == "ORDER-1"
@@ -115,6 +117,7 @@ class TestOAuth:
                 currency="USD",
                 success_url="https://atlas/success",
                 cancel_url="https://atlas/cancel",
+                invoice_id="ATLAS-TEST-1",
             )
 
 
@@ -130,6 +133,7 @@ class TestCreateOrder:
             currency="USD",
             success_url="https://atlas/success",
             cancel_url="https://atlas/cancel",
+            invoice_id="ATLAS-TEST-1",
         )
         assert result.session_id == "ORDER-1"
         assert result.url.startswith("https://paypal.example/approve/")
@@ -149,6 +153,7 @@ class TestCreateOrder:
                 currency="USD",
                 success_url="https://atlas/success",
                 cancel_url="https://atlas/cancel",
+                invoice_id="ATLAS-TEST-1",
             )
 
     def test_malformed_response_raises_value_error(self, monkeypatch):
@@ -166,6 +171,7 @@ class TestCreateOrder:
                 currency="USD",
                 success_url="https://atlas/success",
                 cancel_url="https://atlas/cancel",
+                invoice_id="ATLAS-TEST-1",
             )
 
     def test_amount_formatted_with_two_decimals(self, monkeypatch):
@@ -185,11 +191,52 @@ class TestCreateOrder:
             currency="USD",
             success_url="https://atlas/success",
             cancel_url="https://atlas/cancel",
+            invoice_id="ATLAS-TEST-1",
         )
         assert '"value":"49.50"' in captured["body"]
 
+    def test_invoice_id_is_sent_on_order_creation(self, monkeypatch):
+        """Regression for DUPLICATE_INVOICE_ID: the caller-supplied per-payment
+        invoice id must reach the PayPal order's purchase unit."""
+        captured = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/v1/oauth2/token":
+                return _token_handler(request)
+            captured["body"] = request.read().decode("utf-8")
+            return httpx.Response(201, json=ORDER_BODY)
+
+        gateway = make_gateway(handler, monkeypatch)
+        gateway.create_checkout_session(
+            price_id="P-1",
+            org_id=__import__("uuid").uuid4(),
+            amount=Decimal("50.00"),
+            currency="USD",
+            success_url="https://atlas/success",
+            cancel_url="https://atlas/cancel",
+            invoice_id="ATLAS-PAY-1",
+        )
+        assert '"invoice_id":"ATLAS-PAY-1"' in captured["body"]
+        # reference_id stays the plan identifier.
+        assert '"reference_id":"P-1"' in captured["body"]
+
 
 class TestCapture:
+    def test_capture_request_carries_empty_body(self, monkeypatch):
+        """The capture endpoint takes no invoice_id: uniqueness is enforced by
+        PayPal against the invoice_id stored on the order at creation time."""
+        captured = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/v1/oauth2/token":
+                return _token_handler(request)
+            captured["body"] = request.read().decode("utf-8")
+            return httpx.Response(200, json=CAPTURE_BODY)
+
+        gateway = make_gateway(handler, monkeypatch)
+        gateway.capture_payment("ORDER-1", Decimal("50.00"), "USD")
+        assert captured["body"] == "{}"
+
     def test_capture_success(self, monkeypatch):
         def handler(request: httpx.Request) -> httpx.Response:
             if request.url.path == "/v1/oauth2/token":
@@ -258,6 +305,7 @@ class TestNetworkFailures:
                 currency="USD",
                 success_url="https://atlas/success",
                 cancel_url="https://atlas/cancel",
+                invoice_id="ATLAS-TEST-1",
             )
 
 

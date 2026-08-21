@@ -21,6 +21,7 @@ class StripeGateway(PaymentGateway):
         currency: str,
         success_url: str,
         cancel_url: str,
+        invoice_id: str,
     ) -> CheckoutSessionResult:
         # If price_id exists on Stripe, we use it directly (e.g. for subscriptions).
         # Otherwise, we create a one-time price dynamically or use line_items.
@@ -37,7 +38,7 @@ class StripeGateway(PaymentGateway):
             success_url=success_url,
             cancel_url=cancel_url,
             client_reference_id=str(org_id),
-            metadata={"org_id": str(org_id)},
+            metadata={"org_id": str(org_id), "invoice_id": invoice_id},
         )
         return CheckoutSessionResult(session_id=session.id, url=session.url or "")
 
