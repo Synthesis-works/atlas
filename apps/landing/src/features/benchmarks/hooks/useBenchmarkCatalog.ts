@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { MOCK_BENCHMARKS } from '../../../domain/benchmarks/mock';
+import type { Benchmark } from '../../../domain/benchmarks/types';
 import type { BenchmarkFilterState, BenchmarkSortState } from '../selectors/catalog';
 import { selectBenchmarkCatalog, selectBenchmarkPreview, selectBenchmarkComparisons } from '../selectors/catalog';
 import { useWorkspaceInteractionStore } from '@/store/workspace/interaction/store';
+import { getBenchmarks } from '../services/benchmarkService';
 
 export function useBenchmarkCatalog() {
   // Coordinator State
@@ -22,9 +23,22 @@ export function useBenchmarkCatalog() {
   const [pageSize, setPageSize] = useState(24);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
-  // Simulated Async State
+  // Data State (real API-backed)
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [benchmarks, setBenchmarks] = useState<Benchmark[]>([]);
+
+  const loadBenchmarks = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    const res = await getBenchmarks();
+    if (res.error) {
+      setError(new Error(res.error));
+    } else {
+      setBenchmarks(res.data);
+    }
+    setIsLoading(false);
+  }, []);
 
   // Global Interaction Store (IDs only)
   const ns = 'benchmarks';
@@ -45,31 +59,42 @@ export function useBenchmarkCatalog() {
     initWorkspace(ns);
   }, [ns, initWorkspace]);
 
-  // Initial Data Load Simulation
+  // Initial Data Load
   useEffect(() => {
-    const timer = setTimeout(() => {
+    let mounted = true;
+    setIsLoading(true);
+    setError(null);
+    getBenchmarks().then((res) => {
+      if (!mounted) return;
+      if (res.error) {
+        setError(new Error(res.error));
+      } else {
+        setBenchmarks(res.data);
+      }
       setIsLoading(false);
-    }, 1200);
-    return () => clearTimeout(timer);
+    });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // Compute Presentation Models
   const catalog = useMemo(() => {
-    return selectBenchmarkCatalog(MOCK_BENCHMARKS, filters, sort, page, pageSize);
-  }, [filters, sort, page, pageSize]);
+    return selectBenchmarkCatalog(benchmarks, filters, sort, page, pageSize);
+  }, [benchmarks, filters, sort, page, pageSize]);
 
   // Compute Active Preview Model
   const previewModel = useMemo(() => {
     if (!previewId) return null;
-    const benchmark = MOCK_BENCHMARKS.find(b => b.id === previewId);
+    const benchmark = benchmarks.find(b => b.id === previewId);
     return selectBenchmarkPreview(benchmark);
-  }, [previewId]);
+  }, [previewId, benchmarks]);
 
   // Compute Comparison Models
   const comparisonModels = useMemo(() => {
     if (selectedIds.length === 0) return [];
-    return selectBenchmarkComparisons(MOCK_BENCHMARKS, selectedIds);
-  }, [selectedIds]);
+    return selectBenchmarkComparisons(benchmarks, selectedIds);
+  }, [selectedIds, benchmarks]);
 
   // Reset page on filter changes
   useEffect(() => {
@@ -122,10 +147,8 @@ export function useBenchmarkCatalog() {
   }, [closePreviewStore]);
 
   const handleRetry = useCallback(() => {
-    setIsLoading(true);
-    setError(null);
-    setTimeout(() => setIsLoading(false), 1200);
-  }, []);
+    void loadBenchmarks();
+  }, [loadBenchmarks]);
 
   return {
     ...catalog,

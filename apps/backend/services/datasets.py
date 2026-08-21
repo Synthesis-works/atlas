@@ -28,7 +28,7 @@ class DatasetService:
             .offset(skip)
             .limit(limit)
         )
-        return list(self.dataset_repo.session.execute(stmt).scalars().all())
+        return list(self.dataset_repo.db.execute(stmt).scalars().all())
 
     def create_dataset(
         self, project_id: uuid.UUID, member_id: uuid.UUID, data: DatasetCreate

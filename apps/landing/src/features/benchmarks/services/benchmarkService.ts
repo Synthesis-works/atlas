@@ -7,7 +7,6 @@
 import { apiClient } from '@/core/api/client';
 import type { ServiceResult } from '@/core/types/service';
 import type { Benchmark } from '@/domain/benchmarks/types';
-import { MOCK_BENCHMARKS } from '@/domain/benchmarks/mock';
 import { filterBenchmarksByQuery } from '../lib/searchParser';
 import { normalizeBenchmarkPayload } from '@/domain/benchmarks/adapters';
 import { BenchmarkMapper, type BackendBenchmarkRead } from '../mappers/benchmarkMapper';
@@ -25,14 +24,14 @@ export async function getBenchmarks(): Promise<ServiceResult<Benchmark[]>> {
     } else if (rawRes && rawRes.data && Array.isArray(rawRes.data)) {
       dtos = rawRes.data;
     }
-    
+
     if (dtos.length > 0) {
       const domainModels = BenchmarkMapper.toDomainList(dtos);
       return { data: domainModels, error: null };
     }
-    return { data: MOCK_BENCHMARKS, error: null };
+    return { data: [], error: null };
   } catch (err: any) {
-    return { data: MOCK_BENCHMARKS, error: null };
+    return { data: [], error: err?.message || 'Failed to fetch benchmarks' };
   }
 }
 
@@ -44,11 +43,9 @@ export async function getBenchmarkById(id: string): Promise<ServiceResult<Benchm
       const domainModel = BenchmarkMapper.toDomain(rawDto);
       return { data: domainModel, error: null };
     }
-    const fallback = MOCK_BENCHMARKS.find((b) => b.id === id) || null;
-    return { data: fallback, error: fallback ? null : `Benchmark ${id} not found` };
+    return { data: null, error: `Benchmark ${id} not found` };
   } catch (err: any) {
-    const fallback = MOCK_BENCHMARKS.find((b) => b.id === id) || null;
-    return { data: fallback, error: null };
+    return { data: null, error: err?.message || `Benchmark ${id} not found` };
   }
 }
 
@@ -58,14 +55,14 @@ export async function filterBenchmarks(
 ): Promise<ServiceResult<Benchmark[]>> {
   try {
     const catalogRes = await getBenchmarks();
-    let result = catalogRes.data || MOCK_BENCHMARKS;
+    let result = catalogRes.data || [];
     if (category && category !== 'all') {
       result = result.filter((b) => b.category === category);
     }
     if (query) {
       result = filterBenchmarksByQuery(result, query);
     }
-    return { data: result, error: null };
+    return { data: result, error: catalogRes.error };
   } catch (err: any) {
     return { data: [], error: err?.message || 'Filter evaluation failed' };
   }
