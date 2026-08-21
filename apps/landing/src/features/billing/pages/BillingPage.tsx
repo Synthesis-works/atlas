@@ -41,6 +41,15 @@ const PHASE_COPY: Record<CheckoutPhase, { title: string; detail: string }> = {
   failure: { title: 'Payment failed', detail: 'The payment could not be completed.' },
 };
 
+/** Poll cadence while a checkout is awaiting approval or capture. */
+const PAYMENTS_POLL_INTERVAL_MS = 5000;
+/** Retries (with linear backoff) for the payments list fetch before surfacing an error. */
+const PAYMENTS_REFRESH_RETRIES = 2;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function formatAmount(amount: string, currency: string): string {
   const num = Number(amount);
   if (Number.isNaN(num)) return `${amount} ${currency}`;
@@ -70,6 +79,7 @@ export default function BillingPage() {
    */
   const paymentIdRef = useRef<string | null>(null);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [paymentsError, setPaymentsError] = useState<string | null>(null);
   const [reconciling, setReconciling] = useState<string | null>(null);
 
   const refreshPlans = useCallback(async () => {
@@ -83,15 +93,39 @@ export default function BillingPage() {
     }
   }, []);
 
-  const refreshPayments = useCallback(async () => {
-    const result = await getPayments();
-    if (!result.error) setPayments(result.data);
+  /**
+   * Fetches the payments list with bounded retries. Failures are surfaced via
+   * `paymentsError` instead of being swallowed: a silently failed refresh used
+   * to leave the list stale until a manual page reload.
+   */
+  const refreshPayments = useCallback(async (retries: number = PAYMENTS_REFRESH_RETRIES): Promise<boolean> => {
+    for (let attempt = 0; ; attempt++) {
+      const result = await getPayments();
+      if (!result.error) {
+        setPayments(result.data);
+        setPaymentsError(null);
+        return true;
+      }
+      setPaymentsError(result.error);
+      if (attempt >= retries) return false;
+      await delay(300 * (attempt + 1));
+    }
   }, []);
 
   useEffect(() => {
     void refreshPlans();
     void refreshPayments();
   }, [refreshPlans, refreshPayments]);
+
+  // While a checkout is awaiting approval or capture, poll the payments list
+  // so webhook- or capture-driven transitions appear without a manual reload.
+  useEffect(() => {
+    if (phase !== 'approving' && phase !== 'capturing') return;
+    const interval = setInterval(() => {
+      void refreshPayments(0);
+    }, PAYMENTS_POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [phase, refreshPayments]);
 
   const handleCreateOrder = useCallback(async (): Promise<string> => {
     if (!selectedPlan) throw new Error('No plan selected');
@@ -111,8 +145,10 @@ export default function BillingPage() {
     }
     paymentIdRef.current = result.data.payment_id;
     setPhase('approving');
+    // Surface the PENDING payment row while the buyer is on PayPal.
+    void refreshPayments();
     return result.data.session_id;
-  }, [selectedPlan]);
+  }, [selectedPlan, refreshPayments]);
 
   const handleApprove = useCallback(async () => {
     const paymentId = paymentIdRef.current;
@@ -131,6 +167,28 @@ export default function BillingPage() {
     }
     if (result.data.status === 'succeeded') {
       setPhase('success');
+      // Optimistic upsert from the authoritative capture response: the list
+      // reflects the succeeded payment immediately, even if the confirmation
+      // fetch below fails.
+      const captured = result.data;
+      setPayments((prev) => {
+        const record: PaymentRecord = {
+          id: captured.payment_id,
+          org_id: '',
+          amount: captured.amount ?? '0',
+          currency: captured.currency ?? 'USD',
+          status: captured.status,
+          provider: 'paypal',
+          provider_order_id: captured.provider_order_id,
+          provider_payment_id: captured.capture_id,
+          idempotency_key: null,
+        };
+        const index = prev.findIndex((p) => p.id === captured.payment_id);
+        if (index === -1) return [record, ...prev];
+        const next = [...prev];
+        next[index] = { ...next[index], status: captured.status };
+        return next;
+      });
       await refreshPayments();
     } else {
       setPhase('failure');
@@ -289,7 +347,12 @@ export default function BillingPage() {
         <div className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-white/35">
           Recent payments
         </div>
-        {payments.length === 0 && (
+        {paymentsError && (
+          <div className="rounded-lg border border-amber-400/25 bg-amber-400/5 px-4 py-3 text-sm text-amber-300">
+            Could not refresh payments: {paymentsError}. Showing the last known list — try the refresh button.
+          </div>
+        )}
+        {payments.length === 0 && !paymentsError && (
           <Card className="!rounded-lg !p-5">
             <p className="text-sm text-white/50">No payments yet.</p>
           </Card>
