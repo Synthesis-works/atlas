@@ -5,13 +5,19 @@ import structlog
 from atlas_db.core.session import SessionLocal
 from celery.exceptions import SoftTimeLimitExceeded
 
+from apps.backend.config import settings
 from apps.backend.core.telemetry import NullTelemetrySink
 from apps.backend.worker.celery_app import celery_app
 from apps.backend.worker.execution_worker import ExecutionWorker
+from apps.backend.worker.executor_init import get_executor_for_environment, init_executors
 from packages.execution_engine.application.outbox_dispatcher import OutboxDispatcher
 from packages.execution_engine.application.subscribers import CompositeEventPublisher
 
 logger = structlog.get_logger(__name__)
+
+
+# Initialize executors at module load time
+init_executors()
 
 
 class ExecutionQueuedSubscriber:
@@ -46,7 +52,8 @@ def run_execution_task(self, execution_id_str: str, correlation_id: str | None =
     try:
         # The execution worker handles its own session for state transitions
         with SessionLocal() as db:
-            worker = ExecutionWorker(db)
+            executor_type = get_executor_for_environment()
+            worker = ExecutionWorker(db, executor_type=executor_type)
             worker.process(execution_id, correlation_id=correlation_id)
 
     except SoftTimeLimitExceeded:

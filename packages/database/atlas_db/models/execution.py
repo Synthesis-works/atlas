@@ -3,7 +3,17 @@ import uuid
 from datetime import datetime
 
 from atlas_db.core.base import Base, BaseMixin, utcnow
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import ENUM, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -27,6 +37,17 @@ class ExecutionStatus(str, enum.Enum):
     CANCELLING = "CANCELLING"
     CANCELLED = "CANCELLED"
     TIMED_OUT = "TIMED_OUT"
+
+
+class AttemptStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    CONTAINER_CREATED = "CONTAINER_CREATED"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    TIMED_OUT = "TIMED_OUT"
+    CANCELLED = "CANCELLED"
+    CLEANED = "CLEANED"
 
 
 class ArtifactType(str, enum.Enum):
@@ -121,6 +142,57 @@ class Execution(Base, BaseMixin):
         "ModelOutput", back_populates="execution"
     )
     artifacts: Mapped[list["Artifact"]] = relationship("Artifact", back_populates="execution")
+    attempts: Mapped[list["ExecutionAttempt"]] = relationship(
+        "ExecutionAttempt", back_populates="execution", cascade="all, delete-orphan"
+    )
+
+
+class ExecutionAttempt(Base, BaseMixin):
+    __tablename__ = "benchmark_execution_attempts"
+    __table_args__ = {"extend_existing": True}
+
+    execution_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("executions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[AttemptStatus] = mapped_column(
+        ENUM(AttemptStatus, name="attempt_status"), nullable=False, default=AttemptStatus.PENDING
+    )
+
+    # Executor info
+    executor_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # "local", "docker", etc.
+    container_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    image_ref: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    image_digest: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    # Timing
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Termination
+    exit_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    termination_reason: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    oom_killed: Mapped[bool] = mapped_column(default=False)
+    timed_out: Mapped[bool] = mapped_column(default=False)
+
+    # Resource telemetry
+    cpu_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+    peak_memory_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    pids_peak: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    network_rx_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    network_tx_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+    # Trace context
+    trace_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    correlation_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    worker_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Error info
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    execution: Mapped["Execution"] = relationship("Execution", back_populates="attempts")
 
 
 class ModelOutput(Base, BaseMixin):

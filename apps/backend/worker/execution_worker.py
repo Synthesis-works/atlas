@@ -21,17 +21,19 @@ logger = logging.getLogger(__name__)
 class ExecutionWorker:
     """
     Orchestrates the execution lifecycle: QUEUED -> RUNNING -> COMPLETED/FAILED/CANCELLED/TIMED_OUT.
+    Each execution runs as an attempt with full provenance tracking.
     """
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, executor_type: str | None = None):
         self.db = db
-        self.runner = ExecutionRunner(db)
+        self.runner = ExecutionRunner(db, executor_type=executor_type)
         self.event_bus = CeleryExecutionEventBus()
 
     def mark_timed_out(self, execution_id: uuid.UUID, correlation_id: str | None = None):
         execution = self.db.query(Execution).filter(Execution.id == execution_id).first()
         if execution and execution.status in (ExecutionStatus.QUEUED, ExecutionStatus.RUNNING):
             execution.status = ExecutionStatus.TIMED_OUT
+            execution.completed_at = datetime.now(UTC)
             self.db.commit()
             self.event_bus.emit(
                 ExecutionFailed(
@@ -58,6 +60,13 @@ class ExecutionWorker:
         def update_both_status(status_str: str):
             if core_exec:
                 core_exec.status = getattr(ExecutionStatus, status_str, status_str)
+                if status_str == "RUNNING" and not core_exec.started_at:
+                    core_exec.started_at = datetime.now(UTC)
+                elif (
+                    status_str in ("COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT")
+                    and not core_exec.completed_at
+                ):
+                    core_exec.completed_at = datetime.now(UTC)
             if ee_exec:
                 ee_exec.status = getattr(ExecutionState, status_str, status_str)  # type: ignore[arg-type,assignment]
             self.db.commit()
@@ -85,10 +94,10 @@ class ExecutionWorker:
         )
 
         try:
-            # 1. Run the execution via Runner
+            # 1. Run the execution via Runner (handles attempt creation, ModelOutputs, provenance)
             outputs = self.runner.run(execution)
 
-            # Check for cooperative cancellation
+            # Check for cooperative cancellation (runner handles this internally)
             self.db.refresh(execution)
             if getattr(execution, "cancellation_requested", False):
                 update_both_status("CANCELLED")
@@ -102,12 +111,13 @@ class ExecutionWorker:
                 )
                 return
 
-            # 2. Persist ModelOutputs incrementally
-            self.db.add_all(outputs)
+            # 2. ModelOutputs already persisted by runner
+            # Just verify they're committed
             self.db.commit()
 
-            # 3. Transition to COMPLETED
-            update_both_status("COMPLETED")
+            # 3. Transition to COMPLETED (runner already set execution status)
+            if execution.status != ExecutionStatus.COMPLETED:
+                update_both_status("COMPLETED")
 
         except Exception as e:
             logger.exception(f"Execution {execution_id} failed: {e}")
@@ -125,6 +135,14 @@ class ExecutionWorker:
             return
 
         # 4. Trigger completion event downstream natively via Outbox
+        from atlas_db.models.execution import ExecutionAttempt
+
+        latest_attempt = (
+            self.db.query(ExecutionAttempt)
+            .filter(ExecutionAttempt.execution_id == execution_id)
+            .order_by(ExecutionAttempt.attempt_number.desc())
+            .first()
+        )
         outbox_msg = OutboxMessage(
             event_id=uuid.uuid4(),
             aggregate_id=execution_id,
@@ -132,7 +150,10 @@ class ExecutionWorker:
             event_type="ExecutionCompletedEvent",
             event_version=1,
             schema_version=1,
-            payload={"execution_id": str(execution_id), "attempt_id": str(uuid.uuid4())},
+            payload={
+                "execution_id": str(execution_id),
+                "attempt_id": str(latest_attempt.id) if latest_attempt else None,
+            },
             trace_context={
                 "trace_id": str(correlation_id) if correlation_id else "",
                 "correlation_id": str(correlation_id) if correlation_id else "",

@@ -1,0 +1,108 @@
+name: Benchmark Execution Dry-Run
+
+# Level-3 validation for the Docker execution plane.
+#
+# Runs the REAL production code path (ENVIRONMENT=production -> docker
+# executor -> isolated benchmark container) on a GitHub-hosted runner against
+# a service-container postgres, using a synthetic "mock" target so NO secrets,
+# provider keys, PATs, or real prompts are required. This workflow is safe to
+# run on any branch and does not require the BENCHMARK_EXECUTION_ENABLED
+# repository variable (that guard applies only to real benchmark traffic).
+
+on:
+  # workflow_dispatch is declared for completeness but GitHub only exposes
+  # dispatchable workflows from the default branch; until this lands on
+  # main, runs are triggered by pushes to the validation branch below.
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/docker-execution-runtime
+    paths:
+      - ".github/workflows/benchmark-execute-dryrun.yml"
+      - "apps/backend/worker/**"
+      - "packages/execution_engine/**"
+      - "docker/benchmark/**"
+      - "scripts/*execution*.py"
+
+jobs:
+  dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: atlas
+          POSTGRES_DB: atlas
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+psycopg2://postgres:atlas@localhost:5432/atlas
+      ENVIRONMENT: production
+      # Production-mode Settings guard requires a non-default JWT secret.
+      # This value is throwaway and grants nothing.
+      JWT_SECRET: dryrun-throwaway-not-a-real-secret
+      ATLAS_BENCHMARK_IMAGE: atlas-benchmark-runner:dryrun
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      - name: Build benchmark runner image
+        run: |
+          docker build -f docker/benchmark/Dockerfile -t "$ATLAS_BENCHMARK_IMAGE" .
+          docker image inspect "$ATLAS_BENCHMARK_IMAGE" --format 'built {{.Id}}'
+
+      - name: Negative control - no provider keys in runner environment
+        run: |
+          leaked=0
+          for key in GEMINI_API_KEY OPENAI_API_KEY MISTRAL_API_KEY XAI_API_KEY GROQ_API_KEY; do
+            if [ -n "${!key:-}" ]; then
+              echo "::error::$key is set in the runner environment; dry-run must be zero-secret"
+              leaked=1
+            fi
+          done
+          exit $leaked
+
+      - name: Seed synthetic execution
+        id: seed
+        run: |
+          out=$(uv run python scripts/seed_dryrun_execution.py)
+          echo "$out"
+          echo "$out" >> "$GITHUB_OUTPUT"
+
+      - name: Execute via production code path
+        run: |
+          uv run python scripts/run_execution_ci.py \
+            "${{ steps.seed.outputs.execution_id }}" \
+            "dryrun-${{ github.run_id }}-${{ github.run_attempt }}"
+
+      - name: Verify results, provenance, and idempotency invariants
+        run: |
+          uv run python scripts/verify_dryrun_execution.py \
+            "${{ steps.seed.outputs.execution_id }}"
+
+      - name: Confirm no benchmark containers left behind
+        if: always()
+        run: |
+          leftovers=$(docker ps -a --filter "label=atlas.benchmark=true" -q | wc -l)
+          echo "benchmark containers remaining: $leftovers"
+          test "$leftovers" -eq 0 || {
+            docker ps -a --filter "label=atlas.benchmark=true"
+            exit 1
+          }

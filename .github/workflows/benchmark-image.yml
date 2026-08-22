@@ -1,0 +1,60 @@
+name: Benchmark Image
+
+# Builds and publishes the benchmark execution image to GHCR.
+# Tags: sha-<commit> (immutable) + latest (rolling convenience only).
+# The runner records the resolved digest into benchmark_execution_attempts.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/benchmark/**'
+      - 'packages/llm/**'
+      - 'apps/backend/adapters/**'
+      - 'apps/backend/worker/prompt_resolver.py'
+      - 'packages/execution_engine/container_entry.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/benchmark/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/atlas-benchmark-runner:sha-${{ github.sha }}
+            ghcr.io/${{ github.repository }}/atlas-benchmark-runner:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Offline smoke test (mock target, no network)
+        run: |
+          docker run --rm --network none --read-only \
+            --cap-drop ALL --security-opt no-new-privileges:true \
+            --memory 256m --pids-limit 32 \
+            --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+            --tmpfs /workspace:rw,noexec,nosuid,size=32m \
+            -w /workspace \
+            -e "ATLAS_EXECUTION_PAYLOAD={\"execution_id\":\"00000000-0000-0000-0000-000000000001\",\"attempt_id\":\"00000000-0000-0000-0000-000000000002\",\"attempt_number\":1,\"target_model\":\"mock\",\"benchmark_version_id\":\"00000000-0000-0000-0000-000000000003\",\"dataset_version_id\":null,\"test_cases\":[{\"id\":\"tc-1\",\"input_data\":{\"text\":\"hi\"},\"task\":{\"prompts\":[{\"template\":\"Echo: {text}\"}]}}],\"execution_config\":{},\"correlation_id\":\"ci-smoke\",\"trace_id\":\"ci-smoke\",\"worker_id\":\"ci\"}" \
+            ghcr.io/${{ github.repository }}/atlas-benchmark-runner:sha-${{ github.sha }} \
+            | grep -q '"output": *"mocked_output"'
