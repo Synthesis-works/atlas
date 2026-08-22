@@ -57,6 +57,22 @@ class Settings(BaseSettings):
     worker_public_url: str | None = Field(default=None)
     render_keepalive_interval_seconds: int = Field(default=300)
 
+    # Execution backend routing (kill switch + backend selection).
+    #   docker         - run benchmarks on this machine's Docker daemon (default)
+    #   github_actions - dispatch benchmark execution to GitHub-hosted runners
+    #   disabled       - kill switch: stop dispatching new executions entirely;
+    #                    executions stay QUEUED and are NEVER executed locally.
+    execution_backend: str = Field(default="docker", validation_alias="EXECUTION_BACKEND")
+    github_execution_token: str | None = Field(
+        default=None, validation_alias="GITHUB_EXECUTION_TOKEN"
+    )
+    github_execution_repo: str = Field(
+        default="Synthesis-works/atlas", validation_alias="GITHUB_EXECUTION_REPO"
+    )
+    github_dispatch_event_type: str = Field(
+        default="benchmark-execution", validation_alias="GITHUB_DISPATCH_EVENT_TYPE"
+    )
+
     # LLM & Agent Configuration
     gemini_api_key: str | None = Field(default=None)
     xai_api_key: str | None = Field(default=None)
@@ -105,6 +121,20 @@ class Settings(BaseSettings):
         if self.environment not in ("development", "production"):
             raise ValueError(
                 f"ENVIRONMENT={self.environment!r} must be 'development' or 'production'"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_execution_backend(self) -> "Settings":
+        valid = ("docker", "github_actions", "disabled")
+        if self.execution_backend not in valid:
+            raise ValueError(
+                f"EXECUTION_BACKEND={self.execution_backend!r} must be one of {valid}"
+            )
+        if self.execution_backend == "github_actions" and not self.github_execution_token:
+            raise ValueError(
+                "EXECUTION_BACKEND=github_actions requires GITHUB_EXECUTION_TOKEN "
+                "(fine-grained PAT with Actions:write on the execution repo)."
             )
         return self
 
