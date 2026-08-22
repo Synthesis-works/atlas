@@ -10,7 +10,19 @@ name: Benchmark Execution Dry-Run
 # repository variable (that guard applies only to real benchmark traffic).
 
 on:
+  # workflow_dispatch is declared for completeness but GitHub only exposes
+  # dispatchable workflows from the default branch; until this lands on
+  # main, runs are triggered by pushes to the validation branch below.
   workflow_dispatch:
+  push:
+    branches:
+      - feature/docker-execution-runtime
+    paths:
+      - ".github/workflows/benchmark-execute-dryrun.yml"
+      - "apps/backend/worker/**"
+      - "packages/execution_engine/**"
+      - "docker/benchmark/**"
+      - "scripts/*execution*.py"
 
 jobs:
   dry-run:
