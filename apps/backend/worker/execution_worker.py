@@ -62,7 +62,10 @@ class ExecutionWorker:
                 core_exec.status = getattr(ExecutionStatus, status_str, status_str)
                 if status_str == "RUNNING" and not core_exec.started_at:
                     core_exec.started_at = datetime.now(UTC)
-                elif status_str in ("COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT") and not core_exec.completed_at:
+                elif (
+                    status_str in ("COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT")
+                    and not core_exec.completed_at
+                ):
                     core_exec.completed_at = datetime.now(UTC)
             if ee_exec:
                 ee_exec.status = getattr(ExecutionState, status_str, status_str)  # type: ignore[arg-type,assignment]

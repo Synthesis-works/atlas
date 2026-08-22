@@ -41,8 +41,10 @@ def _docker(*args: str) -> str:
 def build(tag: str) -> None:
     _docker(
         "build",
-        "-f", "docker/benchmark/Dockerfile",
-        "-t", tag,
+        "-f",
+        "docker/benchmark/Dockerfile",
+        "-t",
+        tag,
         ".",
     )
     print(f"[benchmark-image] built {tag}")
@@ -70,17 +72,27 @@ def smoke(tag: str) -> None:
     }
 
     out = _docker(
-        "run", "--rm",
-        "--network", "none",
+        "run",
+        "--rm",
+        "--network",
+        "none",
         "--read-only",
-        "--cap-drop", "ALL",
-        "--security-opt", "no-new-privileges:true",
-        "--memory", "256m",
-        "--pids-limit", "32",
-        "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m",
-        "--tmpfs", "/workspace:rw,noexec,nosuid,size=32m",
-        "-w", "/workspace",
-        "-e", f"ATLAS_EXECUTION_PAYLOAD={json.dumps(payload)}",
+        "--cap-drop",
+        "ALL",
+        "--security-opt",
+        "no-new-privileges:true",
+        "--memory",
+        "256m",
+        "--pids-limit",
+        "32",
+        "--tmpfs",
+        "/tmp:rw,noexec,nosuid,size=16m",
+        "--tmpfs",
+        "/workspace:rw,noexec,nosuid,size=32m",
+        "-w",
+        "/workspace",
+        "-e",
+        f"ATLAS_EXECUTION_PAYLOAD={json.dumps(payload)}",
         tag,
     )
 

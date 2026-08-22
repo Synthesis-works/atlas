@@ -16,7 +16,7 @@ Classification: `CRITICAL / HIGH / MEDIUM / LOW / NO ISSUE`
 
 ```python
 # executor.py:143 (get_default)
-return self.get("docker") or self.get("local")   # prod: docker -> LOCAL fallback
+return self.get("docker") or self.get("local")  # prod: docker -> LOCAL fallback
 ```
 ```python
 # execution_runner.py:30-34 — requested type missing => get_default()

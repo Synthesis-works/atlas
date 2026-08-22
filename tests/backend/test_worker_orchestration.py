@@ -65,13 +65,15 @@ def test_execution_runner_success():
     )
     mock_result = ExecutionResult(
         provenance=mock_provenance,
-        model_outputs=[{
-            "execution_id": str(execution.id),
-            "test_case_id": str(mock_test_case.id),
-            "raw_output": "mocked_output",
-            "duration_ms": 100,
-            "tokens_used": 10,
-        }],
+        model_outputs=[
+            {
+                "execution_id": str(execution.id),
+                "test_case_id": str(mock_test_case.id),
+                "raw_output": "mocked_output",
+                "duration_ms": 100,
+                "tokens_used": 10,
+            }
+        ],
     )
 
     with patch.object(runner, "_get_executor") as mock_get_executor:

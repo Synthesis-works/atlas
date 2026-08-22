@@ -72,9 +72,7 @@ def main() -> int:
                 if actual != expected:
                     failures.append(f"{name}={actual!r}, expected {expected!r}")
 
-        outputs = (
-            db.query(ModelOutput).filter(ModelOutput.execution_id == execution_id).all()
-        )
+        outputs = db.query(ModelOutput).filter(ModelOutput.execution_id == execution_id).all()
         if not outputs:
             failures.append("no ModelOutput rows")
         for out in outputs:

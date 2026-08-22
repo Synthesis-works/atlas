@@ -33,18 +33,24 @@ def app_settings():
 
 
 class TestProductionNeverFallsBackToLocal:
-    def test_get_default_raises_in_production_without_docker(self, clean_registry, app_settings, monkeypatch):
+    def test_get_default_raises_in_production_without_docker(
+        self, clean_registry, app_settings, monkeypatch
+    ):
         monkeypatch.setattr(app_settings, "environment", "production")
         with pytest.raises(ExecutorUnavailable, match="Refusing to fall back"):
             clean_registry.get_default()
 
-    def test_get_default_returns_docker_in_production_when_registered(self, clean_registry, app_settings, monkeypatch):
+    def test_get_default_returns_docker_in_production_when_registered(
+        self, clean_registry, app_settings, monkeypatch
+    ):
         monkeypatch.setattr(app_settings, "environment", "production")
         docker_exec = DockerExecutor()
         clean_registry.register(docker_exec)
         assert clean_registry.get_default() is docker_exec
 
-    def test_get_default_prefers_local_in_development(self, clean_registry, app_settings, monkeypatch):
+    def test_get_default_prefers_local_in_development(
+        self, clean_registry, app_settings, monkeypatch
+    ):
         monkeypatch.setattr(app_settings, "environment", "development")
         local_exec = LocalExecutor()
         clean_registry.register(local_exec)
@@ -73,10 +79,7 @@ class TestProductionNeverFallsBackToLocal:
 
     def test_settings_validator_accepts_known_environments(self):
         assert Settings(environment="development").environment == "development"
-        assert (
-            Settings(environment="production", jwt_secret="x" * 30).environment
-            == "production"
-        )
+        assert Settings(environment="production", jwt_secret="x" * 30).environment == "production"
 
 
 class TestNetworkModeAllowlist:

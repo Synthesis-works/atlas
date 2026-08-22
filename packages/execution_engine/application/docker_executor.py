@@ -29,6 +29,7 @@ def _validate_network_mode(mode: str) -> str:
         return mode
     raise ValueError(f"Invalid network mode {mode!r} for benchmark container.")
 
+
 if TYPE_CHECKING:
     import docker
     from docker.errors import DockerException, ImageNotFound, NotFound
@@ -58,7 +59,7 @@ from packages.execution_engine.application.executor import (
 
 class DockerExecutor(Executor):
     """Production executor that runs each benchmark attempt in an isolated Docker container.
-    
+
     Security properties:
     - Runs as non-root user
     - Read-only root filesystem where possible
@@ -144,9 +145,7 @@ class DockerExecutor(Executor):
     def _provider_env(self) -> dict[str, str]:
         """Return only allow-listed provider keys present in the runner environment."""
         return {
-            name: value
-            for name in self.PROVIDER_KEY_ALLOWLIST
-            if (value := os.environ.get(name))
+            name: value for name in self.PROVIDER_KEY_ALLOWLIST if (value := os.environ.get(name))
         }
 
     def _build_container_config(self, context: ExecutionContext) -> dict[str, Any]:
@@ -158,7 +157,9 @@ class DockerExecutor(Executor):
             "attempt_number": context.attempt_number,
             "target_model": context.target_model,
             "benchmark_version_id": str(context.benchmark_version_id),
-            "dataset_version_id": str(context.dataset_version_id) if context.dataset_version_id else None,
+            "dataset_version_id": str(context.dataset_version_id)
+            if context.dataset_version_id
+            else None,
             "test_cases": context.test_cases,
             "execution_config": context.execution_config,
             "correlation_id": context.correlation_id,
@@ -283,7 +284,9 @@ class DockerExecutor(Executor):
 
             # Collect logs
             logs = client.api.logs(container_id, stdout=True, stderr=True, stream=False)
-            logs_str = logs.decode("utf-8", errors="replace") if isinstance(logs, bytes) else str(logs)
+            logs_str = (
+                logs.decode("utf-8", errors="replace") if isinstance(logs, bytes) else str(logs)
+            )
 
             # Collect resource stats
             await self._collect_stats(client, container_id, provenance)
@@ -309,7 +312,9 @@ class DockerExecutor(Executor):
             return ExecutionResult(
                 provenance=provenance,
                 model_outputs=outputs_data,
-                error_message=None if provenance.termination_reason == "completed" else logs_str[:5000],
+                error_message=None
+                if provenance.termination_reason == "completed"
+                else logs_str[:5000],
             )
 
         except docker.errors.APIError as e:
@@ -334,11 +339,13 @@ class DockerExecutor(Executor):
                 except Exception:
                     pass  # Best effort cleanup
 
-    async def _collect_stats(self, client, container_id: str, provenance: ExecutionProvenance) -> None:  # type: ignore[valid-type]
+    async def _collect_stats(
+        self, client, container_id: str, provenance: ExecutionProvenance
+    ) -> None:  # type: ignore[valid-type]
         """Collect resource usage statistics from the container."""
         try:
             stats = client.api.stats(container_id, stream=False, decode=True)
-            
+
             # CPU usage: total_usage is cumulative CPU time in nanoseconds,
             # so a single post-exit sample yields true consumed CPU seconds.
             cpu_stats = stats.get("cpu_stats", {})
@@ -349,7 +356,9 @@ class DockerExecutor(Executor):
             # Memory usage
             memory_stats = stats.get("memory_stats", {})
             if memory_stats:
-                provenance.peak_memory_bytes = memory_stats.get("max_usage", 0) or memory_stats.get("usage", 0)
+                provenance.peak_memory_bytes = memory_stats.get("max_usage", 0) or memory_stats.get(
+                    "usage", 0
+                )
 
             # PIDs
             pids_stats = stats.get("pids_stats", {})
@@ -373,7 +382,7 @@ class DockerExecutor(Executor):
 
     def _parse_outputs(self, logs: str, context: ExecutionContext) -> list[dict]:
         """Parse model outputs from container stdout.
-        
+
         The container entry point should output JSON lines with model outputs.
         Expected format per line: {"test_case_id": "...", "output": "...", "latency_ms": 123, "tokens": 45}
         """
@@ -385,13 +394,15 @@ class DockerExecutor(Executor):
             try:
                 data = json.loads(line)
                 if "test_case_id" in data and "output" in data:
-                    outputs.append({
-                        "execution_id": str(context.execution_id),
-                        "test_case_id": data["test_case_id"],
-                        "raw_output": data["output"],
-                        "duration_ms": data.get("latency_ms"),
-                        "tokens_used": data.get("tokens"),
-                    })
+                    outputs.append(
+                        {
+                            "execution_id": str(context.execution_id),
+                            "test_case_id": data["test_case_id"],
+                            "raw_output": data["output"],
+                            "duration_ms": data.get("latency_ms"),
+                            "tokens_used": data.get("tokens"),
+                        }
+                    )
             except json.JSONDecodeError:
                 # Not a JSON output line, skip
                 continue

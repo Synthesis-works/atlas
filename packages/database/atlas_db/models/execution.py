@@ -3,7 +3,17 @@ import uuid
 from datetime import datetime
 
 from atlas_db.core.base import Base, BaseMixin, utcnow
-from sqlalchemy import BigInteger, DateTime, Float, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import ENUM, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -150,7 +160,9 @@ class ExecutionAttempt(Base, BaseMixin):
     )
 
     # Executor info
-    executor_type: Mapped[str] = mapped_column(String(50), nullable=False)  # "local", "docker", etc.
+    executor_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # "local", "docker", etc.
     container_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     image_ref: Mapped[str | None] = mapped_column(String(500), nullable=True)
     image_digest: Mapped[str | None] = mapped_column(String(500), nullable=True)

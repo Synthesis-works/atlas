@@ -18,7 +18,7 @@ from packages.execution_engine.application.executor import (
 
 class LocalExecutor(Executor):
     """Development-only executor that runs benchmark tasks inline in the worker process.
-    
+
     This executor provides NO isolation. It is intended ONLY for local development
     and testing where Docker is not available. It MUST NOT be used in production.
     """
@@ -66,13 +66,15 @@ class LocalExecutor(Executor):
                     tokens_used=prediction_result.token_usage,
                 )
 
-                outputs_data.append({
-                    "execution_id": str(context.execution_id),
-                    "test_case_id": test_case["id"],
-                    "raw_output": prediction_result.output_text,
-                    "duration_ms": prediction_result.latency_ms,
-                    "tokens_used": prediction_result.token_usage,
-                })
+                outputs_data.append(
+                    {
+                        "execution_id": str(context.execution_id),
+                        "test_case_id": test_case["id"],
+                        "raw_output": prediction_result.output_text,
+                        "duration_ms": prediction_result.latency_ms,
+                        "tokens_used": prediction_result.token_usage,
+                    }
+                )
 
             finished_at = datetime.now(UTC)
             provenance.finished_at = finished_at

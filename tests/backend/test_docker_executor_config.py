@@ -94,7 +94,9 @@ class TestProviderKeyAllowlist:
         executor = DockerExecutor(image="python:3.11-alpine")
         # create_host_config needs a docker client; stub it out.
         executor._client = type(
-            "_StubClient", (), {"api": type("_StubApi", (), {"create_host_config": staticmethod(lambda **kw: {})})()}
+            "_StubClient",
+            (),
+            {"api": type("_StubApi", (), {"create_host_config": staticmethod(lambda **kw: {})})()},
         )()
 
         with patch.dict(os.environ, env, clear=False):
@@ -109,7 +111,9 @@ class TestProviderKeyAllowlist:
     def test_containers_carry_benchmark_label_for_orphan_pruning(self):
         executor = DockerExecutor(image="python:3.11-alpine")
         executor._client = type(
-            "_StubClient", (), {"api": type("_StubApi", (), {"create_host_config": staticmethod(lambda **kw: {})})()}
+            "_StubClient",
+            (),
+            {"api": type("_StubApi", (), {"create_host_config": staticmethod(lambda **kw: {})})()},
         )()
         config = executor._build_container_config(_context())
         assert config["labels"] == {"atlas.benchmark": "true"}
