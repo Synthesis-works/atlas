@@ -101,6 +101,14 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @model_validator(mode="after")
+    def _validate_environment(self) -> "Settings":
+        if self.environment not in ("development", "production"):
+            raise ValueError(
+                f"ENVIRONMENT={self.environment!r} must be 'development' or 'production'"
+            )
+        return self
+
+    @model_validator(mode="after")
     def _guard_production_secrets(self) -> "Settings":
         if (
             self.environment == "production"

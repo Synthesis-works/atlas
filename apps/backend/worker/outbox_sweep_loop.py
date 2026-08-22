@@ -36,10 +36,35 @@ from apps.backend.worker.tasks import outbox_sweep_task  # noqa: E402
 # instance awake while there is actual work.
 sweep_active = threading.Event()
 
+# Stale-attempt reaper runs at most once per REAPER_INTERVAL_SECONDS sweeps.
+REAPER_INTERVAL_SECONDS = 900  # 15 minutes
+_last_reap_ts = [0.0]
+
+
+def _maybe_reap_stale_attempts() -> None:
+    """Rate-limited stale attempt reaping; never blocks the sweep on failure."""
+    import time as _time
+
+    now = _time.time()
+    if now - _last_reap_ts[0] < REAPER_INTERVAL_SECONDS:
+        return
+    _last_reap_ts[0] = now
+    try:
+        from atlas_db.core.session import SessionLocal
+        from apps.backend.worker.stale_attempt_reaper import reap_stale_attempts
+
+        with SessionLocal() as db:
+            reap_stale_attempts(db)
+    except Exception:
+        import traceback
+
+        traceback.print_exc()
+
 
 def run_sweep_once() -> None:
     sweep_active.set()
     try:
+        _maybe_reap_stale_attempts()
         outbox_sweep_task()
     except Exception:
         import traceback

@@ -31,6 +31,7 @@ dependencies = [
     "python-multipart>=0.0.6",
     "redis>=8.0.1",
     "minio>=7.2.0",
+    "docker>=7.0.0",
     "atlas-db",
     "stripe>=15.4.0",
     "razorpay>=2.0.1",
@@ -59,6 +60,7 @@ ignore = ["E501", "B008", "E402", "SIM108", "F841", "W291", "W293", "N806", "N80
 [tool.pytest.ini_options]
 minversion = "7.0"
 addopts = "-ra -q --cov=packages --cov=services"
+asyncio_mode = "auto"
 testpaths = [
     # execution-engine persistence tests (tests/execution/) must be run separately:
     #   uv run pytest tests/execution -q
