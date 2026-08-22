@@ -90,6 +90,8 @@ def main() -> int:
 
         attempt.worker_id = worker_id
         attempt.started_at = datetime.now(UTC)
+        # Transition out of PENDING so no other run can claim this attempt.
+        attempt.status = AttemptStatus.CONTAINER_CREATED
         if args.runner:
             attempt.metrics = {**(attempt.metrics or {}), "runner": args.runner}
         db.commit()

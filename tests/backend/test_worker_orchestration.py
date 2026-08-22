@@ -43,13 +43,15 @@ def test_execution_runner_success():
     mock_task.prompts = [mock_prompt]
     mock_test_case.task = mock_task
 
-    # run() issues two queries: TestCase lookup, then existing ModelOutput ids
-    # (M-3 duplicate guard). Configure them separately.
+    # run() issues three queries: TestCase lookup, active github_actions
+    # attempt adoption (none in local mode), then existing ModelOutput ids.
     tc_query = Mock()
     tc_query.filter.return_value.all.return_value = [mock_test_case]
+    adopt_query = Mock()
+    adopt_query.filter.return_value.order_by.return_value.first.return_value = None
     mo_query = Mock()
     mo_query.filter.return_value.all.return_value = []  # no outputs persisted yet
-    db.query.side_effect = [tc_query, mo_query]
+    db.query.side_effect = [tc_query, adopt_query, mo_query]
 
     # Mock the executor to return a successful result
     mock_output = Mock()
