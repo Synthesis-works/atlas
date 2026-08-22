@@ -128,9 +128,7 @@ class Settings(BaseSettings):
     def _validate_execution_backend(self) -> "Settings":
         valid = ("docker", "github_actions", "disabled")
         if self.execution_backend not in valid:
-            raise ValueError(
-                f"EXECUTION_BACKEND={self.execution_backend!r} must be one of {valid}"
-            )
+            raise ValueError(f"EXECUTION_BACKEND={self.execution_backend!r} must be one of {valid}")
         if self.execution_backend == "github_actions" and not self.github_execution_token:
             raise ValueError(
                 "EXECUTION_BACKEND=github_actions requires GITHUB_EXECUTION_TOKEN "
