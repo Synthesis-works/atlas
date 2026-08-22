@@ -1,11 +1,21 @@
 import uuid
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock, AsyncMock
 
-from atlas_db.models.execution import ExecutionStatus
+from atlas_db.models.execution import ExecutionStatus, AttemptStatus
 from sqlalchemy.orm import Session
 
 from apps.backend.worker.execution_runner import ExecutionRunner
 from apps.backend.worker.execution_worker import ExecutionWorker
+from apps.backend.worker.executor_init import init_executors
+from packages.execution_engine.application.executor import (
+    ExecutionContext,
+    ExecutionProvenance,
+    ExecutionResult,
+)
+
+
+# Initialize executors for tests
+init_executors()
 
 
 def test_execution_runner_success():
@@ -19,6 +29,8 @@ def test_execution_runner_success():
     execution.dataset_version_id = uuid.uuid4()
     execution.target_model = "mock"
     execution.cancellation_requested = False
+    execution.execution_config = {}
+    execution.attempts = []  # New: attempts relationship
 
     mock_test_case = Mock()
     mock_test_case.id = uuid.uuid4()
@@ -31,10 +43,45 @@ def test_execution_runner_success():
     mock_task.prompts = [mock_prompt]
     mock_test_case.task = mock_task
 
-    db.query.return_value.filter.return_value.all.return_value = [mock_test_case]
+    # run() issues two queries: TestCase lookup, then existing ModelOutput ids
+    # (M-3 duplicate guard). Configure them separately.
+    tc_query = Mock()
+    tc_query.filter.return_value.all.return_value = [mock_test_case]
+    mo_query = Mock()
+    mo_query.filter.return_value.all.return_value = []  # no outputs persisted yet
+    db.query.side_effect = [tc_query, mo_query]
 
-    # Run
-    outputs = runner.run(execution)
+    # Mock the executor to return a successful result
+    mock_output = Mock()
+    mock_output.execution_id = execution.id
+    mock_output.test_case_id = mock_test_case.id
+    mock_output.raw_output = "mocked_output"
+    mock_output.tokens_used = 10
+    mock_output.duration_ms = 100
+
+    mock_provenance = ExecutionProvenance(
+        executor_type="local",
+        termination_reason="completed",
+    )
+    mock_result = ExecutionResult(
+        provenance=mock_provenance,
+        model_outputs=[{
+            "execution_id": str(execution.id),
+            "test_case_id": str(mock_test_case.id),
+            "raw_output": "mocked_output",
+            "duration_ms": 100,
+            "tokens_used": 10,
+        }],
+    )
+
+    with patch.object(runner, "_get_executor") as mock_get_executor:
+        mock_executor = Mock()
+        mock_executor.executor_type = "local"
+        mock_executor.execute = AsyncMock(return_value=mock_result)
+        mock_get_executor.return_value = mock_executor
+
+        # Run
+        outputs = runner.run(execution)
 
     assert len(outputs) == 1
     output = outputs[0]
@@ -63,8 +110,14 @@ def test_execution_worker_success():
         None,
     ]
 
+    mock_output = Mock()
+    mock_output.execution_id = execution.id
+    mock_output.test_case_id = uuid.uuid4()
+    mock_output.raw_output = "mocked_output"
+    mock_output.tokens_used = 10
+    mock_output.duration_ms = 100
+
     with patch.object(ExecutionRunner, "run") as mock_run:
-        mock_output = Mock()
         mock_run.return_value = [mock_output]
 
         with patch(
@@ -78,8 +131,7 @@ def test_execution_worker_success():
             # Verify runner was called
             mock_run.assert_called_once_with(execution)
 
-            # Verify persistence
-            db.add_all.assert_called_once_with([mock_output])
+            # Verify persistence - runner does its own db.add calls, worker does final commit
             assert db.commit.call_count >= 2
 
             # Verify event was emitted
