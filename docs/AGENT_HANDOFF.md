@@ -43,19 +43,19 @@ Welcome to Project Atlas. This document is written specifically for future AI co
 4. **Dockerization**: Rollout of multi-stage Dockerfiles, Compose files, and proper health checks.
 
 ## Current State
-- **What currently works**: The base API, Celery worker infrastructure, database connections, and Docker wiring.
+- **What currently works**: The base API, Celery worker infrastructure, database connections, Docker wiring, **and Docker-isolated benchmark execution via Executor abstraction**.
 - **What is partially implemented**: The frontend (only a Next.js stub exists in `apps/web`).
 - **What is missing**: Real LLM integrations (currently mocked).
-- **What still needs validation**: A real runtime execution using Docker Engine on a host machine to verify Celery auto-discovery and migration execution.
+- **What still needs validation**: Production Docker worker deployment with dedicated Docker Engine access.
 
 ## Known Issues
-- **High**: No Docker validation has been performed yet natively. `docker compose up --build` must be run.
+- **High**: Production Docker worker deployment topology not yet finalized (Render Python service lacks Docker Engine access).
 - **Medium**: `apps/web` exists but has no `package.json`, causing it to be stripped from Docker Compose until properly initialized.
 
 ## Future Work
-- **Immediate**: Perform a complete Docker runtime validation.
+- **Immediate**: Deploy dedicated Docker-capable execution worker for production.
 - **Short term**: Initialize the Next.js frontend and reintegrate it into `docker-compose.yml`.
-- **Long term**: Add robust external LLM providers and production logging/APM integrations.
+- **Long term**: Add robust external LLM providers, Kubernetes/AWS Batch executor backends, and production logging/APM integrations.
 
 ## Important Files
 - `pyproject.toml` / `uv.lock`: Dependency definitions.
@@ -63,9 +63,23 @@ Welcome to Project Atlas. This document is written specifically for future AI co
 - `packages/database/alembic/env.py`: Controls database migration targeting (must read `DATABASE_URL`).
 - `apps/backend/main.py`: FastAPI server initialization.
 
+## Executor Architecture (NEW)
+- **Executor abstraction** in `packages/execution_engine/application/executor.py` defines the canonical interface.
+- **LocalExecutor** (`packages/execution_engine/application/local_executor.py`): Development-only, runs inline in worker process. **Never use in production.**
+- **DockerExecutor** (`packages/execution_engine/application/docker_executor.py`): Production executor. Runs each benchmark attempt in an isolated container with security hardening (non-root, read-only fs, dropped caps, resource limits, no Docker socket).
+- **ExecutionAttempt** model (`benchmark_execution_attempts` table) tracks full provenance: container ID, image digest, timestamps, exit code, termination reason, CPU/memory/PID/network stats, trace IDs.
+- **No silent fallback**: Production requires DockerExecutor; if unavailable, execution fails with `ExecutorUnavailable`.
+- **Container entry point**: `packages/execution_engine/container_entry.py` runs inside the benchmark container.
+
+## Deployment Note
+- Current Render worker is a Python service **without Docker Engine access**.
+- Production requires a dedicated Docker-capable runner host whose sole responsibility is: receive execution → launch container → monitor → collect result/stats → report attempt → destroy container.
+- Control plane (API, workers) never gets Docker privileges.
+
 ## Agent Guidelines
 1. **Never modify `main` directly.** Always create and switch to a feature branch.
 2. **Run validation before commits.** (e.g., `pytest`, `docker compose config`).
 3. **Keep documentation updated.** Modify this file or `PROJECT_STATE.md` if architecture shifts.
 4. **Never invent services.** Do not add non-existent paths to Docker or configs.
 5. **Never assume runtime paths.** Always check if a config relies on absolute or relative paths.
+6. **Executor changes require integration tests** that verify real container creation (not mocks).
