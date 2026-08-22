@@ -192,6 +192,9 @@ class ExecutionAttempt(Base, BaseMixin):
     # Error info
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # Backend-specific observability metrics (latencies, run ids, runner info)
+    metrics: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
     execution: Mapped["Execution"] = relationship("Execution", back_populates="attempts")
 
 

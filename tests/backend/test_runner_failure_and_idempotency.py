@@ -71,7 +71,14 @@ class TestProvenanceSurvivesTimeout:
         execution, tc = _execution_mock(tc_id)
 
         db = Mock(spec=Session)
-        db.query.return_value.filter.return_value.all.return_value = [tc]
+        # Query order: TestCase lookup, github_actions attempt adoption (none),
+        # then existing ModelOutput ids.
+        tc_query = Mock()
+        tc_query.filter.return_value.all.return_value = [tc]
+        adopt_query = Mock()
+        adopt_query.filter.return_value.order_by.return_value.first.return_value = None
+        mo_query = Mock()
+        mo_query.filter.return_value.all.return_value = []
 
         prov = ExecutionProvenance(
             executor_type="docker",
@@ -89,6 +96,8 @@ class TestProvenanceSurvivesTimeout:
         failing_executor.executor_type = "docker"
         failing_executor.execute = AsyncMock(side_effect=exc)
         registry_with(failing_executor)
+
+        db.query.side_effect = [tc_query, adopt_query]
 
         runner = ExecutionRunner(db, executor_type="docker")
         with pytest.raises(ExecutorTimeout):
@@ -111,12 +120,14 @@ class TestNoDuplicateOutputs:
         execution, tc = _execution_mock(tc_id)
 
         db = Mock(spec=Session)
-        # First query in run(): TestCase lookup; second: existing ModelOutput ids.
+        # Query order: TestCase lookup, attempt adoption, ModelOutput ids.
         tc_query = Mock()
         tc_query.filter.return_value.all.return_value = [tc]
+        adopt_query = Mock()
+        adopt_query.filter.return_value.order_by.return_value.first.return_value = None
         mo_query = Mock()
         mo_query.filter.return_value.all.return_value = [(tc_id,)]  # already persisted
-        db.query.side_effect = [tc_query, mo_query]
+        db.query.side_effect = [tc_query, adopt_query, mo_query]
 
         ok_executor = Mock()
         ok_executor.executor_type = "docker"
@@ -144,3 +155,54 @@ class TestNoDuplicateOutputs:
         assert outputs == []  # skipped, not duplicated
         added_types = [type(c.args[0]).__name__ for c in db.add.call_args_list]
         assert "ModelOutput" not in added_types  # only the ExecutionAttempt was added
+
+
+class TestGithubActionsAttemptAdoption:
+    def test_runner_adopts_claimed_github_actions_attempt(self, registry_with):
+        """Under the GH Actions backend the runner must reuse the
+        dispatcher-created/claimed attempt instead of creating a second one
+        (the partial unique index forbids two active attempts)."""
+        tc_id = uuid.uuid4()
+        execution, tc = _execution_mock(tc_id)
+
+        claimed_attempt = Mock()
+        claimed_attempt.executor_type = "github_actions"
+        claimed_attempt.status = "CONTAINER_CREATED"
+
+        db = Mock(spec=Session)
+        tc_query = Mock()
+        tc_query.filter.return_value.all.return_value = [tc]
+        adopt_query = Mock()
+        (adopt_query.filter.return_value.order_by.return_value.first.return_value) = claimed_attempt
+        mo_query = Mock()
+        mo_query.filter.return_value.all.return_value = []
+        db.query.side_effect = [tc_query, adopt_query, mo_query]
+
+        ok_executor = Mock()
+        ok_executor.executor_type = "docker"
+        ok_executor.execute = AsyncMock(
+            return_value=Mock(
+                provenance=ExecutionProvenance(
+                    executor_type="docker", termination_reason="completed"
+                ),
+                model_outputs=[
+                    {
+                        "test_case_id": str(tc_id),
+                        "raw_output": "mocked_output",
+                        "duration_ms": 5,
+                        "tokens_used": 10,
+                    }
+                ],
+                error_message=None,
+            )
+        )
+        registry_with(ok_executor)
+
+        runner = ExecutionRunner(db, executor_type="docker")
+        runner.run(execution)
+
+        # Adopted attempt carried through the whole lifecycle to completion;
+        # no second ExecutionAttempt was ever created.
+        assert claimed_attempt.status == "COMPLETED"
+        added_types = [type(c.args[0]).__name__ for c in db.add.call_args_list]
+        assert "ExecutionAttempt" not in added_types
