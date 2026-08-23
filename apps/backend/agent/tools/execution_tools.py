@@ -182,7 +182,12 @@ class RunBenchmarkTool(BaseTool):
             "execution_ids": created_ids,
             "models_dispatched": target_models,
             "status": "DISPATCHED",
-            "message": f"Successfully submitted executions for {len(target_models)} models via core execution service.",
+            "message": (
+                f"Successfully submitted {len(target_models)} asynchronous execution(s). "
+                "Executions run remotely and are NOT immediately complete: poll get_run_status "
+                "for each execution_id until its status is terminal (COMPLETED, FAILED, "
+                "CANCELLED, TIMED_OUT). Only call evaluate_run once the status is COMPLETED."
+            ),
         }
 
 

@@ -505,6 +505,33 @@ class AtlasAgent:
             unique_calls.append((c.tool_name, args_key))
         unique_calls_set = tuple(sorted(list(set(unique_calls))))
 
+        # Observed execution-state snapshot: latest successful get_run_status
+        # result per execution. With async execution backends (GitHub Actions),
+        # polling is legitimate progress whenever the observed state changes
+        # (QUEUED -> RUNNING -> COMPLETED), even though tool arguments repeat.
+        # Static states (QUEUED forever, or a terminal state re-polled without
+        # new information) keep this component stable, so genuinely stuck loops
+        # still trip the invariant.
+        exec_state: dict[str, tuple] = {}
+        for obs in task.observations:
+            if getattr(obs, "tool_name", None) != "get_run_status":
+                continue
+            if not getattr(obs, "success", False):
+                continue
+            out = getattr(obs, "output", None)
+            if not isinstance(out, dict):
+                continue
+            eid = str(out.get("execution_id", ""))
+            if not eid:
+                continue
+            exec_state[eid] = (
+                str(out.get("status", "")),
+                str(out.get("progress", "")),
+                out.get("completed_items"),
+                out.get("total_items"),
+            )
+        execution_state_snapshot = tuple(sorted(exec_state.items()))
+
         return (
             plan_statuses,
             past_clars_count,
@@ -512,4 +539,5 @@ class AtlasAgent:
             execution_ids,
             report_id,
             unique_calls_set,
+            execution_state_snapshot,
         )
