@@ -61,7 +61,10 @@ def main() -> int:
         else:
             checks = {
                 "attempt.status": (attempt.status, AttemptStatus.COMPLETED),
-                "attempt.executor_type": (attempt.executor_type, "docker"),
+                "attempt.executor_type": (
+                    attempt.executor_type,
+                    ("docker", "github_actions"),
+                ),
                 "attempt.container_id set": (bool(attempt.container_id), True),
                 "attempt.exit_code": (attempt.exit_code, 0),
                 "attempt.termination_reason": (attempt.termination_reason, "completed"),
@@ -69,7 +72,9 @@ def main() -> int:
                 "attempt.image_digest set": (bool(attempt.image_digest), True),
             }
             for name, (actual, expected) in checks.items():
-                if actual != expected:
+                if actual != expected and actual not in (
+                    expected if isinstance(expected, tuple) else (expected,)
+                ):
                     failures.append(f"{name}={actual!r}, expected {expected!r}")
 
         outputs = db.query(ModelOutput).filter(ModelOutput.execution_id == execution_id).all()

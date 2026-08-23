@@ -49,7 +49,24 @@ def run_execution_task(self, execution_id_str: str, correlation_id: str | None =
     execution_id = uuid.UUID(execution_id_str)
     logger.info("Starting Execution Task", execution_id=str(execution_id))
 
+    # Backend routing / kill switch. "disabled" must NEVER fall back to local
+    # execution: the execution simply stays QUEUED until the backend is
+    # re-enabled or explicitly failed.
+    backend = settings.execution_backend
+    if backend == "disabled":
+        logger.warning(
+            "Execution dispatch suppressed: EXECUTION_BACKEND=disabled (kill "
+            "switch). Execution remains QUEUED.",
+            execution_id=str(execution_id),
+        )
+        return
+
     try:
+        if backend == "github_actions":
+            _dispatch_to_github_with_retry_policy(self, execution_id_str, correlation_id)
+            return
+
+        # Local docker execution path (Render worker with Docker daemon).
         # The execution worker handles its own session for state transitions
         with SessionLocal() as db:
             executor_type = get_executor_for_environment()
@@ -81,6 +98,56 @@ def run_execution_task(self, execution_id_str: str, correlation_id: str | None =
                 dead_letter=dead_letter_payload,
             )
         raise self.retry(exc=exc, countdown=2**self.request.retries)
+
+
+def _dispatch_to_github_with_retry_policy(
+    task_self, execution_id_str: str, correlation_id: str | None
+) -> None:
+    """Dispatch to GitHub Actions; on final retry exhaustion fail the execution."""
+    from apps.backend.worker.github_dispatcher import (
+        DuplicateDispatchError,
+        ExecutionDispatchError,
+        run_github_dispatch,
+    )
+
+    from atlas_db.models.execution import Execution, ExecutionStatus
+
+    try:
+        with SessionLocal() as db:
+            run_github_dispatch(
+                db,
+                execution_id_str,
+                correlation_id,
+                token=settings.github_execution_token or "",
+                repo=settings.github_execution_repo,
+                event_type=settings.github_dispatch_event_type,
+            )
+    except DuplicateDispatchError:
+        # Another dispatcher already reserved this execution - not an error.
+        logger.info(
+            "Duplicate GitHub dispatch suppressed (active attempt exists)",
+            execution_id=execution_id_str,
+        )
+    except ExecutionDispatchError as exc:
+        logger.error(
+            "GitHub dispatch failed",
+            execution_id=execution_id_str,
+            retry_count=task_self.request.retries,
+            error=str(exc),
+        )
+        if task_self.request.retries >= task_self.max_retries:
+            with SessionLocal() as db:
+                execution = db.get(Execution, uuid.UUID(execution_id_str))
+                if execution and execution.status == ExecutionStatus.QUEUED:
+                    execution.status = ExecutionStatus.FAILED
+                    db.commit()
+                    logger.error(
+                        "Execution FAILED after exhausting dispatch retries",
+                        execution_id=execution_id_str,
+                        termination_reason="dispatch_failed",
+                    )
+            return
+        raise task_self.retry(exc=exc, countdown=2**task_self.request.retries)
 
 
 @celery_app.task(

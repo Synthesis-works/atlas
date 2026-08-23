@@ -5,7 +5,13 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from atlas_db.models.execution import Execution, ExecutionStatus, ModelOutput, AttemptStatus
+from atlas_db.models.execution import (
+    Execution,
+    ExecutionAttempt,
+    ExecutionStatus,
+    ModelOutput,
+    AttemptStatus,
+)
 from atlas_db.models.tasks import TestCase
 from sqlalchemy.orm import Session
 
@@ -86,18 +92,39 @@ class ExecutionRunner:
                 }
             )
 
-        # Create execution attempt record
-        attempt_number = len(execution.attempts) + 1
-        attempt = ExecutionAttempt(
-            execution_id=execution.id,
-            attempt_number=attempt_number,
-            status=AttemptStatus.PENDING,
-            executor_type=executor.executor_type,
-            trace_id=str(uuid.uuid4()),
+        # Create execution attempt record. When running under the GitHub
+        # Actions backend, ADOPT the dispatcher-created github_actions attempt
+        # instead of creating a second one: the partial unique index
+        # (uq_active_attempt_per_execution) forbids two active attempts, and
+        # a single attempt keeps dispatch->run->container provenance unified.
+        adopted = (
+            self.db.query(ExecutionAttempt)
+            .filter(
+                ExecutionAttempt.execution_id == execution.id,
+                ExecutionAttempt.executor_type == "github_actions",
+                ExecutionAttempt.status.in_(
+                    [AttemptStatus.PENDING, AttemptStatus.CONTAINER_CREATED]
+                ),
+            )
+            .order_by(ExecutionAttempt.attempt_number.desc())
+            .first()
         )
-        self.db.add(attempt)
+        if adopted is not None:
+            attempt = adopted
+            attempt.status = AttemptStatus.RUNNING
+        else:
+            attempt_number = len(execution.attempts) + 1
+            attempt = ExecutionAttempt(
+                execution_id=execution.id,
+                attempt_number=attempt_number,
+                status=AttemptStatus.PENDING,
+                executor_type=executor.executor_type,
+                trace_id=str(uuid.uuid4()),
+            )
+            self.db.add(attempt)
         self.db.commit()
         self.db.refresh(attempt)
+        attempt_number = attempt.attempt_number
 
         # Build execution context
         context = ExecutionContext(
