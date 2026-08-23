@@ -355,9 +355,44 @@ def test_recent_waiting_with_inflight_runs_left_alone(db):
 
     summary = recover_stale_waiting_tasks(db)
 
-    assert summary == {"resumed": 0, "timed_out": 0, "resume_failed": 0}
+    assert summary == {
+        "resumed": 0,
+        "timed_out": 0,
+        "resume_failed": 0,
+        "reaped_orphans": 0,
+    }
     db.refresh(record)
     assert record.status == AgentTaskStatus.WAITING_FOR_EXECUTION.value
+
+
+def test_orphaned_pending_row_reaped_after_window(db):
+    """Pre-park orphans (serverless kill before any checkpoint) get failed."""
+    record = _seed_waiting(db, [], status=AgentTaskStatus.PENDING.value)
+    old = datetime.now(UTC) - timedelta(minutes=90)
+    record.created_at = old
+    record.updated_at = old
+    db.commit()
+
+    summary = recover_stale_waiting_tasks(db)
+
+    assert summary["reaped_orphans"] == 1
+    db.refresh(record)
+    assert record.status == AgentTaskStatus.FAILED.value
+    assert record.snapshot["error_detail"].startswith("AGENT_RESUME_TIMEOUT")
+
+
+def test_fresh_executing_row_not_reaped(db):
+    record = _seed_waiting(db, [], status=AgentTaskStatus.EXECUTING.value)
+    recent = datetime.now(UTC) - timedelta(minutes=2)
+    record.created_at = recent
+    record.updated_at = recent
+    db.commit()
+
+    summary = recover_stale_waiting_tasks(db)
+
+    assert summary["reaped_orphans"] == 0
+    db.refresh(record)
+    assert record.status == AgentTaskStatus.EXECUTING.value
 
 
 def test_crashed_resumed_row_reclaimed_then_failed_at_limit(db):
@@ -431,18 +466,18 @@ def test_subscriber_enqueues_only_terminal_execution_events(monkeypatch):
     assert len(captured) == 1
 
 
-def test_run_benchmark_dispatched_parks_task_under_async_backend(monkeypatch, report_registry):
+def test_run_benchmark_dispatched_parks_task_by_default(report_registry, monkeypatch):
+    """Default config parks on dispatch - no EXECUTION_BACKEND dependency."""
     from apps.backend.agent.agent import AtlasAgent
     from apps.backend.agent.tools.registry import ToolRegistry
     from apps.backend.config import settings
 
-    monkeypatch.setattr(settings, "execution_backend", "github_actions", raising=False)
-
-    dispatched = {"n": 0}
+    # Explicitly ensure the default (no inline opt-out, any backend value).
+    monkeypatch.setattr(settings, "agent_inline_execution_wait", False, raising=False)
+    monkeypatch.setattr(settings, "execution_backend", "docker", raising=False)
 
     def fake_execute(self, tool_name=None, db=None, arguments=None, **kwargs):
         if tool_name == "run_benchmark":
-            dispatched["n"] += 1
             return {"status": "DISPATCHED", "execution_ids": [EXEC_A]}
         raise AssertionError(f"unexpected tool {tool_name}")
 
@@ -470,6 +505,60 @@ def test_run_benchmark_dispatched_parks_task_under_async_backend(monkeypatch, re
 
     assert done.status == AgentTaskStatus.WAITING_FOR_EXECUTION
     assert done.waiting_since is not None
-    assert done.execution_ids == [EXEC_A]
-    assert any(t.event_type == "AGENT_TASK_WAITING" for t in done.execution_trace)
-    assert dispatched["n"] == 1
+
+
+def test_inline_execution_wait_opt_out_skips_park(monkeypatch, report_registry):
+    """AGENT_INLINE_EXECUTION_WAIT=true restores the PR #54 inline wait."""
+    from apps.backend.agent.agent import AtlasAgent
+    from apps.backend.agent.tools.registry import ToolRegistry
+    from apps.backend.config import settings
+
+    monkeypatch.setattr(settings, "agent_inline_execution_wait", True, raising=False)
+
+    def fake_execute(self, tool_name=None, db=None, arguments=None, **kwargs):
+        if tool_name == "run_benchmark":
+            return {"status": "DISPATCHED", "execution_ids": [EXEC_A]}
+        if tool_name == "get_run_status":
+            return {
+                "execution_id": EXEC_A,
+                "status": "COMPLETED",
+                "progress": "100%",
+            }
+        raise AssertionError(f"unexpected tool {tool_name}")
+
+    monkeypatch.setattr(ToolRegistry, "execute", fake_execute)
+
+    class DispatchProvider(BaseLLMProvider):
+        def __init__(self):
+            self.dispatched = False
+
+        def decide(self, task, context, declarations) -> AgentDecision:
+            if self.dispatched:
+                return AgentDecision(
+                    type=AgentDecisionType.FAIL,
+                    error_message="inline opt-out: end loop after dispatch",
+                    reasoning="done",
+                )
+            self.dispatched = True
+            return AgentDecision(
+                type=AgentDecisionType.TOOL_CALL,
+                tool_name="run_benchmark",
+                arguments={"benchmark_version_id": BENCHMARK_ID},
+                reasoning="dispatch remote run",
+            )
+
+    class _NoopPlanner:
+        def generate_initial_plan(self, goal, run_mode=None):
+            return []
+
+        def update_plan_on_decision(self, task, decision, output):
+            return None
+
+    task = AgentTask(goal="inline wait", primary_provider="test")
+    agent = AtlasAgent(provider=DispatchProvider(), planner=_NoopPlanner())
+    done = agent.run_task(task, db)
+
+    assert done.status != AgentTaskStatus.WAITING_FOR_EXECUTION
+    assert done.waiting_since is None
+    assert not any(t.event_type == "AGENT_TASK_WAITING" for t in done.execution_trace)
+    assert done.execution_wait_started_at is not None

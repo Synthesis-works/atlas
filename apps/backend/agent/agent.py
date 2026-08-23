@@ -383,11 +383,13 @@ class AtlasAgent:
                 self.planner.update_plan_on_decision(task, decision, output)
 
                 # First-class async-wait phase begins when remote runs are
-                # dispatched. With an asynchronous execution backend (GitHub
-                # Actions) the task PARKS here: status is persisted and this
-                # process ends; the outbox sweep resumes it when every tracked
-                # execution reaches a terminal state (event-driven resume).
-                # Synchronous/local backends keep the inline bounded wait.
+                # dispatched. This process never executes benchmark runs
+                # itself (the worker does, whether the backend is docker or
+                # GitHub Actions), so the task PARKS here by default: status
+                # is persisted and this process ends; the outbox sweep resumes
+                # it when every tracked execution reaches a terminal state.
+                # AGENT_INLINE_EXECUTION_WAIT=true opts back into the bounded
+                # inline wait (used only by in-process eager unit tests).
                 if (
                     tool_name == "run_benchmark"
                     and isinstance(output, dict)
@@ -397,7 +399,7 @@ class AtlasAgent:
                     task.execution_wait_started_at = datetime.now(UTC)
                     from apps.backend.config import settings as _agent_settings
 
-                    if _agent_settings.execution_backend == "github_actions":
+                    if not _agent_settings.agent_inline_execution_wait:
                         task.status = AgentTaskStatus.WAITING_FOR_EXECUTION
                         task.waiting_since = datetime.now(UTC)
                         task.add_trace(

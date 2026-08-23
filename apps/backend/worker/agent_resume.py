@@ -338,17 +338,22 @@ def recover_stale_waiting_tasks(
       AGENT_RESUME_TIMEOUT so tasks never strand forever.
     - RESUMED rows older than RESUMED_RECLAIM_MINUTES (crashed resume):
       re-claim up to MAX_RESUME_ATTEMPTS, then fail AGENT_RESUME_FAILED.
+    - PENDING/EXECUTING rows untouched far past creation (pre-park orphans,
+      e.g. serverless kills before any checkpoint persist): force-fail so
+      they stop rendering as live tasks.
 
     Mirrors the role stale_attempt_reaper plays for execution attempts.
     """
     current = now or datetime.now(UTC)
-    summary = {"resumed": 0, "timed_out": 0, "resume_failed": 0}
+    summary = {"resumed": 0, "timed_out": 0, "resume_failed": 0, "reaped_orphans": 0}
 
     rows = (
         db.query(AgentTaskRecord)
         .filter(
             AgentTaskRecord.status.in_(
                 [
+                    AgentTaskStatus.PENDING.value,
+                    AgentTaskStatus.EXECUTING.value,
                     AgentTaskStatus.WAITING_FOR_EXECUTION.value,
                     AgentTaskStatus.RESUMED.value,
                 ]
@@ -371,6 +376,24 @@ def recover_stale_waiting_tasks(
         status_value = record.status
         updated_at = _aware(record.updated_at)
         age_minutes = (current - updated_at).total_seconds() / 60.0 if updated_at else float("inf")
+
+        if status_value in (AgentTaskStatus.PENDING.value, AgentTaskStatus.EXECUTING.value):
+            # Orphan guard: a live task persists checkpoints as it progresses,
+            # so a row stuck in PENDING/EXECUTING well past the wait window
+            # means its process died before parking. There is no reliable
+            # execution mapping to resume from; reap it.
+            if age_minutes > max(deadline_seconds / 60.0, 60.0):
+                task = AgentTask.model_validate(snapshot)
+                _fail_task(
+                    db,
+                    record,
+                    task,
+                    "AGENT_RESUME_TIMEOUT",
+                    f"orphaned {status_value} task reaped after "
+                    f"{age_minutes:.0f}m without a park or completion",
+                )
+                summary["reaped_orphans"] += 1
+            continue
 
         if status_value == AgentTaskStatus.RESUMED.value:
             if age_minutes < RESUMED_RECLAIM_MINUTES:
