@@ -26,6 +26,90 @@ from apps.backend.evaluation import ExactMatchStrategy
 
 logger = logging.getLogger(__name__)
 
+# Agent-facing per-case evaluation methods mapped onto the canonical
+# StrategyType taxonomy stored on EvaluationStrategy rows.
+EVALUATION_METHOD_TO_STRATEGY_TYPE: dict[str, StrategyType] = {
+    "exact_match": StrategyType.EXACT_MATCH,
+    "numeric": StrategyType.EXACT_MATCH,
+    "accepted_answers": StrategyType.EXACT_MATCH,
+    "llm_judge": StrategyType.LLM_JUDGE,
+    "rubric": StrategyType.LLM_JUDGE,
+}
+
+# Canonical singleton strategy names per type. EXACT_MATCH must keep the
+# historical name so new code converges on rows created by older evaluations.
+_STRATEGY_TYPE_NAMES: dict[StrategyType, str] = {
+    StrategyType.EXACT_MATCH: "System Exact Match",
+    StrategyType.LLM_JUDGE: "System LLM Judge",
+    StrategyType.SCRIPT: "System Script",
+}
+
+_STRATEGY_VERSION_STRING = "v1.0"
+
+
+def get_or_create_system_strategy_version(
+    db: Session, strategy_type: StrategyType
+) -> EvaluationStrategyVersion:
+    """Return the canonical v1.0 system strategy version for a strategy type.
+
+    Race-safe: creation happens inside a SAVEPOINT so a concurrent creator
+    winning the unique constraint never rolls back the caller's transaction.
+    """
+    strategy_repo = EvaluationStrategyRepository(db)
+    version_repo = EvaluationStrategyVersionRepository(db)
+
+    strategy = strategy_repo.get_by(type=strategy_type)
+    if not strategy:
+        try:
+            with db.begin_nested():
+                strategy = strategy_repo.create(
+                    EvaluationStrategy(
+                        name=_STRATEGY_TYPE_NAMES[strategy_type], type=strategy_type
+                    ),
+                    commit=False,
+                )
+        except IntegrityError:
+            strategy = strategy_repo.get_by(type=strategy_type)
+            if not strategy:
+                raise
+
+    version = version_repo.get_by(strategy_id=strategy.id, version_string=_STRATEGY_VERSION_STRING)
+    if not version:
+        try:
+            with db.begin_nested():
+                version = version_repo.create(
+                    EvaluationStrategyVersion(
+                        strategy_id=strategy.id, version_string=_STRATEGY_VERSION_STRING
+                    ),
+                    commit=False,
+                )
+        except IntegrityError:
+            version = version_repo.get_by(
+                strategy_id=strategy.id, version_string=_STRATEGY_VERSION_STRING
+            )
+            if not version:
+                raise
+
+    return version
+
+
+def resolve_strategy_version_for_method(
+    db: Session, evaluation_method: str | None
+) -> EvaluationStrategyVersion:
+    """Map an agent-facing evaluation_method to its system strategy version.
+
+    Raises ValueError for unsupported methods so callers never persist
+    benchmark versions that cannot be evaluated.
+    """
+    method = (evaluation_method or "").strip().lower() or "exact_match"
+    strategy_type = EVALUATION_METHOD_TO_STRATEGY_TYPE.get(method)
+    if strategy_type is None:
+        supported = ", ".join(sorted(EVALUATION_METHOD_TO_STRATEGY_TYPE))
+        raise ValueError(
+            f"Unsupported evaluation_method '{evaluation_method}'. Supported methods: {supported}"
+        )
+    return get_or_create_system_strategy_version(db, strategy_type)
+
 
 class EvaluationService:
     def __init__(self, db: Session):
@@ -42,37 +126,7 @@ class EvaluationService:
         self.exact_match = ExactMatchStrategy()
 
     def _get_or_create_strategy_version(self) -> EvaluationStrategyVersion:
-        strategy = self.strategy_repo.get_by(type=StrategyType.EXACT_MATCH)
-        if not strategy:
-            try:
-                strategy = self.strategy_repo.create(
-                    EvaluationStrategy(name="System Exact Match", type=StrategyType.EXACT_MATCH)
-                )
-            except IntegrityError:
-                # Concurrent evaluators may race to create the singleton strategy.
-                # Roll back the failed insert and reuse the winning row.
-                self.db.rollback()
-                strategy = self.strategy_repo.get_by(type=StrategyType.EXACT_MATCH)
-                if not strategy:
-                    raise
-            self.db.flush()
-
-        version = self.strategy_version_repo.get_by(strategy_id=strategy.id, version_string="v1.0")
-        if not version:
-            try:
-                version = self.strategy_version_repo.create(
-                    EvaluationStrategyVersion(strategy_id=strategy.id, version_string="v1.0")
-                )
-            except IntegrityError:
-                self.db.rollback()
-                version = self.strategy_version_repo.get_by(
-                    strategy_id=strategy.id, version_string="v1.0"
-                )
-                if not version:
-                    raise
-            self.db.flush()
-
-        return version
+        return get_or_create_system_strategy_version(self.db, StrategyType.EXACT_MATCH)
 
     def evaluate_execution(self, execution_id: uuid.UUID, force: bool = False) -> CapabilityProfile:
         """
