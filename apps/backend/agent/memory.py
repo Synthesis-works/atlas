@@ -173,7 +173,10 @@ class AgentMemoryManager:
 
         if task.execution_ids:
             lines.append(
-                f"  - EXECUTIONS COMPLETED: execution_ids={task.execution_ids}. (DO NOT call run_benchmark or get_run_status again; call evaluate_run)."
+                f"  - EXECUTIONS DISPATCHED (asynchronous): execution_ids={task.execution_ids}. "
+                "Executions run remotely and take time. Poll get_run_status for each execution_id "
+                "until its status is terminal (COMPLETED, FAILED, CANCELLED or TIMED_OUT). "
+                "Only call evaluate_run after the status is COMPLETED."
             )
 
         if task.report_id:
