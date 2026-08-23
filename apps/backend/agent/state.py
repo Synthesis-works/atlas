@@ -13,6 +13,12 @@ class AgentTaskStatus(str, Enum):
     REPAIRING = "REPAIRING"
     WAITING_FOR_APPROVAL = "WAITING_FOR_APPROVAL"
     WAITING_FOR_CLARIFICATION = "WAITING_FOR_CLARIFICATION"
+    # Event-driven async-execution lifecycle (GitHub Actions backend):
+    # RUNNING -> WAITING_FOR_EXECUTION -> RESUMED -> EVALUATING -> REPORTING -> COMPLETED
+    WAITING_FOR_EXECUTION = "WAITING_FOR_EXECUTION"
+    RESUMED = "RESUMED"
+    EVALUATING = "EVALUATING"
+    REPORTING = "REPORTING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
@@ -133,6 +139,12 @@ class AgentTask(BaseModel):
     # runs are dispatched). Waiting polls inside the deadline do not count
     # against the reasoning-progress invariant; see AtlasAgent.
     execution_wait_started_at: Optional[datetime] = None
+    # Event-driven resume lifecycle: when the task parks in
+    # WAITING_FOR_EXECUTION (serverless-safe), waiting_since marks the park
+    # time for stale-WAITING recovery, and resume_count tracks how many
+    # terminal-execution resumes this task has consumed (idempotency audit).
+    waiting_since: Optional[datetime] = None
+    resume_count: int = 0
     report_id: Optional[str] = None
     run_mode: Optional[str] = None
     source_task_id: Optional[UUID] = None
@@ -154,4 +166,14 @@ class AgentTask(BaseModel):
             AgentTaskStatus.PLANNING,
             AgentTaskStatus.EXECUTING,
             AgentTaskStatus.REPAIRING,
+        }
+
+    def is_waiting_for_execution(self) -> bool:
+        return self.status == AgentTaskStatus.WAITING_FOR_EXECUTION
+
+    def is_terminal(self) -> bool:
+        return self.status in {
+            AgentTaskStatus.COMPLETED,
+            AgentTaskStatus.FAILED,
+            AgentTaskStatus.CANCELLED,
         }

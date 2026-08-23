@@ -174,11 +174,13 @@ class AgentMemoryManager:
         if task.execution_ids:
             lines.append(
                 f"  - EXECUTIONS DISPATCHED (asynchronous): execution_ids={task.execution_ids}. "
-                "They run remotely and take minutes. Call wait_for_runs(execution_ids=[...]) ONCE - "
-                "it blocks until every run reaches a terminal state (COMPLETED, FAILED, CANCELLED, "
-                "TIMED_OUT) or the wall-clock deadline, then returns final statuses. "
-                "Do NOT busy-poll get_run_status; use it only for a single ad-hoc check. "
-                "Only call evaluate_run for executions whose final status is COMPLETED."
+                "They run remotely on GitHub Actions and take minutes. With the production "
+                "execution backend the platform PARKS this task automatically and RESUMES it "
+                "via an execution-completed event once every run reaches a terminal state - "
+                "do not busy-poll. In synchronous/local environments call "
+                "wait_for_runs(execution_ids=[...]) ONCE instead (it blocks to terminal or "
+                "deadline); use get_run_status only for a single ad-hoc check. Only evaluate "
+                "executions whose final status is COMPLETED."
             )
 
         if task.report_id:

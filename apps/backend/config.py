@@ -82,6 +82,15 @@ class Settings(BaseSettings):
         validation_alias="AGENT_EXECUTION_WAIT_DEADLINE_SECONDS",
     )
 
+    # Stale-WAITING recovery: an agent task parked in WAITING_FOR_EXECUTION is
+    # force-failed once it has waited this long while its tracked executions
+    # are still non-terminal (the per-execution timeout machinery should have
+    # resolved them long before; this catches lost/never-emitted events).
+    agent_stale_waiting_minutes: int = Field(
+        default=15,
+        validation_alias="AGENT_STALE_WAITING_MINUTES",
+    )
+
     # LLM & Agent Configuration
     gemini_api_key: str | None = Field(default=None)
     xai_api_key: str | None = Field(default=None)

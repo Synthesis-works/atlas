@@ -195,6 +195,9 @@ class AtlasAgent:
             AgentTaskStatus.EXECUTING,
             AgentTaskStatus.REPAIRING,
             AgentTaskStatus.PLANNING,
+            AgentTaskStatus.RESUMED,
+            AgentTaskStatus.EVALUATING,
+            AgentTaskStatus.REPORTING,
         ):
             old_fingerprint = self._get_progress_fingerprint(task)
             # Enforce hard limits
@@ -380,7 +383,11 @@ class AtlasAgent:
                 self.planner.update_plan_on_decision(task, decision, output)
 
                 # First-class async-wait phase begins when remote runs are
-                # dispatched; waiting polls inside the deadline are sanctioned.
+                # dispatched. With an asynchronous execution backend (GitHub
+                # Actions) the task PARKS here: status is persisted and this
+                # process ends; the outbox sweep resumes it when every tracked
+                # execution reaches a terminal state (event-driven resume).
+                # Synchronous/local backends keep the inline bounded wait.
                 if (
                     tool_name == "run_benchmark"
                     and isinstance(output, dict)
@@ -388,10 +395,34 @@ class AtlasAgent:
                     and task.execution_wait_started_at is None
                 ):
                     task.execution_wait_started_at = datetime.now(UTC)
+                    from apps.backend.config import settings as _agent_settings
+
+                    if _agent_settings.execution_backend == "github_actions":
+                        task.status = AgentTaskStatus.WAITING_FOR_EXECUTION
+                        task.waiting_since = datetime.now(UTC)
+                        task.add_trace(
+                            "AGENT_TASK_WAITING",
+                            {
+                                "execution_ids": list(task.execution_ids),
+                                "resume_mode": "event_driven",
+                            },
+                        )
+                        break
                     task.add_trace(
                         "EXECUTION_WAIT_STARTED",
                         {"execution_ids": list(task.execution_ids)},
                     )
+
+                # Phase markers for the documented lifecycle state machine:
+                # RESUMED -> EVALUATING -> REPORTING -> COMPLETED.
+                if tool_name == "evaluate_run" and isinstance(output, dict):
+                    task.status = AgentTaskStatus.EVALUATING
+                if (
+                    tool_name == "generate_report"
+                    and isinstance(output, dict)
+                    and not output.get("published")
+                ):
+                    task.status = AgentTaskStatus.REPORTING
 
                 # A wall-clock wait timeout is an explicit execution failure,
                 # not an agent reasoning failure.
