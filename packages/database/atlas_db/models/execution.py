@@ -156,7 +156,9 @@ class ExecutionAttempt(Base, BaseMixin):
     )
     attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[AttemptStatus] = mapped_column(
-        ENUM(AttemptStatus, name="attempt_status"), nullable=False, default=AttemptStatus.PENDING
+        ENUM(AttemptStatus, name="benchmark_attempt_status"),
+        nullable=False,
+        default=AttemptStatus.PENDING,
     )
 
     # Executor info
