@@ -4,6 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from atlas_db.core.base import Base
+import packages.execution_engine.persistence.models  # noqa: F401  (ee_executions et al.)
 from apps.backend.agent.agent import AtlasAgent
 from apps.backend.agent.memory import SemanticMemoryStore
 from apps.backend.agent.providers.mock import MockAgentProvider
@@ -26,6 +27,16 @@ def db_session():
     session = Session()
     yield session
     session.close()
+
+
+@pytest.fixture(autouse=True)
+def _inline_execution_wait(monkeypatch):
+    """Mock-provider workflows exercise the full inline loop (dispatch ->
+    poll -> report -> COMPLETED), which is now an explicit opt-out
+    (AGENT_INLINE_EXECUTION_WAIT=true); production parks on dispatch."""
+    from apps.backend.config import settings
+
+    monkeypatch.setattr(settings, "agent_inline_execution_wait", True, raising=False)
 
 
 def test_tool_registry_tools():

@@ -91,6 +91,16 @@ class Settings(BaseSettings):
         validation_alias="AGENT_STALE_WAITING_MINUTES",
     )
 
+    # Opt-out of the event-driven WAITING_FOR_EXECUTION park. The API process
+    # never executes benchmark runs itself (the worker does, regardless of
+    # EXECUTION_BACKEND), so dispatched tasks park by default and are resumed
+    # via outbox events. Set AGENT_INLINE_EXECUTION_WAIT=true only for
+    # in-process eager execution (unit tests of the inline waiter mechanics).
+    agent_inline_execution_wait: bool = Field(
+        default=False,
+        validation_alias="AGENT_INLINE_EXECUTION_WAIT",
+    )
+
     # LLM & Agent Configuration
     gemini_api_key: str | None = Field(default=None)
     xai_api_key: str | None = Field(default=None)

@@ -19,7 +19,7 @@ request lifecycle.
 
 ```text
 PENDING → PLANNING → EXECUTING (RUNNING)
-    │  run_benchmark returns DISPATCHED (execution_backend == github_actions)
+    │  run_benchmark returns DISPATCHED (default; AGENT_INLINE_EXECUTION_WAIT=false)
     ▼
 WAITING_FOR_EXECUTION                 ← persisted snapshot; function ENDS here
     │  outbox sweep delivers Execution{Completed|Failed|Cancelled}Event
@@ -33,23 +33,27 @@ Failure branches (task.status = FAILED with error_detail prefix):
     EXECUTION_TIMED_OUT    any tracked execution TIMED_OUT
     AGENT_RESUME_FAILED    resume task exhausted retries / reclaim limit
     AGENT_RESUME_TIMEOUT   stale-WAITING recovery: still non-terminal past deadline
+                           (also reaps orphaned PENDING/EXECUTING rows)
 ```
 
-Synchronous/local backends (`docker`, local dev) do not park: the PR #54
-inline `wait_for_runs` phase remains active and the invariant exemption for
-sanctioned waiting polls still applies there.
+Parking is the default because this process never executes benchmark runs
+itself — the worker does, regardless of `EXECUTION_BACKEND` (docker or GitHub
+Actions alike). Set `AGENT_INLINE_EXECUTION_WAIT=true` only for in-process
+eager execution (unit tests of the inline waiter): the PR #54 inline
+`wait_for_runs` phase then remains active with its sanctioned-wait invariant
+exemption.
 
 ## Components
 
 | Concern | Implementation |
 |---|---|
 | Persisted continuation state | `agent_task_records.snapshot` (full `AgentTask.model_dump`) — plan, observations, trace, execution_ids, counters. Loader: `AgentTask.model_validate(snapshot)`. New fields: `waiting_since`, `resume_count`. |
-| Park transition | `AtlasAgent.run_task` loop, post-`run_benchmark` DISPATCHED hook (`apps/backend/agent/agent.py`), gated on `settings.execution_backend == "github_actions"`; traces `AGENT_TASK_WAITING`. |
+| Park transition | `AtlasAgent.run_task` loop, post-`run_benchmark` DISPATCHED hook (`apps/backend/agent/agent.py`), gated on `not settings.agent_inline_execution_wait`; traces `AGENT_TASK_WAITING`. |
 | Resume trigger | `AgentTaskResumeSubscriber` registered in `outbox_sweep_task`'s `CompositeEventPublisher` (`apps/backend/worker/tasks.py`). Enqueue-only; no DB work in the subscriber. |
 | Resume executor | `resume_agent_task` Celery task + `resume_agent_task_core` / `handle_terminal_execution_event` / `recover_stale_waiting_tasks` in `apps/backend/worker/agent_resume.py`, running on the Render worker (eager inline Celery; no broker required). |
 | Idempotency | Conditional claim `status == 'WAITING_FOR_EXECUTION'` flips to `RESUMED` exactly once per task. Duplicate completion events, outbox redeliveries, and racing sweeps no-op via `NOT_CLAIMED`. |
 | Multi-execution gating | A task resumes only when ALL tracked executions are terminal; authoritative outcome is read from the `executions` table, never trusted from the event payload. Partial-failure tasks stay WAITING until the last run settles. |
-| Lost-event safety net | `recover_stale_waiting_tasks` runs inside every outbox sweep: all-terminal WAITING rows are resumed (event raced ahead of persist or was lost); non-terminal rows past `AGENT_STALE_WAITING_MINUTES`/wait deadline are force-failed `AGENT_RESUME_TIMEOUT`; crashed `RESUMED` rows older than 10 min are re-claimed up to `MAX_RESUME_ATTEMPTS = 3`, then failed `AGENT_RESUME_FAILED`. |
+| Lost-event safety net | `recover_stale_waiting_tasks` runs inside every outbox sweep: all-terminal WAITING rows are resumed (event raced ahead of persist or was lost); non-terminal rows past `AGENT_STALE_WAITING_MINUTES`/wait deadline are force-failed `AGENT_RESUME_TIMEOUT`; crashed `RESUMED` rows older than 10 min are re-claimed up to `MAX_RESUME_ATTEMPTS = 3`, then failed `AGENT_RESUME_FAILED`; orphaned `PENDING`/`EXECUTING` rows (process died before any checkpoint persist) older than the wait window are force-failed so they stop rendering as live. |
 
 ## Sequence
 

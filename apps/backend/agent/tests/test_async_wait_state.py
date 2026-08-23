@@ -44,6 +44,15 @@ EXEC_B = "bbbbbbbb-0000-0000-0000-00000000000b"
 TERMINAL_OK = ("COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT")
 
 
+@pytest.fixture(autouse=True)
+def _inline_execution_wait(monkeypatch):
+    """These tests unit-test the inline waiter mechanics, which are now an
+    explicit opt-out (AGENT_INLINE_EXECUTION_WAIT=true); production parks."""
+    from apps.backend.config import settings
+
+    monkeypatch.setattr(settings, "agent_inline_execution_wait", True, raising=False)
+
+
 # ---------------------------------------------------------------------------
 # Scripted-provider harness (mirrors test_async_polling_invariant.py)
 # ---------------------------------------------------------------------------
