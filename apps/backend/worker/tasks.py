@@ -161,6 +161,10 @@ def outbox_sweep_task(self):
     """
     from packages.evaluation_engine.application.subscriber import EvaluationSubscriber
     from apps.backend.events.snapshot_subscriber import SnapshotSubscriber
+    from apps.backend.worker.agent_resume import (
+        AgentTaskResumeSubscriber,
+        recover_stale_waiting_tasks,
+    )
 
     try:
         with SessionLocal() as db:
@@ -171,11 +175,20 @@ def outbox_sweep_task(self):
                     ExecutionQueuedSubscriber(),
                     EvaluationSubscriber(),
                     SnapshotSubscriber(),
+                    AgentTaskResumeSubscriber(),
                 ],
             )
             dispatcher = OutboxDispatcher(session=db, publisher=publisher)
             processed_count = dispatcher.sweep()
             if processed_count > 0:
                 logger.info(f"Outbox sweep processed {processed_count} messages")
+
+            # Safety net: resume WAITING agent tasks whose terminal execution
+            # events were lost (race between completion and WAITING-persist),
+            # and force-fail tasks stranded past the wait deadline. Cheap
+            # indexed query; no-ops when nothing is parked.
+            recovery = recover_stale_waiting_tasks(db)
+            if any(recovery.values()):
+                logger.info("Stale WAITING agent task recovery", **recovery)
     except Exception:
         logger.error("Outbox sweep failed", exc_info=True)
