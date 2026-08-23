@@ -25,6 +25,7 @@ from apps.backend.agent.tools.execution_tools import (
     GetAvailableModelsTool,
     GetRunStatusTool,
     RunBenchmarkTool,
+    WaitForRunsTool,
 )
 from apps.backend.agent.tools.memory_tools import SearchMemoryTool
 from apps.backend.agent.tools.clarification_tool import RequestClarificationTool
@@ -55,6 +56,7 @@ class ToolRegistry:
             ValidateBenchmarkDatasetTool(),
             RunBenchmarkTool(),
             GetRunStatusTool(),
+            WaitForRunsTool(),
             EvaluateRunTool(),
             CompareResultsTool(),
             GenerateReportTool(),

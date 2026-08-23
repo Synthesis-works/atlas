@@ -73,6 +73,15 @@ class Settings(BaseSettings):
         default="benchmark-execution", validation_alias="GITHUB_DISPATCH_EVENT_TYPE"
     )
 
+    # Agent async-wait policy. Wall-clock deadline for the sanctioned waiting
+    # phase after run_benchmark dispatches remote executions. Derived from the
+    # agent's own hard budget (MAX_EXECUTION_TIME = 600s) minus a reserve so
+    # evaluate/report cycles still fit after a full-deadline wait.
+    agent_execution_wait_deadline_seconds: int = Field(
+        default=480,
+        validation_alias="AGENT_EXECUTION_WAIT_DEADLINE_SECONDS",
+    )
+
     # LLM & Agent Configuration
     gemini_api_key: str | None = Field(default=None)
     xai_api_key: str | None = Field(default=None)
