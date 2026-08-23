@@ -39,7 +39,7 @@ class GeminiAgentProvider(BaseLLMProvider):
             "   - Deterministic tasks (arithmetic, exact facts): use evaluation_method='exact_match' or 'numeric'.\n"
             "   - Open-ended / conversational tasks (greetings, explanations, summarization): MUST use evaluation_method='llm_judge' or 'rubric', set expected_answer='Provide a friendly greeting', and provide rubric_criteria: ['Responds with a friendly greeting', 'Friendly and helpful tone', 'Appropriate response']. NEVER use exact_match for open-ended tasks!\n"
             "5. validate_benchmark_dataset\n"
-            "6. run_benchmark against target models\n"
+            "6. run_benchmark against target models, then IMMEDIATELY call wait_for_runs(execution_ids=[...]) ONCE - it blocks until all runs are terminal. NEVER poll get_run_status repeatedly.\n"
             "7. evaluate_run to compute metrics using evaluation cases\n"
             "8. generate_report to summarize findings\n"
             "9. request_clarification: Call this tool if the user's goal is ambiguous, underspecified, or lacks required information to create or run a benchmark (e.g. 'make a custom benchmark'), instead of failing or guessing.\n"

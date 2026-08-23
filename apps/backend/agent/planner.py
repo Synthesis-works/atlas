@@ -155,7 +155,7 @@ class AgentPlanner:
             self._set_step_status(
                 task.plan, 4, "REPAIRED", "Dataset tasks repaired. Re-validation required."
             )
-        elif decision.tool_name in {"run_benchmark", "get_run_status"}:
+        elif decision.tool_name in {"run_benchmark", "get_run_status", "wait_for_runs"}:
             self._set_step_status(task.plan, 5, "COMPLETED", "Executions finished.")
         elif decision.tool_name in {"evaluate_run", "compare_results"}:
             self._set_step_status(task.plan, 6, "COMPLETED", "Evaluation completed.")

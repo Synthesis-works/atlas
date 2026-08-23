@@ -20,6 +20,7 @@ from apps.backend.agent.state import (
     AgentTaskStatus,
     ObservationRecord,
 )
+from apps.backend.agent.tools.execution_tools import TERMINAL_EXECUTION_STATUSES
 from apps.backend.agent.tools.registry import ToolRegistry
 
 from apps.backend.agent.providers.router import ProviderRouter
@@ -378,6 +379,44 @@ class AtlasAgent:
 
                 self.planner.update_plan_on_decision(task, decision, output)
 
+                # First-class async-wait phase begins when remote runs are
+                # dispatched; waiting polls inside the deadline are sanctioned.
+                if (
+                    tool_name == "run_benchmark"
+                    and isinstance(output, dict)
+                    and output.get("status") == "DISPATCHED"
+                    and task.execution_wait_started_at is None
+                ):
+                    task.execution_wait_started_at = datetime.now(UTC)
+                    task.add_trace(
+                        "EXECUTION_WAIT_STARTED",
+                        {"execution_ids": list(task.execution_ids)},
+                    )
+
+                # A wall-clock wait timeout is an explicit execution failure,
+                # not an agent reasoning failure.
+                if (
+                    tool_name == "wait_for_runs"
+                    and isinstance(output, dict)
+                    and output.get("status") == "WAIT_TIMEOUT"
+                ):
+                    task.status = AgentTaskStatus.FAILED
+                    task.completed_at = datetime.now(UTC)
+                    task.error_detail = (
+                        f"Execution wait timeout after {output.get('waited_seconds')}s: "
+                        f"{output.get('message')}"
+                    )
+                    task.add_trace(
+                        "EXECUTION_WAIT_TIMEOUT",
+                        {
+                            "non_terminal_execution_ids": output.get(
+                                "non_terminal_execution_ids", []
+                            ),
+                            "waited_seconds": output.get("waited_seconds"),
+                        },
+                    )
+                    break
+
                 # Auto-complete task when generate_report succeeds
                 if (
                     tool_name == "generate_report"
@@ -467,20 +506,28 @@ class AtlasAgent:
             # Plan-Progress Invariant Check
             new_fingerprint = self._get_progress_fingerprint(task)
             if new_fingerprint == old_fingerprint:
-                task.consecutive_non_progress_steps += 1
-                if task.consecutive_non_progress_steps >= 4:
-                    task.status = AgentTaskStatus.FAILED
-                    task.completed_at = datetime.now(UTC)
-                    task.error_detail = (
-                        "Plan-Progress Invariant Violation: The agent failed to advance the plan, "
-                        "resolve a clarification, or produce a final result within 4 consecutive reasoning cycles. "
-                        "Stopping execution to prevent infinite loop."
-                    )
+                if self._execution_wait_in_progress(task):
+                    # Sanctioned async-wait phase: backoff polling of dispatched
+                    # remote runs is legitimate waiting, not a reasoning stall.
                     task.add_trace(
-                        "PROGRESS_INVARIANT_VIOLATION",
+                        "EXECUTION_WAIT_POLL",
                         {"consecutive_cycles": task.consecutive_non_progress_steps},
                     )
-                    break
+                else:
+                    task.consecutive_non_progress_steps += 1
+                    if task.consecutive_non_progress_steps >= 4:
+                        task.status = AgentTaskStatus.FAILED
+                        task.completed_at = datetime.now(UTC)
+                        task.error_detail = (
+                            "Plan-Progress Invariant Violation: The agent failed to advance the plan, "
+                            "resolve a clarification, or produce a final result within 4 consecutive reasoning cycles. "
+                            "Stopping execution to prevent infinite loop."
+                        )
+                        task.add_trace(
+                            "PROGRESS_INVARIANT_VIOLATION",
+                            {"consecutive_cycles": task.consecutive_non_progress_steps},
+                        )
+                        break
             else:
                 task.consecutive_non_progress_steps = 0
 
@@ -505,31 +552,40 @@ class AtlasAgent:
             unique_calls.append((c.tool_name, args_key))
         unique_calls_set = tuple(sorted(list(set(unique_calls))))
 
-        # Observed execution-state snapshot: latest successful get_run_status
-        # result per execution. With async execution backends (GitHub Actions),
-        # polling is legitimate progress whenever the observed state changes
-        # (QUEUED -> RUNNING -> COMPLETED), even though tool arguments repeat.
-        # Static states (QUEUED forever, or a terminal state re-polled without
-        # new information) keep this component stable, so genuinely stuck loops
-        # still trip the invariant.
+        # Observed execution-state snapshot: latest successful get_run_status /
+        # wait_for_runs result per execution. With async execution backends
+        # (GitHub Actions), polling is legitimate progress whenever the observed
+        # state changes (QUEUED -> RUNNING -> COMPLETED), even though tool
+        # arguments repeat. Static states keep this component stable; genuinely
+        # stuck loops outside the sanctioned wait phase still trip the invariant.
         exec_state: dict[str, tuple] = {}
+
+        def _record(eid: str, snap: dict) -> None:
+            if eid:
+                exec_state[eid] = (
+                    str(snap.get("status", "")),
+                    str(snap.get("progress", "")),
+                    snap.get("completed_items"),
+                    snap.get("total_items"),
+                )
+
         for obs in task.observations:
-            if getattr(obs, "tool_name", None) != "get_run_status":
+            tool_name = getattr(obs, "tool_name", None)
+            if tool_name not in ("get_run_status", "wait_for_runs"):
                 continue
             if not getattr(obs, "success", False):
                 continue
             out = getattr(obs, "output", None)
             if not isinstance(out, dict):
                 continue
-            eid = str(out.get("execution_id", ""))
-            if not eid:
+            if tool_name == "wait_for_runs":
+                per_exec = out.get("executions")
+                if isinstance(per_exec, dict):
+                    for eid, snap in per_exec.items():
+                        if isinstance(snap, dict):
+                            _record(str(eid), snap)
                 continue
-            exec_state[eid] = (
-                str(out.get("status", "")),
-                str(out.get("progress", "")),
-                out.get("completed_items"),
-                out.get("total_items"),
-            )
+            _record(str(out.get("execution_id", "")), out)
         execution_state_snapshot = tuple(sorted(exec_state.items()))
 
         return (
@@ -541,3 +597,58 @@ class AtlasAgent:
             unique_calls_set,
             execution_state_snapshot,
         )
+
+    def _execution_wait_in_progress(self, task: AgentTask) -> bool:
+        """
+        True while the task is legitimately waiting on dispatched async runs.
+
+        Sanctioned waiting requires ALL of:
+        - runs were dispatched (execution_wait_started_at set) and tracked,
+        - the current cycle's action was a polling/waiting tool,
+        - the wall-clock wait deadline has not been exceeded,
+        - at least one tracked execution is still non-terminal.
+
+        Terminal-but-static re-polling and post-deadline polling stay
+        punishable by the Plan-Progress Invariant.
+        """
+        from apps.backend.config import settings
+
+        if not task.execution_ids or task.execution_wait_started_at is None:
+            return False
+        if not task.tool_calls or task.tool_calls[-1].tool_name not in (
+            "get_run_status",
+            "wait_for_runs",
+        ):
+            return False
+
+        started = task.execution_wait_started_at
+        elapsed = (datetime.now(UTC) - started).total_seconds()
+        if elapsed > settings.agent_execution_wait_deadline_seconds:
+            return False
+
+        latest: dict[str, str] = {}
+        for obs in task.observations:
+            tool_name = getattr(obs, "tool_name", None)
+            if tool_name not in ("get_run_status", "wait_for_runs"):
+                continue
+            if not getattr(obs, "success", False):
+                continue
+            out = getattr(obs, "output", None)
+            if not isinstance(out, dict):
+                continue
+            if tool_name == "get_run_status":
+                eid = str(out.get("execution_id", ""))
+                if eid:
+                    latest[eid] = str(out.get("status", ""))
+            else:
+                per_exec = out.get("executions")
+                if isinstance(per_exec, dict):
+                    for eid, snap in per_exec.items():
+                        if isinstance(snap, dict):
+                            latest[str(eid)] = str(snap.get("status", ""))
+
+        tracked = {str(e) for e in task.execution_ids}
+        known = {eid: st for eid, st in latest.items() if eid in tracked}
+        if not known:
+            return False
+        return any(st not in TERMINAL_EXECUTION_STATUSES for st in known.values())

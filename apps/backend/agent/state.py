@@ -129,6 +129,10 @@ class AgentTask(BaseModel):
     dataset_id: Optional[str] = None
     dataset_version_id: Optional[str] = None
     execution_ids: list[str] = Field(default_factory=list)
+    # Wall-clock start of the sanctioned async-wait phase (set when remote
+    # runs are dispatched). Waiting polls inside the deadline do not count
+    # against the reasoning-progress invariant; see AtlasAgent.
+    execution_wait_started_at: Optional[datetime] = None
     report_id: Optional[str] = None
     run_mode: Optional[str] = None
     source_task_id: Optional[UUID] = None

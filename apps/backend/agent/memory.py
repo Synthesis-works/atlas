@@ -174,9 +174,11 @@ class AgentMemoryManager:
         if task.execution_ids:
             lines.append(
                 f"  - EXECUTIONS DISPATCHED (asynchronous): execution_ids={task.execution_ids}. "
-                "Executions run remotely and take time. Poll get_run_status for each execution_id "
-                "until its status is terminal (COMPLETED, FAILED, CANCELLED or TIMED_OUT). "
-                "Only call evaluate_run after the status is COMPLETED."
+                "They run remotely and take minutes. Call wait_for_runs(execution_ids=[...]) ONCE - "
+                "it blocks until every run reaches a terminal state (COMPLETED, FAILED, CANCELLED, "
+                "TIMED_OUT) or the wall-clock deadline, then returns final statuses. "
+                "Do NOT busy-poll get_run_status; use it only for a single ad-hoc check. "
+                "Only call evaluate_run for executions whose final status is COMPLETED."
             )
 
         if task.report_id:

@@ -16,6 +16,17 @@ from packages.llm.models.prompt import Prompt
 # Centralized model registry holds available target configurations
 _benchmark_execution_store: dict[str, dict[str, Any]] = {}
 
+# Terminal execution statuses (must match ExecutionStatus values).
+TERMINAL_EXECUTION_STATUSES = {"COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"}
+
+# Backoff schedule for the blocking wait tool: immediate check first, then
+# exponential-ish delays capped at 30s. GHA queue+run windows observed in
+# production span ~40-120s; this covers them with <=8 polls.
+WAIT_POLL_SCHEDULE_S: tuple[float, ...] = (2, 4, 8, 15, 30, 30)
+
+# Injectable sleep so tests can simulate long waits instantly.
+_sleep = time.sleep
+
 
 def get_configured_models() -> dict[str, Any]:
     """Inspects environment keys to return available vs unavailable LLM models."""
@@ -200,9 +211,11 @@ class RunBenchmarkTool(BaseTool):
             "status": "DISPATCHED",
             "message": (
                 f"Successfully submitted {len(target_models)} asynchronous execution(s). "
-                "Executions run remotely and are NOT immediately complete: poll get_run_status "
-                "for each execution_id until its status is terminal (COMPLETED, FAILED, "
-                "CANCELLED, TIMED_OUT). Only call evaluate_run once the status is COMPLETED."
+                "They run remotely and are NOT immediately complete. Call wait_for_runs with "
+                "these execution_ids: it blocks until every run reaches a terminal state "
+                "(COMPLETED, FAILED, CANCELLED, TIMED_OUT) or the wall-clock deadline, then "
+                "returns the final statuses. Only call evaluate_run for executions whose "
+                "final status is COMPLETED."
             ),
         }
 
@@ -263,3 +276,131 @@ class GetRunStatusTool(BaseTool):
             "completed_items": completed,
             "total_items": total,
         }
+
+
+def _fetch_execution_status(db: Session, exec_uuid: uuid.UUID) -> dict[str, Any]:
+    """Single-execution status snapshot shared by get_run_status/wait_for_runs."""
+    from atlas_db.models.execution import Execution as DBExecution
+
+    exec_obj = db.query(DBExecution).filter(DBExecution.id == exec_uuid).first()
+    if not exec_obj:
+        from packages.execution_engine.persistence.models import ExecutionModel
+
+        exec_obj = db.query(ExecutionModel).filter(ExecutionModel.id == exec_uuid).first()
+    if not exec_obj:
+        return {"execution_id": str(exec_uuid), "status": "UNKNOWN"}
+
+    status_val = str(exec_obj.status).split(".")[-1]
+    total = getattr(exec_obj, "total_items", 0) or 0
+    completed = getattr(exec_obj, "completed_items", 0) or 0
+    progress_pct = f"{int((completed / total) * 100)}%" if total > 0 else "0%"
+    return {
+        "execution_id": str(exec_uuid),
+        "status": status_val,
+        "progress": progress_pct,
+        "completed_items": completed,
+        "total_items": total,
+    }
+
+
+class WaitForRunsTool(BaseTool):
+    name = "wait_for_runs"
+    description = (
+        "Block until one or more asynchronous executions reach a terminal state "
+        "(COMPLETED, FAILED, CANCELLED, TIMED_OUT), polling on a bounded backoff "
+        "schedule. Returns final statuses for every execution. This is the ONLY "
+        "sanctioned way to wait for remote runs; do not busy-poll get_run_status."
+    )
+    required_permission = AgentPermission.READ
+    parameters_schema = {
+        "type": "object",
+        "properties": {
+            "execution_ids": {
+                "type": "array",
+                "description": (
+                    "UUIDs of the executions to wait for. Defaults to all executions "
+                    "dispatched by this task."
+                ),
+                "items": {"type": "string"},
+            },
+            "timeout_seconds": {
+                "type": "number",
+                "description": (
+                    "Optional wall-clock deadline in seconds. Defaults to the platform "
+                    "execution-wait deadline."
+                ),
+            },
+        },
+    }
+
+    def execute(self, db: Session, **kwargs: Any) -> Any:
+        from apps.backend.config import settings
+
+        raw_ids = kwargs.get("execution_ids")
+        if raw_ids is None and kwargs.get("task_id"):
+            from apps.backend.routers.agent import _agent_tasks_db
+
+            try:
+                agent_task = _agent_tasks_db.get(uuid.UUID(str(kwargs["task_id"])))
+                if agent_task:
+                    raw_ids = list(agent_task.execution_ids)
+            except Exception:
+                raw_ids = None
+        if not raw_ids:
+            raise ValueError("execution_ids is required (or dispatch runs via run_benchmark first)")
+
+        parsed: list[uuid.UUID] = []
+        for eid in raw_ids:
+            try:
+                parsed.append(uuid.UUID(str(eid)))
+            except ValueError:
+                raise ValueError(f"Invalid execution UUID: '{eid}'")
+
+        max_deadline = float(settings.agent_execution_wait_deadline_seconds)
+        requested = kwargs.get("timeout_seconds")
+        deadline_s = (
+            min(float(requested), 2 * max_deadline) if requested is not None else max_deadline
+        )
+
+        started = time.monotonic()
+        schedule_idx = 0
+        snapshots: dict[str, dict[str, Any]] = {}
+        while True:
+            snapshots = {str(eid): _fetch_execution_status(db, eid) for eid in parsed}
+            states = {s.get("status", "UNKNOWN") for s in snapshots.values()}
+
+            if states <= TERMINAL_EXECUTION_STATUSES:
+                all_completed = states == {"COMPLETED"}
+                return {
+                    "status": "COMPLETED" if all_completed else "EXECUTION_FAILED",
+                    "waited_seconds": round(time.monotonic() - started, 1),
+                    "executions": snapshots,
+                    "message": (
+                        "All executions reached a terminal state."
+                        if all_completed
+                        else "Some executions finished with a non-COMPLETED terminal state."
+                    ),
+                }
+
+            elapsed = time.monotonic() - started
+            if elapsed >= deadline_s:
+                pending = [
+                    s["execution_id"]
+                    for s in snapshots.values()
+                    if s.get("status") not in TERMINAL_EXECUTION_STATUSES
+                ]
+                return {
+                    "status": "WAIT_TIMEOUT",
+                    "waited_seconds": round(elapsed, 1),
+                    "executions": snapshots,
+                    "non_terminal_execution_ids": pending,
+                    "message": (
+                        f"Wait deadline of {deadline_s:.0f}s exceeded; executions still in "
+                        "flight: "
+                        + ", ".join(f"{eid}={snapshots[eid].get('status')}" for eid in pending)
+                    ),
+                }
+
+            delay = WAIT_POLL_SCHEDULE_S[min(schedule_idx, len(WAIT_POLL_SCHEDULE_S) - 1)]
+            schedule_idx += 1
+            _sleep(delay)
