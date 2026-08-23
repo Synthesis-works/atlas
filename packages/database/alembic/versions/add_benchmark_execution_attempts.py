@@ -21,6 +21,11 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Upgrade schema."""
+    # NOTE: named benchmark_attempt_status because production already carries
+    # a legacy attempt_status enum (SUCCESS/FAILED/IN_PROGRESS/CANCELLED)
+    # owned by the ee_ engine tables - labels we must not reuse or alter.
+    # create_type=False prevents op.create_table from emitting a second,
+    # unguarded CREATE TYPE after our checked creation below.
     attempt_status_enum = postgresql.ENUM(
         "PENDING",
         "CONTAINER_CREATED",
@@ -30,10 +35,14 @@ def upgrade() -> None:
         "TIMED_OUT",
         "CANCELLED",
         "CLEANED",
-        name="attempt_status",
-        create_type=True,
+        name="benchmark_attempt_status",
+        create_type=False,
     )
     attempt_status_enum.create(op.get_bind(), checkfirst=True)
+
+    # Production's execution_status predates DRAFT/TIMED_OUT; widen it.
+    op.execute("ALTER TYPE execution_status ADD VALUE IF NOT EXISTS 'DRAFT'")
+    op.execute("ALTER TYPE execution_status ADD VALUE IF NOT EXISTS 'TIMED_OUT'")
 
     op.create_table(
         "benchmark_execution_attempts",
@@ -114,6 +123,6 @@ def downgrade() -> None:
         "TIMED_OUT",
         "CANCELLED",
         "CLEANED",
-        name="attempt_status",
+        name="benchmark_attempt_status",
     )
     attempt_status_enum.drop(op.get_bind(), checkfirst=True)
