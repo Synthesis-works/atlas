@@ -19,6 +19,30 @@ def test_factory_returns_mock_adapter_for_mock_target():
     assert isinstance(adapter2, MockModelAdapter)
 
 
+def test_get_available_models_delegates_to_registry():
+    models = AdapterFactory.get_available_models()
+    assert isinstance(models, list)
+    assert len(models) > 0
+
+    providers = {m["provider"] for m in models}
+    assert "groq" in providers
+    assert "gemini" in providers
+
+    for model in models:
+        assert "provider" in model
+        assert "model" in model
+        assert "available" in model
+        assert "status" in model
+
+
+def test_get_available_models_entries_have_frontend_mapping_fields():
+    models = AdapterFactory.get_available_models()
+    for model in models:
+        assert "display_name" in model
+        assert "capabilities" in model
+        assert isinstance(model["capabilities"], list)
+
+
 def test_factory_returns_real_adapter_for_real_targets():
     adapter_gemini = AdapterFactory.get_adapter("gemini-2.5-flash")
     assert isinstance(adapter_gemini, RealModelAdapter)

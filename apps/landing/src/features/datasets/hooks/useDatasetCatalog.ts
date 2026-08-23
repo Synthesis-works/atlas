@@ -1,23 +1,30 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import type { DatasetHealth, DatasetQuality } from '../domain/types';
+import type { Dataset, DatasetHealth, DatasetQuality } from '../domain/types';
 import type { FilterState, SortState, ViewMode, PaginationState } from '../types/catalog';
 import { filterDatasets, sortDatasets, selectCatalogCards, selectCatalogRows, selectDatasetPreview, selectDatasetComparison } from '../selectors/catalog';
 import { useWorkspaceInteractionStore } from '@/store/workspace/interaction/store';
+import { getDatasets } from '../services/datasetService';
+import { resolveProjectId } from '../services/projectService';
 
-// Normally these would come from an API hook (e.g. useQuery)
-import { mockDatasets } from '../domain/mock';
+const EMPTY_HEALTH: Omit<DatasetHealth, 'datasetId'> = { readinessScore: 0, issues: [] };
+const EMPTY_QUALITY: Omit<DatasetQuality, 'datasetId'> = {
+  annotationCoverage: 0,
+  duplicateCount: 0,
+  classBalanceScore: 0,
+};
 
-// We mock related data maps for health and quality
-const mockHealthMap: Record<string, DatasetHealth> = mockDatasets.reduce((acc, ds) => {
-  acc[ds.id] = { datasetId: ds.id, readinessScore: Math.floor(Math.random() * 40) + 60, issues: [] };
-  return acc;
-}, {} as Record<string, DatasetHealth>);
+function buildHealthMap(datasets: Dataset[]): Record<string, DatasetHealth> {
+  return Object.fromEntries(
+    datasets.map((ds) => [ds.id, { datasetId: ds.id, ...EMPTY_HEALTH }])
+  );
+}
 
-const mockQualityMap: Record<string, DatasetQuality> = mockDatasets.reduce((acc, ds) => {
-  acc[ds.id] = { datasetId: ds.id, annotationCoverage: 85, duplicateCount: 12, classBalanceScore: 92 };
-  return acc;
-}, {} as Record<string, DatasetQuality>);
+function buildQualityMap(datasets: Dataset[]): Record<string, DatasetQuality> {
+  return Object.fromEntries(
+    datasets.map((ds) => [ds.id, { datasetId: ds.id, ...EMPTY_QUALITY }])
+  );
+}
 /**
  * The Dataset Catalog Coordinator Hook.
  * 
@@ -61,34 +68,63 @@ export function useDatasetCatalog() {
   // 3. Pagination
   const [pagination, setPagination] = useState<PaginationState>({ page: 1, pageSize: 25, total: 0 });
 
-  // 3.5 Loading and Error State (Mocking async behavior)
+  // 3.5 Loading, Error, and Data State (real API-backed)
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<{ message: string, recoverable: boolean } | null>(null);
+  const [datasets, setDatasets] = useState<Dataset[]>([]);
+  const [healthMap, setHealthMap] = useState<Record<string, DatasetHealth>>({});
+  const [qualityMap, setQualityMap] = useState<Record<string, DatasetQuality>>({});
+
+  const loadDatasets = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    const projectId = await resolveProjectId();
+    if (!projectId) {
+      setError({ message: 'No project available for this account', recoverable: false });
+      setIsLoading(false);
+      return;
+    }
+    const res = await getDatasets(projectId);
+    if (res.error) {
+      setError({ message: res.error, recoverable: true });
+    } else {
+      setDatasets(res.data);
+      setHealthMap(buildHealthMap(res.data));
+      setQualityMap(buildQualityMap(res.data));
+    }
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
     setIsLoading(true);
     setError(null);
-    
-    // Simulate network delay
-    const timer = setTimeout(() => {
-      if (mounted) {
+    (async () => {
+      const projectId = await resolveProjectId();
+      if (!mounted) return;
+      if (!projectId) {
+        setError({ message: 'No project available for this account', recoverable: false });
         setIsLoading(false);
+        return;
       }
-    }, 1200);
-
+      const res = await getDatasets(projectId);
+      if (!mounted) return;
+      if (res.error) {
+        setError({ message: res.error, recoverable: true });
+      } else {
+        setDatasets(res.data);
+        setHealthMap(buildHealthMap(res.data));
+        setQualityMap(buildQualityMap(res.data));
+      }
+      setIsLoading(false);
+    })();
     return () => {
       mounted = false;
-      clearTimeout(timer);
     };
   }, []);
 
   const handleRetry = () => {
-    setIsLoading(true);
-    setError(null);
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1200);
+    void loadDatasets();
   };
 
   // 4. Interaction State (Zustand)
@@ -163,17 +199,17 @@ export function useDatasetCatalog() {
 
   // Pipeline execution (Memoized)
   const pipelineResult = useMemo(() => {
-    const rawData = mockDatasets; // In real life, from data source
+    const rawData = datasets;
     const filtered = filterDatasets(rawData, filters);
-    const sorted = sortDatasets(filtered, sort, mockHealthMap);
+    const sorted = sortDatasets(filtered, sort, healthMap);
     
     // Pagination slicing
     const startIndex = (pagination.page - 1) * pagination.pageSize;
     const paginated = sorted.slice(startIndex, startIndex + pagination.pageSize);
 
     // Presentation Mapping
-    const cards = selectCatalogCards(paginated, mockHealthMap);
-    const rows = selectCatalogRows(paginated, mockHealthMap);
+    const cards = selectCatalogCards(paginated, healthMap);
+    const rows = selectCatalogRows(paginated, healthMap);
 
     return {
       filteredCount: filtered.length,
@@ -181,26 +217,26 @@ export function useDatasetCatalog() {
       rows,
       rawVisible: paginated // needed for select all filtered
     };
-  }, [filters, sort, pagination.page, pagination.pageSize]);
+  }, [filters, sort, pagination.page, pagination.pageSize, datasets, healthMap]);
 
   // Update pagination total when filtered count changes
   useEffect(() => {
     setPagination(p => ({ ...p, total: pipelineResult.filteredCount }));
   }, [pipelineResult.filteredCount]);
 
-  // Derive Preview & Comparison Models
+  // Derive Preview & Comparison Datasets
   const previewModel = useMemo(() => {
     if (!previewId) return null;
-    const ds = mockDatasets.find(d => d.id === previewId);
+    const ds = datasets.find(d => d.id === previewId);
     if (!ds) return null;
-    return selectDatasetPreview(ds, mockHealthMap[ds.id], mockQualityMap[ds.id]);
-  }, [previewId]);
+    return selectDatasetPreview(ds, healthMap[ds.id], qualityMap[ds.id]);
+  }, [previewId, datasets, healthMap, qualityMap]);
 
   const comparisonModels = useMemo(() => {
     if (selectedIds.length !== 2) return [];
-    const dsToCompare = mockDatasets.filter(d => selectedIds.includes(d.id));
-    return selectDatasetComparison(dsToCompare, mockHealthMap, mockQualityMap);
-  }, [selectedIds]);
+    const dsToCompare = datasets.filter(d => selectedIds.includes(d.id));
+    return selectDatasetComparison(dsToCompare, healthMap, qualityMap);
+  }, [selectedIds, datasets, healthMap, qualityMap]);
 
   return {
     // State

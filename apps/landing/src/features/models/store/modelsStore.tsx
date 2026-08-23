@@ -3,9 +3,9 @@
  * Reactive state for the Models Registry page.
  */
 
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import type { RegistryModel, ModelStatus } from '@/domain/models/types';
-import { MOCK_MODELS } from '@/domain/models/mock';
+import { getModels } from '../services/modelService';
 
 interface ModelsStoreCtx {
   models: RegistryModel[];
@@ -35,7 +35,7 @@ interface ModelsStoreCtx {
 const Ctx = createContext<ModelsStoreCtx | null>(null);
 
 export const ModelsStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [models] = useState<RegistryModel[]>(MOCK_MODELS);
+  const [models, setModels] = useState<RegistryModel[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<ModelStatus | 'all'>('all');
   const [providerFilter, setProviderFilter] = useState('all');
@@ -45,6 +45,16 @@ export const ModelsStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [activeWorkloadTab, setActiveWorkloadTab] = useState('coding');
+
+  useEffect(() => {
+    let mounted = true;
+    getModels().then((res) => {
+      if (mounted && !res.error) setModels(res.data);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const openDrawer = useCallback((model: RegistryModel, tab = 'overview') => {
     setSelectedModel(model);
