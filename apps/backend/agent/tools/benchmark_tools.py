@@ -125,6 +125,12 @@ class CreateBenchmarkTool(BaseTool):
         bm_id = uuid.uuid4()
         version_id = uuid.uuid4()
 
+        # Resolve the evaluation strategy BEFORE persisting anything so an
+        # unsupported method leaves no partial rows behind.
+        from apps.backend.services.evaluation import resolve_strategy_version_for_method
+
+        strategy_version = resolve_strategy_version_for_method(db, evaluation_method)
+
         bm = Benchmark(
             id=bm_id,
             project_id=proj_id,
@@ -135,11 +141,13 @@ class CreateBenchmarkTool(BaseTool):
         )
         db.add(bm)
 
-        # Create initial BenchmarkVersion
+        # Create initial BenchmarkVersion with the strategy linkage required
+        # by the worker-side evaluation pipeline.
         version = BenchmarkVersion(
             id=version_id,
             benchmark_id=bm_id,
             version_string="1.0.0",
+            evaluation_strategy_id=strategy_version.id,
         )
         db.add(version)
 
@@ -153,5 +161,10 @@ class CreateBenchmarkTool(BaseTool):
             "version_id": str(version_id),
             "name": bm.name,
             "status": bm.status,
-            "message": "Benchmark created successfully.",
+            "evaluation_method": (evaluation_method or "exact_match").strip().lower(),
+            "evaluation_strategy_version_id": str(strategy_version.id),
+            "message": (
+                "Benchmark created successfully with evaluation strategy "
+                f"'{strategy_version.strategy.type.value}' ({strategy_version.version_string}) attached."
+            ),
         }

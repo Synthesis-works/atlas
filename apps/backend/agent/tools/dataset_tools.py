@@ -140,8 +140,14 @@ class CreateDatasetTool(BaseTool):
             .first()
         )
         if not bv:
+            from apps.backend.services.evaluation import resolve_strategy_version_for_method
+
+            fallback_sv = resolve_strategy_version_for_method(db, "exact_match")
             bv = BenchmarkVersion(
-                id=uuid.uuid4(), benchmark_id=uuid.UUID(benchmark_id), version_string="1.0.0"
+                id=uuid.uuid4(),
+                benchmark_id=uuid.UUID(benchmark_id),
+                version_string="1.0.0",
+                evaluation_strategy_id=fallback_sv.id,
             )
             db.add(bv)
             db.flush()

@@ -114,6 +114,22 @@ class RunBenchmarkTool(BaseTool):
         except ValueError:
             raise ValueError("Invalid benchmark_version_id or dataset_version_id UUID")
 
+        # A version without an evaluation strategy can never be evaluated;
+        # refuse to dispatch rather than produce another dead run.
+        from atlas_db.models.authoring import BenchmarkVersion as DBBenchmarkVersion
+
+        benchmark_version = (
+            db.query(DBBenchmarkVersion).filter(DBBenchmarkVersion.id == bv_uuid).first()
+        )
+        if not benchmark_version:
+            raise ValueError(f"Benchmark version '{benchmark_version_id}' not found")
+        if not benchmark_version.evaluation_strategy_id:
+            raise ValueError(
+                f"Benchmark version '{benchmark_version_id}' has no evaluation strategy "
+                "attached and cannot be run. Recreate it via create_benchmark with a "
+                "supported evaluation_method."
+            )
+
         proj_id = kwargs.get("project_id") or uuid.UUID("00000000-0000-0000-0000-000000000001")
         agent_task_id = kwargs.get("task_id")
         user_id = uuid.UUID("00000000-0000-0000-0000-000000000003")
