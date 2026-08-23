@@ -218,15 +218,11 @@ def test_completion_before_waiting_persist_recovered_by_sweep(db, report_registr
     """Completion event swept before the WAITING row existed -> sweep resumes."""
     _seed_exec(db, EXEC_A, ExecutionStatus.COMPLETED)
     # Event arrives first: nothing to do yet.
-    assert handle_terminal_execution_event(
-        db, uuid.UUID(EXEC_A), "ExecutionCompletedEvent"
-    ) == []
+    assert handle_terminal_execution_event(db, uuid.UUID(EXEC_A), "ExecutionCompletedEvent") == []
 
     # Late persist of the parked snapshot (race window).
     record = _seed_waiting(db, [EXEC_A])
-    summary = recover_stale_waiting_tasks(
-        db, provider_factory=lambda _t: ReportOnResumeProvider()
-    )
+    summary = recover_stale_waiting_tasks(db, provider_factory=lambda _t: ReportOnResumeProvider())
 
     assert summary["resumed"] == 1
     db.refresh(record)
@@ -303,9 +299,7 @@ def test_inflight_sibling_defers_resume(db, report_registry):
     _seed_exec(db, EXEC_B, ExecutionStatus.RUNNING)
     record = _seed_waiting(db, [EXEC_A, EXEC_B])
 
-    outcomes = handle_terminal_execution_event(
-        db, uuid.UUID(EXEC_A), "ExecutionCompletedEvent"
-    )
+    outcomes = handle_terminal_execution_event(db, uuid.UUID(EXEC_A), "ExecutionCompletedEvent")
 
     assert outcomes == []
     db.refresh(record)
@@ -322,9 +316,7 @@ def test_worker_restart_claims_from_db_only(db, report_registry):
     record = _seed_waiting(db, [EXEC_A])
     db.expire_all()  # drop identity map: next reader is 'another process'
 
-    fresh = (
-        db.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == record.task_id).first()
-    )
+    fresh = db.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == record.task_id).first()
     outcome = resume_agent_task_core(
         db,
         fresh.task_id,
@@ -372,9 +364,7 @@ def test_crashed_resumed_row_reclaimed_then_failed_at_limit(db):
     _seed_exec(db, EXEC_A, ExecutionStatus.COMPLETED)
 
     # Crashed resume: RESUMED row untouched past reclaim window.
-    record = _seed_waiting(
-        db, [EXEC_A], status=AgentTaskStatus.RESUMED.value, resume_count=1
-    )
+    record = _seed_waiting(db, [EXEC_A], status=AgentTaskStatus.RESUMED.value, resume_count=1)
     record.updated_at = datetime.now(UTC) - timedelta(minutes=30)
     db.commit()
 

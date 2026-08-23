@@ -99,9 +99,7 @@ def _status_label(value: Any) -> str:
     return str(getattr(value, "value", value))
 
 
-def _tracked_execution_statuses(
-    db: Session, execution_ids: list[str]
-) -> dict[str, str]:
+def _tracked_execution_statuses(db: Session, execution_ids: list[str]) -> dict[str, str]:
     ids = []
     for raw in execution_ids:
         try:
@@ -154,7 +152,9 @@ def claim_waiting_task(db: Session, task_id: uuid_module.UUID) -> Optional[Agent
 
 def _persist_snapshot(db: Session, record: AgentTaskRecord, task: AgentTask) -> None:
     record.goal = task.goal
-    record.status = task.status.value if isinstance(task.status, AgentTaskStatus) else str(task.status)
+    record.status = (
+        task.status.value if isinstance(task.status, AgentTaskStatus) else str(task.status)
+    )
     record.snapshot = task.model_dump(mode="json")
     db.commit()
 
@@ -247,9 +247,7 @@ def resume_agent_task_core(
 
     # Synthesize terminal observations so the resumed context reflects the
     # completed runs even when the original process died before recording them.
-    target_ids = (
-        [str(execution_id)] if execution_id is not None else list(task.execution_ids)
-    )
+    target_ids = [str(execution_id)] if execution_id is not None else list(task.execution_ids)
     for eid in target_ids:
         already_observed = any(
             o.tool_name == "get_run_status"
@@ -372,11 +370,7 @@ def recover_stale_waiting_tasks(
         snapshot = dict(record.snapshot or {})
         status_value = record.status
         updated_at = _aware(record.updated_at)
-        age_minutes = (
-            (current - updated_at).total_seconds() / 60.0
-            if updated_at
-            else float("inf")
-        )
+        age_minutes = (current - updated_at).total_seconds() / 60.0 if updated_at else float("inf")
 
         if status_value == AgentTaskStatus.RESUMED.value:
             if age_minutes < RESUMED_RECLAIM_MINUTES:
@@ -421,9 +415,7 @@ def recover_stale_waiting_tasks(
         if waiting_since:
             waited_minutes = (current - waiting_since).total_seconds() / 60.0
 
-        overdue = waited_minutes is not None and (
-            waited_minutes * 60.0 > deadline_seconds
-        )
+        overdue = waited_minutes is not None and (waited_minutes * 60.0 > deadline_seconds)
         if overdue or age_minutes > max(deadline_seconds / 60.0, 60.0):
             task = AgentTask.model_validate(snapshot)
             _fail_task(
@@ -451,9 +443,7 @@ class AgentTaskResumeSubscriber:
         event_type_name = type(event).__name__
         if event_type_name not in EVENT_TYPES_HANDLED:
             return
-        execution_id = getattr(event, "aggregate_id", None) or getattr(
-            event, "execution_id", None
-        )
+        execution_id = getattr(event, "aggregate_id", None) or getattr(event, "execution_id", None)
         if execution_id is None:
             return
         error_message = getattr(event, "error_message", None)
@@ -496,9 +486,7 @@ def resume_agent_task(
         return
 
     with SessionLocal() as db:
-        outcomes = handle_terminal_execution_event(
-            db, execution_id, event_type, error_message
-        )
+        outcomes = handle_terminal_execution_event(db, execution_id, event_type, error_message)
     if outcomes:
         logger.info(
             "agent_task_resume_finished",
