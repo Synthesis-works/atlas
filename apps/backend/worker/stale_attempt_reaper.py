@@ -130,6 +130,13 @@ def reap_stale_attempts(
             summary["executions_requeued"] += 1
 
     db.commit()
+
+    # Post-commit, fire-and-forget: nudge the Render worker so it wakes and
+    # drains the outbox rows committed above (requeued executions).
+    from apps.backend.worker.wake_client import notify_worker_wake
+
+    notify_worker_wake()
+
     logger.info(
         "Reaped stale attempts",
         attempts_reaped=summary["attempts_reaped"],
