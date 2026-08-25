@@ -188,6 +188,13 @@ class RunBenchmarkTool(BaseTool):
             db.commit()
         except Exception:
             db.rollback()
+            raise
+
+        # Post-commit, fire-and-forget: nudge the Render worker so it wakes and
+        # drains the outbox row committed above. Submission never fails on this.
+        from apps.backend.worker.wake_client import notify_worker_wake
+
+        notify_worker_wake()
 
         # Update AgentTask with execution tracking
         if agent_task_id:
@@ -288,7 +295,10 @@ def _fetch_execution_status(db: Session, exec_uuid: uuid.UUID) -> dict[str, Any]
 
         exec_obj = db.query(ExecutionModel).filter(ExecutionModel.id == exec_uuid).first()
     if not exec_obj:
-        return {"execution_id": str(exec_uuid), "status": "UNKNOWN"}
+        # Execution not yet visible in DB (e.g., transaction not committed).
+        # Return QUEUED as the expected initial status for a newly dispatched
+        # execution, avoiding the confusing "UNKNOWN" state in the UI.
+        return {"execution_id": str(exec_uuid), "status": "QUEUED"}
 
     status_val = str(exec_obj.status).split(".")[-1]
     total = getattr(exec_obj, "total_items", 0) or 0
