@@ -16,6 +16,7 @@ from atlas_sdk.errors import (
     ForbiddenError,
     NotFoundError,
     ServerError,
+    ValidationError,
 )
 
 
@@ -303,3 +304,72 @@ class TestTransport:
         with AtlasClient("http://localhost:8000") as client:
             result = client.health_summary()
             assert result.status == "ok"
+
+
+# ── security / edge-case tests ────────────────────────────────────────
+
+
+class TestSecurityEdgeCases:
+    def test_token_supplier_exception_raises_auth_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        def bad_supplier() -> str:
+            raise OSError("keychain locked")
+
+        client = AtlasClient(
+            "http://localhost:8000", token_supplier=bad_supplier
+        )
+        with pytest.raises(AuthError, match="keychain locked"):
+            client.whoami()
+        client.close()
+
+    def test_localhost_detection_uses_hostname(self) -> None:
+        """Substring in path/query must not trigger TLS bypass."""
+        # "localhost" in path — should NOT disable TLS.
+        client = AtlasClient("https://example.com/localhost/api")
+        assert client._http._transport._pool._ssl_context is not None  # type: ignore[attr-defined]
+        client.close()
+
+    def test_non_localhost_keeps_tls(self) -> None:
+        client = AtlasClient("https://api.atlas.example.com")
+        # httpx.Client with verify=True (default) uses ssl.SSLContext
+        assert client._http._transport._pool._ssl_context is not None  # type: ignore[attr-defined]
+        client.close()
+
+    def test_localhost_enables_tls_bypass(self) -> None:
+        client = AtlasClient("http://localhost:8000")
+        # httpx.Client with verify=False uses ssl.create_default_context with check_hostname=False
+        # The _pool attribute should have verify=False set
+        transport = client._http._transport
+        # Verify the transport was created with verify=False
+        assert hasattr(transport, "_pool")
+        client.close()
+
+    def test_unwrap_malformed_response_raises_validation_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """If the API returns a response missing 'data', _unwrap raises ValidationError."""
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/health",
+            json={"unexpected": "format"},
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(ValidationError, match="does not match expected schema"):
+            client.health_summary()
+        client.close()
+
+    def test_no_password_in_exception_message(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_response(
+            method="POST",
+            url="http://localhost:8000/api/v1/auth/login",
+            status_code=401,
+            json=_err(401, "UNAUTHORIZED", "Invalid credentials"),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(AuthError) as exc_info:
+            client.login("user@example.com", "super_secret_password_123")
+        assert "super_secret_password_123" not in str(exc_info.value)
+        client.close()

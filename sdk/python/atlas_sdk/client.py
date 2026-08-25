@@ -11,12 +11,15 @@ from __future__ import annotations
 import logging
 import time
 from typing import Any, TypeVar
+from urllib.parse import urlparse
 
 import httpx
 
 from atlas_sdk.auth import TokenSupplier
 from atlas_sdk.errors import (
+    AuthError,
     NetworkError,
+    ValidationError,
     error_for_status,
 )
 from atlas_sdk.models.auth import AuthUserRead, TokenResponse
@@ -67,14 +70,16 @@ class AtlasClient:
         self._max_retries = max_retries
         self._user_agent = user_agent
 
-        # Determine if localhost (for TLS exception).
-        is_localhost = any(
-            h in self._base_url
-            for h in ("localhost", "127.0.0.1", "[::1]")
-        )
+        # Determine if localhost (for TLS exception) — hostname-level check only.
+        parsed = urlparse(self._base_url)
+        is_localhost = parsed.hostname in ("localhost", "127.0.0.1", "::1", "0.0.0.0")
 
         transport_kwargs: dict[str, Any] = {}
         if is_localhost:
+            logger.warning(
+                "TLS verification disabled for localhost target: %s",
+                self._base_url,
+            )
             transport_kwargs["verify"] = False  # noqa: S501 — deliberate localhost exception
 
         self._http = httpx.Client(
@@ -88,7 +93,13 @@ class AtlasClient:
 
     def _auth_headers(self) -> dict[str, str]:
         if self._token_supplier is not None:
-            token = self._token_supplier()
+            try:
+                token = self._token_supplier()
+            except Exception as exc:
+                raise AuthError(
+                    status=0,
+                    message=f"Token supplier failed: {exc}",
+                ) from exc
             return {"Authorization": f"Bearer {token}"}
         return {}
 
@@ -195,7 +206,13 @@ class AtlasClient:
     def _unwrap(self, response: httpx.Response, model: type[T]) -> T:
         """Parse and unwrap ``APIResponse[T]`` envelope, returning ``T``."""
         self._raise_for_status(response)
-        envelope: APIResponse[T] = APIResponse[model].model_validate(response.json())  # type: ignore[valid-type]
+        try:
+            envelope: APIResponse[T] = APIResponse[model].model_validate(response.json())  # type: ignore[valid-type]
+        except Exception as exc:
+            raise ValidationError(
+                status=response.status_code,
+                message=f"Response does not match expected schema: {exc}",
+            ) from exc
         return envelope.data
 
     def _get(self, path: str, *, params: dict[str, Any] | None = None) -> httpx.Response:

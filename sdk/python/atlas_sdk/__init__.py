@@ -4,6 +4,7 @@ A thin HTTP client containing zero Atlas business logic.
 CLI → atlas-sdk → HTTP → /api/v1.
 """
 
+from atlas_sdk.auth import StaticTokenSupplier, TokenSupplier
 from atlas_sdk.client import AtlasClient
 from atlas_sdk.errors import (
     ApiError,
@@ -27,6 +28,8 @@ __all__ = [
     "NotFoundError",
     "RateLimitedError",
     "ServerError",
+    "StaticTokenSupplier",
+    "TokenSupplier",
     "ValidationError",
 ]
 
