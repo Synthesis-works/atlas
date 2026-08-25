@@ -1,0 +1,6 @@
+{
+  "api": null,
+  "liveness": null,
+  "readiness": null,
+  "overall": "degraded"
+}
