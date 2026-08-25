@@ -15,6 +15,7 @@ from typing import Any
 import click
 from atlas_sdk import AtlasClient
 from atlas_sdk.auth import StaticTokenSupplier
+from atlas_sdk.errors import ApiError, NetworkError
 
 from cli.app import Context, _pass_context
 from cli.config import AtlasConfig
@@ -43,15 +44,15 @@ def health_cmd(ctx: Context) -> None:
             timeout=cfg.timeout,
         ) as client:
             health_data = None
-            with contextlib.suppress(Exception):
+            with contextlib.suppress(ApiError, NetworkError):
                 health_data = client.health_summary()
 
             live = None
-            with contextlib.suppress(Exception):
+            with contextlib.suppress(ApiError, NetworkError):
                 live = client.system_live()
 
             ready = None
-            with contextlib.suppress(Exception):
+            with contextlib.suppress(ApiError, NetworkError):
                 ready = client.system_ready()
     except Exception as exc:
         if output_mode == "json":

@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
+from atlas_sdk.errors import NetworkError
 from click.testing import CliRunner
 
 from cli.app import main
@@ -18,9 +19,9 @@ def _mock_client_all_fail():
     mock = MagicMock()
     mock.__enter__ = MagicMock(return_value=mock)
     mock.__exit__ = MagicMock(return_value=False)
-    mock.health_summary.side_effect = Exception("connection refused")
-    mock.system_live.side_effect = Exception("connection refused")
-    mock.system_ready.side_effect = Exception("connection refused")
+    mock.health_summary.side_effect = NetworkError(message="connection refused")
+    mock.system_live.side_effect = NetworkError(message="connection refused")
+    mock.system_ready.side_effect = NetworkError(message="connection refused")
     return mock
 
 

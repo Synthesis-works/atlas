@@ -12,6 +12,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from atlas_sdk.errors import NetworkError
 from click.testing import CliRunner
 
 from cli.app import main
@@ -35,9 +36,9 @@ def _mock_all_fail():
     mock = MagicMock()
     mock.__enter__ = MagicMock(return_value=mock)
     mock.__exit__ = MagicMock(return_value=False)
-    mock.health_summary.side_effect = Exception("no server")
-    mock.system_live.side_effect = Exception("no server")
-    mock.system_ready.side_effect = Exception("no server")
+    mock.health_summary.side_effect = NetworkError(message="no server")
+    mock.system_live.side_effect = NetworkError(message="no server")
+    mock.system_ready.side_effect = NetworkError(message="no server")
     return mock
 
 

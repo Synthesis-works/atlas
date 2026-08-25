@@ -6,9 +6,6 @@ The CLI owns this mapping; the SDK must never know about exit codes.
 
 from __future__ import annotations
 
-import sys
-from typing import NoReturn
-
 from atlas_sdk.errors import (
     ApiError,
     AuthError,
@@ -62,9 +59,4 @@ def exit_code_for_error(exc: Exception) -> int:
     return ExitCode.UNSPECIFIED
 
 
-def fatal(message: str, exit_code: int = ExitCode.UNSPECIFIED) -> NoReturn:
-    """Print an error message to stderr and exit."""
-    import click
 
-    click.echo(message, err=True)
-    sys.exit(exit_code)

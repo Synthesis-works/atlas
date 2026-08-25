@@ -21,20 +21,6 @@ class Context:
 _pass_context = click.make_pass_decorator(Context, ensure=True)
 
 
-def get_config() -> AtlasConfig:
-    """Retrieve the resolved config from the current Click context."""
-    ctx = click.get_current_context()
-    return ctx.find_object(Context).config  # type: ignore[union-attr]
-
-
-def handle_command_errors(func: object) -> None:  # type: ignore[type-arg]
-    """Raise so that the caller can catch and exit appropriately.
-
-    This is not a decorator — it is called at the entrypoint level.
-    Individual commands should call this via the entrypoint wrapper.
-    """
-
-
 @click.group(invoke_without_command=True)
 @click.option(
     "--output",
@@ -43,6 +29,12 @@ def handle_command_errors(func: object) -> None:  # type: ignore[type-arg]
     type=click.Choice(["human", "json", "quiet"], case_sensitive=False),
     default=None,
     help="Output mode (default: human).",
+)
+@click.option(
+    "--base-url",
+    default=None,
+    envvar="ATLAS_BASE_URL",
+    help="Atlas API base URL (default: http://localhost:8000).",
 )
 @click.option(
     "--profile",
@@ -75,6 +67,7 @@ def handle_command_errors(func: object) -> None:  # type: ignore[type-arg]
 def main(
     ctx: Context,
     output_mode: str | None,
+    base_url: str | None,
     profile: str | None,
     timeout: float | None,
     no_color: bool,
@@ -82,6 +75,7 @@ def main(
 ) -> None:
     """Atlas CLI — control-plane interface for the Atlas platform."""
     ctx.config = load_config(
+        base_url=base_url,
         output=output_mode,
         profile=profile,
         timeout=timeout,
