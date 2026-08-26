@@ -440,9 +440,9 @@ class AtlasClient:
         state transition to CANCELLED is cooperative — the worker picks
         it up after its current unit of work.
 
-        Note: the backend returns 400 if the execution is already in a
-        terminal state (COMPLETED, FAILED, CANCELLED, TIMED_OUT).  This
-        is *not* idempotent.
+        Note: the backend returns 409 Conflict if the execution is
+        already in a terminal state (COMPLETED, FAILED, CANCELLED,
+        TIMED_OUT).  This is *not* idempotent.
         """
         response = self._post_raw(f"/api/v1/executions/{execution_id}/cancel")
         return ExecutionResponse.model_validate(response.json())
