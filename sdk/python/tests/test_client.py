@@ -305,6 +305,100 @@ class TestSubmitExecution:
         client.close()
 
 
+# ── get_execution tests ─────────────────────────────────────────────
+
+
+class TestGetExecution:
+    def test_get_execution_success(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Returns parsed ExecutionResponse with populated fields."""
+        exec_id = "11111111-1111-1111-1111-111111111111"
+        bv_id = "22222222-2222-2222-2222-222222222222"
+        user_id = "33333333-3333-3333-3333-333333333333"
+        httpx_mock.add_response(
+            method="GET",
+            url=f"http://localhost:8000/api/v1/executions/{exec_id}",
+            json={
+                "id": exec_id,
+                "benchmark_version_id": bv_id,
+                "status": "RUNNING",
+                "target_model": "gemini-2.5-flash",
+                "completed_items": 3,
+                "total_items": 10,
+                "started_at": "2026-08-26T12:00:00Z",
+                "completed_at": None,
+                "created_at": "2026-08-26T11:55:00Z",
+                "updated_at": "2026-08-26T12:01:00Z",
+                "created_by": user_id,
+                "max_retries": 3,
+                "attempts": [],
+            },
+            status_code=200,
+        )
+        client = AtlasClient(
+            "http://localhost:8000",
+            token_supplier=StaticTokenSupplier("test-token"),
+        )
+        result = client.get_execution(exec_id)
+        assert result.status == "RUNNING"
+        assert str(result.id) == exec_id
+        assert result.completed_items == 3
+        assert result.total_items == 10
+        assert result.started_at is not None
+        assert result.completed_at is None
+        assert result.attempts == []
+        client.close()
+
+    def test_get_execution_404_raises_not_found(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Non-existent execution raises NotFoundError."""
+        exec_id = "00000000-0000-0000-0000-000000000000"
+        httpx_mock.add_response(
+            method="GET",
+            url=f"http://localhost:8000/api/v1/executions/{exec_id}",
+            json={"detail": "Execution not found"},
+            status_code=404,
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(NotFoundError):
+            client.get_execution(exec_id)
+        client.close()
+
+    def test_get_execution_401_raises_auth_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Missing/invalid token raises AuthError."""
+        exec_id = "11111111-1111-1111-1111-111111111111"
+        httpx_mock.add_response(
+            method="GET",
+            url=f"http://localhost:8000/api/v1/executions/{exec_id}",
+            json=_err(401, "UNAUTHORIZED", "Not authenticated"),
+            status_code=401,
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(AuthError):
+            client.get_execution(exec_id)
+        client.close()
+
+    def test_get_execution_403_raises_forbidden(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Insufficient permissions raises ForbiddenError."""
+        exec_id = "11111111-1111-1111-1111-111111111111"
+        httpx_mock.add_response(
+            method="GET",
+            url=f"http://localhost:8000/api/v1/executions/{exec_id}",
+            json=_err(403, "FORBIDDEN", "Insufficient permissions"),
+            status_code=403,
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(ForbiddenError):
+            client.get_execution(exec_id)
+        client.close()
+
+
 # ── error mapping tests ───────────────────────────────────────────────
 
 

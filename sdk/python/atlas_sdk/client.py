@@ -375,6 +375,17 @@ class AtlasClient:
         )
         return ExecutionResponse.model_validate(response.json())
 
+    def get_execution(self, execution_id: str) -> ExecutionResponse:
+        """Fetch execution details by ID.
+
+        ``GET /api/v1/executions/{execution_id}``
+
+        Returns the execution with populated attempts list.
+        """
+        response = self._get(f"/api/v1/executions/{execution_id}")
+        self._raise_for_status(response)
+        return ExecutionResponse.model_validate(response.json())
+
     # ── lifecycle ─────────────────────────────────────────────────────
 
     def close(self) -> None:

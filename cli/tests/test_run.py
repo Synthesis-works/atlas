@@ -41,19 +41,29 @@ def _exec_response(
 BENCH_VERSION_ID = "22222222-2222-2222-2222-222222222222"
 
 
-def _mock_client(execution: ExecutionResponse | None = None) -> MagicMock:
+def _mock_client(
+    *,
+    execution: ExecutionResponse | None = None,
+    get_execution: ExecutionResponse | None = None,
+) -> MagicMock:
     mock = MagicMock()
     mock.__enter__ = MagicMock(return_value=mock)
     mock.__exit__ = MagicMock(return_value=False)
     mock.submit_execution.return_value = execution or _exec_response()
+    mock.get_execution.return_value = get_execution or _exec_response()
     return mock
 
 
-def _mock_client_error(exc: Exception) -> MagicMock:
+def _mock_client_error(
+    exc: Exception, *, method: str = "submit"
+) -> MagicMock:
     mock = MagicMock()
     mock.__enter__ = MagicMock(return_value=mock)
     mock.__exit__ = MagicMock(return_value=False)
-    mock.submit_execution.side_effect = exc
+    if method == "get":
+        mock.get_execution.side_effect = exc
+    else:
+        mock.submit_execution.side_effect = exc
     return mock
 
 
@@ -93,7 +103,7 @@ def test_submit_human_custom_model(runner: CliRunner) -> None:
     exec_resp = _exec_response(target_model="gpt-4o")
     with patch(
         "cli.commands.run.AtlasClient",
-        return_value=_mock_client(exec_resp),
+        return_value=_mock_client(execution=exec_resp),
     ):
         result = runner.invoke(
             main,
@@ -313,4 +323,200 @@ def test_submit_server_error(runner: CliRunner) -> None:
         result = runner.invoke(
             main, ["run", "submit", BENCH_VERSION_ID]
         )
+    assert result.exit_code == 1
+
+
+# =====================================================================
+# atlas run get
+# =====================================================================
+
+EXEC_ID = "11111111-1111-1111-1111-111111111111"
+
+
+def _exec_response_running() -> ExecutionResponse:
+    return ExecutionResponse(
+        id=uuid.UUID(EXEC_ID),
+        benchmark_version_id=uuid.UUID(BENCH_VERSION_ID),
+        status="RUNNING",
+        target_model="gemini-2.5-flash",
+        completed_items=3,
+        total_items=10,
+        started_at=datetime(2026, 8, 26, 12, 0, 0, tzinfo=UTC),
+        completed_at=None,
+        created_at=datetime(2026, 8, 26, 11, 55, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 8, 26, 12, 1, 0, tzinfo=UTC),
+        created_by=uuid.UUID("33333333-3333-3333-3333-333333333333"),
+        max_retries=3,
+        attempts=[],
+    )
+
+
+# ── discovery ───────────────────────────────────────────────────────────
+
+
+def test_run_get_in_help(runner: CliRunner) -> None:
+    result = runner.invoke(main, ["run", "--help"])
+    assert result.exit_code == 0
+    assert "get" in result.output.lower()
+
+
+# ── human mode ──────────────────────────────────────────────────────────
+
+
+def test_get_human(runner: CliRunner) -> None:
+    with patch(
+        "cli.commands.run.AtlasClient",
+        return_value=_mock_client(get_execution=_exec_response_running()),
+    ):
+        result = runner.invoke(main, ["run", "get", EXEC_ID])
+    assert result.exit_code == 0
+    assert EXEC_ID in result.output
+    assert "RUNNING" in result.output
+    assert "gemini-2.5-flash" in result.output
+    assert "3/10" in result.output
+
+
+# ── JSON mode ───────────────────────────────────────────────────────────
+
+
+def test_get_json(runner: CliRunner) -> None:
+    with patch(
+        "cli.commands.run.AtlasClient",
+        return_value=_mock_client(get_execution=_exec_response_running()),
+    ):
+        result = runner.invoke(
+            main, ["--output", "json", "run", "get", EXEC_ID]
+        )
+    assert result.exit_code == 0
+    parsed = json.loads(result.output)
+    assert parsed["id"] == EXEC_ID
+    assert parsed["status"] == "RUNNING"
+    assert parsed["completed_items"] == 3
+    assert parsed["total_items"] == 10
+
+
+# ── quiet mode ──────────────────────────────────────────────────────────
+
+
+def test_get_quiet(runner: CliRunner) -> None:
+    with patch(
+        "cli.commands.run.AtlasClient",
+        return_value=_mock_client(get_execution=_exec_response_running()),
+    ):
+        result = runner.invoke(
+            main, ["--quiet", "run", "get", EXEC_ID]
+        )
+    assert result.exit_code == 0
+    assert result.output == ""
+
+
+# ── auth error ──────────────────────────────────────────────────────────
+
+
+def test_get_no_token(runner: CliRunner) -> None:
+    from atlas_sdk.errors import AuthError
+
+    err = AuthError(status=401, message="Not authenticated")
+    with patch(
+        "cli.commands.run.AtlasClient",
+        return_value=_mock_client_error(err, method="get"),
+    ):
+        result = runner.invoke(main, ["run", "get", EXEC_ID])
+    assert result.exit_code == 3
+
+
+def test_get_no_token_json(runner: CliRunner) -> None:
+    from atlas_sdk.errors import AuthError
+
+    err = AuthError(status=401, message="Not authenticated")
+    with patch(
+        "cli.commands.run.AtlasClient",
+        return_value=_mock_client_error(err, method="get"),
+    ):
+        result = runner.invoke(
+            main, ["--output", "json", "run", "get", EXEC_ID]
+        )
+    assert result.exit_code == 3
+    parsed = json.loads(result.output)
+    assert "error" in parsed
+    assert parsed["error"]["status"] == 401
+
+
+# ── forbidden error ─────────────────────────────────────────────────────
+
+
+def test_get_forbidden(runner: CliRunner) -> None:
+    from atlas_sdk.errors import ForbiddenError
+
+    err = ForbiddenError(status=403, message="Forbidden")
+    with patch(
+        "cli.commands.run.AtlasClient",
+        return_value=_mock_client_error(err, method="get"),
+    ):
+        result = runner.invoke(main, ["run", "get", EXEC_ID])
+    assert result.exit_code == 4
+
+
+# ── not found ───────────────────────────────────────────────────────────
+
+
+def test_get_not_found(runner: CliRunner) -> None:
+    from atlas_sdk.errors import NotFoundError
+
+    err = NotFoundError(status=404, message="Execution not found")
+    with patch(
+        "cli.commands.run.AtlasClient",
+        return_value=_mock_client_error(err, method="get"),
+    ):
+        result = runner.invoke(
+            main, ["run", "get", "00000000-0000-0000-0000-000000000000"]
+        )
+    assert result.exit_code == 5
+
+
+def test_get_not_found_json(runner: CliRunner) -> None:
+    from atlas_sdk.errors import NotFoundError
+
+    err = NotFoundError(status=404, message="Execution not found")
+    with patch(
+        "cli.commands.run.AtlasClient",
+        return_value=_mock_client_error(err, method="get"),
+    ):
+        result = runner.invoke(
+            main,
+            ["--output", "json", "run", "get", "00000000-0000-0000-0000-000000000000"],
+        )
+    assert result.exit_code == 5
+    parsed = json.loads(result.output)
+    assert "error" in parsed
+    assert parsed["error"]["status"] == 404
+
+
+# ── network error ───────────────────────────────────────────────────────
+
+
+def test_get_network_error(runner: CliRunner) -> None:
+    from atlas_sdk.errors import NetworkError
+
+    err = NetworkError(message="connection refused")
+    with patch(
+        "cli.commands.run.AtlasClient",
+        return_value=_mock_client_error(err, method="get"),
+    ):
+        result = runner.invoke(main, ["run", "get", EXEC_ID])
+    assert result.exit_code == 6
+
+
+# ── server error ────────────────────────────────────────────────────────
+
+
+def test_get_server_error(runner: CliRunner) -> None:
+    from atlas_sdk.errors import ServerError
+
+    err = ServerError(status=500, message="Internal server error")
+    with patch(
+        "cli.commands.run.AtlasClient",
+        return_value=_mock_client_error(err, method="get"),
+    ):
+        result = runner.invoke(main, ["run", "get", EXEC_ID])
     assert result.exit_code == 1
