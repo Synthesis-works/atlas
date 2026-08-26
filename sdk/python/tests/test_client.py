@@ -398,6 +398,42 @@ class TestGetExecution:
             client.get_execution(exec_id)
         client.close()
 
+    def test_get_execution_timed_out_parses_correctly(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Regression: TIMED_OUT (backend terminal state) must parse."""
+        exec_id = "44444444-4444-4444-4444-444444444444"
+        bv_id = "22222222-2222-2222-2222-222222222222"
+        user_id = "33333333-3333-3333-3333-333333333333"
+        httpx_mock.add_response(
+            method="GET",
+            url=f"http://localhost:8000/api/v1/executions/{exec_id}",
+            json={
+                "id": exec_id,
+                "benchmark_version_id": bv_id,
+                "status": "TIMED_OUT",
+                "target_model": "gemini-2.5-flash",
+                "completed_items": 7,
+                "total_items": 10,
+                "started_at": "2026-08-26T12:00:00Z",
+                "completed_at": "2026-08-26T12:30:00Z",
+                "created_at": "2026-08-26T11:55:00Z",
+                "updated_at": "2026-08-26T12:30:00Z",
+                "created_by": user_id,
+                "max_retries": 3,
+                "attempts": [],
+            },
+            status_code=200,
+        )
+        client = AtlasClient(
+            "http://localhost:8000",
+            token_supplier=StaticTokenSupplier("test-token"),
+        )
+        result = client.get_execution(exec_id)
+        assert result.status == "TIMED_OUT"
+        assert str(result.id) == exec_id
+        client.close()
+
 
 # ── list_executions tests ────────────────────────────────────────────
 
@@ -406,7 +442,7 @@ class TestListExecutions:
     def test_list_executions_success(
         self, httpx_mock: pytest.MockTransport
     ) -> None:
-        """Returns list of ExecutionResponse items."""
+        """Returns ExecutionPage with items and pagination metadata."""
         bv_id = "22222222-2222-2222-2222-222222222222"
         user_id = "33333333-3333-3333-3333-333333333333"
         httpx_mock.add_response(
@@ -441,7 +477,7 @@ class TestListExecutions:
                         "attempts": [],
                     },
                 ],
-                "total": 2,
+                "total": 47,
             },
             status_code=200,
         )
@@ -450,16 +486,19 @@ class TestListExecutions:
             token_supplier=StaticTokenSupplier("test-token"),
         )
         result = client.list_executions()
-        assert len(result) == 2
-        assert result[0].status == "COMPLETED"
-        assert result[1].status == "RUNNING"
-        assert result[1].target_model == "gpt-4o"
+        assert len(result.items) == 2
+        assert result.total == 47
+        assert result.limit == 20
+        assert result.offset == 0
+        assert result.items[0].status == "COMPLETED"
+        assert result.items[1].status == "RUNNING"
+        assert result.items[1].target_model == "gpt-4o"
         client.close()
 
     def test_list_executions_empty(
         self, httpx_mock: pytest.MockTransport
     ) -> None:
-        """Empty items list returns empty list."""
+        """Empty items list returns ExecutionPage with empty items."""
         httpx_mock.add_response(
             method="GET",
             url="http://localhost:8000/api/v1/executions?limit=20&offset=0",
@@ -471,7 +510,8 @@ class TestListExecutions:
             token_supplier=StaticTokenSupplier("test-token"),
         )
         result = client.list_executions()
-        assert result == []
+        assert result.items == []
+        assert result.total == 0
         client.close()
 
     def test_list_executions_filters_passed(
@@ -517,6 +557,98 @@ class TestListExecutions:
         client = AtlasClient("http://localhost:8000")
         with pytest.raises(AuthError):
             client.list_executions()
+        client.close()
+
+
+# ── cancel_execution tests ───────────────────────────────────────────
+
+
+class TestCancelExecution:
+    def test_cancel_execution_success(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Cancel returns the execution with status unchanged (cooperative)."""
+        exec_id = "11111111-1111-1111-1111-111111111111"
+        bv_id = "22222222-2222-2222-2222-222222222222"
+        user_id = "33333333-3333-3333-3333-333333333333"
+        httpx_mock.add_response(
+            method="POST",
+            url=f"http://localhost:8000/api/v1/executions/{exec_id}/cancel",
+            json={
+                "id": exec_id,
+                "benchmark_version_id": bv_id,
+                "status": "RUNNING",
+                "target_model": "gemini-2.5-flash",
+                "completed_items": 3,
+                "total_items": 10,
+                "started_at": "2026-08-26T12:00:00Z",
+                "completed_at": None,
+                "created_at": "2026-08-26T11:55:00Z",
+                "updated_at": "2026-08-26T12:01:00Z",
+                "created_by": user_id,
+                "max_retries": 3,
+                "attempts": [],
+            },
+            status_code=200,
+        )
+        client = AtlasClient(
+            "http://localhost:8000",
+            token_supplier=StaticTokenSupplier("test-token"),
+        )
+        result = client.cancel_execution(exec_id)
+        assert result.status == "RUNNING"
+        assert str(result.id) == exec_id
+        client.close()
+
+    def test_cancel_execution_terminal_returns_400(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Backend returns 400 for terminal execution — not idempotent."""
+        exec_id = "11111111-1111-1111-1111-111111111111"
+        httpx_mock.add_response(
+            method="POST",
+            url=f"http://localhost:8000/api/v1/executions/{exec_id}/cancel",
+            json={"detail": "Execution is in terminal state 'COMPLETED' and cannot be cancelled."},
+            status_code=400,
+        )
+        client = AtlasClient("http://localhost:8000")
+        from atlas_sdk.errors import ApiError
+
+        with pytest.raises(ApiError) as exc_info:
+            client.cancel_execution(exec_id)
+        assert exc_info.value.status == 400
+        client.close()
+
+    def test_cancel_execution_404_raises_not_found(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Non-existent execution raises NotFoundError."""
+        exec_id = "00000000-0000-0000-0000-000000000000"
+        httpx_mock.add_response(
+            method="POST",
+            url=f"http://localhost:8000/api/v1/executions/{exec_id}/cancel",
+            json={"detail": "Execution not found"},
+            status_code=404,
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(NotFoundError):
+            client.cancel_execution(exec_id)
+        client.close()
+
+    def test_cancel_execution_401_raises_auth_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Missing/invalid token raises AuthError."""
+        exec_id = "11111111-1111-1111-1111-111111111111"
+        httpx_mock.add_response(
+            method="POST",
+            url=f"http://localhost:8000/api/v1/executions/{exec_id}/cancel",
+            json=_err(401, "UNAUTHORIZED", "Not authenticated"),
+            status_code=401,
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(AuthError):
+            client.cancel_execution(exec_id)
         client.close()
 
 

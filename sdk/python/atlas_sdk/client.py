@@ -28,7 +28,7 @@ from atlas_sdk.models.benchmarks import (
     BenchmarkVersionRead,
     PageResponse,
 )
-from atlas_sdk.models.executions import ExecutionResponse
+from atlas_sdk.models.executions import ExecutionPage, ExecutionResponse
 from atlas_sdk.models.health import HealthData, LivenessResponse, ReadinessResponse
 from atlas_sdk.models.responses import APIResponse
 
@@ -407,14 +407,14 @@ class AtlasClient:
         status: str | None = None,
         limit: int = 20,
         offset: int = 0,
-    ) -> list[ExecutionResponse]:
+    ) -> ExecutionPage:
         """List executions with optional filters.
 
         ``GET /api/v1/executions``
 
-        Returns all matching executions (not paginated in the ``PageResponse``
-        sense — the backend returns ``ExecutionListResponse`` with ``items``
-        and ``total``). This method returns the items list directly.
+        Returns an ``ExecutionPage`` containing items and pagination
+        metadata (total, limit, offset) so callers can render pagination
+        hints.
         """
         params: dict[str, Any] = {"limit": limit, "offset": offset}
         if benchmark_version_id is not None:
@@ -423,7 +423,29 @@ class AtlasClient:
             params["status"] = status
         response = self._get_raw("/api/v1/executions", params=params)
         data = response.json()
-        return [ExecutionResponse.model_validate(item) for item in data["items"]]
+        items = [ExecutionResponse.model_validate(item) for item in data["items"]]
+        return ExecutionPage(
+            items=items,
+            total=data["total"],
+            limit=limit,
+            offset=offset,
+        )
+
+    def cancel_execution(self, execution_id: str) -> ExecutionResponse:
+        """Request cancellation of a running or queued execution.
+
+        ``POST /api/v1/executions/{execution_id}/cancel``
+
+        Returns the execution with the cancellation flag set.  The actual
+        state transition to CANCELLED is cooperative — the worker picks
+        it up after its current unit of work.
+
+        Note: the backend returns 400 if the execution is already in a
+        terminal state (COMPLETED, FAILED, CANCELLED, TIMED_OUT).  This
+        is *not* idempotent.
+        """
+        response = self._post_raw(f"/api/v1/executions/{execution_id}/cancel")
+        return ExecutionResponse.model_validate(response.json())
 
     # ── lifecycle ─────────────────────────────────────────────────────
 

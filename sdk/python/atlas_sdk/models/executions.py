@@ -8,7 +8,7 @@ handler.
 Status lifecycle::
 
     QUEUED -> SCHEDULED -> STARTING -> RUNNING -> EVALUATING -> COMPLETED
-                                   |-> FAILED / RETRYING
+                                   |-> FAILED / RETRYING / TIMED_OUT
                                    |-> CANCELLING -> CANCELLED
 """
 
@@ -35,6 +35,7 @@ class ExecutionState(StrEnum):
     RETRYING = "RETRYING"
     CANCELLING = "CANCELLING"
     CANCELLED = "CANCELLED"
+    TIMED_OUT = "TIMED_OUT"
 
 
 class ArtifactResponse(BaseModel):
@@ -94,3 +95,17 @@ class ExecutionListResponse(BaseModel):
 
     items: list[ExecutionResponse]
     total: int
+
+
+class ExecutionPage(BaseModel):
+    """Pagination envelope for execution lists.
+
+    Mirrors ``PageResponse[BenchmarkRead]`` but for executions.
+    The SDK's ``list_executions()`` returns this instead of a bare list
+    so that callers can access ``total`` for pagination hints.
+    """
+
+    items: list[ExecutionResponse]
+    total: int
+    limit: int
+    offset: int

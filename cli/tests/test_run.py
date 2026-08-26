@@ -10,7 +10,7 @@ import uuid
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
-from atlas_sdk.models.executions import ExecutionResponse
+from atlas_sdk.models.executions import ExecutionPage, ExecutionResponse
 from click.testing import CliRunner
 
 from cli.app import main
@@ -46,13 +46,25 @@ def _mock_client(
     execution: ExecutionResponse | None = None,
     get_execution: ExecutionResponse | None = None,
     list_executions: list[ExecutionResponse] | None = None,
+    total: int | None = None,
 ) -> MagicMock:
     mock = MagicMock()
     mock.__enter__ = MagicMock(return_value=mock)
     mock.__exit__ = MagicMock(return_value=False)
     mock.submit_execution.return_value = execution or _exec_response()
     mock.get_execution.return_value = get_execution or _exec_response()
-    mock.list_executions.return_value = list_executions if list_executions is not None else []
+    if list_executions is not None:
+        items = list_executions
+        mock.list_executions.return_value = ExecutionPage(
+            items=items,
+            total=total if total is not None else len(items),
+            limit=20,
+            offset=0,
+        )
+    else:
+        mock.list_executions.return_value = ExecutionPage(
+            items=[], total=0, limit=20, offset=0,
+        )
     return mock
 
 
@@ -606,21 +618,36 @@ def test_list_human_empty(runner: CliRunner) -> None:
     assert "No executions" in result.output
 
 
+def test_list_human_pagination_hint(runner: CliRunner) -> None:
+    with patch(
+        "cli.commands.run.AtlasClient",
+        return_value=_mock_client(list_executions=_list_items(), total=47),
+    ):
+        result = runner.invoke(main, ["run", "list"])
+    assert result.exit_code == 0
+    assert "Showing 2 of 47" in result.output
+
+
 # ── JSON mode ───────────────────────────────────────────────────────────
 
 
 def test_list_json(runner: CliRunner) -> None:
     with patch(
         "cli.commands.run.AtlasClient",
-        return_value=_mock_client(list_executions=_list_items()),
+        return_value=_mock_client(list_executions=_list_items(), total=2),
     ):
         result = runner.invoke(main, ["--output", "json", "run", "list"])
     assert result.exit_code == 0
     parsed = json.loads(result.output)
-    assert isinstance(parsed, list)
-    assert len(parsed) == 2
-    assert parsed[0]["status"] == "COMPLETED"
-    assert parsed[1]["status"] == "RUNNING"
+    assert isinstance(parsed, dict)
+    assert "items" in parsed
+    assert "total" in parsed
+    assert "limit" in parsed
+    assert "offset" in parsed
+    assert len(parsed["items"]) == 2
+    assert parsed["items"][0]["status"] == "COMPLETED"
+    assert parsed["items"][1]["status"] == "RUNNING"
+    assert parsed["total"] == 2
 
 
 def test_list_json_empty(runner: CliRunner) -> None:
@@ -631,7 +658,7 @@ def test_list_json_empty(runner: CliRunner) -> None:
         result = runner.invoke(main, ["--output", "json", "run", "list"])
     assert result.exit_code == 0
     parsed = json.loads(result.output)
-    assert parsed == []
+    assert parsed == {"items": [], "total": 0, "limit": 20, "offset": 0}
 
 
 # ── quiet mode ──────────────────────────────────────────────────────────

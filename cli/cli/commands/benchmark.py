@@ -14,15 +14,13 @@ Implements:
 
 from __future__ import annotations
 
-import sys
-
 import click
 from atlas_sdk import AtlasClient, StaticTokenSupplier
 
 from cli.app import Context, _pass_context
 from cli.config import AtlasConfig
-from cli.errors import exit_code_for_error
-from cli.output.json import render_json, render_json_error
+from cli.output.errors import error_exit
+from cli.output.json import render_json
 from cli.output.table import render_kv, render_table
 
 
@@ -51,16 +49,7 @@ def list_cmd(ctx: Context) -> None:
         ) as client:
             page = client.list_benchmarks(limit=50)
     except Exception as exc:
-        if output_mode == "json":
-            render_json_error(
-                status=getattr(exc, "status", 0),
-                code=getattr(exc, "code", "UNKNOWN"),
-                message=str(exc),
-                details=getattr(exc, "details", None),
-            )
-        else:
-            click.echo(f"error: {exc}", err=True)
-        sys.exit(exit_code_for_error(exc))
+        error_exit(exc, output_mode)
 
     if output_mode == "json":
         result = {
@@ -109,16 +98,7 @@ def get_cmd(ctx: Context, benchmark_id: str) -> None:
         ) as client:
             benchmark = client.get_benchmark(benchmark_id)
     except Exception as exc:
-        if output_mode == "json":
-            render_json_error(
-                status=getattr(exc, "status", 0),
-                code=getattr(exc, "code", "UNKNOWN"),
-                message=str(exc),
-                details=getattr(exc, "details", None),
-            )
-        else:
-            click.echo(f"error: {exc}", err=True)
-        sys.exit(exit_code_for_error(exc))
+        error_exit(exc, output_mode)
 
     if output_mode == "json":
         render_json(benchmark.model_dump(mode="json"))
@@ -155,16 +135,7 @@ def versions_cmd(ctx: Context, benchmark_id: str) -> None:
         ) as client:
             versions = client.list_benchmark_versions(benchmark_id)
     except Exception as exc:
-        if output_mode == "json":
-            render_json_error(
-                status=getattr(exc, "status", 0),
-                code=getattr(exc, "code", "UNKNOWN"),
-                message=str(exc),
-                details=getattr(exc, "details", None),
-            )
-        else:
-            click.echo(f"error: {exc}", err=True)
-        sys.exit(exit_code_for_error(exc))
+        error_exit(exc, output_mode)
 
     if output_mode == "json":
         items = [v.model_dump(mode="json") for v in versions]

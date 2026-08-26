@@ -19,8 +19,9 @@ from atlas_sdk.errors import ApiError, NetworkError
 
 from cli.app import Context, _pass_context
 from cli.config import AtlasConfig
-from cli.errors import ExitCode, exit_code_for_error
-from cli.output.json import render_json, render_json_error
+from cli.errors import ExitCode
+from cli.output.errors import error_exit
+from cli.output.json import render_json
 from cli.output.table import render_kv
 
 
@@ -55,16 +56,7 @@ def health_cmd(ctx: Context) -> None:
             with contextlib.suppress(ApiError, NetworkError):
                 ready = client.system_ready()
     except Exception as exc:
-        if output_mode == "json":
-            render_json_error(
-                status=getattr(exc, "status", 0),
-                code=getattr(exc, "code", "UNKNOWN"),
-                message=str(exc),
-                details=getattr(exc, "details", None),
-            )
-        else:
-            click.echo(f"error: {exc}", err=True)
-        sys.exit(exit_code_for_error(exc))
+        error_exit(exc, output_mode)
 
     all_ok = (
         health_data is not None
