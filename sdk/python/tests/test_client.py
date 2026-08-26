@@ -164,6 +164,147 @@ class TestHealth:
         client.close()
 
 
+# ── submit execution tests ────────────────────────────────────────────
+
+
+class TestSubmitExecution:
+    def test_submit_execution_returns_queued(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Successful submission returns ExecutionResponse in QUEUED state."""
+        bv_id = "22222222-2222-2222-2222-222222222222"
+        exec_id = "11111111-1111-1111-1111-111111111111"
+        user_id = "33333333-3333-3333-3333-333333333333"
+        httpx_mock.add_response(
+            method="POST",
+            url=f"http://localhost:8000/api/v1/benchmarks/{bv_id}/executions",
+            json={
+                "id": exec_id,
+                "benchmark_version_id": bv_id,
+                "status": "QUEUED",
+                "target_model": "gemini-2.5-flash",
+                "completed_items": 0,
+                "total_items": 1,
+                "started_at": None,
+                "completed_at": None,
+                "created_at": "2026-08-26T12:00:00Z",
+                "updated_at": "2026-08-26T12:00:00Z",
+                "created_by": user_id,
+                "max_retries": 3,
+                "attempts": [],
+            },
+            status_code=201,
+        )
+        client = AtlasClient(
+            "http://localhost:8000",
+            token_supplier=StaticTokenSupplier("test-token"),
+        )
+        result = client.submit_execution(bv_id)
+        assert result.status == "QUEUED"
+        assert str(result.id) == exec_id
+        assert str(result.benchmark_version_id) == bv_id
+        assert result.target_model == "gemini-2.5-flash"
+        assert result.max_retries == 3
+        assert result.attempts == []
+        client.close()
+
+    def test_submit_execution_custom_model(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Custom target_model is sent in the request body."""
+        bv_id = "22222222-2222-2222-2222-222222222222"
+        httpx_mock.add_response(
+            method="POST",
+            url=f"http://localhost:8000/api/v1/benchmarks/{bv_id}/executions",
+            json={
+                "id": "11111111-1111-1111-1111-111111111111",
+                "benchmark_version_id": bv_id,
+                "status": "QUEUED",
+                "target_model": "gpt-4o",
+                "completed_items": 0,
+                "total_items": 1,
+                "created_at": "2026-08-26T12:00:00Z",
+                "updated_at": "2026-08-26T12:00:00Z",
+                "created_by": "33333333-3333-3333-3333-333333333333",
+                "max_retries": 3,
+            },
+            status_code=201,
+        )
+        client = AtlasClient(
+            "http://localhost:8000",
+            token_supplier=StaticTokenSupplier("test-token"),
+        )
+        result = client.submit_execution(bv_id, target_model="gpt-4o")
+        assert result.target_model == "gpt-4o"
+        # Verify request body
+        request = httpx_mock.get_request()
+        assert request is not None
+        body = json.loads(request.content)
+        assert body["target_model"] == "gpt-4o"
+        client.close()
+
+    def test_submit_execution_404_raises_not_found(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Non-existent benchmark version raises NotFoundError."""
+        bv_id = "00000000-0000-0000-0000-000000000000"
+        httpx_mock.add_response(
+            method="POST",
+            url=f"http://localhost:8000/api/v1/benchmarks/{bv_id}/executions",
+            json={"detail": "BenchmarkVersion not found"},
+            status_code=404,
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(NotFoundError):
+            client.submit_execution(bv_id)
+        client.close()
+
+    def test_submit_execution_401_raises_auth_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Missing/invalid token raises AuthError."""
+        bv_id = "22222222-2222-2222-2222-222222222222"
+        httpx_mock.add_response(
+            method="POST",
+            url=f"http://localhost:8000/api/v1/benchmarks/{bv_id}/executions",
+            json=_err(401, "UNAUTHORIZED", "Not authenticated"),
+            status_code=401,
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(AuthError):
+            client.submit_execution(bv_id)
+        client.close()
+
+    def test_submit_execution_no_auth_header_without_supplier(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """No Authorization header when no token_supplier is set."""
+        bv_id = "22222222-2222-2222-2222-222222222222"
+        httpx_mock.add_response(
+            method="POST",
+            url=f"http://localhost:8000/api/v1/benchmarks/{bv_id}/executions",
+            json={
+                "id": "11111111-1111-1111-1111-111111111111",
+                "benchmark_version_id": bv_id,
+                "status": "QUEUED",
+                "target_model": "gemini-2.5-flash",
+                "completed_items": 0,
+                "total_items": 1,
+                "created_at": "2026-08-26T12:00:00Z",
+                "updated_at": "2026-08-26T12:00:00Z",
+                "created_by": "33333333-3333-3333-3333-333333333333",
+                "max_retries": 3,
+            },
+            status_code=201,
+        )
+        client = AtlasClient("http://localhost:8000")
+        client.submit_execution(bv_id)
+        request = httpx_mock.get_request()
+        assert request is not None
+        assert "Authorization" not in request.headers
+        client.close()
+
+
 # ── error mapping tests ───────────────────────────────────────────────
 
 

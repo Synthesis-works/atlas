@@ -22,14 +22,26 @@ from atlas_sdk.models.benchmarks import (
     BenchmarkVersionRead,
     PageResponse,
 )
+from atlas_sdk.models.executions import (
+    ArtifactResponse,
+    ExecutionAttemptResponse,
+    ExecutionCreateRequest,
+    ExecutionResponse,
+    ExecutionState,
+)
 
 __all__ = [
     "AtlasClient",
     "ApiError",
     "AuthError",
+    "ArtifactResponse",
     "BenchmarkRead",
     "BenchmarkVersionRead",
     "ConflictError",
+    "ExecutionAttemptResponse",
+    "ExecutionCreateRequest",
+    "ExecutionResponse",
+    "ExecutionState",
     "ForbiddenError",
     "NetworkError",
     "NotFoundError",

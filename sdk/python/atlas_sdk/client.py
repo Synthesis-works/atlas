@@ -28,6 +28,7 @@ from atlas_sdk.models.benchmarks import (
     BenchmarkVersionRead,
     PageResponse,
 )
+from atlas_sdk.models.executions import ExecutionResponse
 from atlas_sdk.models.health import HealthData, LivenessResponse, ReadinessResponse
 from atlas_sdk.models.responses import APIResponse
 
@@ -232,6 +233,22 @@ class AtlasClient:
     ) -> httpx.Response:
         return self._do_request("POST", path, json=json, params=params, retry=False)
 
+    def _post_raw(
+        self,
+        path: str,
+        *,
+        json: Any = None,
+        params: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        """POST with error handling but no response unwrapping.
+
+        Use for endpoints that do NOT wrap their response in ``APIResponse``
+        (e.g. execution submit/get/cancel).
+        """
+        response = self._post(path, json=json, params=params)
+        self._raise_for_status(response)
+        return response
+
     # ── public API (Phase 1 subset) ──────────────────────────────────
 
     # -- auth --
@@ -330,6 +347,33 @@ class AtlasClient:
             f"/api/v1/benchmarks/{benchmark_id}/versions"
         )
         return self._unwrap(response, list[BenchmarkVersionRead])
+
+    # -- executions --
+
+    def submit_execution(
+        self,
+        benchmark_version_id: str,
+        *,
+        target_model: str = "gemini-2.5-flash",
+        dataset_version_id: str | None = None,
+    ) -> ExecutionResponse:
+        """Submit a new execution for a benchmark version.
+
+        ``POST /api/v1/benchmarks/{benchmark_version_id}/executions``
+
+        Returns the created execution in QUEUED state.
+
+        Note: this endpoint returns ``ExecutionResponse`` directly (not
+        wrapped in ``APIResponse``), unlike most other Atlas endpoints.
+        """
+        body: dict[str, Any] = {"target_model": target_model}
+        if dataset_version_id is not None:
+            body["dataset_version_id"] = dataset_version_id
+        response = self._post_raw(
+            f"/api/v1/benchmarks/{benchmark_version_id}/executions",
+            json=body,
+        )
+        return ExecutionResponse.model_validate(response.json())
 
     # ── lifecycle ─────────────────────────────────────────────────────
 
