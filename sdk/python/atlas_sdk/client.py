@@ -23,6 +23,7 @@ from atlas_sdk.errors import (
     error_for_status,
 )
 from atlas_sdk.models.auth import AuthUserRead, TokenResponse
+from atlas_sdk.models.benchmarks import BenchmarkRead, PageResponse
 from atlas_sdk.models.health import HealthData, LivenessResponse, ReadinessResponse
 from atlas_sdk.models.responses import APIResponse
 
@@ -283,6 +284,26 @@ class AtlasClient:
         response = self._get("/api/v1/system/health/live")
         self._raise_for_status(response)
         return LivenessResponse.model_validate(response.json())
+
+    # -- benchmarks --
+
+    def list_benchmarks(
+        self,
+        *,
+        limit: int = 50,
+        offset: int | None = None,
+    ) -> PageResponse[BenchmarkRead]:
+        """List benchmarks.
+
+        ``GET /api/v1/benchmarks``
+
+        Returns published benchmarks with pagination metadata.
+        """
+        params: dict[str, Any] = {"limit": limit}
+        if offset is not None:
+            params["offset"] = offset
+        response = self._get("/api/v1/benchmarks", params=params)
+        return self._unwrap(response, PageResponse[BenchmarkRead])
 
     # ── lifecycle ─────────────────────────────────────────────────────
 

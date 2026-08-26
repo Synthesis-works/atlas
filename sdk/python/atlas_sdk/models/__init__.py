@@ -5,6 +5,7 @@ Field-for-field correspondence with the backend — no renaming, no
 """
 
 from atlas_sdk.models.auth import AuthUserRead, TokenResponse
+from atlas_sdk.models.benchmarks import BenchmarkRead, PageResponse
 from atlas_sdk.models.health import HealthData, LivenessResponse, ReadinessResponse
 from atlas_sdk.models.responses import (
     APIErrorResponse,
@@ -16,6 +17,8 @@ from atlas_sdk.models.responses import (
 __all__ = [
     "AuthUserRead",
     "TokenResponse",
+    "BenchmarkRead",
+    "PageResponse",
     "HealthData",
     "LivenessResponse",
     "ReadinessResponse",

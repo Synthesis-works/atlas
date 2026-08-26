@@ -89,9 +89,11 @@ def main(
 
 # ── command registration ───────────────────────────────────────────────
 from cli.commands.auth import whoami_cmd as _whoami_cmd  # noqa: E402
+from cli.commands.benchmark import benchmark_group as _benchmark_group  # noqa: E402
 from cli.commands.health import health_cmd as _health_cmd  # noqa: E402
 
 main.add_command(_whoami_cmd)  # type: ignore[has-type]
+main.add_command(_benchmark_group)  # type: ignore[has-type]
 main.add_command(_health_cmd)  # type: ignore[has-type]
 
 
