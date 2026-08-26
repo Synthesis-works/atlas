@@ -87,3 +87,10 @@ class ExecutionCreateRequest(BaseModel):
     target_model: str = "gemini-2.5-flash"
     dataset_version_id: uuid.UUID | None = None
     execution_config: dict[str, Any] | None = None
+
+
+class ExecutionListResponse(BaseModel):
+    """Paginated list of executions returned by ``GET /api/v1/executions``."""
+
+    items: list[ExecutionResponse]
+    total: int

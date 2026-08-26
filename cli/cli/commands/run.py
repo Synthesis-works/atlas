@@ -1,8 +1,9 @@
-"""run commands -- submit, get (Phase 1).
+"""run commands -- submit, get, list (Phase 1).
 
 Implements:
   atlas run submit <benchmark-version-id>
   atlas run get <execution-id>
+  atlas run list
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from cli.app import Context, _pass_context
 from cli.config import AtlasConfig
 from cli.errors import exit_code_for_error
 from cli.output.json import render_json, render_json_error
-from cli.output.table import render_kv
+from cli.output.table import render_kv, render_table
 
 
 @click.group(name="run")
@@ -143,3 +144,82 @@ def get_cmd(ctx: Context, execution_id: str) -> None:
         if execution.attempts:
             rows.append(("Attempts", str(len(execution.attempts))))
         render_kv(rows, title="Execution")
+
+
+@run_group.command(name="list")
+@_pass_context
+@click.option(
+    "--benchmark-version-id",
+    default=None,
+    help="Filter by benchmark version UUID.",
+)
+@click.option(
+    "--status",
+    default=None,
+    help="Filter by execution status (e.g. QUEUED, RUNNING, COMPLETED).",
+)
+@click.option(
+    "--limit",
+    default=20,
+    type=int,
+    help="Maximum number of executions to return (default: 20).",
+)
+@click.option(
+    "--offset",
+    default=0,
+    type=int,
+    help="Number of executions to skip (default: 0).",
+)
+def list_cmd(
+    ctx: Context,
+    benchmark_version_id: str | None,
+    status: str | None,
+    limit: int,
+    offset: int,
+) -> None:
+    """List executions.
+
+    Calls GET /api/v1/executions through the SDK with optional filters.
+    """
+    cfg: AtlasConfig = ctx.config
+    output_mode = cfg.effective_output()
+
+    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
+
+    try:
+        with AtlasClient(
+            cfg.base_url,
+            token_supplier=supplier,
+            timeout=cfg.timeout,
+        ) as client:
+            executions = client.list_executions(
+                benchmark_version_id=benchmark_version_id,
+                status=status,
+                limit=limit,
+                offset=offset,
+            )
+    except Exception as exc:
+        _error_exit(exc, output_mode)
+
+    if output_mode == "json":
+        render_json([e.model_dump(mode="json") for e in executions])
+    elif output_mode == "quiet":
+        pass
+    else:
+        if not executions:
+            click.echo("No executions found.")
+            return
+        headers = ["ID", "Status", "Model", "Progress", "Created"]
+        rows_data: list[list[str]] = []
+        for e in executions:
+            short_id = str(e.id)[:8]
+            progress = f"{e.completed_items}/{e.total_items}"
+            created = e.created_at.strftime("%Y-%m-%d %H:%M")
+            rows_data.append([
+                short_id,
+                e.status,
+                e.target_model,
+                progress,
+                created,
+            ])
+        render_table(headers, rows_data, title="Executions")

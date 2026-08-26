@@ -399,6 +399,127 @@ class TestGetExecution:
         client.close()
 
 
+# ── list_executions tests ────────────────────────────────────────────
+
+
+class TestListExecutions:
+    def test_list_executions_success(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Returns list of ExecutionResponse items."""
+        bv_id = "22222222-2222-2222-2222-222222222222"
+        user_id = "33333333-3333-3333-3333-333333333333"
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/executions?limit=20&offset=0",
+            json={
+                "items": [
+                    {
+                        "id": "11111111-1111-1111-1111-111111111111",
+                        "benchmark_version_id": bv_id,
+                        "status": "COMPLETED",
+                        "target_model": "gemini-2.5-flash",
+                        "completed_items": 10,
+                        "total_items": 10,
+                        "created_at": "2026-08-26T12:00:00Z",
+                        "updated_at": "2026-08-26T12:05:00Z",
+                        "created_by": user_id,
+                        "max_retries": 3,
+                        "attempts": [],
+                    },
+                    {
+                        "id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                        "benchmark_version_id": bv_id,
+                        "status": "RUNNING",
+                        "target_model": "gpt-4o",
+                        "completed_items": 3,
+                        "total_items": 10,
+                        "created_at": "2026-08-26T12:55:00Z",
+                        "updated_at": "2026-08-26T13:01:00Z",
+                        "created_by": user_id,
+                        "max_retries": 3,
+                        "attempts": [],
+                    },
+                ],
+                "total": 2,
+            },
+            status_code=200,
+        )
+        client = AtlasClient(
+            "http://localhost:8000",
+            token_supplier=StaticTokenSupplier("test-token"),
+        )
+        result = client.list_executions()
+        assert len(result) == 2
+        assert result[0].status == "COMPLETED"
+        assert result[1].status == "RUNNING"
+        assert result[1].target_model == "gpt-4o"
+        client.close()
+
+    def test_list_executions_empty(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Empty items list returns empty list."""
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/executions?limit=20&offset=0",
+            json={"items": [], "total": 0},
+            status_code=200,
+        )
+        client = AtlasClient(
+            "http://localhost:8000",
+            token_supplier=StaticTokenSupplier("test-token"),
+        )
+        result = client.list_executions()
+        assert result == []
+        client.close()
+
+    def test_list_executions_filters_passed(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Query params are sent correctly."""
+        bv_id = "22222222-2222-2222-2222-222222222222"
+        httpx_mock.add_response(
+            method="GET",
+            url=f"http://localhost:8000/api/v1/executions?limit=5&offset=10&benchmark_version_id={bv_id}&status=RUNNING",
+            json={"items": [], "total": 0},
+            status_code=200,
+        )
+        client = AtlasClient(
+            "http://localhost:8000",
+            token_supplier=StaticTokenSupplier("test-token"),
+        )
+        client.list_executions(
+            benchmark_version_id=bv_id,
+            status="RUNNING",
+            limit=5,
+            offset=10,
+        )
+        request = httpx_mock.get_request()
+        assert request is not None
+        url = str(request.url)
+        assert "benchmark_version_id=" in url
+        assert "status=RUNNING" in url
+        assert "limit=5" in url
+        assert "offset=10" in url
+        client.close()
+
+    def test_list_executions_401_raises_auth_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """Unauthenticated request raises AuthError."""
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/executions?limit=20&offset=0",
+            json=_err(401, "UNAUTHORIZED", "Not authenticated"),
+            status_code=401,
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(AuthError):
+            client.list_executions()
+        client.close()
+
+
 # ── error mapping tests ───────────────────────────────────────────────
 
 

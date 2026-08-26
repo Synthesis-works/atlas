@@ -249,6 +249,21 @@ class AtlasClient:
         self._raise_for_status(response)
         return response
 
+    def _get_raw(
+        self,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        """GET with error handling but no response unwrapping.
+
+        Use for endpoints that do NOT wrap their response in ``APIResponse``
+        (e.g. execution endpoints).
+        """
+        response = self._get(path, params=params)
+        self._raise_for_status(response)
+        return response
+
     # ── public API (Phase 1 subset) ──────────────────────────────────
 
     # -- auth --
@@ -382,9 +397,33 @@ class AtlasClient:
 
         Returns the execution with populated attempts list.
         """
-        response = self._get(f"/api/v1/executions/{execution_id}")
-        self._raise_for_status(response)
+        response = self._get_raw(f"/api/v1/executions/{execution_id}")
         return ExecutionResponse.model_validate(response.json())
+
+    def list_executions(
+        self,
+        *,
+        benchmark_version_id: str | None = None,
+        status: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> list[ExecutionResponse]:
+        """List executions with optional filters.
+
+        ``GET /api/v1/executions``
+
+        Returns all matching executions (not paginated in the ``PageResponse``
+        sense — the backend returns ``ExecutionListResponse`` with ``items``
+        and ``total``). This method returns the items list directly.
+        """
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if benchmark_version_id is not None:
+            params["benchmark_version_id"] = benchmark_version_id
+        if status is not None:
+            params["status"] = status
+        response = self._get_raw("/api/v1/executions", params=params)
+        data = response.json()
+        return [ExecutionResponse.model_validate(item) for item in data["items"]]
 
     # ── lifecycle ─────────────────────────────────────────────────────
 
