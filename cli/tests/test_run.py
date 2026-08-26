@@ -772,3 +772,336 @@ def test_list_server_error(runner: CliRunner) -> None:
     ):
         result = runner.invoke(main, ["run", "list"])
     assert result.exit_code == 1
+
+
+# =====================================================================
+# atlas run watch
+# =====================================================================
+
+
+EXEC_ID_WATCH = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+
+
+def _exec_response_for(status: str) -> ExecutionResponse:
+    """Build an ExecutionResponse for a given status."""
+    return ExecutionResponse(
+        id=uuid.UUID(EXEC_ID_WATCH),
+        benchmark_version_id=uuid.UUID(BENCH_VERSION_ID),
+        status=status,
+        target_model="gemini-2.5-flash",
+        completed_items=7 if status == "COMPLETED" else 3,
+        total_items=10,
+        started_at=datetime(2026, 8, 26, 12, 0, 0, tzinfo=UTC),
+        completed_at=(
+            datetime(2026, 8, 26, 12, 5, 0, tzinfo=UTC)
+            if status in ("COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT")
+            else None
+        ),
+        created_at=datetime(2026, 8, 26, 11, 55, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 8, 26, 12, 5, 0, tzinfo=UTC),
+        created_by=uuid.UUID("33333333-3333-3333-3333-333333333333"),
+        max_retries=3,
+        attempts=[],
+    )
+
+
+def _mock_watch_client(
+    get_execution_side_effect: list | Exception | None = None,
+) -> MagicMock:
+    mock = MagicMock()
+    mock.__enter__ = MagicMock(return_value=mock)
+    mock.__exit__ = MagicMock(return_value=False)
+    if get_execution_side_effect is not None:
+        mock.get_execution.side_effect = get_execution_side_effect
+    return mock
+
+
+# ── discovery ───────────────────────────────────────────────────────────
+
+
+def test_run_watch_in_help(runner: CliRunner) -> None:
+    result = runner.invoke(main, ["run", "--help"])
+    assert result.exit_code == 0
+    assert "watch" in result.output.lower()
+
+
+# ── already terminal ────────────────────────────────────────────────────
+
+
+def test_watch_already_terminal(runner: CliRunner) -> None:
+    """Execution is already terminal — exits immediately."""
+    mock = _mock_watch_client(
+        get_execution_side_effect=[_exec_response_for("COMPLETED")],
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time.sleep") as mock_sleep,
+    ):
+        result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
+    assert result.exit_code == 0
+    assert "COMPLETED" in result.output
+    mock_sleep.assert_not_called()
+
+
+# ── terminal state variants ─────────────────────────────────────────────
+
+
+def test_watch_failed_terminal(runner: CliRunner) -> None:
+    mock = _mock_watch_client(
+        get_execution_side_effect=[_exec_response_for("FAILED")],
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time.sleep"),
+    ):
+        result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
+    assert result.exit_code == 0
+    assert "FAILED" in result.output
+
+
+def test_watch_cancelled_terminal(runner: CliRunner) -> None:
+    mock = _mock_watch_client(
+        get_execution_side_effect=[_exec_response_for("CANCELLED")],
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time.sleep"),
+    ):
+        result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
+    assert result.exit_code == 0
+    assert "CANCELLED" in result.output
+
+
+def test_watch_timed_out_terminal(runner: CliRunner) -> None:
+    mock = _mock_watch_client(
+        get_execution_side_effect=[_exec_response_for("TIMED_OUT")],
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time.sleep"),
+    ):
+        result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
+    assert result.exit_code == 0
+    assert "TIMED_OUT" in result.output
+
+
+# ── poll through to completion ──────────────────────────────────────────
+
+
+def test_watch_polls_to_completed(runner: CliRunner) -> None:
+    """Queued → Running → Completed."""
+    mock = _mock_watch_client(
+        get_execution_side_effect=[
+            _exec_response_for("QUEUED"),
+            _exec_response_for("RUNNING"),
+            _exec_response_for("COMPLETED"),
+        ],
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time.sleep") as mock_sleep,
+    ):
+        result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
+    assert result.exit_code == 0
+    assert "COMPLETED" in result.output
+    assert mock_sleep.call_count == 2
+    assert mock.get_execution.call_count == 3
+
+
+# ── JSON output ─────────────────────────────────────────────────────────
+
+
+def test_watch_json_final_state_only(runner: CliRunner) -> None:
+    """JSON mode: no stdout during poll, one final JSON object."""
+    mock = _mock_watch_client(
+        get_execution_side_effect=[
+            _exec_response_for("RUNNING"),
+            _exec_response_for("COMPLETED"),
+        ],
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time.sleep"),
+    ):
+        result = runner.invoke(
+            main, ["--output", "json", "run", "watch", EXEC_ID_WATCH]
+        )
+    assert result.exit_code == 0
+    parsed = json.loads(result.output)
+    assert parsed["id"] == EXEC_ID_WATCH
+    assert parsed["status"] == "COMPLETED"
+
+
+# ── quiet mode ──────────────────────────────────────────────────────────
+
+
+def test_watch_quiet(runner: CliRunner) -> None:
+    mock = _mock_watch_client(
+        get_execution_side_effect=[_exec_response_for("COMPLETED")],
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time.sleep"),
+    ):
+        result = runner.invoke(
+            main, ["--quiet", "run", "watch", EXEC_ID_WATCH]
+        )
+    assert result.exit_code == 0
+    assert result.output == ""
+
+
+# ── Ctrl+C → 130 ───────────────────────────────────────────────────────
+
+
+def test_watch_keyboard_interrupt(runner: CliRunner) -> None:
+    mock = _mock_watch_client(
+        get_execution_side_effect=[
+            _exec_response_for("RUNNING"),
+            KeyboardInterrupt(),
+        ],
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time.sleep"),
+    ):
+        result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
+    assert result.exit_code == 130
+
+
+# ── transient network failure ───────────────────────────────────────────
+
+
+def test_watch_transient_network_failure(runner: CliRunner) -> None:
+    """One network failure followed by success."""
+    from atlas_sdk.errors import NetworkError
+
+    mock = _mock_watch_client(
+        get_execution_side_effect=[
+            NetworkError(message="connection refused"),
+            _exec_response_for("COMPLETED"),
+        ],
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time.sleep"),
+    ):
+        result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
+    assert result.exit_code == 0
+    assert "COMPLETED" in result.output
+
+
+# ── three consecutive network failures ──────────────────────────────────
+
+
+def test_watch_consecutive_network_failures(runner: CliRunner) -> None:
+    """3 consecutive network failures → exit 1."""
+    from atlas_sdk.errors import NetworkError
+
+    mock = _mock_watch_client(
+        get_execution_side_effect=[
+            NetworkError(message="fail 1"),
+            NetworkError(message="fail 2"),
+            NetworkError(message="fail 3"),
+        ],
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time.sleep"),
+    ):
+        result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
+    assert result.exit_code == 1
+
+
+def test_watch_consecutive_network_failures_json(runner: CliRunner) -> None:
+    """3 failures in JSON mode → last-known state emitted."""
+    from atlas_sdk.errors import NetworkError
+
+    mock = _mock_watch_client(
+        get_execution_side_effect=[
+            _exec_response_for("RUNNING"),
+            NetworkError(message="fail 1"),
+            NetworkError(message="fail 2"),
+            NetworkError(message="fail 3"),
+        ],
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time.sleep"),
+    ):
+        result = runner.invoke(
+            main, ["--output", "json", "run", "watch", EXEC_ID_WATCH]
+        )
+    assert result.exit_code == 1
+    parsed = json.loads(result.output)
+    assert parsed["status"] == "RUNNING"
+
+
+# ── API errors (non-transient) ─────────────────────────────────────────
+
+
+def test_watch_401(runner: CliRunner) -> None:
+    from atlas_sdk.errors import AuthError
+
+    err = AuthError(status=401, message="Unauthorized")
+    mock = _mock_watch_client(get_execution_side_effect=err)
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
+    assert result.exit_code == 3
+
+
+def test_watch_403(runner: CliRunner) -> None:
+    from atlas_sdk.errors import ForbiddenError
+
+    err = ForbiddenError(status=403, message="Forbidden")
+    mock = _mock_watch_client(get_execution_side_effect=err)
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
+    assert result.exit_code == 4
+
+
+def test_watch_404(runner: CliRunner) -> None:
+    from atlas_sdk.errors import NotFoundError
+
+    err = NotFoundError(status=404, message="Not found")
+    mock = _mock_watch_client(get_execution_side_effect=err)
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
+    assert result.exit_code == 5
+
+
+# ── polling interval ────────────────────────────────────────────────────
+
+
+def test_watch_custom_interval(runner: CliRunner) -> None:
+    """Verify custom interval is passed through."""
+    mock = _mock_watch_client(
+        get_execution_side_effect=[_exec_response_for("COMPLETED")],
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time.sleep") as mock_sleep,
+    ):
+        result = runner.invoke(
+            main, ["run", "watch", EXEC_ID_WATCH, "--interval", "5"]
+        )
+    assert result.exit_code == 0
+    mock_sleep.assert_not_called()  # already terminal
+
+
+def test_watch_interval_used_between_polls(runner: CliRunner) -> None:
+    """Verify sleep is called with the interval between non-terminal polls."""
+    mock = _mock_watch_client(
+        get_execution_side_effect=[
+            _exec_response_for("RUNNING"),
+            _exec_response_for("COMPLETED"),
+        ],
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time.sleep") as mock_sleep,
+    ):
+        result = runner.invoke(
+            main, ["run", "watch", EXEC_ID_WATCH, "--interval", "7"]
+        )
+    assert result.exit_code == 0
+    mock_sleep.assert_called_once_with(7)

@@ -1,21 +1,32 @@
-"""run commands -- submit, get, list (Phase 1).
+"""run commands -- submit, get, list, watch (Phase 1/2).
 
 Implements:
   atlas run submit <benchmark-version-id>
   atlas run get <execution-id>
   atlas run list
+  atlas run watch <execution-id>
 """
 
 from __future__ import annotations
 
+import sys
+import time
+
 import click
 from atlas_sdk import AtlasClient, StaticTokenSupplier
+from atlas_sdk.errors import NetworkError
+from atlas_sdk.models.executions import ExecutionResponse
 
 from cli.app import Context, _pass_context
 from cli.config import AtlasConfig
+from cli.errors import ExitCode
 from cli.output.errors import error_exit
 from cli.output.json import render_json
 from cli.output.table import render_kv, render_table
+
+_TERMINAL_STATES = frozenset({"COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"})
+_DEFAULT_POLL_INTERVAL = 3.0
+_MAX_CONSECUTIVE_FAILURES = 3
 
 
 @click.group(name="run")
@@ -216,3 +227,107 @@ def list_cmd(
         if page.total > len(page.items):
             shown = len(page.items)
             click.echo(f"  Showing {shown} of {page.total}")
+
+
+@run_group.command(name="watch")
+@_pass_context
+@click.argument("execution_id")
+@click.option(
+    "--interval",
+    default=_DEFAULT_POLL_INTERVAL,
+    type=float,
+    help=f"Polling interval in seconds (default: {_DEFAULT_POLL_INTERVAL}).",
+)
+def watch_cmd(ctx: Context, execution_id: str, interval: float) -> None:
+    """Watch an execution until it reaches a terminal state.
+
+    Polls GET /api/v1/executions/{id} until the execution completes,
+    fails, is cancelled, or times out.
+
+    Terminal states: COMPLETED, FAILED, CANCELLED, TIMED_OUT.
+    """
+    cfg: AtlasConfig = ctx.config
+    output_mode = cfg.effective_output()
+
+    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
+
+    try:
+        with AtlasClient(
+            cfg.base_url,
+            token_supplier=supplier,
+            timeout=5.0,
+        ) as client:
+            _poll_execution(client, execution_id, interval, output_mode)
+    except KeyboardInterrupt:
+        sys.exit(ExitCode.INTERRUPTED)
+    except Exception as exc:
+        error_exit(exc, output_mode)
+
+
+def _poll_execution(
+    client: AtlasClient,
+    execution_id: str,
+    interval: float,
+    output_mode: str,
+) -> None:
+    """Poll get_execution until terminal or unrecoverable error.
+
+    This is the core watch loop, separated for testability.
+    """
+    consecutive_failures = 0
+    last_execution = None
+
+    while True:
+        try:
+            execution = client.get_execution(execution_id)
+            consecutive_failures = 0
+            last_execution = execution
+
+            if execution.status in _TERMINAL_STATES:
+                _render_watch_final(execution, output_mode)
+                return
+
+            if output_mode == "human":
+                progress = f"{execution.completed_items}/{execution.total_items}"
+                click.echo(
+                    f"  [{execution.status}] {progress} — waiting {interval:.0f}s...",
+                    err=True,
+                )
+
+        except NetworkError:
+            consecutive_failures += 1
+            if output_mode == "human":
+                click.echo(
+                    f"  [network error] attempt "
+                    f"{consecutive_failures}/{_MAX_CONSECUTIVE_FAILURES}"
+                    f" — retrying...",
+                    err=True,
+                )
+            if consecutive_failures >= _MAX_CONSECUTIVE_FAILURES:
+                if last_execution is not None and output_mode == "json":
+                    render_json(last_execution.model_dump(mode="json"))
+                sys.exit(ExitCode.UNSPECIFIED)
+
+        time.sleep(interval)
+
+
+def _render_watch_final(execution: ExecutionResponse, output_mode: str) -> None:
+    """Render the final execution state for watch."""
+    if output_mode == "json":
+        render_json(execution.model_dump(mode="json"))
+    elif output_mode == "quiet":
+        pass
+    else:
+        rows: list[tuple[str, str]] = [
+            ("Execution ID", str(execution.id)),
+            ("Status", execution.status),
+            ("Target Model", execution.target_model),
+            ("Benchmark Version", str(execution.benchmark_version_id)),
+            ("Progress", f"{execution.completed_items}/{execution.total_items}"),
+            ("Created", execution.created_at.isoformat()),
+        ]
+        if execution.started_at:
+            rows.append(("Started", execution.started_at.isoformat()))
+        if execution.completed_at:
+            rows.append(("Completed", execution.completed_at.isoformat()))
+        render_kv(rows, title="Execution Complete")
