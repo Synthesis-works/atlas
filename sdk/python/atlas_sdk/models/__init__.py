@@ -22,6 +22,7 @@ __all__ = [
     "AuthUserRead",
     "TokenResponse",
     "BenchmarkRead",
+    "BenchmarkVersionRead",
     "PageResponse",
     "HealthData",
     "LivenessResponse",
