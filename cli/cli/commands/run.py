@@ -1,10 +1,11 @@
-"""run commands -- submit, get, list, watch (Phase 1/2).
+"""run commands -- submit, get, list, watch, cancel.
 
 Implements:
   atlas run submit <benchmark-version-id>
   atlas run get <execution-id>
   atlas run list
   atlas run watch <execution-id>
+  atlas run cancel <execution-id>
 """
 
 from __future__ import annotations
@@ -339,3 +340,51 @@ def _render_watch_final(execution: ExecutionResponse, output_mode: str) -> None:
         if execution.completed_at:
             rows.append(("Completed", execution.completed_at.isoformat()))
         render_kv(rows, title="Execution Complete")
+
+
+@run_group.command(name="cancel")
+@_pass_context
+@click.argument("execution_id")
+def cancel_cmd(ctx: Context, execution_id: str) -> None:
+    """Request cancellation of a running or queued execution.
+
+    The backend sets a cancellation flag; the worker transitions the
+    execution to CANCELLED cooperatively.  The returned status may
+    still be non-terminal (e.g. CANCELLING, RUNNING) if the worker
+    has not yet processed the flag.
+
+    Rejects executions already in a terminal state (HTTP 409).
+    """
+    cfg: AtlasConfig = ctx.config
+    output_mode = cfg.effective_output()
+
+    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
+
+    try:
+        with AtlasClient(
+            cfg.base_url,
+            token_supplier=supplier,
+            timeout=cfg.timeout,
+        ) as client:
+            execution = client.cancel_execution(execution_id)
+    except Exception as exc:
+        error_exit(exc, output_mode)
+
+    if output_mode == "json":
+        render_json(execution.model_dump(mode="json"))
+    elif output_mode == "quiet":
+        pass
+    else:
+        rows: list[tuple[str, str]] = [
+            ("Execution ID", str(execution.id)),
+            ("Status", execution.status),
+            ("Target Model", execution.target_model),
+            ("Benchmark Version", str(execution.benchmark_version_id)),
+            ("Progress", f"{execution.completed_items}/{execution.total_items}"),
+            ("Created", execution.created_at.isoformat()),
+        ]
+        if execution.started_at:
+            rows.append(("Started", execution.started_at.isoformat()))
+        if execution.completed_at:
+            rows.append(("Completed", execution.completed_at.isoformat()))
+        render_kv(rows, title="Cancellation Requested")

@@ -1122,3 +1122,208 @@ def test_watch_invalid_interval_negative(runner: CliRunner) -> None:
     result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH, "--interval", "-3"])
     assert result.exit_code != 0
     assert "greater than 0" in result.output
+
+
+# =====================================================================
+# atlas run cancel
+# =====================================================================
+
+
+EXEC_ID_CANCEL = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+
+
+def _cancel_exec_response(status: str = "CANCELLING") -> ExecutionResponse:
+    """Build an ExecutionResponse for cancel tests."""
+    return ExecutionResponse(
+        id=uuid.UUID(EXEC_ID_CANCEL),
+        benchmark_version_id=uuid.UUID(BENCH_VERSION_ID),
+        status=status,
+        target_model="gemini-2.5-flash",
+        completed_items=3,
+        total_items=10,
+        started_at=datetime(2026, 8, 26, 12, 0, 0, tzinfo=UTC),
+        completed_at=None,
+        created_at=datetime(2026, 8, 26, 11, 55, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 8, 26, 12, 10, 0, tzinfo=UTC),
+        created_by=uuid.UUID("33333333-3333-3333-3333-333333333333"),
+        max_retries=3,
+        attempts=[],
+    )
+
+
+def _mock_cancel_client(
+    cancel_return: ExecutionResponse | None = None,
+    cancel_side_effect: Exception | None = None,
+) -> MagicMock:
+    mock = MagicMock()
+    mock.__enter__ = MagicMock(return_value=mock)
+    mock.__exit__ = MagicMock(return_value=False)
+    if cancel_side_effect is not None:
+        mock.cancel_execution.side_effect = cancel_side_effect
+    elif cancel_return is not None:
+        mock.cancel_execution.return_value = cancel_return
+    return mock
+
+
+# ── discovery ───────────────────────────────────────────────────────────
+
+
+def test_run_cancel_in_help(runner: CliRunner) -> None:
+    result = runner.invoke(main, ["run", "--help"])
+    assert result.exit_code == 0
+    assert "cancel" in result.output.lower()
+
+
+# ── successful cancel ───────────────────────────────────────────────────
+
+
+def test_cancel_human_cancelling(runner: CliRunner) -> None:
+    """Cancel returns CANCELLING status (worker hasn't transitioned yet)."""
+    mock = _mock_cancel_client(
+        cancel_return=_cancel_exec_response("CANCELLING"),
+    )
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
+    assert result.exit_code == 0
+    assert "CANCELLING" in result.output
+    assert "Cancellation Requested" in result.output
+
+
+def test_cancel_human_running(runner: CliRunner) -> None:
+    """Cancel returns RUNNING status — flag set but status unchanged."""
+    mock = _mock_cancel_client(
+        cancel_return=_cancel_exec_response("RUNNING"),
+    )
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
+    assert result.exit_code == 0
+    assert "RUNNING" in result.output
+
+
+def test_cancel_human_queued(runner: CliRunner) -> None:
+    """Cancel returns QUEUED — never started, flag set."""
+    mock = _mock_cancel_client(
+        cancel_return=_cancel_exec_response("QUEUED"),
+    )
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
+    assert result.exit_code == 0
+    assert "QUEUED" in result.output
+
+
+def test_cancel_json(runner: CliRunner) -> None:
+    """JSON mode returns the actual ExecutionResponse."""
+    resp = _cancel_exec_response("CANCELLING")
+    mock = _mock_cancel_client(cancel_return=resp)
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(
+            main, ["--output", "json", "run", "cancel", EXEC_ID_CANCEL]
+        )
+    assert result.exit_code == 0
+    parsed = json.loads(result.output)
+    assert parsed["id"] == EXEC_ID_CANCEL
+    assert parsed["status"] == "CANCELLING"
+
+
+def test_cancel_quiet(runner: CliRunner) -> None:
+    """Quiet mode: no stdout, exit 0."""
+    mock = _mock_cancel_client(
+        cancel_return=_cancel_exec_response("CANCELLING"),
+    )
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(
+            main, ["--quiet", "run", "cancel", EXEC_ID_CANCEL]
+        )
+    assert result.exit_code == 0
+    assert result.output == ""
+
+
+# ── request path correctness ────────────────────────────────────────────
+
+
+def test_cancel_calls_cancel_execution(runner: CliRunner) -> None:
+    """Verify cancel_execution() is called with the correct ID."""
+    mock = _mock_cancel_client(
+        cancel_return=_cancel_exec_response("CANCELLING"),
+    )
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
+    mock.cancel_execution.assert_called_once_with(EXEC_ID_CANCEL)
+
+
+# ── error paths ─────────────────────────────────────────────────────────
+
+
+def test_cancel_401(runner: CliRunner) -> None:
+    from atlas_sdk.errors import AuthError
+
+    err = AuthError(status=401, message="Unauthorized")
+    mock = _mock_cancel_client(cancel_side_effect=err)
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
+    assert result.exit_code == 3
+
+
+def test_cancel_403(runner: CliRunner) -> None:
+    from atlas_sdk.errors import ForbiddenError
+
+    err = ForbiddenError(status=403, message="Forbidden")
+    mock = _mock_cancel_client(cancel_side_effect=err)
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
+    assert result.exit_code == 4
+
+
+def test_cancel_404(runner: CliRunner) -> None:
+    from atlas_sdk.errors import NotFoundError
+
+    err = NotFoundError(status=404, message="Not found")
+    mock = _mock_cancel_client(cancel_side_effect=err)
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
+    assert result.exit_code == 5
+
+
+def test_cancel_terminal_409(runner: CliRunner) -> None:
+    """Terminal execution → HTTP 409 → ConflictError → exit 8."""
+    from atlas_sdk.errors import ConflictError
+
+    err = ConflictError(
+        status=409,
+        message="Execution is in terminal state 'COMPLETED' and cannot be cancelled.",
+    )
+    mock = _mock_cancel_client(cancel_side_effect=err)
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
+    assert result.exit_code == 8
+
+
+def test_cancel_network_error(runner: CliRunner) -> None:
+    from atlas_sdk.errors import NetworkError
+
+    err = NetworkError(message="connection refused")
+    mock = _mock_cancel_client(cancel_side_effect=err)
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
+    assert result.exit_code == 6
+
+
+def test_cancel_server_error(runner: CliRunner) -> None:
+    from atlas_sdk.errors import ServerError
+
+    err = ServerError(status=500, message="Internal error")
+    mock = _mock_cancel_client(cancel_side_effect=err)
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
+    assert result.exit_code == 1
+
+
+def test_cancel_no_token(runner: CliRunner) -> None:
+    """Cancel without token → AuthError → exit 3."""
+    from atlas_sdk.errors import AuthError
+
+    err = AuthError(status=401, message="Not authenticated")
+    mock = _mock_cancel_client(cancel_side_effect=err)
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
+    assert result.exit_code == 3
