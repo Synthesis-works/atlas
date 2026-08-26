@@ -1105,3 +1105,20 @@ def test_watch_interval_used_between_polls(runner: CliRunner) -> None:
         )
     assert result.exit_code == 0
     mock_sleep.assert_called_once_with(7)
+
+
+# ── invalid interval ────────────────────────────────────────────────────
+
+
+def test_watch_invalid_interval_zero(runner: CliRunner) -> None:
+    """--interval 0 is rejected."""
+    result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH, "--interval", "0"])
+    assert result.exit_code != 0
+    assert "greater than 0" in result.output
+
+
+def test_watch_invalid_interval_negative(runner: CliRunner) -> None:
+    """--interval -3 is rejected."""
+    result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH, "--interval", "-3"])
+    assert result.exit_code != 0
+    assert "greater than 0" in result.output

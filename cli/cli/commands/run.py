@@ -229,6 +229,12 @@ def list_cmd(
             click.echo(f"  Showing {shown} of {page.total}")
 
 
+def _validate_interval(ctx: click.Context, param: click.Parameter, value: float) -> float:
+    if value <= 0:
+        raise click.BadParameter("must be greater than 0")
+    return value
+
+
 @run_group.command(name="watch")
 @_pass_context
 @click.argument("execution_id")
@@ -236,6 +242,8 @@ def list_cmd(
     "--interval",
     default=_DEFAULT_POLL_INTERVAL,
     type=float,
+    callback=_validate_interval,
+    is_eager=False,
     help=f"Polling interval in seconds (default: {_DEFAULT_POLL_INTERVAL}).",
 )
 def watch_cmd(ctx: Context, execution_id: str, interval: float) -> None:
