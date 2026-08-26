@@ -17,13 +17,18 @@ from atlas_sdk.errors import (
     ServerError,
     ValidationError,
 )
-from atlas_sdk.models.benchmarks import BenchmarkRead, PageResponse
+from atlas_sdk.models.benchmarks import (
+    BenchmarkRead,
+    BenchmarkVersionRead,
+    PageResponse,
+)
 
 __all__ = [
     "AtlasClient",
     "ApiError",
     "AuthError",
     "BenchmarkRead",
+    "BenchmarkVersionRead",
     "ConflictError",
     "ForbiddenError",
     "NetworkError",

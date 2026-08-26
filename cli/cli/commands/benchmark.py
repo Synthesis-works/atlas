@@ -1,4 +1,4 @@
-"""benchmark commands — benchmark list and get (Phase 1).
+"""benchmark commands — list, get, versions (Phase 1).
 
 Implements:
   atlas benchmark list          (human-readable table)
@@ -7,6 +7,9 @@ Implements:
   atlas benchmark get <id>      (human-readable detail)
   atlas benchmark get <id> --json   (JSON output)
   atlas benchmark get <id> --quiet  (exit code only)
+  atlas benchmark versions <id>     (human-readable table)
+  atlas benchmark versions <id> --json  (JSON output)
+  atlas benchmark versions <id> --quiet (exit code only)
 """
 
 from __future__ import annotations
@@ -129,3 +132,52 @@ def get_cmd(ctx: Context, benchmark_id: str) -> None:
             ("State", benchmark.state),
         ]
         render_kv(rows, title="Benchmark")
+
+
+@benchmark_group.command(name="versions")
+@_pass_context
+@click.argument("benchmark_id")
+def versions_cmd(ctx: Context, benchmark_id: str) -> None:
+    """List versions for a benchmark.
+
+    Calls GET /api/v1/benchmarks/{id}/versions through the SDK.
+    """
+    cfg: AtlasConfig = ctx.config
+    output_mode = cfg.effective_output()
+
+    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
+
+    try:
+        with AtlasClient(
+            cfg.base_url,
+            token_supplier=supplier,
+            timeout=cfg.timeout,
+        ) as client:
+            versions = client.list_benchmark_versions(benchmark_id)
+    except Exception as exc:
+        if output_mode == "json":
+            render_json_error(
+                status=getattr(exc, "status", 0),
+                code=getattr(exc, "code", "UNKNOWN"),
+                message=str(exc),
+                details=getattr(exc, "details", None),
+            )
+        else:
+            click.echo(f"error: {exc}", err=True)
+        sys.exit(exit_code_for_error(exc))
+
+    if output_mode == "json":
+        items = [v.model_dump(mode="json") for v in versions]
+        render_json({"items": items, "total": len(items)})
+    elif output_mode == "quiet":
+        pass
+    else:
+        if not versions:
+            click.echo("  (no versions)")
+            return
+        headers = ["Version", "ID", "State"]
+        rows = [
+            [v.version_string, str(v.id), v.state]
+            for v in versions
+        ]
+        render_table(headers, rows, title="Benchmark Versions")

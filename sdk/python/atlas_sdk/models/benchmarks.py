@@ -19,6 +19,17 @@ class BenchmarkRead(BaseModel):
     name: str
 
 
+class BenchmarkVersionRead(BaseModel):
+    """Single benchmark version from ``GET /api/v1/benchmarks/{id}/versions``."""
+
+    id: uuid.UUID
+    benchmark_id: uuid.UUID
+    version_string: str
+    state: str
+    dataset_version_ids: list[uuid.UUID] | None = []
+    evaluation_strategy_id: uuid.UUID | None = None
+
+
 class PageResponse(BaseModel, Generic[T]):
     """Paginated response envelope from ``GET /api/v1/benchmarks``."""
 

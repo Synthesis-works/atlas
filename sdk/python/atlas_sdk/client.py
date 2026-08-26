@@ -23,7 +23,11 @@ from atlas_sdk.errors import (
     error_for_status,
 )
 from atlas_sdk.models.auth import AuthUserRead, TokenResponse
-from atlas_sdk.models.benchmarks import BenchmarkRead, PageResponse
+from atlas_sdk.models.benchmarks import (
+    BenchmarkRead,
+    BenchmarkVersionRead,
+    PageResponse,
+)
 from atlas_sdk.models.health import HealthData, LivenessResponse, ReadinessResponse
 from atlas_sdk.models.responses import APIResponse
 
@@ -312,6 +316,20 @@ class AtlasClient:
         """
         response = self._get(f"/api/v1/benchmarks/{benchmark_id}")
         return self._unwrap(response, BenchmarkRead)
+
+    def list_benchmark_versions(
+        self, benchmark_id: str
+    ) -> list[BenchmarkVersionRead]:
+        """List versions for a benchmark.
+
+        ``GET /api/v1/benchmarks/{benchmark_id}/versions``
+
+        Returns all versions (not paginated).
+        """
+        response = self._get(
+            f"/api/v1/benchmarks/{benchmark_id}/versions"
+        )
+        return self._unwrap(response, list[BenchmarkVersionRead])
 
     # ── lifecycle ─────────────────────────────────────────────────────
 
