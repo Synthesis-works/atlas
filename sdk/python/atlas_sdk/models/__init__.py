@@ -20,6 +20,11 @@ from atlas_sdk.models.executions import (
     ExecutionState,
 )
 from atlas_sdk.models.health import HealthData, LivenessResponse, ReadinessResponse
+from atlas_sdk.models.reports import (
+    PaginatedReportRunsRead,
+    ReportRunEntryRead,
+    ReportRunStatus,
+)
 from atlas_sdk.models.responses import (
     APIErrorResponse,
     APIResponse,
@@ -43,6 +48,9 @@ __all__ = [
     "HealthData",
     "LivenessResponse",
     "ReadinessResponse",
+    "PaginatedReportRunsRead",
+    "ReportRunEntryRead",
+    "ReportRunStatus",
     "APIResponse",
     "APIErrorResponse",
     "ErrorDetail",

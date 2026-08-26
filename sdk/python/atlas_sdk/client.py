@@ -30,6 +30,7 @@ from atlas_sdk.models.benchmarks import (
 )
 from atlas_sdk.models.executions import ExecutionPage, ExecutionResponse
 from atlas_sdk.models.health import HealthData, LivenessResponse, ReadinessResponse
+from atlas_sdk.models.reports import PaginatedReportRunsRead
 from atlas_sdk.models.responses import APIResponse
 
 logger = logging.getLogger(__name__)
@@ -446,6 +447,36 @@ class AtlasClient:
         """
         response = self._post_raw(f"/api/v1/executions/{execution_id}/cancel")
         return ExecutionResponse.model_validate(response.json())
+
+    # -- reports --
+
+    def list_report_runs(
+        self,
+        *,
+        status: str | None = None,
+        benchmark_id: str | None = None,
+        benchmark_version: str | None = None,
+        target_model: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> PaginatedReportRunsRead:
+        """List report runs with optional filters.
+
+        ``GET /api/v1/reports/runs``
+
+        Returns a paginated list of report run summaries.
+        """
+        params: dict[str, Any] = {"limit": limit, "offset": offset}
+        if status is not None:
+            params["status"] = status
+        if benchmark_id is not None:
+            params["benchmark_id"] = benchmark_id
+        if benchmark_version is not None:
+            params["benchmark_version"] = benchmark_version
+        if target_model is not None:
+            params["target_model"] = target_model
+        response = self._get("/api/v1/reports/runs", params=params)
+        return self._unwrap(response, PaginatedReportRunsRead)
 
     # ── lifecycle ─────────────────────────────────────────────────────
 

@@ -861,3 +861,129 @@ class TestSecurityEdgeCases:
             client.login("user@example.com", "super_secret_password_123")
         assert "super_secret_password_123" not in str(exc_info.value)
         client.close()
+
+
+# ── report tests ──────────────────────────────────────────────────────
+
+
+class TestListReportRuns:
+    def test_list_report_runs_returns_page(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/reports/runs?limit=50&offset=0",
+            json=_ok({
+                "items": [
+                    {
+                        "run_id": "11111111-1111-1111-1111-111111111111",
+                        "benchmark_id": "22222222-2222-2222-2222-222222222222",
+                        "benchmark_version": "1.0.0",
+                        "target_model": "gpt-4o",
+                        "evaluation_status": "COMPLETED",
+                        "started_at": "2026-08-26T10:00:00Z",
+                        "completed_at": "2026-08-26T10:05:00Z",
+                        "overall_score": 88.5,
+                    }
+                ],
+                "total": 1,
+                "page": 1,
+                "size": 50,
+            }),
+        )
+        client = AtlasClient("http://localhost:8000")
+        result = client.list_report_runs()
+        assert result.total == 1
+        assert result.page == 1
+        assert result.size == 50
+        assert len(result.items) == 1
+        assert result.items[0].target_model == "gpt-4o"
+        assert result.items[0].overall_score == 88.5
+        client.close()
+
+    def test_list_report_runs_sends_filters(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/reports/runs?limit=10&offset=5&status=COMPLETED&benchmark_id=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee&benchmark_version=2.0.0&target_model=claude-3",
+            json=_ok({"items": [], "total": 0, "page": 1, "size": 10}),
+        )
+        client = AtlasClient("http://localhost:8000")
+        client.list_report_runs(
+            status="COMPLETED",
+            benchmark_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+            benchmark_version="2.0.0",
+            target_model="claude-3",
+            limit=10,
+            offset=5,
+        )
+        request = httpx_mock.get_request()
+        assert request is not None
+        url = str(request.url)
+        assert "status=COMPLETED" in url
+        assert "benchmark_id=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" in url
+        assert "benchmark_version=2.0.0" in url
+        assert "target_model=claude-3" in url
+        assert "limit=10" in url
+        assert "offset=5" in url
+        client.close()
+
+    def test_list_report_runs_empty(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/reports/runs?limit=50&offset=0",
+            json=_ok({"items": [], "total": 0, "page": 1, "size": 50}),
+        )
+        client = AtlasClient("http://localhost:8000")
+        result = client.list_report_runs()
+        assert result.items == []
+        assert result.total == 0
+        client.close()
+
+    def test_list_report_runs_401_raises_auth_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/reports/runs?limit=50&offset=0",
+            status_code=401,
+            json=_err(401, "UNAUTHORIZED", "Token expired"),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(AuthError) as exc_info:
+            client.list_report_runs()
+        assert exc_info.value.status == 401
+        client.close()
+
+    def test_list_report_runs_403_raises_forbidden_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/reports/runs?limit=50&offset=0",
+            status_code=403,
+            json=_err(403, "FORBIDDEN", "Insufficient permissions"),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(ForbiddenError) as exc_info:
+            client.list_report_runs()
+        assert exc_info.value.status == 403
+        client.close()
+
+    def test_list_report_runs_no_omitted_params(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/reports/runs?limit=50&offset=0",
+            json=_ok({"items": [], "total": 0, "page": 1, "size": 50}),
+        )
+        client = AtlasClient("http://localhost:8000")
+        client.list_report_runs()
+        request = httpx_mock.get_request()
+        assert request is not None
+        url = str(request.url)
+        assert "status" not in url.split("?")[1] if "?" in url else True
+        assert "benchmark_id" not in url.split("?")[1] if "?" in url else True
+        assert "benchmark_version" not in url.split("?")[1] if "?" in url else True
+        assert "target_model" not in url.split("?")[1] if "?" in url else True
+        assert "limit=50" in url
+        assert "offset=0" in url
+        client.close()

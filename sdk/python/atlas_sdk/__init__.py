@@ -31,6 +31,11 @@ from atlas_sdk.models.executions import (
     ExecutionResponse,
     ExecutionState,
 )
+from atlas_sdk.models.reports import (
+    PaginatedReportRunsRead,
+    ReportRunEntryRead,
+    ReportRunStatus,
+)
 
 __all__ = [
     "AtlasClient",
@@ -49,8 +54,11 @@ __all__ = [
     "ForbiddenError",
     "NetworkError",
     "NotFoundError",
+    "PaginatedReportRunsRead",
     "PageResponse",
     "RateLimitedError",
+    "ReportRunEntryRead",
+    "ReportRunStatus",
     "ServerError",
     "StaticTokenSupplier",
     "TokenSupplier",
