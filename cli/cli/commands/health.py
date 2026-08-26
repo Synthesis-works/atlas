@@ -70,7 +70,6 @@ def health_cmd(ctx: Context) -> None:
         health_data is not None
         and live is not None
         and ready is not None
-        and ready.status == "healthy"
     )
 
     if output_mode == "json":
