@@ -1,9 +1,12 @@
-"""benchmark commands — benchmark list (Phase 1).
+"""benchmark commands — benchmark list and get (Phase 1).
 
 Implements:
   atlas benchmark list          (human-readable table)
   atlas benchmark list --json   (JSON output)
   atlas benchmark list --quiet  (exit code only)
+  atlas benchmark get <id>      (human-readable detail)
+  atlas benchmark get <id> --json   (JSON output)
+  atlas benchmark get <id> --quiet  (exit code only)
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ from cli.app import Context, _pass_context
 from cli.config import AtlasConfig
 from cli.errors import exit_code_for_error
 from cli.output.json import render_json, render_json_error
-from cli.output.table import render_table
+from cli.output.table import render_kv, render_table
 
 
 @click.group(name="benchmark")
@@ -80,3 +83,49 @@ def list_cmd(ctx: Context) -> None:
         if page.total > len(page.items):
             shown = len(page.items)
             click.echo(f"  Showing {shown} of {page.total}")
+
+
+@benchmark_group.command(name="get")
+@_pass_context
+@click.argument("benchmark_id")
+def get_cmd(ctx: Context, benchmark_id: str) -> None:
+    """Show details for a single benchmark.
+
+    Calls GET /api/v1/benchmarks/{id} through the SDK.
+    """
+    cfg: AtlasConfig = ctx.config
+    output_mode = cfg.effective_output()
+
+    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
+
+    try:
+        with AtlasClient(
+            cfg.base_url,
+            token_supplier=supplier,
+            timeout=cfg.timeout,
+        ) as client:
+            benchmark = client.get_benchmark(benchmark_id)
+    except Exception as exc:
+        if output_mode == "json":
+            render_json_error(
+                status=getattr(exc, "status", 0),
+                code=getattr(exc, "code", "UNKNOWN"),
+                message=str(exc),
+                details=getattr(exc, "details", None),
+            )
+        else:
+            click.echo(f"error: {exc}", err=True)
+        sys.exit(exit_code_for_error(exc))
+
+    if output_mode == "json":
+        render_json(benchmark.model_dump(mode="json"))
+    elif output_mode == "quiet":
+        pass
+    else:
+        rows: list[tuple[str, str]] = [
+            ("Name", benchmark.name),
+            ("ID", str(benchmark.id)),
+            ("Project ID", str(benchmark.project_id)),
+            ("State", benchmark.state),
+        ]
+        render_kv(rows, title="Benchmark")

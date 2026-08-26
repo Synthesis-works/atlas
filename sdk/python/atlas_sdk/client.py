@@ -305,6 +305,14 @@ class AtlasClient:
         response = self._get("/api/v1/benchmarks", params=params)
         return self._unwrap(response, PageResponse[BenchmarkRead])
 
+    def get_benchmark(self, benchmark_id: str) -> BenchmarkRead:
+        """Fetch a single benchmark by ID.
+
+        ``GET /api/v1/benchmarks/{benchmark_id}``
+        """
+        response = self._get(f"/api/v1/benchmarks/{benchmark_id}")
+        return self._unwrap(response, BenchmarkRead)
+
     # ── lifecycle ─────────────────────────────────────────────────────
 
     def close(self) -> None:

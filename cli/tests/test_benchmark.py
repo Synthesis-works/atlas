@@ -1,4 +1,4 @@
-"""Tests for `atlas benchmark list` — human, JSON, quiet, and edge cases.
+"""Tests for `atlas benchmark list` and `atlas benchmark get`.
 
 Mocks at the SDK boundary to test CLI rendering without real HTTP.
 """
@@ -66,6 +66,25 @@ def _mock_client_error(exc: Exception) -> MagicMock:
     mock.__enter__ = MagicMock(return_value=mock)
     mock.__exit__ = MagicMock(return_value=False)
     mock.list_benchmarks.side_effect = exc
+    mock.get_benchmark.side_effect = exc
+    return mock
+
+
+def _mock_client_get(
+    benchmark: BenchmarkRead | None = None,
+) -> MagicMock:
+    mock = MagicMock()
+    mock.__enter__ = MagicMock(return_value=mock)
+    mock.__exit__ = MagicMock(return_value=False)
+    mock.get_benchmark.return_value = benchmark or _bench()
+    return mock
+
+
+def _mock_client_get_error(exc: Exception) -> MagicMock:
+    mock = MagicMock()
+    mock.__enter__ = MagicMock(return_value=mock)
+    mock.__exit__ = MagicMock(return_value=False)
+    mock.get_benchmark.side_effect = exc
     return mock
 
 
@@ -200,6 +219,155 @@ def test_benchmark_list_sdk_error(runner: CliRunner) -> None:
     ):
         result = runner.invoke(
             main, ["--output", "json", "benchmark", "list"]
+        )
+    assert result.exit_code == 6
+    parsed = json.loads(result.output)
+    assert "error" in parsed
+
+
+# ── get: discovery ──────────────────────────────────────────────────────
+
+
+def test_benchmark_get_in_help(runner: CliRunner) -> None:
+    result = runner.invoke(main, ["benchmark", "--help"])
+    assert result.exit_code == 0
+    assert "get" in result.output.lower()
+
+
+# ── get: human mode ─────────────────────────────────────────────────────
+
+
+def test_benchmark_get_human(runner: CliRunner) -> None:
+    bench = _bench(name="My Benchmark")
+    with patch(
+        "cli.commands.benchmark.AtlasClient",
+        return_value=_mock_client_get(bench),
+    ):
+        result = runner.invoke(
+            main, ["benchmark", "get", str(bench.id)]
+        )
+    assert result.exit_code == 0
+    assert "My Benchmark" in result.output
+    assert str(bench.id) in result.output
+
+
+# ── get: JSON mode ──────────────────────────────────────────────────────
+
+
+def test_benchmark_get_json(runner: CliRunner) -> None:
+    bench = _bench(name="JSON Bench")
+    with patch(
+        "cli.commands.benchmark.AtlasClient",
+        return_value=_mock_client_get(bench),
+    ):
+        result = runner.invoke(
+            main, ["--output", "json", "benchmark", "get", str(bench.id)]
+        )
+    assert result.exit_code == 0
+    parsed = json.loads(result.output)
+    assert parsed["name"] == "JSON Bench"
+    assert parsed["id"] == str(bench.id)
+    assert parsed["state"] == "published"
+
+
+# ── get: quiet mode ─────────────────────────────────────────────────────
+
+
+def test_benchmark_get_quiet(runner: CliRunner) -> None:
+    bench = _bench()
+    with patch(
+        "cli.commands.benchmark.AtlasClient",
+        return_value=_mock_client_get(bench),
+    ):
+        result = runner.invoke(
+            main, ["--quiet", "benchmark", "get", str(bench.id)]
+        )
+    assert result.exit_code == 0
+    assert result.output == ""
+
+
+# ── get: not found ──────────────────────────────────────────────────────
+
+
+def test_benchmark_get_not_found(runner: CliRunner) -> None:
+    from atlas_sdk.errors import NotFoundError
+
+    err = NotFoundError(status=404, message="Benchmark not found")
+    with patch(
+        "cli.commands.benchmark.AtlasClient",
+        return_value=_mock_client_get_error(err),
+    ):
+        result = runner.invoke(
+            main, ["benchmark", "get", "00000000-0000-0000-0000-000000000042"]
+        )
+    assert result.exit_code == 5
+
+
+def test_benchmark_get_not_found_json(runner: CliRunner) -> None:
+    from atlas_sdk.errors import NotFoundError
+
+    err = NotFoundError(status=404, message="Benchmark not found")
+    with patch(
+        "cli.commands.benchmark.AtlasClient",
+        return_value=_mock_client_get_error(err),
+    ):
+        result = runner.invoke(
+            main,
+            ["--output", "json", "benchmark", "get",
+             "00000000-0000-0000-0000-000000000042"],
+        )
+    assert result.exit_code == 5
+    parsed = json.loads(result.output)
+    assert "error" in parsed
+    assert parsed["error"]["status"] == 404
+
+
+# ── get: auth error ─────────────────────────────────────────────────────
+
+
+def test_benchmark_get_no_token(runner: CliRunner) -> None:
+    from atlas_sdk.errors import AuthError
+
+    err = AuthError(status=401, message="Not authenticated")
+    with patch(
+        "cli.commands.benchmark.AtlasClient",
+        return_value=_mock_client_get_error(err),
+    ):
+        result = runner.invoke(
+            main, ["benchmark", "get", "00000000-0000-0000-0000-000000000001"]
+        )
+    assert result.exit_code == 3
+
+
+# ── get: network error ──────────────────────────────────────────────────
+
+
+def test_benchmark_get_network_error(runner: CliRunner) -> None:
+    from atlas_sdk.errors import NetworkError
+
+    err = NetworkError(message="connection refused")
+    with patch(
+        "cli.commands.benchmark.AtlasClient",
+        return_value=_mock_client_get_error(err),
+    ):
+        result = runner.invoke(
+            main, ["benchmark", "get", "00000000-0000-0000-0000-000000000001"]
+        )
+    assert result.exit_code == 6
+
+
+def test_benchmark_get_network_error_json(runner: CliRunner) -> None:
+    from atlas_sdk.errors import NetworkError
+
+    err = NetworkError(message="connection refused")
+    with patch(
+        "cli.commands.benchmark.AtlasClient",
+        return_value=_mock_client_get_error(err),
+    ):
+        result = runner.invoke(
+            main,
+            ["--output", "json", "benchmark", "get",
+             "00000000-0000-0000-0000-000000000001"],
         )
     assert result.exit_code == 6
     parsed = json.loads(result.output)
