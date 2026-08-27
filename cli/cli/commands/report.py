@@ -1,9 +1,12 @@
-"""report commands -- list (Phase 1).
+"""report commands -- list, get (Phase 1).
 
 Implements:
   atlas report list
   atlas report list --output json
   atlas report list --quiet
+  atlas report get <run-id>
+  atlas report get <run-id> --output json
+  atlas report get <run-id> --quiet
 """
 
 from __future__ import annotations
@@ -15,7 +18,7 @@ from cli.app import Context, _pass_context
 from cli.config import AtlasConfig
 from cli.output.errors import error_exit
 from cli.output.json import render_json
-from cli.output.table import render_table
+from cli.output.table import render_kv, render_table
 
 
 @click.group(name="report")
@@ -130,3 +133,57 @@ def list_cmd(
         if page.total > len(page.items):
             shown = len(page.items)
             click.echo(f"  Showing {shown} of {page.total}")
+
+
+@report_group.command(name="get")
+@_pass_context
+@click.argument("run_id")
+def get_cmd(ctx: Context, run_id: str) -> None:
+    """Fetch the detailed report for a single execution run.
+
+    RUN_ID is the execution run UUID.
+    Calls GET /api/v1/reports/runs/{run_id} through the SDK.
+    """
+    cfg: AtlasConfig = ctx.config
+    output_mode = cfg.effective_output()
+
+    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
+
+    try:
+        with AtlasClient(
+            cfg.base_url,
+            token_supplier=supplier,
+            timeout=cfg.timeout,
+        ) as client:
+            summary = client.get_report_run(run_id)
+    except Exception as exc:
+        error_exit(exc, output_mode)
+
+    if output_mode == "json":
+        render_json(summary.model_dump(mode="json"))
+    elif output_mode == "quiet":
+        pass
+    else:
+        started = summary.started_at.strftime("%Y-%m-%d %H:%M") if summary.started_at else "-"
+        completed = summary.completed_at.strftime("%Y-%m-%d %H:%M") if summary.completed_at else "-"
+        score = f"{summary.overall_score:.1f}" if summary.overall_score is not None else "-"
+
+        render_kv(
+            [
+                ("Run ID", str(summary.run_id)),
+                ("Benchmark", summary.benchmark_name),
+                ("Version", summary.benchmark_version),
+                ("Model", summary.target_model),
+                ("Status", summary.evaluation_status),
+                ("Started", started),
+                ("Completed", completed),
+                ("Overall Score", score),
+            ],
+            title="Report Summary",
+        )
+
+        if summary.scores:
+            rows_data = [
+                [item.capability_name, f"{item.score:.1f}"] for item in summary.scores
+            ]
+            render_table(["Capability", "Score"], rows_data, title="Score Breakdown")

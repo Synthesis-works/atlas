@@ -10,7 +10,12 @@ import uuid
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
-from atlas_sdk.models.reports import PaginatedReportRunsRead, ReportRunEntryRead
+from atlas_sdk.models.reports import (
+    CapabilityScoreRead,
+    PaginatedReportRunsRead,
+    ReportRunEntryRead,
+    ReportSummaryRead,
+)
 from click.testing import CliRunner
 
 from cli.app import main
@@ -420,3 +425,209 @@ def test_report_list_dto_with_null_fields(runner: CliRunner) -> None:
         result = runner.invoke(main, ["report", "list"])
     assert result.exit_code == 0
     assert "-" in result.output
+
+
+# ── report get ──────────────────────────────────────────────────────────
+
+
+def _report_summary(
+    *,
+    run_id: str = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+    benchmark_id: str = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+    benchmark_name: str = "HumanEval",
+    benchmark_version: str = "2.0.0",
+    target_model: str = "gpt-4o",
+    evaluation_status: str = "COMPLETED",
+    overall_score: float | None = 88.5,
+    scores: list[tuple[str, float]] | None = None,
+) -> ReportSummaryRead:
+    if scores is None:
+        scores = [("reasoning", 92.0), ("code_generation", 85.0)]
+    return ReportSummaryRead(
+        run_id=uuid.UUID(run_id),
+        benchmark_id=uuid.UUID(benchmark_id),
+        benchmark_name=benchmark_name,
+        benchmark_version=benchmark_version,
+        target_model=target_model,
+        evaluation_status=evaluation_status,
+        started_at=datetime(2026, 8, 26, 10, 0, 0, tzinfo=UTC),
+        completed_at=datetime(2026, 8, 26, 10, 5, 0, tzinfo=UTC),
+        overall_score=overall_score,
+        scores=[CapabilityScoreRead(capability_name=n, score=s) for n, s in scores],
+    )
+
+
+def _mock_get_client(summary: ReportSummaryRead) -> MagicMock:
+    mock = MagicMock()
+    mock.__enter__ = MagicMock(return_value=mock)
+    mock.__exit__ = MagicMock(return_value=False)
+    mock.get_report_run.return_value = summary
+    return mock
+
+
+def test_report_get_in_help(runner: CliRunner) -> None:
+    result = runner.invoke(main, ["report", "get", "--help"])
+    assert result.exit_code == 0
+    assert "RUN_ID" in result.output
+
+
+def test_report_get_human(runner: CliRunner) -> None:
+    summary = _report_summary()
+    with patch("cli.commands.report.AtlasClient", return_value=_mock_get_client(summary)):
+        result = runner.invoke(main, ["report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"])
+    assert result.exit_code == 0
+    assert "Report Summary" in result.output
+    assert "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" in result.output
+    assert "HumanEval" in result.output
+    assert "2.0.0" in result.output
+    assert "gpt-4o" in result.output
+    assert "COMPLETED" in result.output
+    assert "88.5" in result.output
+    assert "2026-08-26 10:00" in result.output
+    assert "Score Breakdown" in result.output
+    assert "reasoning" in result.output
+    assert "92.0" in result.output
+    assert "code_generation" in result.output
+    assert "85.0" in result.output
+
+
+def test_report_get_human_with_null_fields(runner: CliRunner) -> None:
+    summary = _report_summary(
+        evaluation_status="PENDING",
+        overall_score=None,
+        scores=[],
+    )
+    with patch("cli.commands.report.AtlasClient", return_value=_mock_get_client(summary)):
+        result = runner.invoke(main, ["report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"])
+    assert result.exit_code == 0
+    assert "-" in result.output
+    assert "Score Breakdown" not in result.output
+
+
+def test_report_get_human_no_scores_section(runner: CliRunner) -> None:
+    summary = _report_summary(scores=[])
+    with patch("cli.commands.report.AtlasClient", return_value=_mock_get_client(summary)):
+        result = runner.invoke(main, ["report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"])
+    assert result.exit_code == 0
+    assert "Score Breakdown" not in result.output
+
+
+def test_report_get_json(runner: CliRunner) -> None:
+    summary = _report_summary()
+    with patch("cli.commands.report.AtlasClient", return_value=_mock_get_client(summary)):
+        result = runner.invoke(main, [
+            "--output", "json", "report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        ])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data["run_id"] == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    assert data["benchmark_name"] == "HumanEval"
+    assert data["benchmark_version"] == "2.0.0"
+    assert data["target_model"] == "gpt-4o"
+    assert data["evaluation_status"] == "COMPLETED"
+    assert data["overall_score"] == 88.5
+    assert len(data["scores"]) == 2
+    assert data["scores"][0] == {"capability_name": "reasoning", "score": 92.0}
+
+
+def test_report_get_quiet(runner: CliRunner) -> None:
+    summary = _report_summary()
+    with patch("cli.commands.report.AtlasClient", return_value=_mock_get_client(summary)):
+        result = runner.invoke(
+            main, ["--quiet", "report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+        )
+    assert result.exit_code == 0
+    assert result.output == ""
+
+
+def test_report_get_quiet_via_shorthand(runner: CliRunner) -> None:
+    summary = _report_summary()
+    with patch("cli.commands.report.AtlasClient", return_value=_mock_get_client(summary)):
+        result = runner.invoke(
+            main, ["-q", "report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+        )
+    assert result.exit_code == 0
+    assert result.output == ""
+
+
+def test_report_get_passes_run_id(runner: CliRunner) -> None:
+    mock = _mock_get_client(_report_summary())
+    with patch("cli.commands.report.AtlasClient", return_value=mock):
+        runner.invoke(main, ["report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"])
+    mock.get_report_run.assert_called_once_with("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
+
+
+def test_report_get_401(runner: CliRunner) -> None:
+    from atlas_sdk.errors import AuthError
+
+    mock = MagicMock()
+    mock.__enter__ = MagicMock(return_value=mock)
+    mock.__exit__ = MagicMock(return_value=False)
+    mock.get_report_run.side_effect = AuthError(status=401, message="Unauthorized")
+    with patch("cli.commands.report.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"])
+    assert result.exit_code == 3
+
+
+def test_report_get_403(runner: CliRunner) -> None:
+    from atlas_sdk.errors import ForbiddenError
+
+    mock = MagicMock()
+    mock.__enter__ = MagicMock(return_value=mock)
+    mock.__exit__ = MagicMock(return_value=False)
+    mock.get_report_run.side_effect = ForbiddenError(status=403, message="Forbidden")
+    with patch("cli.commands.report.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"])
+    assert result.exit_code == 4
+
+
+def test_report_get_404(runner: CliRunner) -> None:
+    from atlas_sdk.errors import NotFoundError
+
+    mock = MagicMock()
+    mock.__enter__ = MagicMock(return_value=mock)
+    mock.__exit__ = MagicMock(return_value=False)
+    mock.get_report_run.side_effect = NotFoundError(
+        status=404, message="Report summary not found."
+    )
+    with patch("cli.commands.report.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"])
+    assert result.exit_code == 5
+
+
+def test_report_get_network_error(runner: CliRunner) -> None:
+    from atlas_sdk.errors import NetworkError
+
+    mock = MagicMock()
+    mock.__enter__ = MagicMock(return_value=mock)
+    mock.__exit__ = MagicMock(return_value=False)
+    mock.get_report_run.side_effect = NetworkError(message="Connection refused")
+    with patch("cli.commands.report.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"])
+    assert result.exit_code == 6
+
+
+def test_report_get_server_error(runner: CliRunner) -> None:
+    from atlas_sdk.errors import ServerError
+
+    mock = MagicMock()
+    mock.__enter__ = MagicMock(return_value=mock)
+    mock.__exit__ = MagicMock(return_value=False)
+    mock.get_report_run.side_effect = ServerError(status=500, message="Internal error")
+    with patch("cli.commands.report.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"])
+    assert result.exit_code == 1
+
+
+def test_report_get_json_error(runner: CliRunner) -> None:
+    from atlas_sdk.errors import AuthError
+
+    mock = MagicMock()
+    mock.__enter__ = MagicMock(return_value=mock)
+    mock.__exit__ = MagicMock(return_value=False)
+    mock.get_report_run.side_effect = AuthError(status=401, message="Token expired")
+    with patch("cli.commands.report.AtlasClient", return_value=mock):
+        result = runner.invoke(main, [
+            "--output", "json", "report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        ])
+    assert result.exit_code == 3

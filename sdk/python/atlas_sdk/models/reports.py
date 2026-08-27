@@ -41,6 +41,36 @@ class ReportRunEntryRead(BaseModel):
     overall_score: float | None = None
 
 
+class CapabilityScoreRead(BaseModel):
+    """Capability score breakdown entry.
+
+    Mirrors ``CapabilityScoreRead`` from the backend.
+    """
+
+    capability_name: str
+    score: float
+
+
+class ReportSummaryRead(BaseModel):
+    """Detailed report summary for a single execution run.
+
+    Mirrors ``ReportSummaryRead`` from the backend.
+    Note: ``GET /api/v1/reports/runs/{run_id}`` returns this directly (not
+    wrapped in ``APIResponse``).
+    """
+
+    run_id: uuid.UUID
+    benchmark_id: uuid.UUID
+    benchmark_name: str
+    benchmark_version: str
+    target_model: str
+    evaluation_status: str
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    overall_score: float | None = None
+    scores: list[CapabilityScoreRead] = []
+
+
 class PaginatedReportRunsRead(BaseModel):
     """Paginated list of report run entries.
 

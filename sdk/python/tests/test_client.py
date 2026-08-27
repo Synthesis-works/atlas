@@ -14,6 +14,7 @@ from atlas_sdk.client import AtlasClient
 from atlas_sdk.errors import (
     AuthError,
     ForbiddenError,
+    NetworkError,
     NotFoundError,
     ServerError,
     ValidationError,
@@ -986,4 +987,154 @@ class TestListReportRuns:
         assert "target_model" not in url.split("?")[1] if "?" in url else True
         assert "limit=50" in url
         assert "offset=0" in url
+        client.close()
+
+
+def _report_summary() -> dict:
+    return {
+        "run_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "benchmark_id": "7fa85f64-5717-4562-b3fc-2c963f66afa0",
+        "benchmark_name": "HumanEval",
+        "benchmark_version": "1.0.0",
+        "target_model": "gpt-4o",
+        "evaluation_status": "COMPLETED",
+        "started_at": "2026-07-27T10:00:00Z",
+        "completed_at": "2026-07-27T10:05:00Z",
+        "overall_score": 88.5,
+        "scores": [
+            {"capability_name": "reasoning", "score": 92.0},
+            {"capability_name": "code_generation", "score": 85.0},
+        ],
+    }
+
+
+class TestGetReportRun:
+    def test_get_report_run_returns_summary(self, httpx_mock: pytest.MockTransport) -> None:
+        # Raw unwrapped payload — no APIResponse envelope.
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/reports/runs/3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            json=_report_summary(),
+        )
+        client = AtlasClient("http://localhost:8000")
+        result = client.get_report_run("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+        assert str(result.run_id) == "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        assert result.benchmark_name == "HumanEval"
+        assert result.benchmark_version == "1.0.0"
+        assert result.target_model == "gpt-4o"
+        assert result.evaluation_status == "COMPLETED"
+        assert result.overall_score == 88.5
+        assert result.started_at is not None
+        assert result.completed_at is not None
+        client.close()
+
+    def test_get_report_run_parses_nested_scores(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/reports/runs/3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            json=_report_summary(),
+        )
+        client = AtlasClient("http://localhost:8000")
+        result = client.get_report_run("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+        assert len(result.scores) == 2
+        assert result.scores[0].capability_name == "reasoning"
+        assert result.scores[0].score == 92.0
+        assert result.scores[1].capability_name == "code_generation"
+        assert result.scores[1].score == 85.0
+        client.close()
+
+    def test_get_report_run_parses_null_fields(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/reports/runs/3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            json={
+                "run_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                "benchmark_id": "7fa85f64-5717-4562-b3fc-2c963f66afa0",
+                "benchmark_name": "HumanEval",
+                "benchmark_version": "1.0.0",
+                "target_model": "gpt-4o",
+                "evaluation_status": "PENDING",
+                "started_at": None,
+                "completed_at": None,
+                "overall_score": None,
+                "scores": [],
+            },
+        )
+        client = AtlasClient("http://localhost:8000")
+        result = client.get_report_run("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+        assert result.evaluation_status == "PENDING"
+        assert result.started_at is None
+        assert result.completed_at is None
+        assert result.overall_score is None
+        assert result.scores == []
+        client.close()
+
+    def test_get_report_run_401_raises_auth_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/reports/runs/3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            status_code=401,
+            json=_err(401, "UNAUTHORIZED", "Token expired"),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(AuthError) as exc_info:
+            client.get_report_run("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+        assert exc_info.value.status == 401
+        client.close()
+
+    def test_get_report_run_403_raises_forbidden_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/reports/runs/3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            status_code=403,
+            json=_err(403, "FORBIDDEN", "Insufficient permissions"),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(ForbiddenError) as exc_info:
+            client.get_report_run("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+        assert exc_info.value.status == 403
+        client.close()
+
+    def test_get_report_run_404_raises_not_found_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/reports/runs/3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            status_code=404,
+            json=_err(404, "NOT_FOUND", "Report summary for execution run not found."),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(NotFoundError) as exc_info:
+            client.get_report_run("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+        assert exc_info.value.status == 404
+        client.close()
+
+    def test_get_report_run_500_raises_server_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/reports/runs/3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            status_code=500,
+            json=_err(500, "INTERNAL", "something broke"),
+        )
+        client = AtlasClient("http://localhost:8000", max_retries=0)
+        with pytest.raises(ServerError):
+            client.get_report_run("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+        client.close()
+
+    def test_get_report_run_network_error_raises_network_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        import httpx
+
+        httpx_mock.add_exception(httpx.ConnectError("connection refused"))
+        client = AtlasClient("http://localhost:8000", max_retries=0)
+        with pytest.raises(NetworkError):
+            client.get_report_run("3fa85f64-5717-4562-b3fc-2c963f66afa6")
         client.close()

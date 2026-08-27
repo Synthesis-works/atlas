@@ -32,9 +32,11 @@ from atlas_sdk.models.executions import (
     ExecutionState,
 )
 from atlas_sdk.models.reports import (
+    CapabilityScoreRead,
     PaginatedReportRunsRead,
     ReportRunEntryRead,
     ReportRunStatus,
+    ReportSummaryRead,
 )
 
 __all__ = [
@@ -59,6 +61,8 @@ __all__ = [
     "RateLimitedError",
     "ReportRunEntryRead",
     "ReportRunStatus",
+    "CapabilityScoreRead",
+    "ReportSummaryRead",
     "ServerError",
     "StaticTokenSupplier",
     "TokenSupplier",

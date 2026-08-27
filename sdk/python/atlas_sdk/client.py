@@ -30,7 +30,7 @@ from atlas_sdk.models.benchmarks import (
 )
 from atlas_sdk.models.executions import ExecutionPage, ExecutionResponse
 from atlas_sdk.models.health import HealthData, LivenessResponse, ReadinessResponse
-from atlas_sdk.models.reports import PaginatedReportRunsRead
+from atlas_sdk.models.reports import PaginatedReportRunsRead, ReportSummaryRead
 from atlas_sdk.models.responses import APIResponse
 
 logger = logging.getLogger(__name__)
@@ -480,6 +480,20 @@ class AtlasClient:
             params["target_model"] = target_model
         response = self._get_raw("/api/v1/reports/runs", params=params)
         return PaginatedReportRunsRead.model_validate(response.json())
+
+    def get_report_run(self, run_id: str) -> ReportSummaryRead:
+        """Fetch the detailed report summary for a single run.
+
+        ``GET /api/v1/reports/runs/{run_id}``
+
+        Returns a ``ReportSummaryRead`` with benchmark context, status,
+        timing, overall score, and the capability score breakdown.
+
+        Note: this endpoint returns ``ReportSummaryRead`` directly (not
+        wrapped in ``APIResponse``), like the execution endpoints.
+        """
+        response = self._get_raw(f"/api/v1/reports/runs/{run_id}")
+        return ReportSummaryRead.model_validate(response.json())
 
     # ── lifecycle ─────────────────────────────────────────────────────
 
