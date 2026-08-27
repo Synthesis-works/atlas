@@ -1,6 +1,6 @@
 """Tests for `atlas report list`.
 
-Mocksat the SDK boundary to test CLI rendering without real HTTP.
+Mocks at the SDK boundary to test CLI rendering without real HTTP.
 """
 
 from __future__ import annotations
