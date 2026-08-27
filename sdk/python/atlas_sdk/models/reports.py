@@ -82,3 +82,19 @@ class PaginatedReportRunsRead(BaseModel):
     total: int
     page: int
     size: int
+
+
+class DownloadResult(BaseModel):
+    """Raw bytes from a download endpoint plus response metadata.
+
+    Not a mirror of a backend JSON schema — this is a client-side artifact
+    returned by ``AtlasClient.export_report_run()``.
+
+    ``filename`` is parsed from the ``Content-Disposition`` header (when
+    present) or falls back to ``report-<run_id>.<ext>``.  ``content_type``
+    is the response ``Content-Type`` header, if any.
+    """
+
+    content: bytes
+    filename: str
+    content_type: str | None = None

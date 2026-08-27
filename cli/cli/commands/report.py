@@ -1,4 +1,4 @@
-"""report commands -- list, get (Phase 1).
+"""report commands -- list, get, export (Phase 1).
 
 Implements:
   atlas report list
@@ -7,12 +7,23 @@ Implements:
   atlas report get <run-id>
   atlas report get <run-id> --output json
   atlas report get <run-id> --quiet
+  atlas report export <run-id>
+  atlas report export <run-id> --format csv
+  atlas report export <run-id> --output-file report.json
+  atlas report export <run-id> --output-file -
+  atlas report export <run-id> --include-prompt
+  atlas report export <run-id> --include-expected-output
+  atlas report export <run-id> --force
 """
 
 from __future__ import annotations
 
+import os
+import sys
+
 import click
 from atlas_sdk import AtlasClient, StaticTokenSupplier
+from atlas_sdk.errors import ConflictError
 
 from cli.app import Context, _pass_context
 from cli.config import AtlasConfig
@@ -187,3 +198,111 @@ def get_cmd(ctx: Context, run_id: str) -> None:
                 [item.capability_name, f"{item.score:.1f}"] for item in summary.scores
             ]
             render_table(["Capability", "Score"], rows_data, title="Score Breakdown")
+
+
+def _ensure_destination(dest: str, force: bool, output_mode: str) -> None:
+    """Refuse to overwrite an existing destination unless ``--force``."""
+    if os.path.exists(dest) and not force:
+        error_exit(
+            ConflictError(
+                status=409,
+                code="CONFLICT",
+                message=f"Destination already exists: {dest} (use --force to overwrite).",
+            ),
+            output_mode,
+        )
+
+
+@report_group.command(name="export")
+@_pass_context
+@click.argument("run_id")
+@click.option(
+    "--format",
+    "format_type",
+    default="json",
+    type=click.Choice(["json", "csv"], case_sensitive=False),
+    help="Export format (default: json).",
+)
+@click.option(
+    "--output-file",
+    default=None,
+    help="Destination path, or '-' for raw bytes on stdout "
+    "(default: server-provided filename in cwd).",
+)
+@click.option(
+    "--include-prompt",
+    is_flag=True,
+    default=False,
+    help="Include original prompts in the export.",
+)
+@click.option(
+    "--include-expected-output",
+    is_flag=True,
+    default=False,
+    help="Include expected outputs in the export.",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Overwrite the destination file if it already exists.",
+)
+def export_cmd(
+    ctx: Context,
+    run_id: str,
+    format_type: str,
+    output_file: str | None,
+    include_prompt: bool,
+    include_expected_output: bool,
+    force: bool,
+) -> None:
+    """Export the report for a single execution run.
+
+    RUN_ID is the execution run UUID.
+    Calls GET /api/v1/reports/runs/{run_id}/export through the SDK and writes
+    the raw response bytes to a file (or stdout with --output-file -).
+    """
+    cfg: AtlasConfig = ctx.config
+    output_mode = cfg.effective_output()
+
+    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
+
+    try:
+        with AtlasClient(
+            cfg.base_url,
+            token_supplier=supplier,
+            timeout=cfg.timeout,
+        ) as client:
+            result = client.export_report_run(
+                run_id,
+                format_type=format_type,
+                include_prompt=include_prompt,
+                include_expected_output=include_expected_output,
+            )
+    except Exception as exc:
+        error_exit(exc, output_mode)
+
+    if output_file == "-":
+        # Raw payload only on stdout — never mix receipts into this stream.
+        sys.stdout.buffer.write(result.content)
+        sys.stdout.buffer.flush()
+        return
+
+    dest = output_file or result.filename or f"report-{run_id}.{format_type}"
+    _ensure_destination(dest, force, output_mode)
+
+    with open(dest, "wb") as fh:
+        fh.write(result.content)
+
+    if output_mode == "json":
+        render_json(
+            {
+                "path": dest,
+                "bytes": len(result.content),
+                "content_type": result.content_type,
+            }
+        )
+    elif output_mode == "quiet":
+        pass
+    else:
+        click.echo(f"Exported report to {dest} ({len(result.content)} bytes)")

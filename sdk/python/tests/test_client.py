@@ -1138,3 +1138,196 @@ class TestGetReportRun:
         with pytest.raises(NetworkError):
             client.get_report_run("3fa85f64-5717-4562-b3fc-2c963f66afa6")
         client.close()
+
+
+class TestExportReportRun:
+    _RUN_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+
+    def test_export_report_run_returns_raw_content(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=(
+                f"http://localhost:8000/api/v1/reports/runs/{TestExportReportRun._RUN_ID}/export"
+                "?format=json&include_prompt=false&include_expected_output=false"
+            ),
+            content=b'{"report": {"title": "Sample"}}',
+            headers={
+                "Content-Type": "application/json",
+                "Content-Disposition": 'attachment; filename="hello-report-v1.0.0.json"',
+            },
+        )
+        client = AtlasClient("http://localhost:8000")
+        result = client.export_report_run(TestExportReportRun._RUN_ID)
+        assert result.content == b'{"report": {"title": "Sample"}}'
+        assert result.filename == "hello-report-v1.0.0.json"
+        assert result.content_type == "application/json"
+        client.close()
+
+    def test_export_report_run_default_filename_fallback(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        # No Content-Disposition header -> derive report-<run_id>.<ext>.
+        httpx_mock.add_response(
+            method="GET",
+            url=(
+                f"http://localhost:8000/api/v1/reports/runs/{TestExportReportRun._RUN_ID}/export"
+                "?format=json&include_prompt=false&include_expected_output=false"
+            ),
+            content=b'[]',
+            headers={"Content-Type": "application/json"},
+        )
+        client = AtlasClient("http://localhost:8000")
+        result = client.export_report_run(TestExportReportRun._RUN_ID)
+        assert result.filename == f"report-{TestExportReportRun._RUN_ID}.json"
+        client.close()
+
+    def test_export_report_run_ignores_unquoted_filename(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=(
+                f"http://localhost:8000/api/v1/reports/runs/{TestExportReportRun._RUN_ID}/export"
+                "?format=csv&include_prompt=false&include_expected_output=false"
+            ),
+            content=b"a,b\n1,2",
+            headers={
+                "Content-Type": "text/csv; charset=utf-8",
+                "Content-Disposition": 'attachment; filename="run_abc.csv"',
+            },
+        )
+        client = AtlasClient("http://localhost:8000")
+        result = client.export_report_run(TestExportReportRun._RUN_ID, format_type="csv")
+        assert result.content == b"a,b\n1,2"
+        assert result.filename == "run_abc.csv"
+        assert result.content_type == "text/csv; charset=utf-8"
+        client.close()
+
+    def test_export_report_run_sends_flags_and_format(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=(
+                f"http://localhost:8000/api/v1/reports/runs/{TestExportReportRun._RUN_ID}/export"
+                "?format=csv&include_prompt=true&include_expected_output=true"
+            ),
+            content=b"test\n1",
+            headers={"Content-Type": "text/csv; charset=utf-8"},
+        )
+        client = AtlasClient("http://localhost:8000")
+        client.export_report_run(
+            TestExportReportRun._RUN_ID,
+            format_type="csv",
+            include_prompt=True,
+            include_expected_output=True,
+        )
+        request = httpx_mock.get_request()
+        assert request is not None
+        url = str(request.url)
+        assert "format=csv" in url
+        assert "include_prompt=true" in url
+        assert "include_expected_output=true" in url
+        client.close()
+
+    def test_export_report_run_401_raises_auth_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=(
+                f"http://localhost:8000/api/v1/reports/runs/{TestExportReportRun._RUN_ID}/export"
+                "?format=json&include_prompt=false&include_expected_output=false"
+            ),
+            status_code=401,
+            json=_err(401, "UNAUTHORIZED", "Token expired"),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(AuthError) as exc_info:
+            client.export_report_run(TestExportReportRun._RUN_ID)
+        assert exc_info.value.status == 401
+        client.close()
+
+    def test_export_report_run_403_raises_forbidden_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=(
+                f"http://localhost:8000/api/v1/reports/runs/{TestExportReportRun._RUN_ID}/export"
+                "?format=json&include_prompt=false&include_expected_output=false"
+            ),
+            status_code=403,
+            json=_err(403, "FORBIDDEN", "Insufficient permissions"),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(ForbiddenError) as exc_info:
+            client.export_report_run(TestExportReportRun._RUN_ID)
+        assert exc_info.value.status == 403
+        client.close()
+
+    def test_export_report_run_404_raises_not_found_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=(
+                f"http://localhost:8000/api/v1/reports/runs/{TestExportReportRun._RUN_ID}/export"
+                "?format=json&include_prompt=false&include_expected_output=false"
+            ),
+            status_code=404,
+            json=_err(404, "NOT_FOUND", "Report export for execution run not found."),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(NotFoundError) as exc_info:
+            client.export_report_run(TestExportReportRun._RUN_ID)
+        assert exc_info.value.status == 404
+        client.close()
+
+    def test_export_report_run_422_raises_validation_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=(
+                f"http://localhost:8000/api/v1/reports/runs/{TestExportReportRun._RUN_ID}/export"
+                "?format=json&include_prompt=false&include_expected_output=false"
+            ),
+            status_code=422,
+            json=_err(422, "VALIDATION_ERROR", "Invalid parameter"),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(ValidationError) as exc_info:
+            client.export_report_run(TestExportReportRun._RUN_ID)
+        assert exc_info.value.status == 422
+        client.close()
+
+    def test_export_report_run_500_raises_server_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=(
+                f"http://localhost:8000/api/v1/reports/runs/{TestExportReportRun._RUN_ID}/export"
+                "?format=json&include_prompt=false&include_expected_output=false"
+            ),
+            status_code=500,
+            json=_err(500, "INTERNAL", "something broke"),
+        )
+        client = AtlasClient("http://localhost:8000", max_retries=0)
+        with pytest.raises(ServerError):
+            client.export_report_run(TestExportReportRun._RUN_ID)
+        client.close()
+
+    def test_export_report_run_network_error_raises_network_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        import httpx
+
+        httpx_mock.add_exception(httpx.ConnectError("connection refused"))
+        client = AtlasClient("http://localhost:8000", max_retries=0)
+        with pytest.raises(NetworkError):
+            client.export_report_run(TestExportReportRun._RUN_ID)
+        client.close()

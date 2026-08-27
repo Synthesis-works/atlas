@@ -9,6 +9,7 @@ Dependency chain:  cli → atlas-sdk (this module) → httpx → /api/v1
 from __future__ import annotations
 
 import logging
+import re
 import time
 from typing import Any, TypeVar
 from urllib.parse import urlparse
@@ -30,7 +31,11 @@ from atlas_sdk.models.benchmarks import (
 )
 from atlas_sdk.models.executions import ExecutionPage, ExecutionResponse
 from atlas_sdk.models.health import HealthData, LivenessResponse, ReadinessResponse
-from atlas_sdk.models.reports import PaginatedReportRunsRead, ReportSummaryRead
+from atlas_sdk.models.reports import (
+    DownloadResult,
+    PaginatedReportRunsRead,
+    ReportSummaryRead,
+)
 from atlas_sdk.models.responses import APIResponse
 
 logger = logging.getLogger(__name__)
@@ -47,6 +52,23 @@ _USER_AGENT = "atlas-sdk/0.1.0"
 
 def _is_retryable(status: int) -> bool:
     return status in _RETRYABLE_STATUSES or status >= 500
+
+
+def _parse_content_disposition(value: str | None) -> str | None:
+    """Extract the ``filename`` parameter from a ``Content-Disposition`` header.
+
+    Supports both ``filename="x.json"`` and ``filename=x.json`` forms.
+    Returns ``None`` when the header is missing or has no usable filename.
+    """
+    if not value:
+        return None
+    match = re.search(r'filename="?([^";]+)', value)
+    if not match:
+        return None
+    parsed = match.group(1).strip()
+    if not parsed:
+        return None
+    return parsed
 
 
 class AtlasClient:
@@ -494,6 +516,38 @@ class AtlasClient:
         """
         response = self._get_raw(f"/api/v1/reports/runs/{run_id}")
         return ReportSummaryRead.model_validate(response.json())
+
+    def export_report_run(
+        self,
+        run_id: str,
+        *,
+        format_type: str = "json",
+        include_prompt: bool = False,
+        include_expected_output: bool = False,
+    ) -> DownloadResult:
+        """Export the report for a run as raw JSON or CSV bytes.
+
+        ``GET /api/v1/reports/runs/{run_id}/export``
+
+        Returns a ``DownloadResult`` with the raw response bytes, the
+        response ``Content-Type``, and a filename parsed from
+        ``Content-Disposition`` (falling back to ``report-<run_id>.<ext>``
+        when no usable filename is supplied).
+        """
+        params: dict[str, Any] = {
+            "format": format_type,
+            "include_prompt": include_prompt,
+            "include_expected_output": include_expected_output,
+        }
+        response = self._get_raw(f"/api/v1/reports/runs/{run_id}/export", params=params)
+        return DownloadResult(
+            content=response.content,
+            content_type=response.headers.get("content-type"),
+            filename=(
+                _parse_content_disposition(response.headers.get("content-disposition"))
+                or f"report-{run_id}.{format_type}"
+            ),
+        )
 
     # ── lifecycle ─────────────────────────────────────────────────────
 
