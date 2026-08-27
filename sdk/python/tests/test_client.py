@@ -871,7 +871,7 @@ class TestListReportRuns:
         httpx_mock.add_response(
             method="GET",
             url="http://localhost:8000/api/v1/reports/runs?limit=50&offset=0",
-            json=_ok({
+            json={
                 "items": [
                     {
                         "run_id": "11111111-1111-1111-1111-111111111111",
@@ -887,7 +887,7 @@ class TestListReportRuns:
                 "total": 1,
                 "page": 1,
                 "size": 50,
-            }),
+            },
         )
         client = AtlasClient("http://localhost:8000")
         result = client.list_report_runs()
@@ -903,7 +903,7 @@ class TestListReportRuns:
         httpx_mock.add_response(
             method="GET",
             url="http://localhost:8000/api/v1/reports/runs?limit=10&offset=5&status=COMPLETED&benchmark_id=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee&benchmark_version=2.0.0&target_model=claude-3",
-            json=_ok({"items": [], "total": 0, "page": 1, "size": 10}),
+            json={"items": [], "total": 0, "page": 1, "size": 10},
         )
         client = AtlasClient("http://localhost:8000")
         client.list_report_runs(
@@ -929,7 +929,7 @@ class TestListReportRuns:
         httpx_mock.add_response(
             method="GET",
             url="http://localhost:8000/api/v1/reports/runs?limit=50&offset=0",
-            json=_ok({"items": [], "total": 0, "page": 1, "size": 50}),
+            json={"items": [], "total": 0, "page": 1, "size": 50},
         )
         client = AtlasClient("http://localhost:8000")
         result = client.list_report_runs()
@@ -973,7 +973,7 @@ class TestListReportRuns:
         httpx_mock.add_response(
             method="GET",
             url="http://localhost:8000/api/v1/reports/runs?limit=50&offset=0",
-            json=_ok({"items": [], "total": 0, "page": 1, "size": 50}),
+            json={"items": [], "total": 0, "page": 1, "size": 50},
         )
         client = AtlasClient("http://localhost:8000")
         client.list_report_runs()

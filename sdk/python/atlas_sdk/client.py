@@ -465,6 +465,9 @@ class AtlasClient:
         ``GET /api/v1/reports/runs``
 
         Returns a paginated list of report run summaries.
+
+        Note: this endpoint returns ``PaginatedReportRunsRead`` directly
+        (not wrapped in ``APIResponse``), like the execution endpoints.
         """
         params: dict[str, Any] = {"limit": limit, "offset": offset}
         if status is not None:
@@ -475,8 +478,8 @@ class AtlasClient:
             params["benchmark_version"] = benchmark_version
         if target_model is not None:
             params["target_model"] = target_model
-        response = self._get("/api/v1/reports/runs", params=params)
-        return self._unwrap(response, PaginatedReportRunsRead)
+        response = self._get_raw("/api/v1/reports/runs", params=params)
+        return PaginatedReportRunsRead.model_validate(response.json())
 
     # ── lifecycle ─────────────────────────────────────────────────────
 
