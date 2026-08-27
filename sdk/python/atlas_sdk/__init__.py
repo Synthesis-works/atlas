@@ -31,6 +31,7 @@ from atlas_sdk.models.executions import (
     ExecutionResponse,
     ExecutionState,
 )
+from atlas_sdk.models.leaderboard import LeaderboardEntryRead, LeaderboardRead, LeaderboardType
 from atlas_sdk.models.reports import (
     CapabilityScoreRead,
     DownloadResult,
@@ -55,6 +56,9 @@ __all__ = [
     "ExecutionResponse",
     "ExecutionState",
     "ForbiddenError",
+    "LeaderboardEntryRead",
+    "LeaderboardRead",
+    "LeaderboardType",
     "NetworkError",
     "NotFoundError",
     "PaginatedReportRunsRead",

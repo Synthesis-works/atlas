@@ -31,6 +31,7 @@ from atlas_sdk.models.benchmarks import (
 )
 from atlas_sdk.models.executions import ExecutionPage, ExecutionResponse
 from atlas_sdk.models.health import HealthData, LivenessResponse, ReadinessResponse
+from atlas_sdk.models.leaderboard import LeaderboardRead
 from atlas_sdk.models.reports import (
     DownloadResult,
     PaginatedReportRunsRead,
@@ -469,6 +470,31 @@ class AtlasClient:
         """
         response = self._post_raw(f"/api/v1/executions/{execution_id}/cancel")
         return ExecutionResponse.model_validate(response.json())
+
+    # -- leaderboard --
+
+    def get_benchmark_leaderboard(
+        self,
+        benchmark_version_id: str,
+        *,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> LeaderboardRead:
+        """Fetch the leaderboard for a benchmark version.
+
+        ``GET /api/v1/benchmarks/{benchmark_version_id}/leaderboard``
+
+        Returns a ``LeaderboardRead`` with entries ranked by overall
+        score.  The backend clamps ``limit`` to 1..100.
+
+        Note: this endpoint returns ``LeaderboardRead`` directly (not
+        wrapped in ``APIResponse``), like the execution endpoints.
+        """
+        response = self._get_raw(
+            f"/api/v1/benchmarks/{benchmark_version_id}/leaderboard",
+            params={"limit": limit, "offset": offset},
+        )
+        return LeaderboardRead.model_validate(response.json())
 
     # -- reports --
 

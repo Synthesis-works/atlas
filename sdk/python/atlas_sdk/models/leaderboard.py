@@ -1,0 +1,50 @@
+"""Leaderboard DTOs — field-for-field mirror of ``apps/backend/schemas/leaderboard.py``."""
+
+from __future__ import annotations
+
+from datetime import datetime
+from enum import StrEnum
+from typing import Any
+
+from pydantic import BaseModel
+
+from atlas_sdk.models.benchmarks import PageResponse
+
+
+class LeaderboardType(StrEnum):
+    """Scope of a leaderboard (mirrors domain ``LeaderboardType``)."""
+
+    BENCHMARK = "BENCHMARK"
+    CAPABILITY = "CAPABILITY"
+    GLOBAL = "GLOBAL"
+    ORGANIZATION = "ORGANIZATION"
+
+
+class LeaderboardEntryRead(BaseModel):
+    """Single row in a leaderboard.
+
+    Mirrors ``apps/backend/schemas/leaderboard.py::LeaderboardEntryRead``.
+    """
+
+    rank: int
+    model_name: str
+    overall_score: float
+    benchmark_count: int
+    last_updated: datetime
+    rank_delta: int | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class LeaderboardRead(BaseModel):
+    """Full paginated leaderboard response with context metadata.
+
+    Returned directly by ``GET /api/v1/benchmarks/{version_id}/leaderboard``
+    (not wrapped in ``APIResponse``), like the execution/report endpoints.
+    """
+
+    leaderboard_type: LeaderboardType
+    title: str
+    description: str | None = None
+    benchmark_version_id: str | None = None
+    capability_id: str | None = None
+    entries: PageResponse[LeaderboardEntryRead]

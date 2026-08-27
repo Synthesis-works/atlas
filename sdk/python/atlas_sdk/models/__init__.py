@@ -20,6 +20,7 @@ from atlas_sdk.models.executions import (
     ExecutionState,
 )
 from atlas_sdk.models.health import HealthData, LivenessResponse, ReadinessResponse
+from atlas_sdk.models.leaderboard import LeaderboardEntryRead, LeaderboardRead, LeaderboardType
 from atlas_sdk.models.reports import (
     CapabilityScoreRead,
     DownloadResult,
@@ -51,6 +52,9 @@ __all__ = [
     "HealthData",
     "LivenessResponse",
     "ReadinessResponse",
+    "LeaderboardEntryRead",
+    "LeaderboardRead",
+    "LeaderboardType",
     "PaginatedReportRunsRead",
     "ReportRunEntryRead",
     "ReportRunStatus",
