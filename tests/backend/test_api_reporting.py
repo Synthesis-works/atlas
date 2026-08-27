@@ -15,7 +15,11 @@ from apps.backend.schemas.reporting import (
     ReportRunEntryRead,
     ReportSummaryRead,
 )
-from services.report.models.read_models import ReportRunsFilter, ReportRunStatus
+from services.report.models.read_models import (
+    ReportExportRead,
+    ReportRunsFilter,
+    ReportRunStatus,
+)
 from services.report.services.reporting import ReportingService
 
 
@@ -99,7 +103,8 @@ def test_export_run_results_json(test_client, mock_reporting_service):
     run_id = uuid.uuid4()
     from services.report.exporters import ExportResult
 
-    mock_reporting_service.build_report_export.return_value = None
+    document = ReportExportRead()
+    mock_reporting_service.build_report_export.return_value = document
     mock_reporting_service.export_run_results.return_value = ExportResult(
         content=b'{"report": {"title": "Sample"}}',
         mime_type="application/json",
@@ -120,7 +125,7 @@ def test_export_run_results_json(test_client, mock_reporting_service):
         "include_prompt": False,
         "include_expected_output": False,
         "execution_meta": {},
-        "document": None,
+        "document": document,
     }
 
 
@@ -128,7 +133,8 @@ def test_export_run_results_csv(test_client, mock_reporting_service):
     run_id = uuid.uuid4()
     from services.report.exporters import ExportResult
 
-    mock_reporting_service.build_report_export.return_value = None
+    document = ReportExportRead()
+    mock_reporting_service.build_report_export.return_value = document
     mock_reporting_service.export_run_results.return_value = ExportResult(
         content=b"test\n1", mime_type="text/csv", filename_extension="csv"
     )
@@ -148,8 +154,20 @@ def test_export_run_results_csv(test_client, mock_reporting_service):
         "include_prompt": True,
         "include_expected_output": False,
         "execution_meta": {},
-        "document": None,
+        "document": document,
     }
+
+
+def test_export_run_results_not_found(test_client, mock_reporting_service):
+    run_id = uuid.uuid4()
+    mock_reporting_service.build_report_export.return_value = None
+
+    response = test_client.get(f"/api/v1/reports/runs/{run_id}/export?format=json")
+    assert response.status_code == 404
+    data = response.json()
+    assert "not found" in data["error"]["message"].lower()
+    mock_reporting_service.build_report_export.assert_called_once()
+    mock_reporting_service.export_run_results.assert_not_called()
 
 
 def test_export_run_results_invalid_format(test_client, mock_reporting_service):

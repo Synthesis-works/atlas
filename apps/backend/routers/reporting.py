@@ -93,6 +93,11 @@ def export_run_results(
             include_expected_output=include_expected_output,
             execution_meta=execution_meta,
         )
+        if not document:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Report export for execution run '{run_id}' not found.",
+            )
         export_result = service.export_run_results(
             run_id,
             format_type=format,
