@@ -696,3 +696,194 @@ def test_leaderboard_model_history_json_error(runner: CliRunner) -> None:
             "--output", "json", "leaderboard", "model", "mock", "--history"
         ])
     assert result.exit_code == 3
+# -- model --benchmarks ----------------------------------------------------
+
+
+def _bench_history(
+    *,
+    benchmark_name: str,
+    versions: list[tuple[str, list[TrendPoint]]],
+) -> dict:
+    from atlas_sdk.models.leaderboard import (
+        ModelBenchmarkHistory,
+        ModelBenchmarkVersionHistory,
+    )
+
+    version_objs = [
+        ModelBenchmarkVersionHistory(version_string=v, history=points)
+        for v, points in versions
+    ]
+    return ModelBenchmarkHistory(benchmark_name=benchmark_name, versions=version_objs)
+
+
+def _mock_benchmarks_client(
+    entries: list | None = None,
+    model_name: str = "mock",
+) -> MagicMock:
+    if entries is None:
+        entries = [
+            _bench_history(
+                benchmark_name="Python Vulnerability Detection Benchmark",
+                versions=[
+                    (
+                        "1.0.0",
+                        [
+                            _point(timestamp="2026-08-17T16:25:46.342572", score=0.0),
+                            _point(
+                                timestamp="2026-08-23T07:04:07.219431",
+                                score=100.0,
+                                execution_id="b94248f7-f5f9-4ed8-992a-b29751b4e710",
+                            ),
+                        ],
+                    )
+                ],
+            ),
+            _bench_history(
+                benchmark_name="HumanEval",
+                versions=[
+                    (
+                        "1.0.0",
+                        [
+                            _point(
+                                timestamp="2026-08-23T06:51:00.548071",
+                                score=88.5,
+                            )
+                        ],
+                    ),
+                    (
+                        "1.1.0",
+                        [
+                            _point(
+                                timestamp="2026-08-23T06:52:51.933846",
+                                score=92.0,
+                            ),
+                            _point(
+                                timestamp="2026-08-23T06:55:00.000000",
+                                score=95.0,
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+        ]
+    mock = MagicMock()
+    mock.__enter__ = MagicMock(return_value=mock)
+    mock.__exit__ = MagicMock(return_value=False)
+    mock.get_model_benchmarks.return_value = entries
+    return mock
+
+
+def _mock_benchmarks_client_error(exc: Exception) -> MagicMock:
+    mock = MagicMock()
+    mock.__enter__ = MagicMock(return_value=mock)
+    mock.__exit__ = MagicMock(return_value=False)
+    mock.get_model_benchmarks.side_effect = exc
+    return mock
+
+
+def test_leaderboard_model_benchmarks_in_help(runner: CliRunner) -> None:
+    result = runner.invoke(main, ["leaderboard", "model", "--help"])
+    assert result.exit_code == 0
+    assert "--benchmarks" in result.output
+
+
+def test_leaderboard_model_benchmarks_human(runner: CliRunner) -> None:
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_benchmarks_client()):
+        result = runner.invoke(main, ["leaderboard", "model", "mock", "--benchmarks"])
+    assert result.exit_code == 0
+    assert "Model Benchmarks: mock" in result.output
+    # entries are sorted by benchmark name: HumanEval before Python...
+    human_idx = result.output.index("HumanEval")
+    python_idx = result.output.index("Python Vulnerability Detection Benchmark")
+    assert human_idx < python_idx
+    assert "3" in result.output          # HumanEval totals 3 runs
+    assert "2" in result.output          # HumanEval has 2 versions
+    assert "95.00" in result.output      # HumanEval latest score
+    assert "2026-08-23 06:55" in result.output
+    assert "100.00" in result.output     # Python benchmark latest score
+    assert "2026-08-23 07:04" in result.output
+
+
+def test_leaderboard_model_benchmarks_human_empty(runner: CliRunner) -> None:
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_benchmarks_client([])):
+        result = runner.invoke(main, ["leaderboard", "model", "nope", "--benchmarks"])
+    assert result.exit_code == 0
+    assert "No benchmark data for model 'nope'" in result.output
+
+
+def test_leaderboard_model_benchmarks_json_preserves_backend_structure(
+    runner: CliRunner,
+) -> None:
+    entries = [
+        _bench_history(
+            benchmark_name="HumanEval",
+            versions=[
+                (
+                    "1.0.0",
+                    [
+                        _point(
+                            timestamp="2026-08-23T06:51:00.548071",
+                            score=88.5,
+                        )
+                    ],
+                )
+            ],
+        )
+    ]
+    with patch(
+        "cli.commands.leaderboard.AtlasClient",
+        return_value=_mock_benchmarks_client(entries),
+    ):
+        result = runner.invoke(main, [
+            "--output", "json", "leaderboard", "model", "mock", "--benchmarks"
+        ])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert len(data) == 1
+    assert data[0]["benchmark_name"] == "HumanEval"
+    assert data[0]["versions"][0]["version_string"] == "1.0.0"
+    point = data[0]["versions"][0]["history"][0]
+    assert point["score"] == 88.5
+    assert point["timestamp"] == "2026-08-23T06:51:00.548071"
+    assert point["execution_id"] == "5cad9594-0f35-4e1f-9c60-cdcbd41d2cd0"
+
+
+def test_leaderboard_model_benchmarks_quiet(runner: CliRunner) -> None:
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_benchmarks_client()):
+        result = runner.invoke(main, ["--quiet", "leaderboard", "model", "mock", "--benchmarks"])
+    assert result.exit_code == 0
+    assert result.output == ""
+
+
+def test_leaderboard_model_benchmarks_passes_model_name(runner: CliRunner) -> None:
+    mock = _mock_benchmarks_client()
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+        runner.invoke(main, ["leaderboard", "model", "mock", "--benchmarks"])
+    mock.get_model_benchmarks.assert_called_once_with("mock")
+
+
+def test_leaderboard_model_history_and_benchmarks_mutually_exclusive(
+    runner: CliRunner,
+) -> None:
+    result = runner.invoke(main, [
+        "leaderboard", "model", "mock", "--history", "--benchmarks"
+    ])
+    assert result.exit_code == 2
+
+
+def test_leaderboard_model_benchmarks_401(runner: CliRunner) -> None:
+    from atlas_sdk.errors import AuthError
+
+    mock = _mock_benchmarks_client_error(AuthError(status=401, message="Unauthorized"))
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["leaderboard", "model", "mock", "--benchmarks"])
+    assert result.exit_code == 3
+
+
+def test_leaderboard_model_benchmarks_network_error(runner: CliRunner) -> None:
+    from atlas_sdk.errors import NetworkError
+
+    mock = _mock_benchmarks_client_error(NetworkError(message="Connection refused"))
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["leaderboard", "model", "mock", "--benchmarks"])
+    assert result.exit_code == 6

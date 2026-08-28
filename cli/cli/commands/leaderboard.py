@@ -8,6 +8,7 @@ Implements:
   atlas leaderboard benchmark <benchmark-version-id> --quiet
   atlas leaderboard model <model-name>
   atlas leaderboard model <model-name> --history
+  atlas leaderboard model <model-name> --benchmarks
   atlas leaderboard model <model-name> --output json
   atlas leaderboard model <model-name> --quiet
 """
@@ -15,7 +16,13 @@ Implements:
 from __future__ import annotations
 
 import click
-from atlas_sdk import AtlasClient, ModelSummary, StaticTokenSupplier, TrendPoint
+from atlas_sdk import (
+    AtlasClient,
+    ModelBenchmarkHistory,
+    ModelSummary,
+    StaticTokenSupplier,
+    TrendPoint,
+)
 
 from cli.app import Context, _pass_context
 from cli.config import AtlasConfig
@@ -116,10 +123,16 @@ def benchmark_cmd(
     is_flag=True,
     help="Show the model's execution history instead of the summary.",
 )
+@click.option(
+    "--benchmarks",
+    is_flag=True,
+    help="Show the model's per-benchmark history breakdown.",
+)
 def model_cmd(
     ctx: Context,
     model_name: str,
     history: bool,
+    benchmarks: bool,
 ) -> None:
     """Show the overall performance profile for a model.
 
@@ -127,8 +140,14 @@ def model_cmd(
 
     Without --history, calls GET /api/v1/models/{model_name}/summary.
     With --history, calls GET /api/v1/models/{model_name}/history.
+    With --benchmarks, calls GET /api/v1/models/{model_name}/benchmarks.
     Unknown model names return "no data" (exit 0), not an error.
     """
+    if history and benchmarks:
+        raise click.UsageError(
+            "--history and --benchmarks are mutually exclusive."
+        )
+
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
 
@@ -142,6 +161,8 @@ def model_cmd(
         ) as client:
             if history:
                 points = client.get_model_history(model_name)
+            elif benchmarks:
+                entries = client.get_model_benchmarks(model_name)
             else:
                 summary = client.get_model_summary(model_name)
     except Exception as exc:
@@ -149,6 +170,8 @@ def model_cmd(
 
     if history:
         _render_history(points, model_name, output_mode)
+    elif benchmarks:
+        _render_benchmarks(entries, model_name, output_mode)
     else:
         _render_summary(summary, output_mode)
 
@@ -203,4 +226,44 @@ def _render_history(points: list[TrendPoint], model_name: str, output_mode: str)
             ["Timestamp", "Score", "Rank", "Benchmark", "Execution"],
             rows_data,
             title=f"Model History: {model_name}",
+        )
+
+
+def _render_benchmarks(
+    entries: list[ModelBenchmarkHistory],
+    model_name: str,
+    output_mode: str,
+) -> None:
+    if output_mode == "json":
+        render_json([entry.model_dump(mode="json") for entry in entries])
+    elif output_mode == "quiet":
+        pass
+    else:
+        if not entries:
+            click.echo(f"  No benchmark data for model '{model_name}'")
+            return
+
+        rows_data: list[list[str]] = []
+        for entry in entries:
+            all_points = [p for v in entry.versions for p in v.history]
+            total_runs = len(all_points)
+            num_versions = len(entry.versions)
+
+            latest = max(
+                all_points,
+                key=lambda p: (p.timestamp, str(p.execution_id)),
+            )
+            rows_data.append([
+                entry.benchmark_name,
+                str(num_versions),
+                str(total_runs),
+                f"{latest.score:.2f}",
+                latest.timestamp.strftime("%Y-%m-%d %H:%M"),
+            ])
+
+        rows_data.sort(key=lambda row: row[0])
+        render_table(
+            ["Benchmark", "Versions", "Runs", "Latest Score", "Updated"],
+            rows_data,
+            title=f"Model Benchmarks: {model_name}",
         )

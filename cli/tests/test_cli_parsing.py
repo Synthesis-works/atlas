@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import pytest
 from click.testing import CliRunner
 
-from cli.app import main
+from cli.app import entrypoint, main
 
 
 def test_help_exits_zero(runner: CliRunner) -> None:
@@ -43,3 +44,46 @@ def test_health_in_help(runner: CliRunner) -> None:
 def test_output_flag_invalid(runner: CliRunner) -> None:
     result = runner.invoke(main, ["--output", "invalid"])
     assert result.exit_code != 0
+
+
+# ── entrypoint (console script) behavior ─────────────────────────────────
+#
+# Tests invoke ``main`` via CliRunner, which swallows click exceptions and
+# reports exit code 2.  The real ``atlas`` executable runs ``entrypoint``
+# with standalone_mode=False, so it must translate click usage errors
+# itself (clean stderr message, exit 2, no traceback).
+
+
+def test_entrypoint_unknown_command_exits_2(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr("sys.argv", ["atlas", "nonexistent"])
+    with pytest.raises(SystemExit) as exc_info:
+        entrypoint()
+    assert exc_info.value.code == 2
+    assert "Error:" in capsys.readouterr().err
+
+
+def test_entrypoint_invalid_choice_exits_2(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr("sys.argv", ["atlas", "activity", "--type", "bogus"])
+    with pytest.raises(SystemExit) as exc_info:
+        entrypoint()
+    assert exc_info.value.code == 2
+    captured = capsys.readouterr().err
+    assert "bogus" in captured
+    assert "Traceback" not in captured
+
+
+def test_entrypoint_mutually_exclusive_exits_2(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        "sys.argv",
+        ["atlas", "leaderboard", "model", "mock", "--history", "--benchmarks"],
+    )
+    with pytest.raises(SystemExit) as exc_info:
+        entrypoint()
+    assert exc_info.value.code == 2
+    assert "mutually exclusive" in capsys.readouterr().err
