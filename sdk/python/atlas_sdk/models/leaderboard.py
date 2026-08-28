@@ -82,3 +82,26 @@ class TrendPoint(BaseModel):
     rank: int | None = None
     benchmark_version: str | None = None
     execution_id: str
+
+
+class ModelBenchmarkVersionHistory(BaseModel):
+    """History for one version of a benchmark for a single model.
+
+    Mirrors ``apps/backend/schemas/leaderboard.py::ModelBenchmarkVersionHistory``.
+    """
+
+    version_string: str
+    history: list[TrendPoint]
+
+
+class ModelBenchmarkHistory(BaseModel):
+    """A model's performance history grouped by benchmark.
+
+    Mirrors ``apps/backend/schemas/leaderboard.py::ModelBenchmarkHistory``.
+    Returned as bare ``list[ModelBenchmarkHistory]`` by
+    ``GET /api/v1/models/{model_name}/benchmarks``.  An unknown model
+    yields a 200 with an empty list, not a 404.
+    """
+
+    benchmark_name: str
+    versions: list[ModelBenchmarkVersionHistory]

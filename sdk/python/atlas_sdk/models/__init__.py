@@ -10,6 +10,16 @@ from atlas_sdk.models.benchmarks import (
     BenchmarkVersionRead,
     PageResponse,
 )
+from atlas_sdk.models.dashboard import (
+    DashboardActivity,
+    DashboardCapability,
+    DashboardCapabilityScore,
+    DashboardHierarchy,
+    DashboardItem,
+    DashboardRuntime,
+    DashboardSnapshot,
+    DashboardSummary,
+)
 from atlas_sdk.models.executions import (
     ArtifactResponse,
     ExecutionAttemptResponse,
@@ -20,10 +30,13 @@ from atlas_sdk.models.executions import (
     ExecutionState,
 )
 from atlas_sdk.models.health import HealthData, LivenessResponse, ReadinessResponse
+from atlas_sdk.models.history import ExecutionHistoryRead, ModelActivityRead
 from atlas_sdk.models.leaderboard import (
     LeaderboardEntryRead,
     LeaderboardRead,
     LeaderboardType,
+    ModelBenchmarkHistory,
+    ModelBenchmarkVersionHistory,
     ModelSummary,
     TrendPoint,
 )
@@ -48,6 +61,14 @@ __all__ = [
     "BenchmarkRead",
     "BenchmarkVersionRead",
     "PageResponse",
+    "DashboardActivity",
+    "DashboardCapability",
+    "DashboardCapabilityScore",
+    "DashboardHierarchy",
+    "DashboardItem",
+    "DashboardRuntime",
+    "DashboardSnapshot",
+    "DashboardSummary",
     "ArtifactResponse",
     "ExecutionAttemptResponse",
     "ExecutionCreateRequest",
@@ -55,12 +76,16 @@ __all__ = [
     "ExecutionPage",
     "ExecutionResponse",
     "ExecutionState",
+    "ExecutionHistoryRead",
+    "ModelActivityRead",
     "HealthData",
     "LivenessResponse",
     "ReadinessResponse",
     "LeaderboardEntryRead",
     "LeaderboardRead",
     "LeaderboardType",
+    "ModelBenchmarkHistory",
+    "ModelBenchmarkVersionHistory",
     "ModelSummary",
     "TrendPoint",
     "PaginatedReportRunsRead",

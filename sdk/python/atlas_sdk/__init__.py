@@ -22,6 +22,16 @@ from atlas_sdk.models.benchmarks import (
     BenchmarkVersionRead,
     PageResponse,
 )
+from atlas_sdk.models.dashboard import (
+    DashboardActivity,
+    DashboardCapability,
+    DashboardCapabilityScore,
+    DashboardHierarchy,
+    DashboardItem,
+    DashboardRuntime,
+    DashboardSnapshot,
+    DashboardSummary,
+)
 from atlas_sdk.models.executions import (
     ArtifactResponse,
     ExecutionAttemptResponse,
@@ -31,10 +41,13 @@ from atlas_sdk.models.executions import (
     ExecutionResponse,
     ExecutionState,
 )
+from atlas_sdk.models.history import ExecutionHistoryRead, ModelActivityRead
 from atlas_sdk.models.leaderboard import (
     LeaderboardEntryRead,
     LeaderboardRead,
     LeaderboardType,
+    ModelBenchmarkHistory,
+    ModelBenchmarkVersionHistory,
     ModelSummary,
     TrendPoint,
 )
@@ -55,8 +68,17 @@ __all__ = [
     "BenchmarkRead",
     "BenchmarkVersionRead",
     "ConflictError",
+    "DashboardActivity",
+    "DashboardCapability",
+    "DashboardCapabilityScore",
+    "DashboardHierarchy",
+    "DashboardItem",
+    "DashboardRuntime",
+    "DashboardSnapshot",
+    "DashboardSummary",
     "ExecutionAttemptResponse",
     "ExecutionCreateRequest",
+    "ExecutionHistoryRead",
     "ExecutionListResponse",
     "ExecutionPage",
     "ExecutionResponse",
@@ -65,6 +87,9 @@ __all__ = [
     "LeaderboardEntryRead",
     "LeaderboardRead",
     "LeaderboardType",
+    "ModelActivityRead",
+    "ModelBenchmarkHistory",
+    "ModelBenchmarkVersionHistory",
     "ModelSummary",
     "TrendPoint",
     "NetworkError",

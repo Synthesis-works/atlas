@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import re
 import time
+from collections.abc import Callable
 from typing import Any, TypeVar
 from urllib.parse import urlparse
 
@@ -29,9 +30,16 @@ from atlas_sdk.models.benchmarks import (
     BenchmarkVersionRead,
     PageResponse,
 )
+from atlas_sdk.models.dashboard import DashboardSnapshot
 from atlas_sdk.models.executions import ExecutionPage, ExecutionResponse
 from atlas_sdk.models.health import HealthData, LivenessResponse, ReadinessResponse
-from atlas_sdk.models.leaderboard import LeaderboardRead, ModelSummary, TrendPoint
+from atlas_sdk.models.history import ExecutionHistoryRead, ModelActivityRead
+from atlas_sdk.models.leaderboard import (
+    LeaderboardRead,
+    ModelBenchmarkHistory,
+    ModelSummary,
+    TrendPoint,
+)
 from atlas_sdk.models.reports import (
     DownloadResult,
     PaginatedReportRunsRead,
@@ -244,6 +252,22 @@ class AtlasClient:
                 message=f"Response does not match expected schema: {exc}",
             ) from exc
         return envelope.data
+
+    def _parse_bare(
+        self, response: httpx.Response, builder: Callable[[Any], T]
+    ) -> T:
+        """Validate and build a bare (non-enveloped) response payload.
+
+        Used for endpoints that return the model directly instead of
+        wrapping it in ``APIResponse``.
+        """
+        try:
+            return builder(response.json())
+        except Exception as exc:
+            raise ValidationError(
+                status=response.status_code,
+                message=f"Response does not match expected schema: {exc}",
+            ) from exc
 
     def _get(self, path: str, *, params: dict[str, Any] | None = None) -> httpx.Response:
         return self._do_request("GET", path, params=params, retry=True)
@@ -524,7 +548,83 @@ class AtlasClient:
         wrapped in ``APIResponse``), like the execution endpoints.
         """
         response = self._get_raw(f"/api/v1/models/{model_name}/history")
-        return [TrendPoint.model_validate(item) for item in response.json()]
+        return self._parse_bare(
+            response,
+            lambda raw: [TrendPoint.model_validate(item) for item in raw],
+        )
+
+    def get_model_benchmarks(
+        self, model_name: str
+    ) -> list[ModelBenchmarkHistory]:
+        """Fetch a model's performance history grouped by benchmark.
+
+        ``GET /api/v1/models/{model_name}/benchmarks``
+
+        Returns a list of ``ModelBenchmarkHistory``, each with the
+        benchmark name and per-version ``TrendPoint`` timelines.  Unknown
+        model names are not a 404: the backend returns a 200 with an
+        empty list.
+
+        Note: this endpoint returns ``list[ModelBenchmarkHistory]``
+        directly (not wrapped in ``APIResponse``), like the execution
+        endpoints.
+        """
+        response = self._get_raw(f"/api/v1/models/{model_name}/benchmarks")
+        return self._parse_bare(
+            response,
+            lambda raw: [
+                ModelBenchmarkHistory.model_validate(item) for item in raw
+            ],
+        )
+
+    def get_dashboard(self) -> DashboardSnapshot:
+        """Fetch the aggregated workspace dashboard snapshot.
+
+        ``GET /api/v1/dashboard``
+
+        Returns a ``DashboardSnapshot`` with run counters, resource
+        hierarchy, recent executions, activity timeline, and runtime
+        metrics.
+
+        Note: this endpoint returns the dict directly (not wrapped in
+        ``APIResponse``).
+        """
+        response = self._get_raw("/api/v1/dashboard")
+        return self._parse_bare(response, DashboardSnapshot.model_validate)
+
+    # -- activity --
+
+    def get_recent_benchmarks(self, *, limit: int = 10) -> list[BenchmarkRead]:
+        """Fetch the most recently published benchmarks globally.
+
+        ``GET /api/v1/history/benchmarks/recent``
+        """
+        response = self._get(
+            "/api/v1/history/benchmarks/recent", params={"limit": limit}
+        )
+        return self._unwrap(response, list[BenchmarkRead])
+
+    def get_recent_executions(
+        self, *, limit: int = 10
+    ) -> list[ExecutionHistoryRead]:
+        """Fetch the most recent executions globally.
+
+        ``GET /api/v1/history/executions/recent``
+        """
+        response = self._get(
+            "/api/v1/history/executions/recent", params={"limit": limit}
+        )
+        return self._unwrap(response, list[ExecutionHistoryRead])
+
+    def get_recent_models(self, *, limit: int = 10) -> list[ModelActivityRead]:
+        """Fetch the most recently active target models globally.
+
+        ``GET /api/v1/history/models/recent``
+        """
+        response = self._get(
+            "/api/v1/history/models/recent", params={"limit": limit}
+        )
+        return self._unwrap(response, list[ModelActivityRead])
 
     # -- reports --
 

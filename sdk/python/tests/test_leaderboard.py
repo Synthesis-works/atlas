@@ -25,6 +25,7 @@ from atlas_sdk.models.leaderboard import (
     LeaderboardEntryRead,
     LeaderboardRead,
     LeaderboardType,
+    ModelBenchmarkHistory,
     ModelSummary,
     TrendPoint,
 )
@@ -564,7 +565,7 @@ class TestGetModelHistory:
             method="GET",
             url=_history_url("mock"),
             status_code=500,
-            json=_err(500, "INTERNAL", "something broke"),
+json=_err(500, "INTERNAL", "something broke"),
         )
         client = AtlasClient("http://localhost:8000", max_retries=0)
         with pytest.raises(ServerError):
@@ -578,4 +579,141 @@ class TestGetModelHistory:
         client = AtlasClient("http://localhost:8000", max_retries=0)
         with pytest.raises(NetworkError):
             client.get_model_history("mock")
+        client.close()
+# -- ModelBenchmarkHistory (model benchmarks) ------------------------------
+
+
+def _bench_mark_payload(**overrides: object) -> dict:
+    """Realistic bare ``ModelBenchmarkHistory`` payload (shape recorded from the live API)."""
+    payload: dict = {
+        "benchmark_name": "Python Vulnerability Detection Benchmark",
+        "versions": [
+            {
+                "version_string": "1.0.0",
+                "history": [
+                    {
+                        "timestamp": "2026-08-17T16:25:46.342572",
+                        "score": 0.0,
+                        "rank": None,
+                        "benchmark_version": "15f01fef-bd6c-457c-a041-101dbc6c8740",
+                        "execution_id": "5cad9594-0f35-4e1f-9c60-cdcbd41d2cd0",
+                    },
+                    {
+                        "timestamp": "2026-08-23T07:04:07.219431",
+                        "score": 100.0,
+                        "rank": 1,
+                        "benchmark_version": "181d1c91-15f9-43e7-866d-33809aaaedf1",
+                        "execution_id": "b94248f7-f5f9-4ed8-992a-b29751b4e710",
+                    },
+                ],
+            }
+        ],
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _benchmarks_url(model_name: str) -> str:
+    return f"http://localhost:8000/api/v1/models/{model_name}/benchmarks"
+
+
+class TestModelBenchmarkHistoryDto:
+    """DTO field-for-field contract with the wire payload."""
+
+    def test_models_parse_live_payload_shape(self) -> None:
+        entry = ModelBenchmarkHistory.model_validate(_bench_mark_payload())
+        assert entry.benchmark_name == "Python Vulnerability Detection Benchmark"
+        assert len(entry.versions) == 1
+        version = entry.versions[0]
+        assert version.version_string == "1.0.0"
+        assert len(version.history) == 2
+        first = version.history[0]
+        assert first.timestamp.isoformat() == "2026-08-17T16:25:46.342572"
+        assert first.score == 0.0
+        assert first.rank is None
+        second = version.history[1]
+        assert second.score == 100.0
+        assert second.rank == 1
+        assert second.execution_id == "b94248f7-f5f9-4ed8-992a-b29751b4e710"
+
+    def test_model_dump_round_trips_wire_shape(self) -> None:
+        entry = ModelBenchmarkHistory.model_validate(_bench_mark_payload())
+        dumped = entry.model_dump(mode="json")
+        assert dumped["benchmark_name"] == "Python Vulnerability Detection Benchmark"
+        assert dumped["versions"][0]["version_string"] == "1.0.0"
+        assert dumped["versions"][0]["history"][1]["score"] == 100.0
+        assert dumped["versions"][0]["history"][1]["rank"] == 1
+
+
+class TestGetModelBenchmarks:
+    def test_success_parses_list(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_benchmarks_url("mock"),
+            json=[
+                _bench_mark_payload(),
+                _bench_mark_payload(benchmark_name="HumanEval"),
+            ],
+        )
+        client = AtlasClient("http://localhost:8000")
+        result = client.get_model_benchmarks("mock")
+        assert len(result) == 2
+        assert result[0].benchmark_name == "Python Vulnerability Detection Benchmark"
+        assert result[0].versions[0].version_string == "1.0.0"
+        assert result[0].versions[0].history[1].score == 100.0
+        assert result[1].benchmark_name == "HumanEval"
+        client.close()
+
+    def test_unknown_model_parses_empty_list(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(method="GET", url=_benchmarks_url("nope"), json=[])
+        client = AtlasClient("http://localhost:8000")
+        result = client.get_model_benchmarks("nope")
+        assert result == []
+        client.close()
+
+    def test_401_raises_auth_error(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_benchmarks_url("mock"),
+            status_code=401,
+            json=_err(401, "UNAUTHORIZED", "Token expired"),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(AuthError) as exc_info:
+            client.get_model_benchmarks("mock")
+        assert exc_info.value.status == 401
+        client.close()
+
+    def test_403_raises_forbidden_error(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_benchmarks_url("mock"),
+            status_code=403,
+            json=_err(403, "FORBIDDEN", "Insufficient permissions"),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(ForbiddenError) as exc_info:
+            client.get_model_benchmarks("mock")
+        assert exc_info.value.status == 403
+        client.close()
+
+    def test_500_raises_server_error(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_benchmarks_url("mock"),
+            status_code=500,
+            json=_err(500, "INTERNAL", "something broke"),
+        )
+        client = AtlasClient("http://localhost:8000", max_retries=0)
+        with pytest.raises(ServerError):
+            client.get_model_benchmarks("mock")
+        client.close()
+
+    def test_network_error_raises_network_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_exception(httpx.ConnectError("connection refused"))
+        client = AtlasClient("http://localhost:8000", max_retries=0)
+        with pytest.raises(NetworkError):
+            client.get_model_benchmarks("mock")
         client.close()
