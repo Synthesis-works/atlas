@@ -88,6 +88,8 @@ def main(
 
 
 # ── command registration ───────────────────────────────────────────────
+from cli.commands.auth import login_cmd as _login_cmd  # noqa: E402
+from cli.commands.auth import logout_cmd as _logout_cmd  # noqa: E402
 from cli.commands.auth import whoami_cmd as _whoami_cmd  # noqa: E402
 from cli.commands.benchmark import benchmark_group as _benchmark_group  # noqa: E402
 from cli.commands.health import health_cmd as _health_cmd  # noqa: E402
@@ -95,6 +97,8 @@ from cli.commands.leaderboard import leaderboard_group as _leaderboard_group  # 
 from cli.commands.report import report_group as _report_group  # noqa: E402
 from cli.commands.run import run_group as _run_group  # noqa: E402
 
+main.add_command(_login_cmd)  # type: ignore[has-type]
+main.add_command(_logout_cmd)  # type: ignore[has-type]
 main.add_command(_whoami_cmd)  # type: ignore[has-type]
 main.add_command(_benchmark_group)  # type: ignore[has-type]
 main.add_command(_health_cmd)  # type: ignore[has-type]

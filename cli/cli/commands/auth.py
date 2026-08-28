@@ -1,9 +1,12 @@
-"""auth commands — whoami (Phase 1).
+"""auth commands — whoami, login, logout.
 
 Implements:
   atlas whoami          (human-readable output)
   atlas whoami --json   (JSON output)
   atlas whoami --quiet  (no output, exit code only)
+  atlas login           (persist credentials for future commands)
+  atlas login --email <email> --password-stdin
+  atlas logout
 """
 
 from __future__ import annotations
@@ -14,8 +17,9 @@ import click
 from atlas_sdk import AtlasClient, StaticTokenSupplier
 
 from cli.app import Context, _pass_context
-from cli.config import AtlasConfig
-from cli.errors import ExitCode, exit_code_for_error
+from cli.config import AtlasConfig, clear_saved_token, save_profile
+from cli.errors import ExitCode
+from cli.output.errors import error_exit
 from cli.output.json import render_json, render_json_error
 from cli.output.table import render_kv
 
@@ -43,16 +47,7 @@ def whoami_cmd(ctx: Context) -> None:
         with AtlasClient(cfg.base_url, token_supplier=supplier, timeout=cfg.timeout) as client:
             user = client.whoami()
     except Exception as exc:
-        if output_mode == "json":
-            render_json_error(
-                status=getattr(exc, "status", 0),
-                code=getattr(exc, "code", "UNKNOWN"),
-                message=str(exc),
-                details=getattr(exc, "details", None),
-            )
-        else:
-            click.echo(f"error: {exc}", err=True)
-        sys.exit(exit_code_for_error(exc))
+        error_exit(exc, output_mode)
 
     if output_mode == "json":
         render_json(user.model_dump(mode="json"))
@@ -68,3 +63,77 @@ def whoami_cmd(ctx: Context) -> None:
             ("Verified", "yes" if user.is_verified else "no"),
         ]
         render_kv(rows, title="Atlas User")
+
+
+@click.command(name="login")
+@click.option("--email", default=None, help="Account email address.")
+@click.option(
+    "--password-stdin",
+    is_flag=True,
+    default=False,
+    help="Read the password from standard input.",
+)
+@_pass_context
+def login_cmd(ctx: Context, email: str | None, password_stdin: bool) -> None:
+    """Authenticate and save credentials for future commands.
+
+    The access token is persisted in the current user's profile and is
+    never printed.  The active base URL is saved alongside it.
+    """
+    cfg: AtlasConfig = ctx.config
+    output_mode = cfg.effective_output()
+
+    if not email:
+        email = click.prompt("Email", type=str)
+
+    if password_stdin:
+        password = sys.stdin.readline().rstrip("\r\n")
+        if not password:
+            msg = "No password received on stdin."
+            if output_mode == "json":
+                render_json_error(status=422, code="VALIDATION_ERROR", message=msg)
+            else:
+                click.echo(f"error: {msg}", err=True)
+            sys.exit(ExitCode.VALIDATION)
+    else:
+        password = click.prompt("Password", hide_input=True)
+
+    try:
+        with AtlasClient(cfg.base_url, timeout=cfg.timeout) as client:
+            token = client.login(email=email, password=password).access_token
+    except Exception as exc:
+        error_exit(exc, output_mode)
+
+    save_profile(token=token, base_url=cfg.base_url, profile=cfg.profile)
+
+    if output_mode == "json":
+        render_json({
+            "success": True,
+            "email": email,
+            "base_url": cfg.base_url,
+            "profile": cfg.profile,
+        })
+    elif output_mode == "quiet":
+        pass
+    else:
+        click.echo(f"Logged in as {email}")
+
+
+@click.command(name="logout")
+@_pass_context
+def logout_cmd(ctx: Context) -> None:
+    """Clear stored credentials for this profile.
+
+    Does not contact the backend and succeeds even if nothing is stored.
+    """
+    cfg: AtlasConfig = ctx.config
+    output_mode = cfg.effective_output()
+
+    clear_saved_token(profile=cfg.profile)
+
+    if output_mode == "json":
+        render_json({"success": True, "logged_out": True, "profile": cfg.profile})
+    elif output_mode == "quiet":
+        pass
+    else:
+        click.echo("Logged out")
