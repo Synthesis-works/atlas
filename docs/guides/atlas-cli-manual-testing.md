@@ -72,7 +72,7 @@ atlas --version                               # "atlas, version 0.1.0" — or ad
 
 If you see them, **skip straight to the Quickstart** and do NOT run `pip install` again.
 
-> **Why a plain `pip install` fails here:** `pip install -e …` (and `uv pip install -e …`) first create an isolated build environment and **download `setuptools` and the deps from PyPI**. This machine currently has **no internet** (`pypi.org` DNS fails), so those commands die with `NameResolutionError` / `No such host is known.` — BEFORE touching anything. That error does NOT mean the CLI is missing or broken.
+> **Why a plain `pip install` can fail here:** `pip install -e …` (and `uv pip install -e …`) first create an isolated build environment and **download `setuptools` and the deps from PyPI**. When `pypi.org` is unreachable those commands die with `NameResolutionError` / `No such host is known.` — BEFORE touching anything. That error does NOT mean the CLI is missing or broken; use the offline path in §2.1. Fresh-machine online install (`pip install -e ./sdk/python -e ./cli` into a clean venv) was verified 2026-08-28: deps resolve from PyPI, editable wheels build, and the resulting `atlas` console script works from any folder.
 
 ### 2.1 Offline install — everything needed is already in your Python env
 
@@ -97,7 +97,7 @@ python -m pip install -e ./sdk/python -e ./cli
 | # | Option | Command | Works from any folder? | Notes |
 |---|---|---|---|---|
 | A | Recommended | `atlas <args>` — after adding `C:\Users\Sujal\AppData\Local\Python\pythoncore-3.14-64\Scripts` to `PATH` | yes | Installed console script. Fully bypasses the folder-name clash. Used throughout this guide. |
-| B | Ad-hoc runner | `$env:PYTHONPATH="D:\atlas\cli;D:\atlas\sdk\python"` (once per shell), then `python -c "from cli.app import main; main()" <args>` | yes | Same behavior as A for commands, but usage errors are clean exit 2 here vs. traceback under the installed script (§10.5). |
+| B | Ad-hoc runner | `$env:PYTHONPATH="D:\atlas\cli;D:\atlas\sdk\python"` (once per shell), then `python -c "from cli.app import main; main()" <args>` | yes | Same behavior as A incl. exit-2 usage errors; no PATH change needed. |
 | C | cd into the package dir | `cd D:\atlas\cli`, then `python -c "from cli.app import main; main()" <args>` | only `D:\atlas\cli` | Good fallback if you don't want to set an env var. |
 
 > **`uv` is NOT a drop-in for the CLI here.** The repo's root `uv sync` installs the `atlas` *app*, not the CLI. If you want a Poetry/`uv`-managed venv plus the CLI installed into it, install the CLI inside that venv (`& <venv>\Scripts\python -m pip install -e .\sdk\python -e .\cli`). Do not run `uv` at the repo root expecting the CLI to appear.
