@@ -1,8 +1,12 @@
-"""Tests for config precedence — CLI flags > env vars > defaults."""
+"""Tests for config precedence — CLI flags > env vars > profile > defaults."""
 
 from __future__ import annotations
 
-from cli.config import load_config
+from pathlib import Path
+
+import pytest
+
+from cli.config import clear_saved_token, default_config_path, load_config, save_profile
 
 
 def test_defaults() -> None:
@@ -79,3 +83,51 @@ def test_quiet_overrides_output() -> None:
 def test_output_passthrough() -> None:
     cfg = load_config(output="json")
     assert cfg.effective_output() == "json"
+
+
+def test_load_config_uses_saved_token_when_env_token_is_absent(tmp_path: Path) -> None:
+    path = tmp_path / "config.toml"
+    save_profile(token="saved-token", base_url="http://localhost:8000", config_path=path)
+    cfg = load_config(config_path=path)
+    assert cfg.token == "saved-token"
+
+
+def test_load_config_uses_saved_base_url(tmp_path: Path) -> None:
+    path = tmp_path / "config.toml"
+    save_profile(token="t", base_url="http://saved:9000", config_path=path)
+    cfg = load_config(config_path=path)
+    assert cfg.base_url == "http://saved:9000"
+
+
+def test_environment_token_overrides_saved_token(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "config.toml"
+    save_profile(token="saved-token", base_url="http://localhost:8000", config_path=path)
+    monkeypatch.setenv("ATLAS_TOKEN", "env-token")
+    assert load_config(config_path=path).token == "env-token"
+
+
+def test_environment_base_url_overrides_saved_base_url(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "config.toml"
+    save_profile(token="t", base_url="http://saved:9000", config_path=path)
+    monkeypatch.setenv("ATLAS_BASE_URL", "http://env:7000")
+    assert load_config(config_path=path).base_url == "http://env:7000"
+
+
+def test_clear_saved_token_preserves_base_url(tmp_path: Path) -> None:
+    path = tmp_path / "config.toml"
+    save_profile(token="saved-token", base_url="http://localhost:8000", config_path=path)
+    clear_saved_token(config_path=path)
+    cfg = load_config(config_path=path)
+    assert cfg.token is None
+    assert cfg.base_url == "http://localhost:8000"
+
+
+def test_default_config_path_under_appdata(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("APPDATA", str(tmp_path))
+    assert default_config_path() == tmp_path / "Atlas" / "config.toml"
