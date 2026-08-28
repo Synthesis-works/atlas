@@ -582,7 +582,7 @@ Behavior notes (all verified live):
 - **Anchor (403 for test users — §10.3):** `66666666-6666-6666-6666-666666666666`
 
 ```powershell
-atlas leaderboard benchmark 66666666-6666-6666-6666-666666666666      # → exit 4 currently
+atlas leaderboard benchmark 66666666-6666-6666-6666-666666666666      # → exit 5 currently (unknown version id → 404)
 atlas leaderboard benchmark 66666666-6666-6666-6666-666666666666 --limit 50
 ```
 
