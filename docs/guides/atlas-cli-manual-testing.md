@@ -259,13 +259,15 @@ atlas
 ├─ logout
 ├─ whoami
 ├─ health
+├─ dashboard
+├─ activity [--type benchmarks|executions|models] [--limit]
 ├─ benchmark
 │  ├─ list
 │  ├─ get BENCHMARK_ID
 │  └─ versions BENCHMARK_ID
 ├─ leaderboard
-│  ├─ benchmark BENCHMARK_ID
-│  └─ model MODEL_NAME [--history]
+│  ├─ benchmark BENCHMARK_ID [--limit] [--offset]
+│  └─ model MODEL_NAME [--history | --benchmarks]
 ├─ run
 │  ├─ submit BENCHMARK_VERSION_ID [--target-model] [--dataset-version-id]
 │  ├─ get EXECUTION_ID
@@ -288,7 +290,7 @@ Defined in `cli/errors.py`; commands exit via `error_exit()` (`cli/output/errors
 |---|---|---|
 | 0 | Success | — |
 | 1 | Unspecified / server / degraded | Backend 5xx; `health` when any probe is unreachable |
-| 2 | Usage error | Unknown option, bad choice (`--format xml`), unknown command (when using the `main()` entrypoint) |
+| 2 | Usage error | Unknown option, bad choice (`--format xml`), unknown command, or mutually exclusive flags (e.g. `leaderboard model --history --benchmarks`). Clean `Error: …` on stderr — no traceback. |
 | 3 | Auth required | Missing/invalid/expired token; 401 |
 | 4 | Forbidden | 403 (e.g. project/org membership) |
 | 5 | Not found | 404 (e.g. unknown run/execution) |
@@ -571,6 +573,65 @@ Behavior notes (all verified live):
 - No token → 401 → exit 3.
 - Invalid `--output-file` location (e.g. non-existent parent dir) → Python `FileNotFoundError` propagates as an unhandled traceback with a non-zero exit (see §10.6).
 
+### 7.6 `atlas leaderboard …`
+
+#### `atlas leaderboard benchmark BENCHMARK_ID`
+
+- **API:** `GET /api/v1/benchmarks/{benchmark_version_id}/leaderboard`
+- **Options:** `--limit INTEGER` (default 20), `--offset INTEGER` (default 0)
+- **Anchor (403 for test users — §10.3):** `66666666-6666-6666-6666-666666666666`
+
+```powershell
+atlas leaderboard benchmark 66666666-6666-6666-6666-666666666666      # → exit 4 currently
+atlas leaderboard benchmark 66666666-6666-6666-6666-666666666666 --limit 50
+```
+
+Human output is a ranked table (`Rank`, `Model Name`, `Avg Score %`, `Runs`, `Last Run At`); JSON = ranked model dump.
+
+#### `atlas leaderboard model MODEL_NAME [--history | --benchmarks]`
+
+- **API:** summary `GET /api/v1/models/{name}/summary`; history `GET /api/v1/models/{name}/history`; benchmarks `GET /api/v1/models/{name}/benchmarks`
+- **Options:** `--history` / `--benchmarks` are **mutually exclusive** (both → usage error, exit 2)
+- **Anchor (verified, exit 0):** `mock`
+
+```powershell
+atlas leaderboard model mock                    # summary block / table
+atlas leaderboard model mock --history          # per-run execution history
+atlas leaderboard model mock --benchmarks       # per-benchmark breakdown
+atlas leaderboard model mock --history --benchmarks; echo "exit=$LASTEXITCODE"   # 2
+atlas leaderboard model does-not-exist --benchmarks; echo "exit=$LASTEXITCODE"   # 0, "(no benchmark data)"
+```
+
+Default summary (no flag) shows model `Avg Score`, total/`Computed`/`Healthy` runs, and the last run timestamp; `--history` renders each execution (`Timestamp`, `Status`, `Score`, `Execution ID`); `--benchmarks` propagates each benchmark's `Name`, `Version`, run count, latest `Score`, `Timestamp`, `Execution ID` (latest = max `(timestamp, execution_id)`). Unknown model names are **not** an error — they print `(no data)` / `(no benchmark data …)` and exit 0.
+
+### 7.7 `atlas dashboard`
+
+- **API:** `GET /api/v1/dashboard` (bare response, unauthenticated-friendly)
+- **Args/options:** none
+
+```powershell
+atlas dashboard
+atlas dashboard --output json
+atlas --quiet dashboard; echo "exit=$LASTEXITCODE"   # 0
+```
+
+Human output (verified) is three blocks: **Recent Runs** (a deduped table of job submissions — `Job ID`, `Benchmark`, `Model`, `Status`, `Queued`), **Recent Activity** (latest `Benchmark Read` / `Execution History` / `Model Activity` lines), and **Runtime Stats** (`DB`, `Storage`, `Queue`). Empty activity renders `(no recent activity)`. JSON keys match the SDK `DashboardSnapshot` (summary, hierarchy, running_jobs, recent_verified_runs, active_executions, activity, runtime, capability).
+
+### 7.8 `atlas activity`
+
+- **API:** `GET /api/v1/history/{benchmarks|executions|models}/recent?limit=N`
+- **Options:** `--type [benchmarks|executions|models]` (default `benchmarks`), `--limit INTEGER` (default 10)
+
+```powershell
+atlas activity                                  # benchmarks by default
+atlas activity --type executions --limit 5
+atlas activity --type models
+atlas activity --output json                    # only the requested section is included
+atlas activity --type bogus; echo "exit=$LASTEXITCODE"    # 2 (invalid Choice)
+```
+
+Human output is a per-section `Recent <Type>` table (`Timestamp`, `Name`/`Status`/`ID` as appropriate). JSON payload contains **only** the requested type's key (`benchmarks`, `executions`, or `models` — verified), each entry dumping its `Recent*Read` fields.
+
 ---
 
 ## 8. End-to-end copy/paste smoke-test sequence
@@ -583,14 +644,17 @@ $env:PATH += ";C:\Users\Sujal\AppData\Local\Python\pythoncore-3.14-64\Scripts"
 cd D:\atlas   # from the repo root so relative export paths are under D:\atlas
 ```
 
-> If you'd rather drive the underlying `main()` entrypoint directly (for the exit-2 usage behavior, §10.5), define `$PY = "python -c `"from cli.app import main; main()`""`, invoke **it** in place of `atlas` below, and add the `$env:PYTHONPATH` line from §5.1.
+> If you'd rather drive the underlying `main()` entrypoint directly, define `$PY = "python -c `"from cli.app import main; main()`""`, invoke **it** in place of `atlas` below, and add the `$env:PYTHONPATH` line from §5.1.
 
 ### 8.1 Version and help
 
 ```powershell
 atlas --version                    # atlas, version 0.1.0   (exit 0)
 atlas --help                       # usage + commands        (exit 0)
+atlas dashboard --help
+atlas activity --help
 atlas benchmark --help
+atlas leaderboard model --help     # mentions --history and --benchmarks
 atlas run --help
 atlas report --help
 ```
@@ -723,6 +787,26 @@ atlas whoami; echo "exit=$LASTEXITCODE"                               # 3
 Get-Content "$env:APPDATA\Atlas\config.toml"                          # [default] + base_url only, no token
 ```
 
+### 8.12 Dashboard, activity, and model benchmark smoke (live-verified)
+
+```powershell
+# dashboard: human / json / quiet
+atlas dashboard; echo "exit=$LASTEXITCODE"                            # 0, Runs + Activity + Runtime blocks
+atlas --output json dashboard | Out-Null; echo "exit=$LASTEXITCODE"   # 0, one JSON doc
+atlas --quiet dashboard; echo "exit=$LASTEXITCODE"                    # 0, no output
+
+# activity: default and filtered
+atlas activity; echo "exit=$LASTEXITCODE"                             # 0, Recent Benchmarks
+atlas activity --type executions --limit 5; echo "exit=$LASTEXITCODE" # 0
+atlas --output json activity --type models | Select-String '"models"' # JSON contains only the models key
+atlas activity --type bogus; echo "exit=$LASTEXITCODE"                # 2, "Invalid value for '--type'"
+
+# leaderboard model --benchmarks
+atlas leaderboard model mock --benchmarks; echo "exit=$LASTEXITCODE"  # 0, per-benchmark breakdown
+atlas leaderboard model unknown-model --benchmarks; echo "exit=$LASTEXITCODE"  # 0, "(no benchmark data)"
+atlas leaderboard model mock --history --benchmarks; echo "exit=$LASTEXITCODE" # 2, mutually exclusive
+```
+
 ---
 
 ## 9. Agent-friendly (machine-readable) usage
@@ -761,8 +845,8 @@ All published benchmarks in the seeded SQLite DB belong to project `33333333-…
 ### 10.4 `run get` on `b94248f7` reports `RUNNING` while the report is `COMPLETED`
 The execution detail endpoint sources the separate `ee_executions` table (`status RUNNING`, progress `0/1`), while `report get` on the same ID returns `COMPLETED` / score 100.0. Backend data-source discrepancy — the CLI faithfully renders each endpoint.
 
-### 10.5 `atlas.exe` usage-error exit codes differ from `python -c` invocation
-The console-script entrypoint calls `main(standalone_mode=False)`, so Click usage errors (unknown command/option, bad Choice) raise uncaught `click.UsageError` → traceback + exit 1. The `python -c "from cli.app import main; main()"` form (option B in §2.3) runs `standalone_mode=True`, producing clean `Usage:` output and exit 2. Prefer the `python -c` form while testing exit-code expectations.
+### 10.5 Usage-error exit codes (fixed January 2026)
+The console-script entrypoint previously surfaced Click usage errors as uncaught tracebacks with exit 1. `entrypoint()` now catches `click.ClickException` and prints `Error: <message>` to stderr, exiting with `exit_code` (2). Verified live: unknown command, invalid `--type` Choice, and mutually exclusive `--history --benchmarks` all → exit 2 with a one-line message and no traceback, for both the installed `atlas` script and the `python -c` form.
 ### 10.6 Unhandled local I/O exceptions
 
 `report export` propagates a raw `FileNotFoundError`/`PermissionError` if the destination can't be opened (only the overwrite-refusal path yields the clean exit 8). Expect an unhandled traceback and a non-zero exit code in that case.
@@ -795,7 +879,7 @@ Ruff/pytest warn about LF→CRLF on checkout; harmless and unrelated to CLI beha
 | `exit 7` after `--password-stdin` | Empty password on stdin — pipe exactly one line, e.g. `'password123' \| atlas login --email … --password-stdin`. |
 | `exit 8` `Destination already exists` | Add `--force`. |
 | `exit 2` `No such option: --output` | Global option placed after the subcommand (§5.1). |
-| `exit 1` + traceback on unknown command (installed `atlas`) | §10.5 `standalone_mode=False` behavior. |
+| `exit 2` + `Error: …` on unknown command / bad choice | Normal Click usage error — historically a traceback (see §10.5). |
 | `TLS verification disabled for localhost` on stderr | Harmless httpx notice (§10.7). |
 | Empty JSON output + exit 0 for benchmark get | Not reproducible; benchmark get currently 403s (§10.3). |
 | `run watch` prints progress to stderr | By design; only the terminal state goes to stdout in human mode. |
