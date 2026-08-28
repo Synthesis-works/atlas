@@ -7,6 +7,7 @@ Implements:
   atlas leaderboard benchmark <benchmark-version-id> --output json
   atlas leaderboard benchmark <benchmark-version-id> --quiet
   atlas leaderboard model <model-name>
+  atlas leaderboard model <model-name> --history
   atlas leaderboard model <model-name> --output json
   atlas leaderboard model <model-name> --quiet
 """
@@ -14,7 +15,7 @@ Implements:
 from __future__ import annotations
 
 import click
-from atlas_sdk import AtlasClient, StaticTokenSupplier
+from atlas_sdk import AtlasClient, ModelSummary, StaticTokenSupplier, TrendPoint
 
 from cli.app import Context, _pass_context
 from cli.config import AtlasConfig
@@ -110,13 +111,23 @@ def benchmark_cmd(
 @leaderboard_group.command(name="model")
 @_pass_context
 @click.argument("model_name")
-def model_cmd(ctx: Context, model_name: str) -> None:
-    """Show the overall performance summary for a model.
+@click.option(
+    "--history",
+    is_flag=True,
+    help="Show the model's execution history instead of the summary.",
+)
+def model_cmd(
+    ctx: Context,
+    model_name: str,
+    history: bool,
+) -> None:
+    """Show the overall performance profile for a model.
 
     MODEL_NAME is the model identifier (e.g. "mock").
 
-    Calls GET /api/v1/models/{model_name}/summary through the SDK.
-    Unknown model names return a zeroed summary (exit 0), not an error.
+    Without --history, calls GET /api/v1/models/{model_name}/summary.
+    With --history, calls GET /api/v1/models/{model_name}/history.
+    Unknown model names return "no data" (exit 0), not an error.
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
@@ -129,10 +140,20 @@ def model_cmd(ctx: Context, model_name: str) -> None:
             token_supplier=supplier,
             timeout=cfg.timeout,
         ) as client:
-            summary = client.get_model_summary(model_name)
+            if history:
+                points = client.get_model_history(model_name)
+            else:
+                summary = client.get_model_summary(model_name)
     except Exception as exc:
         error_exit(exc, output_mode)
 
+    if history:
+        _render_history(points, model_name, output_mode)
+    else:
+        _render_summary(summary, output_mode)
+
+
+def _render_summary(summary: ModelSummary, output_mode: str) -> None:
     if output_mode == "json":
         render_json(summary.model_dump(mode="json"))
     elif output_mode == "quiet":
@@ -157,3 +178,29 @@ def model_cmd(ctx: Context, model_name: str) -> None:
         if summary.latest_delta is not None:
             rows.append(("Delta", f"{summary.latest_delta:+d}"))
         render_kv(rows, title="Model Summary")
+
+
+def _render_history(points: list[TrendPoint], model_name: str, output_mode: str) -> None:
+    if output_mode == "json":
+        render_json([point.model_dump(mode="json") for point in points])
+    elif output_mode == "quiet":
+        pass
+    else:
+        if not points:
+            click.echo(f"  No history for model '{model_name}'")
+            return
+
+        rows_data: list[list[str]] = []
+        for point in points:
+            rows_data.append([
+                point.timestamp.strftime("%Y-%m-%d %H:%M"),
+                f"{point.score:.2f}",
+                str(point.rank) if point.rank is not None else "-",
+                point.benchmark_version if point.benchmark_version is not None else "-",
+                point.execution_id,
+            ])
+        render_table(
+            ["Timestamp", "Score", "Rank", "Benchmark", "Execution"],
+            rows_data,
+            title=f"Model History: {model_name}",
+        )

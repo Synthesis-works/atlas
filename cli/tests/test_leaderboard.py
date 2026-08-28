@@ -15,6 +15,7 @@ from atlas_sdk.models.leaderboard import (
     LeaderboardRead,
     LeaderboardType,
     ModelSummary,
+    TrendPoint,
 )
 from click.testing import CliRunner
 
@@ -513,4 +514,185 @@ def test_leaderboard_model_json_error(runner: CliRunner) -> None:
     mock = _mock_summary_client_error(AuthError(status=401, message="Expired token"))
     with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["--output", "json", "leaderboard", "model", "mock"])
+    assert result.exit_code == 3
+# -- model --history ------------------------------------------------------
+
+
+def _point(
+    *,
+    timestamp: str = "2026-08-17T16:25:46.342572",
+    score: float = 0.0,
+    rank: int | None = None,
+    benchmark_version: str | None = "15f01fef-bd6c-457c-a041-101dbc6c8740",
+    execution_id: str = "5cad9594-0f35-4e1f-9c60-cdcbd41d2cd0",
+) -> TrendPoint:
+    from datetime import datetime
+
+    return TrendPoint(
+        timestamp=datetime.fromisoformat(timestamp),
+        score=score,
+        rank=rank,
+        benchmark_version=benchmark_version,
+        execution_id=execution_id,
+    )
+
+
+def _mock_history_client(points: list[TrendPoint] | None = None) -> MagicMock:
+    mock = MagicMock()
+    mock.__enter__ = MagicMock(return_value=mock)
+    mock.__exit__ = MagicMock(return_value=False)
+    mock.get_model_history.return_value = [] if points is None else points
+    return mock
+
+
+def _mock_history_client_error(exc: Exception) -> MagicMock:
+    mock = MagicMock()
+    mock.__enter__ = MagicMock(return_value=mock)
+    mock.__exit__ = MagicMock(return_value=False)
+    mock.get_model_history.side_effect = exc
+    return mock
+
+
+def test_leaderboard_model_history_in_help(runner: CliRunner) -> None:
+    result = runner.invoke(main, ["leaderboard", "model", "--help"])
+    assert result.exit_code == 0
+    assert "--history" in result.output
+
+
+def test_leaderboard_model_history_human(runner: CliRunner) -> None:
+    points = [
+        _point(),
+        _point(
+            timestamp="2026-08-23T07:04:07.219431",
+            score=100.0,
+            rank=2,
+            benchmark_version="181d1c91-15f9-43e7-866d-33809aaaedf1",
+            execution_id="b94248f7-f5f9-4ed8-992a-b29751b4e710",
+        ),
+    ]
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_history_client(points)):
+        result = runner.invoke(main, ["leaderboard", "model", "mock", "--history"])
+    assert result.exit_code == 0
+    assert "Model History: mock" in result.output
+    assert "Timestamp" in result.output
+    assert "2026-08-17 16:25" in result.output
+    assert "0.00" in result.output
+    assert "100.00" in result.output
+    assert "2" in result.output
+    assert "5cad9594-0f35-4e1f-9c60-cdcbd41d2cd0" in result.output
+    assert "b94248f7-f5f9-4ed8-992a-b29751b4e710" in result.output
+
+
+def test_leaderboard_model_history_human_empty(runner: CliRunner) -> None:
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_history_client([])):
+        result = runner.invoke(main, ["leaderboard", "model", "nope", "--history"])
+    assert result.exit_code == 0
+    assert "No history for model 'nope'" in result.output
+
+
+def test_leaderboard_model_history_json_preserves_backend_structure(runner: CliRunner) -> None:
+    points = [
+        _point(timestamp="2026-08-23T07:04:07.219431", score=100.0, rank=None),
+        _point(timestamp="2026-08-23T07:05:00.000000", score=99.5, rank=2,
+               benchmark_version=None, execution_id="abc"),
+    ]
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_history_client(points)):
+        result = runner.invoke(main, [
+            "--output", "json", "leaderboard", "model", "mock", "--history"
+        ])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert len(data) == 2
+    assert data[0]["timestamp"] == "2026-08-23T07:04:07.219431"
+    assert data[0]["score"] == 100.0
+    assert data[0]["rank"] is None
+    assert data[0]["benchmark_version"] == "15f01fef-bd6c-457c-a041-101dbc6c8740"
+    assert data[0]["execution_id"] == "5cad9594-0f35-4e1f-9c60-cdcbd41d2cd0"
+    assert data[1]["benchmark_version"] is None
+    assert data[1]["execution_id"] == "abc"
+
+
+def test_leaderboard_model_history_quiet(runner: CliRunner) -> None:
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_history_client()):
+        result = runner.invoke(main, ["--quiet", "leaderboard", "model", "mock", "--history"])
+    assert result.exit_code == 0
+    assert result.output == ""
+
+
+def test_leaderboard_model_history_quiet_via_shorthand(runner: CliRunner) -> None:
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_history_client()):
+        result = runner.invoke(main, ["-q", "leaderboard", "model", "mock", "--history"])
+    assert result.exit_code == 0
+    assert result.output == ""
+
+
+def test_leaderboard_model_history_passes_model_name(runner: CliRunner) -> None:
+    mock = _mock_history_client()
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+        runner.invoke(main, ["leaderboard", "model", "mock", "--history"])
+    mock.get_model_history.assert_called_once_with("mock")
+
+
+def test_leaderboard_model_history_401(runner: CliRunner) -> None:
+    from atlas_sdk.errors import AuthError
+
+    mock = _mock_history_client_error(AuthError(status=401, message="Unauthorized"))
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["leaderboard", "model", "mock", "--history"])
+    assert result.exit_code == 3
+
+
+def test_leaderboard_model_history_403(runner: CliRunner) -> None:
+    from atlas_sdk.errors import ForbiddenError
+
+    mock = _mock_history_client_error(ForbiddenError(status=403, message="Forbidden"))
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["leaderboard", "model", "mock", "--history"])
+    assert result.exit_code == 4
+
+
+def test_leaderboard_model_history_404(runner: CliRunner) -> None:
+    from atlas_sdk.errors import NotFoundError
+
+    mock = _mock_history_client_error(NotFoundError(status=404, message="Not found"))
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["leaderboard", "model", "mock", "--history"])
+    assert result.exit_code == 5
+
+
+def test_leaderboard_model_history_422(runner: CliRunner) -> None:
+    from atlas_sdk.errors import ValidationError
+
+    mock = _mock_history_client_error(ValidationError(status=422, message="Invalid params"))
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["leaderboard", "model", "mock", "--history"])
+    assert result.exit_code == 7
+
+
+def test_leaderboard_model_history_network_error(runner: CliRunner) -> None:
+    from atlas_sdk.errors import NetworkError
+
+    mock = _mock_history_client_error(NetworkError(message="Connection refused"))
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["leaderboard", "model", "mock", "--history"])
+    assert result.exit_code == 6
+
+
+def test_leaderboard_model_history_server_error(runner: CliRunner) -> None:
+    from atlas_sdk.errors import ServerError
+
+    mock = _mock_history_client_error(ServerError(status=500, message="Internal error"))
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+        result = runner.invoke(main, ["leaderboard", "model", "mock", "--history"])
+    assert result.exit_code == 1
+
+
+def test_leaderboard_model_history_json_error(runner: CliRunner) -> None:
+    from atlas_sdk.errors import AuthError
+
+    mock = _mock_history_client_error(AuthError(status=401, message="Expired token"))
+    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+        result = runner.invoke(main, [
+            "--output", "json", "leaderboard", "model", "mock", "--history"
+        ])
     assert result.exit_code == 3
