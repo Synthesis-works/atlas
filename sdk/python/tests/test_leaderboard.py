@@ -26,6 +26,7 @@ from atlas_sdk.models.leaderboard import (
     LeaderboardRead,
     LeaderboardType,
     ModelSummary,
+    TrendPoint,
 )
 
 
@@ -426,4 +427,155 @@ class TestGetModelSummary:
         client = AtlasClient("http://localhost:8000", max_retries=0)
         with pytest.raises(NetworkError):
             client.get_model_summary("mock")
+        client.close()
+# -- TrendPoint (model history) -------------------------------------------
+
+
+def _point_payload(**overrides: object) -> dict:
+    """Realistic bare ``TrendPoint`` payload (shape recorded from the live API)."""
+    payload: dict = {
+        "timestamp": "2026-08-17T16:25:46.342572",
+        "score": 0.0,
+        "rank": None,
+        "benchmark_version": "15f01fef-bd6c-457c-a041-101dbc6c8740",
+        "execution_id": "5cad9594-0f35-4e1f-9c60-cdcbd41d2cd0",
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _history_url(model_name: str) -> str:
+    return f"http://localhost:8000/api/v1/models/{model_name}/history"
+
+
+class TestTrendPointDto:
+    """DTO field-for-field contract with the wire payload."""
+
+    def test_models_parse_live_payload_shape(self) -> None:
+        point = TrendPoint.model_validate(_point_payload())
+        assert point.timestamp.isoformat() == "2026-08-17T16:25:46.342572"
+        assert point.score == 0.0
+        assert point.rank is None
+        assert point.benchmark_version == "15f01fef-bd6c-457c-a041-101dbc6c8740"
+        assert point.execution_id == "5cad9594-0f35-4e1f-9c60-cdcbd41d2cd0"
+
+    def test_models_parse_rank_populated(self) -> None:
+        point = TrendPoint.model_validate(
+            _point_payload(rank=3, benchmark_version=None)
+        )
+        assert point.rank == 3
+        assert point.benchmark_version is None
+
+    def test_model_dump_round_trips_wire_shape(self) -> None:
+        point = TrendPoint.model_validate(_point_payload(score=100.0, rank=2))
+        dumped = point.model_dump(mode="json")
+        assert dumped["timestamp"] == "2026-08-17T16:25:46.342572"
+        assert dumped["score"] == 100.0
+        assert dumped["rank"] == 2
+        assert dumped["benchmark_version"] == "15f01fef-bd6c-457c-a041-101dbc6c8740"
+        assert dumped["execution_id"] == "5cad9594-0f35-4e1f-9c60-cdcbd41d2cd0"
+
+
+class TestGetModelHistory:
+    def test_success_parses_list_of_points(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_history_url("mock"),
+            json=[
+                _point_payload(),
+                _point_payload(
+                    timestamp="2026-08-23T07:04:07.219431",
+                    score=100.0,
+                    benchmark_version="181d1c91-15f9-43e7-866d-33809aaaedf1",
+                    execution_id="b94248f7-f5f9-4ed8-992a-b29751b4e710",
+                ),
+            ],
+        )
+        client = AtlasClient("http://localhost:8000")
+        points = client.get_model_history("mock")
+        assert len(points) == 2
+        assert points[0].timestamp.isoformat() == "2026-08-17T16:25:46.342572"
+        assert points[0].score == 0.0
+        assert points[1].score == 100.0
+        assert points[1].execution_id == "b94248f7-f5f9-4ed8-992a-b29751b4e710"
+        client.close()
+
+    def test_unknown_model_parses_empty_list(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(method="GET", url=_history_url("nope"), json=[])
+        client = AtlasClient("http://localhost:8000")
+        points = client.get_model_history("nope")
+        assert points == []
+        client.close()
+
+    def test_401_raises_auth_error(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_history_url("mock"),
+            status_code=401,
+            json=_err(401, "UNAUTHORIZED", "Token expired"),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(AuthError) as exc_info:
+            client.get_model_history("mock")
+        assert exc_info.value.status == 401
+        client.close()
+
+    def test_403_raises_forbidden_error(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_history_url("mock"),
+            status_code=403,
+            json=_err(403, "FORBIDDEN", "Insufficient permissions"),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(ForbiddenError) as exc_info:
+            client.get_model_history("mock")
+        assert exc_info.value.status == 403
+        client.close()
+
+    def test_404_raises_not_found_error(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_history_url("mock"),
+            status_code=404,
+            json=_err(404, "NOT_FOUND", "Model not found."),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(NotFoundError) as exc_info:
+            client.get_model_history("mock")
+        assert exc_info.value.status == 404
+        client.close()
+
+    def test_422_raises_validation_error(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_history_url("mock"),
+            status_code=422,
+            json=_err(422, "VALIDATION_ERROR", "Invalid parameters"),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(ValidationError) as exc_info:
+            client.get_model_history("mock")
+        assert exc_info.value.status == 422
+        client.close()
+
+    def test_500_raises_server_error(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_history_url("mock"),
+            status_code=500,
+            json=_err(500, "INTERNAL", "something broke"),
+        )
+        client = AtlasClient("http://localhost:8000", max_retries=0)
+        with pytest.raises(ServerError):
+            client.get_model_history("mock")
+        client.close()
+
+    def test_network_error_raises_network_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_exception(httpx.ConnectError("connection refused"))
+        client = AtlasClient("http://localhost:8000", max_retries=0)
+        with pytest.raises(NetworkError):
+            client.get_model_history("mock")
         client.close()

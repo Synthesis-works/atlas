@@ -66,3 +66,19 @@ class ModelSummary(BaseModel):
     average_score: float | None = None
     last_execution: datetime | None = None
     latest_delta: int | None = None
+
+
+class TrendPoint(BaseModel):
+    """Single point in a model's performance history.
+
+    Mirrors ``apps/backend/schemas/leaderboard.py::TrendPoint``.
+    Returned as bare ``list[TrendPoint]`` by
+    ``GET /api/v1/models/{model_name}/history``.  An unknown model
+    yields a 200 with an empty list, not a 404.
+    """
+
+    timestamp: datetime
+    score: float
+    rank: int | None = None
+    benchmark_version: str | None = None
+    execution_id: str

@@ -31,7 +31,7 @@ from atlas_sdk.models.benchmarks import (
 )
 from atlas_sdk.models.executions import ExecutionPage, ExecutionResponse
 from atlas_sdk.models.health import HealthData, LivenessResponse, ReadinessResponse
-from atlas_sdk.models.leaderboard import LeaderboardRead, ModelSummary
+from atlas_sdk.models.leaderboard import LeaderboardRead, ModelSummary, TrendPoint
 from atlas_sdk.models.reports import (
     DownloadResult,
     PaginatedReportRunsRead,
@@ -510,6 +510,21 @@ class AtlasClient:
         """
         response = self._get_raw(f"/api/v1/models/{model_name}/summary")
         return ModelSummary.model_validate(response.json())
+
+    def get_model_history(self, model_name: str) -> list[TrendPoint]:
+        """Fetch a model's performance history, one point per execution.
+
+        ``GET /api/v1/models/{model_name}/history``
+
+        Returns a chronological list of ``TrendPoint``.  Unknown model
+        names are not a 404: the backend returns a 200 with an empty
+        list.
+
+        Note: this endpoint returns ``list[TrendPoint]`` directly (not
+        wrapped in ``APIResponse``), like the execution endpoints.
+        """
+        response = self._get_raw(f"/api/v1/models/{model_name}/history")
+        return [TrendPoint.model_validate(item) for item in response.json()]
 
     # -- reports --
 

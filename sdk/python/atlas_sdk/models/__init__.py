@@ -25,6 +25,7 @@ from atlas_sdk.models.leaderboard import (
     LeaderboardRead,
     LeaderboardType,
     ModelSummary,
+    TrendPoint,
 )
 from atlas_sdk.models.reports import (
     CapabilityScoreRead,
@@ -61,6 +62,7 @@ __all__ = [
     "LeaderboardRead",
     "LeaderboardType",
     "ModelSummary",
+    "TrendPoint",
     "PaginatedReportRunsRead",
     "ReportRunEntryRead",
     "ReportRunStatus",
