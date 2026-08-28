@@ -1,4 +1,4 @@
-"""leaderboard commands -- benchmark (first vertical slice).
+"""leaderboard commands.
 
 Implements:
   atlas leaderboard benchmark <benchmark-version-id>
@@ -6,6 +6,9 @@ Implements:
   atlas leaderboard benchmark <benchmark-version-id> --offset 20
   atlas leaderboard benchmark <benchmark-version-id> --output json
   atlas leaderboard benchmark <benchmark-version-id> --quiet
+  atlas leaderboard model <model-name>
+  atlas leaderboard model <model-name> --output json
+  atlas leaderboard model <model-name> --quiet
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ from cli.app import Context, _pass_context
 from cli.config import AtlasConfig
 from cli.output.errors import error_exit
 from cli.output.json import render_json
-from cli.output.table import render_table
+from cli.output.table import render_kv, render_table
 
 
 @click.group(name="leaderboard")
@@ -102,3 +105,55 @@ def benchmark_cmd(
         if entries.total > len(entries.items):
             shown = len(entries.items)
             click.echo(f"  Showing {shown} of {entries.total}")
+
+
+@leaderboard_group.command(name="model")
+@_pass_context
+@click.argument("model_name")
+def model_cmd(ctx: Context, model_name: str) -> None:
+    """Show the overall performance summary for a model.
+
+    MODEL_NAME is the model identifier (e.g. "mock").
+
+    Calls GET /api/v1/models/{model_name}/summary through the SDK.
+    Unknown model names return a zeroed summary (exit 0), not an error.
+    """
+    cfg: AtlasConfig = ctx.config
+    output_mode = cfg.effective_output()
+
+    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
+
+    try:
+        with AtlasClient(
+            cfg.base_url,
+            token_supplier=supplier,
+            timeout=cfg.timeout,
+        ) as client:
+            summary = client.get_model_summary(model_name)
+    except Exception as exc:
+        error_exit(exc, output_mode)
+
+    if output_mode == "json":
+        render_json(summary.model_dump(mode="json"))
+    elif output_mode == "quiet":
+        pass
+    else:
+        if summary.benchmarks == 0:
+            click.echo(f"  No benchmark data for model '{summary.model}'")
+            return
+
+        rows: list[tuple[str, str]] = [
+            ("Model", summary.model),
+            ("Benchmarks", str(summary.benchmarks)),
+        ]
+        if summary.best_rank is not None:
+            rows.append(("Best Rank", str(summary.best_rank)))
+        if summary.average_rank is not None:
+            rows.append(("Avg Rank", f"{summary.average_rank:.2f}"))
+        if summary.average_score is not None:
+            rows.append(("Avg Score", f"{summary.average_score:.2f}"))
+        if summary.last_execution is not None:
+            rows.append(("Updated", summary.last_execution.strftime("%Y-%m-%d %H:%M")))
+        if summary.latest_delta is not None:
+            rows.append(("Delta", f"{summary.latest_delta:+d}"))
+        render_kv(rows, title="Model Summary")
