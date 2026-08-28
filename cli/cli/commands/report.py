@@ -34,7 +34,16 @@ from cli.output.table import render_kv, render_table
 
 @click.group(name="report")
 def report_group() -> None:
-    """Report operations."""
+    """Report operations.
+
+    Examples:
+
+      atlas report list --limit 10
+
+      atlas report get <run-id>
+
+      atlas report export <run-id> --format csv --output-file report.csv
+    """
 
 
 @report_group.command(name="list")
@@ -87,6 +96,12 @@ def list_cmd(
     """List execution run reports.
 
     Calls GET /api/v1/reports/runs through the SDK with optional filters.
+
+    Examples:
+
+      atlas report list
+
+      atlas report list --status COMPLETED --limit 10
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
@@ -154,6 +169,10 @@ def get_cmd(ctx: Context, run_id: str) -> None:
 
     RUN_ID is the execution run UUID.
     Calls GET /api/v1/reports/runs/{run_id} through the SDK.
+
+    Examples:
+
+      atlas report get <run-id>
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
@@ -261,6 +280,14 @@ def export_cmd(
     RUN_ID is the execution run UUID.
     Calls GET /api/v1/reports/runs/{run_id}/export through the SDK and writes
     the raw response bytes to a file (or stdout with --output-file -).
+
+    Examples:
+
+      atlas report export <run-id>
+
+      atlas report export <run-id> --format csv --output-file report.csv
+
+      atlas report export <run-id> --output-file - > report.json
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()

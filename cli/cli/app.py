@@ -73,7 +73,18 @@ def main(
     no_color: bool,
     quiet: bool,
 ) -> None:
-    """Atlas CLI — control-plane interface for the Atlas platform."""
+    """Atlas CLI — control-plane interface for the Atlas platform.
+
+    Examples:
+
+      atlas login
+
+      atlas health
+
+      atlas dashboard
+
+      atlas leaderboard model mock --history
+    """
     ctx.config = load_config(
         base_url=base_url,
         output=output_mode,

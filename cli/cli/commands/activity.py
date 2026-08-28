@@ -58,6 +58,14 @@ def activity_cmd(
     By default shows the most recent published benchmarks, executions,
     and active models.  Use --type to show a single section, and
     --limit to control how many entries each section lists.
+
+    Examples:
+
+      atlas activity
+
+      atlas activity --type executions --limit 5
+
+      atlas activity --output json
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()

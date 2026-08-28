@@ -33,7 +33,18 @@ from cli.output.table import render_kv, render_table
 
 @click.group(name="leaderboard")
 def leaderboard_group() -> None:
-    """Leaderboard operations."""
+    """Leaderboard operations.
+
+    Examples:
+
+      atlas leaderboard benchmark <benchmark-version-id>
+
+      atlas leaderboard model mock
+
+      atlas leaderboard model mock --history
+
+      atlas leaderboard model mock --benchmarks
+    """
 
 
 @leaderboard_group.command(name="benchmark")
@@ -63,6 +74,12 @@ def benchmark_cmd(
 
     Calls GET /api/v1/benchmarks/{benchmark_version_id}/leaderboard
     through the SDK.
+
+    Examples:
+
+      atlas leaderboard benchmark <benchmark-version-id>
+
+      atlas leaderboard benchmark <benchmark-version-id> --limit 50
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
@@ -142,6 +159,14 @@ def model_cmd(
     With --history, calls GET /api/v1/models/{model_name}/history.
     With --benchmarks, calls GET /api/v1/models/{model_name}/benchmarks.
     Unknown model names return "no data" (exit 0), not an error.
+
+    Examples:
+
+      atlas leaderboard model mock
+
+      atlas leaderboard model mock --history
+
+      atlas leaderboard model mock --benchmarks
     """
     if history and benchmarks:
         raise click.UsageError(

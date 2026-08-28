@@ -30,6 +30,12 @@ def whoami_cmd(ctx: Context) -> None:
     """Show the currently authenticated user.
 
     Calls GET /api/v1/auth/me through the SDK.
+
+    Examples:
+
+      atlas whoami
+
+      atlas whoami --output json
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
@@ -79,6 +85,12 @@ def login_cmd(ctx: Context, email: str | None, password_stdin: bool) -> None:
 
     The access token is persisted in the current user's profile and is
     never printed.  The active base URL is saved alongside it.
+
+    Examples:
+
+      atlas login
+
+      atlas login --email demo@atlas.val --password-stdin
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
@@ -125,6 +137,10 @@ def logout_cmd(ctx: Context) -> None:
     """Clear stored credentials for this profile.
 
     Does not contact the backend and succeeds even if nothing is stored.
+
+    Examples:
+
+      atlas logout
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()

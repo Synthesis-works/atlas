@@ -32,6 +32,12 @@ def health_cmd(ctx: Context) -> None:
 
     Calls GET /health, GET /api/v1/system/health/live,
     and GET /api/v1/system/health/ready through the SDK.
+
+    Examples:
+
+      atlas health
+
+      atlas health --output json --quiet
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()

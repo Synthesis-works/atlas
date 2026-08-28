@@ -27,6 +27,12 @@ def dashboard_cmd(ctx: Context) -> None:
 
     Displays run counters, platform resource counts, recent runs, and
     recent activity.
+
+    Examples:
+
+      atlas dashboard
+
+      atlas dashboard --output json
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()

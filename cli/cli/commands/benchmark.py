@@ -26,7 +26,16 @@ from cli.output.table import render_kv, render_table
 
 @click.group(name="benchmark")
 def benchmark_group() -> None:
-    """Benchmark operations."""
+    """Benchmark operations.
+
+    Examples:
+
+      atlas benchmark list
+
+      atlas benchmark get <benchmark-id>
+
+      atlas benchmark versions <benchmark-id>
+    """
 
 
 @benchmark_group.command(name="list")
@@ -35,6 +44,12 @@ def list_cmd(ctx: Context) -> None:
     """List published benchmarks.
 
     Calls GET /api/v1/benchmarks through the SDK.
+
+    Examples:
+
+      atlas benchmark list
+
+      atlas benchmark list --output json
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
@@ -84,6 +99,10 @@ def get_cmd(ctx: Context, benchmark_id: str) -> None:
     """Show details for a single benchmark.
 
     Calls GET /api/v1/benchmarks/{id} through the SDK.
+
+    Examples:
+
+      atlas benchmark get <benchmark-id>
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
@@ -121,6 +140,10 @@ def versions_cmd(ctx: Context, benchmark_id: str) -> None:
     """List versions for a benchmark.
 
     Calls GET /api/v1/benchmarks/{id}/versions through the SDK.
+
+    Examples:
+
+      atlas benchmark versions <benchmark-id>
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()

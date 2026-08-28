@@ -32,7 +32,20 @@ _MAX_CONSECUTIVE_FAILURES = 3
 
 @click.group(name="run")
 def run_group() -> None:
-    """Execution operations."""
+    """Execution operations.
+
+    Examples:
+
+      atlas run list --limit 10
+
+      atlas run get <execution-id>
+
+      atlas run submit <benchmark-version-id> --target-model mock
+
+      atlas run watch <execution-id>
+
+      atlas run cancel <execution-id>
+    """
 
 
 @run_group.command(name="submit")
@@ -58,6 +71,12 @@ def submit_cmd(
 
     Calls POST /api/v1/benchmarks/{id}/executions through the SDK.
     The execution is created in QUEUED state and dispatched asynchronously.
+
+    Examples:
+
+      atlas run submit <benchmark-version-id>
+
+      atlas run submit <benchmark-version-id> --target-model mock
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
@@ -102,6 +121,10 @@ def get_cmd(ctx: Context, execution_id: str) -> None:
     """Show details for a single execution.
 
     Calls GET /api/v1/executions/{id} through the SDK.
+
+    Examples:
+
+      atlas run get <execution-id>
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
@@ -176,6 +199,12 @@ def list_cmd(
     """List executions.
 
     Calls GET /api/v1/executions through the SDK with optional filters.
+
+    Examples:
+
+      atlas run list
+
+      atlas run list --status QUEUED --limit 5
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
@@ -254,6 +283,12 @@ def watch_cmd(ctx: Context, execution_id: str, interval: float) -> None:
     fails, is cancelled, or times out.
 
     Terminal states: COMPLETED, FAILED, CANCELLED, TIMED_OUT.
+
+    Examples:
+
+      atlas run watch <execution-id>
+
+      atlas run watch <execution-id> --interval 5
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
@@ -354,6 +389,10 @@ def cancel_cmd(ctx: Context, execution_id: str) -> None:
     has not yet processed the flag.
 
     Rejects executions already in a terminal state (HTTP 409).
+
+    Examples:
+
+      atlas run cancel <execution-id>
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
