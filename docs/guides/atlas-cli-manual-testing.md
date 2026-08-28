@@ -1,13 +1,47 @@
 # Atlas CLI — Manual Testing Guide
 
-- **Date:** 2026-08-27
+- **Date:** 2026-08-28 (revised after the installable-CLI sprint — `atlas login`/`logout` + persisted credentials)
 - **Branch:** `feature/atlas-cli-skeleton`
-- **HEAD:** `732dcc5` (`feat(cli): add report export command`)
+- **HEAD:** `1d446f1` (`feat(cli): add login and logout commands`)
 - **Applies to:** `atlas-cli` 0.1.0 (`D:\atlas\cli`) + `atlas-sdk` 0.1.0 (`D:\atlas\sdk\python`)
 - **Source of truth:** The installed/editable CLI source at `cli/cli/` (NOT the older architecture spec).
 - **Audit method:** every command, option, exit code, and expected output in this guide was read from the actual implementation AND verified live against a local backend running at `http://localhost:8000` with the developer SQLite database `D:\atlas\atlas_dev.db`.
 
 Use this document to manually exercise the CLI end-to-end. It has two audiences: a human developer, and an agent that drives `atlas` programmatically with `--output json`.
+
+---
+
+## ⚡ Quickstart (do this first)
+
+On this machine the CLI and SDK are **already installed** editable (see §2 for what to do if they aren't). Once installed, `atlas` is a real command-line program — no `PYTHONPATH`, no `ATLAS_TOKEN` gymnastics.
+
+**Step 1 — make sure `atlas` is on `PATH`** (run once per shell session):
+
+```powershell
+$env:PATH += ";C:\Users\Sujal\AppData\Local\Python\pythoncore-3.14-64\Scripts"
+```
+
+(Add that Scripts folder to the *persistent* user `PATH` via `[Environment]::SetEnvironmentVariable("PATH", $env:USERPROFILE + ";...\Scripts", "User")` if you want `atlas` in every new shell.)
+
+**Step 2 — confirm the backend is up:**
+
+```powershell
+atlas health
+```
+
+Expect an `Atlas Health` block and exit 0. If it says `unreachable`/exit 6, start the backend (§3).
+
+**Step 3 — authenticate once, then never again in this shell:**
+
+```powershell
+'password123' | atlas login --email demo@atlas.val --password-stdin
+atlas whoami
+atlas leaderboard model mock
+```
+
+`atlas login` stores the token (and the active base URL) in `%APPDATA%\Atlas\config.toml` and **never prints it**. From then on every `atlas` command auto-authenticates from the saved profile. `atlas logout` removes the stored token.
+
+Then jump to §8 for the full copy/paste test sequence.
 
 ---
 
@@ -27,31 +61,51 @@ Nothing else is required for the read-only commands. `run submit` and `run cance
 
 ## 2. Install the SDK and CLI locally
 
-Both packages must be importable. They are installed **editable** so no reinstall is needed after code changes.
+### 2.0 Check whether they're already installed (recommended)
+
+On the dev machine both packages are **already installed editable** (source changes apply immediately, no reinstall ever needed):
+
+```powershell
+python -m pip show atlas-cli atlas-sdk        # two entries with "Editable project location"
+atlas --version                               # "atlas, version 0.1.0" — or add Scripts to PATH (§2.3)
+```
+
+If you see them, **skip straight to the Quickstart** and do NOT run `pip install` again.
+
+> **Why a plain `pip install` fails here:** `pip install -e …` (and `uv pip install -e …`) first create an isolated build environment and **download `setuptools` and the deps from PyPI**. This machine currently has **no internet** (`pypi.org` DNS fails), so those commands die with `NameResolutionError` / `No such host is known.` — BEFORE touching anything. That error does NOT mean the CLI is missing or broken.
+
+### 2.1 Offline install — everything needed is already in your Python env
+
+Use `--no-build-isolation` (use the locally installed setuptools instead of downloading it) and `--no-deps` (click/httpx/pydantic are already present):
+
+```powershell
+# from the repo root
+python -m pip install --no-build-isolation --no-deps -e ./sdk/python -e ./cli
+```
+
+Verified 2026-08-27: completes in seconds with `Successfully installed atlas-cli-0.1.0 atlas-sdk-0.1.0`.
+
+### 2.2 Online install — use this only if internet is available
 
 ```powershell
 # from the repo root
 python -m pip install -e ./sdk/python -e ./cli
 ```
 
-> uv equivalent: `uv pip install -e ./sdk/python -e ./cli` (the root `uv sync` installs the `atlas` app, not the CLI).
+### 2.3 How to actually run `atlas` (3 options — all verified)
 
-After install there are **two equivalent ways to run the CLI**:
+| # | Option | Command | Works from any folder? | Notes |
+|---|---|---|---|---|
+| A | Recommended | `atlas <args>` — after adding `C:\Users\Sujal\AppData\Local\Python\pythoncore-3.14-64\Scripts` to `PATH` | yes | Installed console script. Fully bypasses the folder-name clash. Used throughout this guide. |
+| B | Ad-hoc runner | `$env:PYTHONPATH="D:\atlas\cli;D:\atlas\sdk\python"` (once per shell), then `python -c "from cli.app import main; main()" <args>` | yes | Same behavior as A for commands, but usage errors are clean exit 2 here vs. traceback under the installed script (§10.5). |
+| C | cd into the package dir | `cd D:\atlas\cli`, then `python -c "from cli.app import main; main()" <args>` | only `D:\atlas\cli` | Good fallback if you don't want to set an env var. |
+
+> **`uv` is NOT a drop-in for the CLI here.** The repo's root `uv sync` installs the `atlas` *app*, not the CLI. If you want a Poetry/`uv`-managed venv plus the CLI installed into it, install the CLI inside that venv (`& <venv>\Scripts\python -m pip install -e .\sdk\python -e .\cli`). Do not run `uv` at the repo root expecting the CLI to appear.
+
+Verify, from any folder:
 
 ```powershell
-# (a) the console script (if the environment's Scripts dir is on PATH)
 atlas --version
-
-# (b) always works, no PATH setup needed (used throughout this guide)
-python -c "from cli.app import main; main()" --version
-```
-
-Verification used in this guide is form (b). Both forms behave identically for success paths (`--help`, `--version`, and all commands). They differ **only** on usage errors — see §10.5.
-
-Verify the install:
-
-```powershell
-python -c "from cli.app import main; main()" --version
 # atlas, version 0.1.0
 ```
 
@@ -83,42 +137,72 @@ $env:CELERY_TASK_ALWAYS_EAGER="true"
 python -m uvicorn apps.backend.main:app --host 0.0.0.0 --port 8000
 ```
 
+> **⚠ Do NOT start a second backend while one is already running.** If `uvicorn` exits immediately with `Application startup failed` and a `password authentication failed` error for `db….supabase.co`, it means the port was already taken by an existing local instance and this new process fell back to looking up the **production** Postgres DSN (because `DATABASE_URL` wasn't set). Leave the original instance (PID 13252) running. An already-running backend answers `http://localhost:8000/health` with `ok` — that's expected, not a conflict.
+
 ### 3.3 Verify backend health
 
 ```powershell
 Invoke-RestMethod http://localhost:8000/health            # {"status":"ok","version":"1.0.0"}
-python -c "from cli.app import main; main()" health
-python -c "from cli.app import main; main()" --output json health
+atlas health
+atlas --output json health
 ```
 
 ---
 
 ## 4. Authentication
 
-**The only current mechanism is a bearer token supplied via the `ATLAS_TOKEN` environment variable.** There is **no** `atlas login` command, no config-file credentials, and no PAT support (see §10.1).
+There are **two** ways to give the CLI a bearer token:
 
-### 4.1 Get a token
+1. `atlas login` — the interactive way. Prompts for email and password, calls the backend login API, and **persists** the token to the per-user profile file `%APPDATA%\Atlas\config.toml` (default profile name `default`). **Never prints the token.**
+2. `ATLAS_TOKEN` environment variable — overrides the stored token for scripts/CI.
 
-The backend issues JWTs from the login API. Two developer users are used in this guide (both verified live in this session): `demo@atlas.val` / `password123` (printed by `start_atlas.cmd` as the demo login) and `cli-test2@atlas.dev` / `Testtest123!` (the CLI test fixture user). Example token acquisition:
+`atlas logout` deletes the stored token (keeps the saved base URL) and works with no backend connection.
+
+### 4.1 `atlas login`
 
 ```powershell
-$body = '{"email":"cli-test2@atlas.dev","password":"Testtest123!"}'
-$tok  = (Invoke-RestMethod -Uri "http://localhost:8000/api/v1/auth/login" -Method Post `
-          -ContentType "application/json" -Body $body).data.access_token
+# interactive (prompts for email + hidden password)
+atlas login
+
+# non-interactive: --email plus the password piped on stdin (one line)
+'password123' | atlas login --email demo@atlas.val --password-stdin
+
+# JSON receipt — note it does NOT contain the token
+atlas --output json login --email demo@atlas.val --password-stdin
+# → {"success": true, "email": "demo@atlas.val", "base_url": "http://localhost:8000", "profile": "default"}
 ```
 
-> **Never hard-code or echo the token.** Paste it into your shell session only. Keep the same shell session open — later sections reuse `$tok`.
+On success the active base URL and the access token are written together; on password/HTTP failure **nothing** is persisted (exit code = mapped error, e.g. 3 for bad credentials). Empty stdin with `--password-stdin` → exit 7.
 
-### 4.2 Make it available to the CLI
+### 4.2 The profile file
 
-```powershell
-$env:ATLAS_TOKEN = "<paste token here>"
+```text
+C:\Users\<you>\AppData\Roaming\Atlas\config.toml
 ```
 
-Every invocation reads `ATLAS_TOKEN` (see `cli/config.py`). With no token set, authenticated commands fail fast:
+```toml
+[default]
+base_url = "http://localhost:8000"
+token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+Read with stdlib `tomllib`; a corrupt or missing file is ignored (CLI falls back to defaults). Passwords are never stored — only the JWT.
+
+### 4.3 `atlas logout`
 
 ```powershell
-python -c "from cli.app import main; main()" whoami
+atlas logout             # "Logged out" — removes token, keeps base_url
+atlas --output json logout   # {"success": true, "logged_out": true, "profile": "default"}
+```
+
+Succeeds (exit 0) even when nothing is stored. Does not contact the backend.
+
+### 4.4 With no credentials at all
+
+Authenticated commands fail fast (with or without a profile):
+
+```powershell
+atlas whoami
 # error: Not authenticated — run `atlas login` or set ATLAS_TOKEN.   (see note in §10.8)
 # exit code 3
 ```
@@ -134,41 +218,54 @@ python -c "from cli.app import main; main()" whoami
 All global options are defined on the top-level `atlas` group (see `cli/app.py`) and Click requires them **before** the command name. Placing them after the subcommand is a usage error.
 
 ```powershell
-python -c "from cli.app import main; main()" --output json whoami        # OK
-python -c "from cli.app import main; main()" --output json report list   # OK
-python -c "from cli.app import main; main()" whoami --output json        # Error: No such option: --output  (exit 2)
+atlas --output json whoami        # OK
+atlas --output json report list   # OK
+atlas whoami --output json        # Error: No such option: --output  (exit 2)
 ```
+
+> **⚠ Known trap — folder-name clash (`ImportError` from repo root):** the repo contains BOTH the folder `D:\atlas\cli\` (package's *parent*) and the actual package inside it, `D:\atlas\cli\cli\`. From the repo root, `import cli` silently grabs the empty parent folder as a namespace package and crashes:
+>
+> ```text
+> ImportError: cannot import name '__version__' from 'cli' (unknown location)
+> ```
+>
+> The **installed `atlas` console script is immune** — it is the recommended way to run the CLI (§2.3). The ad-hoc `python -c` runner needs `$env:PYTHONPATH="D:\atlas\cli;D:\atlas\sdk\python"` or running from `D:\atlas\cli`.
 
 | Global option | Long / short | Values | Env var | Effect |
 |---|---|---|---|---|
 | Output mode | `--output` / `-o` | `human` (default) \| `json` \| `quiet` (case-insensitive) | `ATLAS_OUTPUT` | Selects output rendering |
 | Quiet shorthand | `--quiet` / `-q` | flag | — | Forces quiet mode (overrides `--output`) |
 | Base URL | `--base-url` | URL | `ATLAS_BASE_URL` | API base (default `http://localhost:8000`) |
-| Profile | `--profile` | name | `ATLAS_PROFILE` | Currently only renames the resolved profile; **no config file is read** |
+| Profile | `--profile` | name | `ATLAS_PROFILE` | Profile section read/written in `%APPDATA%\Atlas\config.toml` (default `default`) |
 | Timeout | `--timeout` | float seconds | `ATLAS_TIMEOUT` | Request timeout (default `60.0`) |
 | No color | `--no-color` | flag | — | Disables ANSI colors |
 | Version | `--version` / `-V` | flag | — | Prints `atlas, version 0.1.0` and exits 0 |
 
-Precedence (highest wins): **CLI flag > environment variable > built-in default** (`cli/config.py`).
+Precedence (highest wins): **CLI flag > environment variable > saved profile > built-in default** (`cli/config.py`). A token, when set, comes from `ATLAS_TOKEN` (env) or the saved profile — flags do not take a token.
 
 ### 5.2 Bare invocations
 
 ```powershell
-python -c "from cli.app import main; main()" --help
-python -c "from cli.app import main; main()"            # same as --help (invoke_without_command)
-python -c "from cli.app import main; main()" --version
+atlas --help
+atlas            # same as --help (invoke_without_command)
+atlas --version
 ```
 
 Current command tree:
 
 ```text
 atlas
+├─ login
+├─ logout
 ├─ whoami
 ├─ health
 ├─ benchmark
 │  ├─ list
 │  ├─ get BENCHMARK_ID
 │  └─ versions BENCHMARK_ID
+├─ leaderboard
+│  ├─ benchmark BENCHMARK_ID
+│  └─ model MODEL_NAME [--history]
 ├─ run
 │  ├─ submit BENCHMARK_VERSION_ID [--target-model] [--dataset-version-id]
 │  ├─ get EXECUTION_ID
@@ -207,17 +304,17 @@ Defined in `cli/errors.py`; commands exit via `error_exit()` (`cli/output/errors
 Conventions used below:
 - `A=` prefix means the arg is required.
 - An example "simple verification anchor" that is known to work with the current seeded DB on this machine is given per command (obtained live). IDs are shown so you can copy them, but §8 shows how to obtain them yourself from earlier commands.
-- Runner used: `python -c "from cli.app import main; main()" --output json …` is abbreviated to `atlas …` below.
+- Runner used: the installed `atlas` console script (see §2.3). Commands are shown with the global option **before** the subcommand.
 
 ### 7.1 `atlas whoami`
 
 - **API:** `GET /api/v1/auth/me`
 - **Args/options:** none
-- **Auth:** required (exit 3 if `ATLAS_TOKEN` unset)
+- **Auth:** required (exit 3 if neither `ATLAS_TOKEN` nor a saved profile is present)
 
 ```powershell
 atlas whoami
-atlas whoami --output json
+atlas --output json whoami
 atlas --quiet whoami
 ```
 
@@ -478,52 +575,54 @@ Behavior notes (all verified live):
 
 ## 8. End-to-end copy/paste smoke-test sequence
 
-All commands below are **read-only** and were verified on this machine. Replace `$ATLAS_TOKEN` and `$PY` with:
+All commands below are **read-only** and were verified on this machine. Get `atlas` on `PATH` first:
 
 ```powershell
-$PY = "python -c `"from cli.app import main; main()`""
-# from the repo root so relative export paths are under D:\atlas
-cd D:\atlas
+$env:PATH += ";C:\Users\Sujal\AppData\Local\Python\pythoncore-3.14-64\Scripts"
+'password123' | atlas login --email demo@atlas.val --password-stdin   # one-time auth (see §8.11)
+cd D:\atlas   # from the repo root so relative export paths are under D:\atlas
 ```
+
+> If you'd rather drive the underlying `main()` entrypoint directly (for the exit-2 usage behavior, §10.5), define `$PY = "python -c `"from cli.app import main; main()`""`, invoke **it** in place of `atlas` below, and add the `$env:PYTHONPATH` line from §5.1.
 
 ### 8.1 Version and help
 
 ```powershell
-& $PY --version                    # atlas, version 0.1.0   (exit 0)
-& $PY --help                       # usage + commands        (exit 0)
-& $PY benchmark --help
-& $PY run --help
-& $PY report --help
+atlas --version                    # atlas, version 0.1.0   (exit 0)
+atlas --help                       # usage + commands        (exit 0)
+atlas benchmark --help
+atlas run --help
+atlas report --help
 ```
 
 ### 8.2 Health (no auth needed)
 
 ```powershell
-& $PY health                       # human table, exit 0
-& $PY health --output json         # {"api":{...},"liveness":{...},"readiness":{...},"overall":"healthy"}
-& $PY --quiet health               # no output, exit 0
+atlas health                       # human table, exit 0
+atlas --output json health         # {"api":{...},"liveness":{...},"readiness":{...},"overall":"healthy"}
+atlas --quiet health               # no output, exit 0
 ```
 
 ### 8.3 Human output
 
 ```powershell
-& $PY whoami                       # Atlas User block        (exit 0)
-& $PY benchmark list               # 8 published benchmarks  (exit 0)
-& $PY run list --limit 3           # executions table        (exit 0)
-& $PY report list --limit 3        # report runs table       (exit 0)
-& $PY report get b94248f7-f5f9-4ed8-992a-b29751b4e710   # Report Summary, score 100.0 (exit 0)
-& $PY run get b94248f7-f5f9-4ed8-992a-b29751b4e710      # Execution detail            (exit 0)
+atlas whoami                       # Atlas User block        (exit 0)
+atlas benchmark list               # 8 published benchmarks  (exit 0)
+atlas run list --limit 3           # executions table        (exit 0)
+atlas report list --limit 3        # report runs table       (exit 0)
+atlas report get b94248f7-f5f9-4ed8-992a-b29751b4e710   # Report Summary, score 100.0 (exit 0)
+atlas run get b94248f7-f5f9-4ed8-992a-b29751b4e710      # Execution detail            (exit 0)
 ```
 
 ### 8.4 JSON output
 
 ```powershell
-& $PY --output json whoami
-& $PY --output json health
-& $PY --output json benchmark list
-& $PY --output json run list --limit 3
-& $PY --output json report list --limit 3
-& $PY --output json report get b94248f7-f5f9-4ed8-992a-b29751b4e710
+atlas --output json whoami
+atlas --output json health
+atlas --output json benchmark list
+atlas --output json run list --limit 3
+atlas --output json report list --limit 3
+atlas --output json report get b94248f7-f5f9-4ed8-992a-b29751b4e710
 ```
 
 Every JSON command above exits 0 and prints one JSON document to stdout. Verify pass by piping to a JSON parser if you like.
@@ -531,39 +630,41 @@ Every JSON command above exits 0 and prints one JSON document to stdout. Verify 
 ### 8.5 Quiet mode
 
 ```powershell
-& $PY --quiet whoami; echo "exit=$LASTEXITCODE"        # 0
-& $PY -q benchmark list; echo "exit=$LASTEXITCODE"     # 0
-& $PY --quiet report export b94248f7-f5f9-4ed8-992a-b29751b4e710 --output-file smoke-quiet.json; echo "exit=$LASTEXITCODE"
+atlas --quiet whoami; echo "exit=$LASTEXITCODE"        # 0
+atlas -q benchmark list; echo "exit=$LASTEXITCODE"     # 0
+atlas --quiet report export b94248f7-f5f9-4ed8-992a-b29751b4e710 --output-file smoke-quiet.json; echo "exit=$LASTEXITCODE"
 ```
 
 ### 8.6 Invalid / nonexistent IDs
 
 ```powershell
-& $PY run get 11111111-1111-1111-1111-111111111111; echo "exit=$LASTEXITCODE"        # 5
-& $PY report get 11111111-1111-1111-1111-111111111111; echo "exit=$LASTEXITCODE"      # 5
-& $PY report export 11111111-1111-1111-1111-111111111111; echo "exit=$LASTEXITCODE"   # 5
-& $PY report list --status bogus; echo "exit=$LASTEXITCODE"                           # 2 (invalid Choice)
-& $PY report export x --format xml; echo "exit=$LASTEXITCODE"                         # 2 (invalid Choice)
+atlas run get 11111111-1111-1111-1111-111111111111; echo "exit=$LASTEXITCODE"        # 5
+atlas report get 11111111-1111-1111-1111-111111111111; echo "exit=$LASTEXITCODE"      # 5
+atlas report export 11111111-1111-1111-1111-111111111111; echo "exit=$LASTEXITCODE"   # 5
+atlas report list --status bogus; echo "exit=$LASTEXITCODE"                           # 2 (invalid Choice)
+atlas report export x --format xml; echo "exit=$LASTEXITCODE"                         # 2 (invalid Choice)
 ```
 
 ### 8.7 Authentication failure
 
+The saved profile is the live credential, so `Remove-Item Env:ATLAS_TOKEN` alone is NOT enough here — log out first:
+
 ```powershell
-Remove-Item Env:ATLAS_TOKEN
-& $PY whoami; echo "exit=$LASTEXITCODE"                             # 3  (Not authenticated)
-& $PY --output json whoami; echo "exit=$LASTEXITCODE"               # 3  (JSON error envelope on stderr)
-# restore token
-$env:ATLAS_TOKEN = $tok
-& $PY run list; echo "exit=$LASTEXITCODE"                           # 0
+atlas logout
+atlas whoami; echo "exit=$LASTEXITCODE"                             # 3  (Not authenticated)
+atlas --output json whoami; echo "exit=$LASTEXITCODE"               # 3  (JSON error envelope on stderr)
+# restore auth
+'password123' | atlas login --email demo@atlas.val --password-stdin
+atlas run list; echo "exit=$LASTEXITCODE"                           # 0
 ```
 
-For a live 401 (expired/garbage token), set e.g. `$env:ATLAS_TOKEN="invalid"` and re-run `whoami` → exit 3.
+For a live 401 (expired/garbage token), set `$env:ATLAS_TOKEN="invalid"` and re-run `whoami` → the env var overrides the stored token → exit 3.
 
 ### 8.8 Forbidden access
 
 ```powershell
-& $PY benchmark get 66666666-6666-6666-6666-666666666666; echo "exit=$LASTEXITCODE"     # 4
-& $PY benchmark versions 66666666-6666-6666-6666-666666666666; echo "exit=$LASTEXITCODE" # 4
+atlas benchmark get 66666666-6666-6666-6666-666666666666; echo "exit=$LASTEXITCODE"     # 4
+atlas benchmark versions 66666666-6666-6666-6666-666666666666; echo "exit=$LASTEXITCODE" # 4
 ```
 
 (Seeded published benchmarks belong to an org no seeded user belongs to — verified 403 behavior. See §10.4.)
@@ -575,24 +676,24 @@ $RUN = b94248f7-f5f9-4ed8-992a-b29751b4e710
 cd $env:TEMP
 
 # JSON to server-provided filename in cwd
-& (python -c "from cli.app import main; main()") report export $RUN            # receipt, exit 0
+atlas report export $RUN            # receipt, exit 0
 
 # CSV
-& (python -c "from cli.app import main; main()") report export $RUN --format csv --output-file smoke.csv
+atlas report export $RUN --format csv --output-file smoke.csv
 
-# specified file
-& (python -c "from cli.app import main; main()") report export $RUN --output-file smoke.json --output json
+# specified file, JSON receipt
+atlas --output json report export $RUN --output-file smoke.json
 
 # include prompt + expected output
-& (python -c "from cli.app import main; main()") report export $RUN --include-prompt --include-expected-output --output-file full.json
+atlas report export $RUN --include-prompt --include-expected-output --output-file full.json
 
 # stdout (raw bytes, byte-identical to the file version)
-& (python -c "from cli.app import main; main()") report export $RUN --output-file - > raw.bin
+atlas report export $RUN --output-file - > raw.bin
 if ((Get-FileHash raw.bin).Hash -eq (Get-FileHash smoke.json).Hash) { "stdout==file: OK" }
 
 # overwrite refusal then --force
-& (python -c "from cli.app import main; main()") report export $RUN --output-file smoke.json; echo "exit=$LASTEXITCODE"  # 8
-& (python -c "from cli.app import main; main()") report export $RUN --output-file smoke.json --force; echo "exit=$LASTEXITCODE"  # 0
+atlas report export $RUN --output-file smoke.json; echo "exit=$LASTEXITCODE"  # 8
+atlas report export $RUN --output-file smoke.json --force; echo "exit=$LASTEXITCODE"  # 0
 ```
 
 ### 8.10 Recommended ID discovery
@@ -601,11 +702,25 @@ Never guess IDs — take them from an earlier JSON/list command:
 
 ```powershell
 # latest run/run-id (used by report get/export and run get)
-& $PY report list --limit 5 --output json            # items[].run_id
-& $PY run list --limit 5 --output json               # items[].id, items[].benchmark_version_id
+atlas report list --limit 5 --output json            # items[].run_id
+atlas run list --limit 5 --output json               # items[].id, items[].benchmark_version_id
 
 # benchmark version id (needed only for `run submit`, which creates an execution)
-& $PY benchmark versions <BENCHMARK_ID> --output json   # items[].id
+atlas benchmark versions <BENCHMARK_ID> --output json   # items[].id
+```
+
+### 8.11 Login / logout smoke (live-verified)
+
+```powershell
+'password123' | atlas login --email demo@atlas.val --password-stdin   # "Logged in as demo@atlas.val"
+atlas whoami                                                          # Atlas User block
+atlas --output json whoami                                            # user JSON
+atlas --quiet whoami; echo "exit=$LASTEXITCODE"                       # 0
+atlas --base-url http://localhost:8000 login --email demo@atlas.val --password-stdin   # saves that base URL
+atlas logout                                                          # "Logged out" (keeps base_url)
+atlas logout                                                          # still exit 0 (idempotent)
+atlas whoami; echo "exit=$LASTEXITCODE"                               # 3
+Get-Content "$env:APPDATA\Atlas\config.toml"                          # [default] + base_url only, no token
 ```
 
 ---
@@ -631,9 +746,8 @@ atlas ... --output json
 ## 10. Known limitations and caveats
 
 ### 10.1 Not currently available
-- `atlas login` — **does not exist.** Auth is `ATLAS_TOKEN` only.
-- PAT / machine-token authentication — not implemented.
-- Config files / `config.toml` / named profiles — `--profile` only changes the resolved profile name; `load_config()` reads env + flags only (`cli/config.py:7`).
+- PAT / machine-token authentication — not implemented (use `atlas login`, `ATLAS_TOKEN`, or `--base-url`).
+- Multi-profile switching UX — config.toml supports multiple `[profile]` sections, but only the one named by `--profile`/`ATLAS_PROFILE` is read/written.
 - TypeScript SDK — not consulted; this guide covers the Python SDK only.
 - `run submit` with a real LLM target that yields actual API costs — the default `--target-model gemini-2.5-flash` hit a real provider adapter on this box; treat submit as potentially expensive.
 
@@ -648,7 +762,7 @@ All published benchmarks in the seeded SQLite DB belong to project `33333333-…
 The execution detail endpoint sources the separate `ee_executions` table (`status RUNNING`, progress `0/1`), while `report get` on the same ID returns `COMPLETED` / score 100.0. Backend data-source discrepancy — the CLI faithfully renders each endpoint.
 
 ### 10.5 `atlas.exe` usage-error exit codes differ from `python -c` invocation
-The console-script entrypoint calls `main(standalone_mode=False)`, so Click usage errors (unknown command/option, bad Choice) raise uncaught `click.UsageError` → traceback + exit 1. The `python -c "from cli.app import main; main()"` form used here runs `standalone_mode=True`, producing clean `Usage:` output and exit 2. Use the `python -c` form while testing exit-code expectations.
+The console-script entrypoint calls `main(standalone_mode=False)`, so Click usage errors (unknown command/option, bad Choice) raise uncaught `click.UsageError` → traceback + exit 1. The `python -c "from cli.app import main; main()"` form (option B in §2.3) runs `standalone_mode=True`, producing clean `Usage:` output and exit 2. Prefer the `python -c` form while testing exit-code expectations.
 ### 10.6 Unhandled local I/O exceptions
 
 `report export` propagates a raw `FileNotFoundError`/`PermissionError` if the destination can't be opened (only the overwrite-refusal path yields the clean exit 8). Expect an unhandled traceback and a non-zero exit code in that case.
@@ -656,8 +770,8 @@ The console-script entrypoint calls `main(standalone_mode=False)`, so Click usag
 ### 10.7 httpx prints `TLS verification disabled for localhost target` to stderr
 This INFO line appears once per process for `localhost` targets. Harmless; it goes to stderr and does not affect stdout/exit codes. It is why `2>$null` appears in this guide's examples.
 
-### 10.8 Stale `atlas login` reference
-`whoami`'s no-token error says `run `atlas login` or set ATLAS_TOKEN` (`cli/commands/auth.py:34`) but `atlas login` does not exist. Treat the message as aspirational; use `ATLAS_TOKEN`.
+### 10.8 "Not authenticated — run `atlas login` or set ATLAS_TOKEN"
+`whoami`'s no-token error (`cli/commands/auth.py`) is now fully accurate: `atlas login` exists and persists the token to `%APPDATA%\Atlas\config.toml`. `ATLAS_TOKEN` (env) overrides the saved token when both are present.
 
 ### 10.9 Click prog name
 Invoked via `python -c`, help/usage headers show `Usage: -c …`; via the installed `atlas` script they show `Usage: atlas …`. Cosmetic only.
@@ -671,11 +785,14 @@ Ruff/pytest warn about LF→CRLF on checkout; harmless and unrelated to CLI beha
 
 | Symptom | Cause / fix |
 |---|---|
-| `error: Not authenticated … exit 3` | `ATLAS_TOKEN` unset. Set it (§4). |
-| `exit 3` with no friendly message on `whoami --output json` | Same, JSON error envelope is on stderr. |
+| `error: Not authenticated … exit 3` | Neither `ATLAS_TOKEN` nor a saved profile. Run `atlas login` (§4). |
+| `exit 3` with no friendly message on `--output json whoami` | Same, JSON error envelope is on stderr. |
+| `atlas: The term 'atlas' is not recognized …` | Scripts folder not on `PATH` — add `C:\Users\Sujal\AppData\Local\Python\pythoncore-3.14-64\Scripts` (§2.3). |
+| `Logged in as …` succeeded but `whoami` still exits 3 | `$env:ATLAS_TOKEN` set to something stale — it overrides the saved token (§5.1). `Remove-Item Env:ATLAS_TOKEN`. |
 | `exit 4`, JSON body `"You are not an active member of the project's organization"` | Resource belongs to an org you aren't active in (§10.3). |
 | `exit 5` | 404 — check the ID from §8.10. |
 | `exit 6` | Backend down/unreachable/timeout. Start it (§3), check `atlas health`. |
+| `exit 7` after `--password-stdin` | Empty password on stdin — pipe exactly one line, e.g. `'password123' \| atlas login --email … --password-stdin`. |
 | `exit 8` `Destination already exists` | Add `--force`. |
 | `exit 2` `No such option: --output` | Global option placed after the subcommand (§5.1). |
 | `exit 1` + traceback on unknown command (installed `atlas`) | §10.5 `standalone_mode=False` behavior. |
@@ -683,6 +800,9 @@ Ruff/pytest warn about LF→CRLF on checkout; harmless and unrelated to CLI beha
 | Empty JSON output + exit 0 for benchmark get | Not reproducible; benchmark get currently 403s (§10.3). |
 | `run watch` prints progress to stderr | By design; only the terminal state goes to stdout in human mode. |
 | Colors look wrong in a pipe | `--no-color` disables them. |
+| `ImportError: cannot import name '__version__' from 'cli' (unknown location)` | Folder-name clash when cwd is the repo root. Use the installed `atlas` script, or set `$env:PYTHONPATH="D:\atlas\cli;D:\atlas\sdk\python"`, or run from `D:\atlas\cli` (§5.1, §2.3). Not a broken install. |
+| `pip`/`uv` die with `NameResolutionError` / `No such host is known` / `Failed to fetch` | No internet (PyPI DNS fails). The CLI is already installed — skip install or use the offline command §2.1. |
+| `error: unrecognized subcommand 'equivalent:'` from `uv` | You pasted an *advice blockquote* (`uv equivalent: …`) into the shell as a command. Only copy lines from **code blocks**; blockquotes are explanation, not commands. |
 
 ---
 

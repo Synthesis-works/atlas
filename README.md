@@ -310,6 +310,17 @@ To see the full loop in minutes:
 2. Open **Benchmarks** → pick **MBPP** (or HumanEval) → **Run** with model `groq/openai/gpt-oss-20b` (a small, fast model; needs `GROQ_API_KEY` on the worker).
 3. Watch the execution progress; on completion the leaderboard and reports update with real results.
 
+The same session can be driven from the terminal with the `atlas` CLI (see [docs/guides/atlas-cli-manual-testing.md](docs/guides/atlas-cli-manual-testing.md)):
+
+```powershell
+pip install -e ./sdk/python -e ./cli        # install the CLI once (offline: add --no-build-isolation --no-deps)
+'password123' | atlas login --email demo@atlas.val --password-stdin
+atlas whoami
+atlas leaderboard model mock                # or: atlas leaderboard benchmark <id> [--history]
+```
+
+`atlas login` stores the token in `%APPDATA%\Atlas\config.toml` (never in the repo); `atlas logout` removes it.
+
 ## 14. Project status
 
 Atlas is at **v1** — feature-complete for the core loop above. The current production deployment (Vercel + Supabase + Render) has passed a real end-to-end test: a single execution submitted through the public API was processed through the outbox, executed against a real LLM provider, evaluated, reported, and snapshot to the leaderboard — with exactly one execution record, no duplicates, and all outbox events processed.
