@@ -48,3 +48,21 @@ class LeaderboardRead(BaseModel):
     benchmark_version_id: str | None = None
     capability_id: str | None = None
     entries: PageResponse[LeaderboardEntryRead]
+
+
+class ModelSummary(BaseModel):
+    """High-level aggregate overview of a model's performance.
+
+    Mirrors ``apps/backend/schemas/leaderboard.py::ModelSummary``.
+    Returned directly by ``GET /api/v1/models/{model_name}/summary``
+    (not wrapped in ``APIResponse``).  An unknown model yields a 200
+    with ``benchmarks == 0`` and null statistics, not a 404.
+    """
+
+    model: str
+    benchmarks: int
+    best_rank: int | None = None
+    average_rank: float | None = None
+    average_score: float | None = None
+    last_execution: datetime | None = None
+    latest_delta: int | None = None

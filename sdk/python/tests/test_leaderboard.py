@@ -25,6 +25,7 @@ from atlas_sdk.models.leaderboard import (
     LeaderboardEntryRead,
     LeaderboardRead,
     LeaderboardType,
+    ModelSummary,
 )
 
 
@@ -249,4 +250,180 @@ class TestGetBenchmarkLeaderboard:
         client = AtlasClient("http://localhost:8000", max_retries=0)
         with pytest.raises(NetworkError):
             client.get_benchmark_leaderboard(self._BV_ID)
+        client.close()
+# -- ModelSummary --------------------------------------------------------
+
+
+def _summary_payload(**overrides: object) -> dict:
+    """Realistic bare ``ModelSummary`` payload (shape recorded from the live API)."""
+    payload: dict = {
+        "model": "mock",
+        "benchmarks": 4,
+        "best_rank": 1,
+        "average_rank": 1.5,
+        "average_score": 85.71428571428571,
+        "last_execution": "2026-08-23T07:04:07.219431",
+        "latest_delta": None,
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _summary_url(model_name: str) -> str:
+    return f"http://localhost:8000/api/v1/models/{model_name}/summary"
+
+
+class TestModelSummaryDto:
+    """DTO field-for-field contract with the wire payload."""
+
+    def test_models_parse_live_payload_shape(self) -> None:
+        raw = json.dumps(_summary_payload())
+        summary = ModelSummary.model_validate_json(raw)
+        assert summary.model == "mock"
+        assert summary.benchmarks == 4
+        assert summary.best_rank == 1
+        assert summary.average_rank == 1.5
+        assert summary.average_score == 85.71428571428571
+        assert summary.last_execution.isoformat() == "2026-08-23T07:04:07.219431"
+        assert summary.latest_delta is None
+
+    def test_models_parse_unknown_model_payload(self) -> None:
+        raw = json.dumps({
+            "model": "SuchModelDoesNotExist",
+            "benchmarks": 0,
+            "best_rank": None,
+            "average_rank": None,
+            "average_score": None,
+            "last_execution": None,
+            "latest_delta": None,
+        })
+        summary = ModelSummary.model_validate_json(raw)
+        assert summary.model == "SuchModelDoesNotExist"
+        assert summary.benchmarks == 0
+        assert summary.best_rank is None
+        assert summary.average_rank is None
+        assert summary.average_score is None
+        assert summary.last_execution is None
+        assert summary.latest_delta is None
+
+    def test_model_dump_round_trips_wire_shape(self) -> None:
+        summary = ModelSummary.model_validate(_summary_payload())
+        dumped = summary.model_dump(mode="json")
+        assert dumped["model"] == "mock"
+        assert dumped["benchmarks"] == 4
+        assert dumped["best_rank"] == 1
+        assert dumped["average_rank"] == 1.5
+        assert dumped["latest_delta"] is None
+
+
+class TestGetModelSummary:
+    def test_success_parses_summary(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_summary_url("mock"),
+            json=_summary_payload(),
+        )
+        client = AtlasClient("http://localhost:8000")
+        result = client.get_model_summary("mock")
+        assert result.model == "mock"
+        assert result.benchmarks == 4
+        assert result.best_rank == 1
+        assert result.average_rank == 1.5
+        assert result.average_score == 85.71428571428571
+        assert result.last_execution.isoformat() == "2026-08-23T07:04:07.219431"
+        assert result.latest_delta is None
+        client.close()
+
+    def test_unknown_model_parses_zeroed_summary(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_summary_url("nope"),
+            json={
+                "model": "nope",
+                "benchmarks": 0,
+                "best_rank": None,
+                "average_rank": None,
+                "average_score": None,
+                "last_execution": None,
+                "latest_delta": None,
+            },
+        )
+        client = AtlasClient("http://localhost:8000")
+        result = client.get_model_summary("nope")
+        assert result.model == "nope"
+        assert result.benchmarks == 0
+        assert result.best_rank is None
+        client.close()
+
+    def test_401_raises_auth_error(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_summary_url("mock"),
+            status_code=401,
+            json=_err(401, "UNAUTHORIZED", "Token expired"),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(AuthError) as exc_info:
+            client.get_model_summary("mock")
+        assert exc_info.value.status == 401
+        client.close()
+
+    def test_403_raises_forbidden_error(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_summary_url("mock"),
+            status_code=403,
+            json=_err(403, "FORBIDDEN", "Insufficient permissions"),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(ForbiddenError) as exc_info:
+            client.get_model_summary("mock")
+        assert exc_info.value.status == 403
+        client.close()
+
+    def test_404_raises_not_found_error(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_summary_url("mock"),
+            status_code=404,
+            json=_err(404, "NOT_FOUND", "Model not found."),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(NotFoundError) as exc_info:
+            client.get_model_summary("mock")
+        assert exc_info.value.status == 404
+        client.close()
+
+    def test_422_raises_validation_error(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_summary_url("mock"),
+            status_code=422,
+            json=_err(422, "VALIDATION_ERROR", "Invalid parameters"),
+        )
+        client = AtlasClient("http://localhost:8000")
+        with pytest.raises(ValidationError) as exc_info:
+            client.get_model_summary("mock")
+        assert exc_info.value.status == 422
+        client.close()
+
+    def test_500_raises_server_error(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url=_summary_url("mock"),
+            status_code=500,
+            json=_err(500, "INTERNAL", "something broke"),
+        )
+        client = AtlasClient("http://localhost:8000", max_retries=0)
+        with pytest.raises(ServerError):
+            client.get_model_summary("mock")
+        client.close()
+
+    def test_network_error_raises_network_error(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        httpx_mock.add_exception(httpx.ConnectError("connection refused"))
+        client = AtlasClient("http://localhost:8000", max_retries=0)
+        with pytest.raises(NetworkError):
+            client.get_model_summary("mock")
         client.close()

@@ -31,7 +31,7 @@ from atlas_sdk.models.benchmarks import (
 )
 from atlas_sdk.models.executions import ExecutionPage, ExecutionResponse
 from atlas_sdk.models.health import HealthData, LivenessResponse, ReadinessResponse
-from atlas_sdk.models.leaderboard import LeaderboardRead
+from atlas_sdk.models.leaderboard import LeaderboardRead, ModelSummary
 from atlas_sdk.models.reports import (
     DownloadResult,
     PaginatedReportRunsRead,
@@ -495,6 +495,21 @@ class AtlasClient:
             params={"limit": limit, "offset": offset},
         )
         return LeaderboardRead.model_validate(response.json())
+
+    def get_model_summary(self, model_name: str) -> ModelSummary:
+        """Fetch the aggregate performance summary for a model.
+
+        ``GET /api/v1/models/{model_name}/summary``
+
+        Returns a ``ModelSummary``.  Unknown model names are not a
+        404: the backend returns a 200 with ``benchmarks == 0`` and
+        null statistics.
+
+        Note: this endpoint returns ``ModelSummary`` directly (not
+        wrapped in ``APIResponse``), like the execution endpoints.
+        """
+        response = self._get_raw(f"/api/v1/models/{model_name}/summary")
+        return ModelSummary.model_validate(response.json())
 
     # -- reports --
 
