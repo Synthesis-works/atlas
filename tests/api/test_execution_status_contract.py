@@ -2,6 +2,9 @@
 Contract & Schema Integration Tests — Execution Status API (Milestone 3B)
 Validates GET /api/v1/executions/{id} status polling contract, response DTO structure,
 and 404 behavior for unknown execution UUIDs.
+
+The read surface is the authoritative ``executions`` row (Slice 1): the endpoint
+must never depend on the engine aggregate for status/timestamps/progress.
 """
 
 import uuid
@@ -15,15 +18,16 @@ from apps.backend.dependencies import (
     require_authenticated,
     get_db_session,
 )
-from apps.backend.routers.executions import get_execution_service
-from packages.execution_engine.domain.models import Execution, ExecutionState
+from atlas_db.models.execution import Execution as DBExecution, ExecutionStatus
 
 client = TestClient(app)
+
+_KNOWN_EXEC_ID = "11111111-2222-3333-4444-555555555555"
 
 
 @pytest.fixture(autouse=True)
 def override_auth_and_services():
-    """Supply mock token claims, db session, and execution service for status polling tests."""
+    """Supply mock token claims and a shared db session carrying the authoritative row."""
     user_id = uuid.uuid4()
     mock_claims = TokenClaims(
         sub=user_id,
@@ -34,51 +38,62 @@ def override_auth_and_services():
         membership_id=uuid.uuid4(),
     )
 
-    known_exec_id = uuid.UUID("11111111-2222-3333-4444-555555555555")
-    mock_exec = Execution.rehydrate(
-        id=known_exec_id,
-        benchmark_version_id=uuid.uuid4(),
+    now = datetime(2026, 8, 29, 12, 0, 0, tzinfo=UTC)
+    known_exec = DBExecution(
+        id=uuid.UUID(_KNOWN_EXEC_ID),
         project_id=uuid.uuid4(),
-        status=ExecutionState.RUNNING,
-        created_by=user_id,
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
-        max_retries=3,
-        attempts=[],
+        benchmark_version_id=uuid.uuid4(),
+        dataset_version_id=uuid.uuid4(),
+        submitted_by_id=user_id,
+        target_model="mock",
+        status=ExecutionStatus.RUNNING,
+        total_items=10,
+        completed_items=3,
+        queued_at=now,
+        started_at=now,
+        completed_at=None,
+        created_at=now,
+        updated_at=now,
     )
 
-    def mock_get_execution(execution_id: uuid.UUID):
-        if execution_id == known_exec_id:
-            return mock_exec
+    db = MagicMock()
+
+    def first_row():
+        calls = db.query.return_value.filter.call_args_list
+        if calls:
+            criterion = calls[-1].args[0]
+            bound = getattr(getattr(criterion, "right", None), "value", None)
+            return known_exec if bound == known_exec.id else None
         return None
 
-    mock_service = MagicMock()
-    mock_service.get_execution.side_effect = mock_get_execution
+    db.query.return_value.filter.return_value.first.side_effect = first_row
 
-    app.dependency_overrides[get_db_session] = lambda: MagicMock()
+    app.dependency_overrides[get_db_session] = lambda: db
     app.dependency_overrides[require_authenticated] = lambda: mock_claims
-    app.dependency_overrides[get_execution_service] = lambda: mock_service
     yield
     app.dependency_overrides.pop(get_db_session, None)
     app.dependency_overrides.pop(require_authenticated, None)
-    app.dependency_overrides.pop(get_execution_service, None)
 
 
 def test_get_execution_status_contract():
-    """Verify GET /api/v1/executions/{id} returns ExecutionResponse DTO for valid execution."""
-    exec_id = "11111111-2222-3333-4444-555555555555"
+    """Verify GET /api/v1/executions/{id} returns ExecutionResponse DTO from the
+    authoritative row for a valid execution."""
     headers = {
         "X-Request-ID": str(uuid.uuid4()),
         "Accept": "application/vnd.atlas.v1+json, application/json",
     }
 
-    response = client.get(f"/api/v1/executions/{exec_id}", headers=headers)
+    response = client.get(f"/api/v1/executions/{_KNOWN_EXEC_ID}", headers=headers)
 
     assert response.status_code == 200, f"Expected 200 OK, got {response.status_code}"
 
     data = response.json()
-    assert data["id"] == exec_id, f"Expected ID {exec_id}, got {data['id']}"
+    assert data["id"] == _KNOWN_EXEC_ID, f"Expected ID {_KNOWN_EXEC_ID}, got {data['id']}"
     assert data["status"] == "RUNNING", f"Expected status RUNNING, got {data['status']}"
+    assert data["completed_items"] == 3
+    assert data["total_items"] == 10
+    assert data["started_at"] is not None
+    assert data["completed_at"] is None
 
 
 def test_get_execution_status_not_found():

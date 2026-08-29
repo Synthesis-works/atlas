@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import uuid
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -20,6 +23,9 @@ from packages.execution_engine.domain.services import ExecutionService
 from packages.execution_engine.persistence.repository import SqlAlchemyExecutionRepository
 from apps.backend.worker.wake_client import notify_worker_wake
 
+if TYPE_CHECKING:
+    from atlas_db.models.execution import Execution as DBExecution
+
 benchmark_executions_router = APIRouter(tags=["Executions"])
 executions_router = APIRouter(tags=["Executions"])
 
@@ -29,6 +35,30 @@ def get_execution_service(db: Session = Depends(get_db_session)) -> ExecutionApp
     execution_repo = SqlAlchemyExecutionRepository(db)
     benchmark_repo = BenchmarkRepository(db)
     return ExecutionApplicationService(domain_service, execution_repo, benchmark_repo)
+
+
+def map_db_item_to_response(db_item: DBExecution) -> ExecutionResponse:
+    """Map an authoritative ``executions`` row to the API response.
+
+    This is the single mapping used by both the list and single-get surfaces so
+    they cannot drift.  Engine-internal aggregates (attempts/leases) are not part
+    of the authoritative record and are intentionally not surfaced here.
+    """
+    return ExecutionResponse(
+        id=db_item.id,
+        benchmark_version_id=db_item.benchmark_version_id,
+        status=db_item.status,
+        target_model=db_item.target_model or "gemini-2.5-flash",
+        completed_items=db_item.completed_items or 0,
+        total_items=db_item.total_items or 1,
+        started_at=db_item.started_at,
+        completed_at=db_item.completed_at,
+        created_at=db_item.created_at,
+        updated_at=db_item.updated_at,
+        created_by=db_item.submitted_by_id or uuid.uuid4(),
+        max_retries=getattr(db_item, "max_retries", 3) or 3,
+        attempts=[],
+    )
 
 
 def map_to_response(execution: Execution) -> ExecutionResponse:
@@ -199,18 +229,21 @@ def list_dispatch_targets(
 @executions_router.get("/executions/{execution_id}", response_model=ExecutionResponse)
 def get_execution(
     execution_id: uuid.UUID,
-    service: ExecutionApplicationService = Depends(get_execution_service),
+    db: Session = Depends(get_db_session),
     current_user: dict = Depends(require_permission("execution:read")),
 ):
     """
-    Retrieves details of an execution including attempts, leases, and artifacts.
-    """
-    execution = service.get_execution(execution_id)
-    if not execution:
-        from fastapi import HTTPException
+    Retrieves an execution from the authoritative ``executions`` record.
 
+    The same row that feeds reports, listing, and the dashboard — guaranteeing
+    status, progress, and timestamps cannot drift across surfaces.
+    """
+    from atlas_db.models.execution import Execution as DBExecution
+
+    db_item = db.query(DBExecution).filter(DBExecution.id == execution_id).first()
+    if not db_item:
         raise HTTPException(status_code=404, detail="Execution not found")
-    return map_to_response(execution)
+    return map_db_item_to_response(db_item)
 
 
 @executions_router.post("/executions/{execution_id}/cancel", response_model=ExecutionResponse)
@@ -233,7 +266,6 @@ def list_executions(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db_session),
-    service: ExecutionApplicationService = Depends(get_execution_service),
     current_user: dict = Depends(require_permission("execution:read")),
 ):
     """
@@ -250,23 +282,7 @@ def list_executions(
     total = query.count()
     db_items = query.order_by(DBExecution.created_at.desc()).offset(offset).limit(limit).all()
 
-    mapped_items = []
-    for db_item in db_items:
-        resp = ExecutionResponse(
-            id=db_item.id,
-            benchmark_version_id=db_item.benchmark_version_id,
-            status=db_item.status,
-            target_model=db_item.target_model or "gemini-2.5-flash",
-            completed_items=db_item.completed_items or 0,
-            total_items=db_item.total_items or 1,
-            started_at=db_item.started_at,
-            completed_at=db_item.completed_at,
-            created_at=db_item.created_at,
-            updated_at=db_item.updated_at,
-            created_by=db_item.submitted_by_id or uuid.uuid4(),
-            max_retries=getattr(db_item, "max_retries", 3) or 3,
-            attempts=[],
-        )
-        mapped_items.append(resp)
-
-    return ExecutionListResponse(items=mapped_items, total=total)
+    return ExecutionListResponse(
+        items=[map_db_item_to_response(db_item) for db_item in db_items],
+        total=total,
+    )

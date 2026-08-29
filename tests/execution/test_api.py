@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -12,6 +13,11 @@ from atlas_db.models.authoring import BenchmarkVersion
 from packages.execution_engine.application.execution_app_service import ExecutionApplicationService
 from packages.execution_engine.domain.exceptions import ExecutionNotFoundError
 from packages.execution_engine.domain.models import Execution, ExecutionState
+
+# These tests exercise the API route that reads the authoritative atlas_db
+# ``executions`` mapper; mixing with the ee persistence Base (test_persistence)
+# corrupts the shared mapper registry, so this file must run in isolation too.
+pytestmark = pytest.mark.isolate
 
 client = TestClient(app)
 
@@ -73,18 +79,40 @@ def test_create_execution(mock_exec_service):
 
 def test_get_execution(mock_exec_service):
     exec_id = uuid.uuid4()
-    mock_execution = Execution(
+    now = datetime(2026, 8, 29, 12, 0, 0, tzinfo=UTC)
+    from atlas_db.models.execution import Execution as DBExecution, ExecutionStatus
+
+    row = DBExecution(
         id=exec_id,
+        project_id=uuid.uuid4(),
         benchmark_version_id=uuid.uuid4(),
-        status=ExecutionState.RUNNING,
+        dataset_version_id=uuid.uuid4(),
+        submitted_by_id=uuid.uuid4(),
+        target_model="mock",
+        status=ExecutionStatus.RUNNING,
+        total_items=10,
+        completed_items=3,
+        queued_at=now,
+        started_at=now,
+        completed_at=None,
+        created_at=now,
+        updated_at=now,
     )
-    mock_exec_service.get_execution.return_value = mock_execution
+    db = MagicMock()
+    db.query.return_value.filter.return_value.first.return_value = row
+    app.dependency_overrides[get_db_session] = lambda: db
 
     response = client.get(f"/api/v1/executions/{exec_id}")
 
     assert response.status_code == 200
-    assert response.json()["id"] == str(exec_id)
-    assert mock_exec_service.get_execution.called
+    body = response.json()
+    assert body["id"] == str(exec_id)
+    assert body["status"] == "RUNNING"
+    assert body["completed_items"] == 3
+    assert body["completed_at"] is None
+    # The read path is fully authoritative — the engine aggregate is never consulted.
+    mock_exec_service.get_execution.assert_not_called()
+    app.dependency_overrides.pop(get_db_session, None)
 
 
 def test_cancel_execution(mock_exec_service):
