@@ -127,11 +127,10 @@ def test_execution_submission_wake_independent_of_login_warmup(monkeypatch):
 
     monkeypatch.setattr("apps.backend.routers.executions.notify_worker_wake", recording_wake)
     mock_execution_service = Mock(spec=ExecutionApplicationService)
-    mock_db = Mock()
-    mock_db.query.return_value.count.return_value = 0
-    mock_db.query.return_value.filter.return_value.count.return_value = 0
-    mock_db.query.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
-    mock_db.query.return_value.filter.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
+    from tests._fakes import FakeDB, published_submission_env
+
+    benchmark_id = uuid4()
+    mock_db = FakeDB(published_submission_env(version_id=benchmark_id))
 
     app.dependency_overrides[get_execution_service] = lambda: mock_execution_service
     app.dependency_overrides[get_db_session] = lambda: mock_db
@@ -139,7 +138,6 @@ def test_execution_submission_wake_independent_of_login_warmup(monkeypatch):
         sub=uuid4(), exp=9999999999, iat=1000000000, jti=uuid4()
     )
     try:
-        benchmark_id = uuid4()
         execution = Execution(
             id=uuid4(),
             benchmark_version_id=benchmark_id,

@@ -47,7 +47,8 @@ def override_auth_and_services():
 
     execution_cache: dict[str, Execution] = {}
 
-    def mock_submit_execution(benchmark_version_id: uuid.UUID, created_by: uuid.UUID = None):
+    def mock_submit_execution(**kwargs):
+        benchmark_version_id = kwargs["benchmark_version_id"]
         cache_key = str(benchmark_version_id)
         if cache_key in execution_cache:
             return execution_cache[cache_key]
@@ -96,7 +97,12 @@ def test_deliverable_4_prometheus_metrics_endpoint():
 
 def test_chaos_scenario_duplicate_dispatch_idempotency():
     """Verify consecutive duplicate dispatches for same benchmark return identical execution ID."""
+    from tests._fakes import FakeDB, published_submission_env
+
     version_id = uuid.uuid4()
+    app.dependency_overrides[get_db_session] = lambda: FakeDB(
+        published_submission_env(version_id=version_id)
+    )
     req_id = str(uuid.uuid4())
     headers = {"X-Request-ID": req_id}
     payload = {"benchmark_version_id": str(version_id), "target_model": "Claude-3.5"}

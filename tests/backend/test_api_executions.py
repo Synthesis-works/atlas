@@ -26,12 +26,9 @@ def mock_execution_service():
 def test_client(mock_execution_service):
     from apps.backend.dependencies import get_db_session, require_authenticated
     from apps.backend.schemas.auth import TokenClaims
+    from tests._fakes import FakeDB
 
-    mock_db = Mock()
-    mock_db.query.return_value.count.return_value = 0
-    mock_db.query.return_value.filter.return_value.count.return_value = 0
-    mock_db.query.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
-    mock_db.query.return_value.filter.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
+    mock_db = FakeDB()
 
     app.dependency_overrides[get_execution_service] = lambda: mock_execution_service
     app.dependency_overrides[get_db_session] = lambda: mock_db
@@ -43,8 +40,15 @@ def test_client(mock_execution_service):
 
 
 def test_create_execution(test_client, mock_execution_service):
+    from apps.backend.dependencies import get_db_session
+    from tests._fakes import FakeDB, published_submission_env
+
     benchmark_id = uuid.uuid4()
     exec_id = uuid.uuid4()
+
+    app.dependency_overrides[get_db_session] = lambda: FakeDB(
+        published_submission_env(version_id=benchmark_id)
+    )
 
     execution = Execution(
         id=exec_id, benchmark_version_id=benchmark_id, status=ExecutionState.QUEUED, max_retries=3

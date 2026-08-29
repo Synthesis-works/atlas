@@ -17,8 +17,15 @@ from apps.backend.dependencies import (
 )
 from apps.backend.routers.executions import get_execution_service
 from packages.execution_engine.domain.models import Execution, ExecutionState
+from tests._fakes import FakeDB, published_submission_env
 
 client = TestClient(app)
+
+
+def _install_submission_db(version_id: uuid.UUID) -> None:
+    app.dependency_overrides[get_db_session] = lambda: FakeDB(
+        published_submission_env(version_id=version_id)
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -36,7 +43,8 @@ def override_auth_and_services():
 
     execution_cache: dict[str, Execution] = {}
 
-    def mock_submit_execution(benchmark_version_id: uuid.UUID, created_by: uuid.UUID = None):
+    def mock_submit_execution(**kwargs):
+        benchmark_version_id = kwargs["benchmark_version_id"]
         cache_key = str(benchmark_version_id)
         if cache_key in execution_cache:
             return execution_cache[cache_key]
@@ -95,6 +103,8 @@ def test_post_execution_dispatch_contract():
         "execution_config": {},
     }
 
+    _install_submission_db(version_id)
+
     response = client.post(
         f"/api/v1/benchmarks/{version_id}/executions",
         json=payload,
@@ -119,6 +129,7 @@ def test_post_execution_dispatch_contract():
 def test_post_execution_idempotency():
     """Verify consecutive duplicate dispatch requests resolve to the same execution record."""
     version_id = uuid.uuid4()
+    _install_submission_db(version_id)
     req_id = str(uuid.uuid4())
     headers = {"X-Request-ID": req_id}
     payload = {

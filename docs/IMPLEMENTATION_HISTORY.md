@@ -2,6 +2,15 @@
 
 This document tracks all major implementation milestones for Atlas.
 
+## Milestone: Atlas CLI v2 — Execution Authority (Slice 1) & Published Discovery / Real Submit Authz (Slice 2)
+- **Date**: August 2026
+- **Branch**: `feature/atlas-cli-v2`
+- **Purpose**: Make the Atlas CLI agent-operable with truthful execution reads and a browsable, authorizable catalog → submit chain.
+- **Files changed**: `apps/backend/routers/executions.py`, `apps/backend/routers/benchmarks.py`, `apps/backend/authz.py` (slice 1), tests (`tests/backend/test_execution_authority.py`, `tests/backend/test_published_benchmark_discovery.py`, `tests/_fakes.py`, `tests/backend/conftest.py`, contract/authz suites).
+- **Reason**: `GET /executions/{id}` reported engine-internal state that drifted from the authoritative `executions` row; catalog reads of published benchmarks 403'd for non-member users while submissions passed a no-op permission stub — a discovery gap and an authorization hole.
+- **Impact**: `run get` now reads the authoritative row (status/timestamps/progress consistent with reports/dashboard). Published benchmarks and their versions are readable by any authenticated user; `run submit` is authorized for published benchmarks or drafts of an organization the caller is an active member of; `dispatch-targets` exposes only published + own-org drafts.
+- **Current status**: Complete. Backend, CLI (322), SDK (165) suites green; live backend verified.
+
 ## Milestone: Project Initialization
 - **Date**: Pre-2026
 - **Branch**: `main`

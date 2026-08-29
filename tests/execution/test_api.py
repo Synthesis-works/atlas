@@ -57,7 +57,10 @@ def test_create_execution(mock_exec_service):
         primary_dataset_version_id=uuid.uuid4(),
     )
     db = MagicMock()
-    db.query.return_value.filter.return_value.first.return_value = benchmark_version
+    benchmark_row = MagicMock()
+    benchmark_row.status = "published"
+    benchmark_row.project_id = uuid.uuid4()
+    db.query.return_value.filter.return_value.first.side_effect = [benchmark_version, benchmark_row]
     app.dependency_overrides[get_db_session] = lambda: db
 
     mock_execution = Execution(

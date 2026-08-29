@@ -103,19 +103,22 @@ def get_benchmark(
     project_authz: ProjectAuthorizationService = Depends(get_project_authz_service),
     app_service: BenchmarkApplicationService = Depends(get_benchmark_app_service),
 ):
-    # Fetch benchmark first to get project_id, so we can authorize
+    # Fetch benchmark first to get project_id, so we can authorize.
     benchmark = app_service.get_benchmark(benchmark_id)
 
-    member = project_authz.authorize_project_access(
-        project_id=benchmark.project_id,
-        user_id=claims.sub,
-        allowed_roles=[
-            OrganizationRole.VIEWER,
-            OrganizationRole.MEMBER,
-            OrganizationRole.ADMIN,
-            OrganizationRole.OWNER,
-        ],
-    )
+    # Published benchmarks are public artifacts readable by any authenticated
+    # user; only unpublished ones stay gated behind org membership.
+    if str(benchmark.state).lower() != "published":
+        project_authz.authorize_project_access(
+            project_id=benchmark.project_id,
+            user_id=claims.sub,
+            allowed_roles=[
+                OrganizationRole.VIEWER,
+                OrganizationRole.MEMBER,
+                OrganizationRole.ADMIN,
+                OrganizationRole.OWNER,
+            ],
+        )
 
     return APIResponse.success_response(data=benchmark)
 
@@ -215,16 +218,19 @@ def list_benchmark_versions(
 ):
     benchmark = app_service.get_benchmark(benchmark_id)
 
-    member = project_authz.authorize_project_access(
-        project_id=benchmark.project_id,
-        user_id=claims.sub,
-        allowed_roles=[
-            OrganizationRole.VIEWER,
-            OrganizationRole.MEMBER,
-            OrganizationRole.ADMIN,
-            OrganizationRole.OWNER,
-        ],
-    )
+    # Published benchmarks are public artifacts readable by any authenticated
+    # user; only unpublished ones stay gated behind org membership.
+    if str(benchmark.state).lower() != "published":
+        project_authz.authorize_project_access(
+            project_id=benchmark.project_id,
+            user_id=claims.sub,
+            allowed_roles=[
+                OrganizationRole.VIEWER,
+                OrganizationRole.MEMBER,
+                OrganizationRole.ADMIN,
+                OrganizationRole.OWNER,
+            ],
+        )
 
     versions = app_service.get_versions(benchmark_id)
     return APIResponse.success_response(data=versions)

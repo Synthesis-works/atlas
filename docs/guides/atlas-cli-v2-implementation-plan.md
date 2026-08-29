@@ -1,7 +1,6 @@
 # Atlas CLI v2 — Implementation Plan (Agent-Loop Readiness)
 
-> **Status:** Plan only. **No code changed.**
-> **Branch:** `feature/atlas-cli-v2` (HEAD `28c0749`; this doc becomes the next commit).
+> **Status:** Slices 1–2 **shipped** on `feature/atlas-cli-v2` (`b3b9e54` for slice 1; slice 2 committed after this doc update). Slices 3–7 not started.
 > **Source inputs:** `docs/guides/atlas-cli-v2-workflow-audit.md` (facts) + `docs/guides/atlas-cli-v2-architecture-investigation.md` (design decisions).
 
 ## Mandates (from the user)
@@ -81,30 +80,36 @@ Expect: old stuck run now reports COMPLETED everywhere; a fresh `mock` run repor
 
 **Root cause (verified):** `get_benchmark`/`list_benchmark_versions` 403 for catalog reads (`apps/backend/routers/benchmarks.py:106-118,216-227`) because `project_authz.authorize_project_access` has no published exemption, while submit passes through a no-op `require_permission` (`apps/backend/authz.py:89-93`) → catalog read severed from execution; also `dispatch-targets` (`routers/executions.py:155-196`) enumerates **all** versions incl. drafts behind the stub.
 
-### Tests first (`tests/backend/test_benchmark_discovery.py` + extend `tests/backend/test_api_authz.py`)
+### Tests first (`tests/backend/test_published_benchmark_discovery.py` + `tests/backend/test_api_authz.py`; shared `tests/_fakes.py` + real-sqlite `tests/backend/conftest.py`)
 1. Published benchmark + non-member user → `GET /benchmarks/{id}` 200; `GET /benchmarks/{id}/versions` 200 with version rows containing version IDs.
 2. Draft benchmark + non-member → both 403 (unchanged).
 3. Org-member on their own org's draft → 200 (unchanged for members).
 4. Submit: non-member submits against a **published** version → works; against a **draft** version → 403 (new real gate).
 5. `dispatch-targets` lists only **published** versions (or is removed from the authz gap list — decision: gate it to published + org draft).
 
+> Implementation note: the discovery suite runs against an in-memory sqlite schema (real `BenchmarkApplicationService` + real `ProjectAuthorizationService`), not mocks. Existing submit-contract fixtures that used `Mock()` sessions were migrated to a typed fake (`tests/_fakes.py::FakeDB`) seeded with a published benchmark chain.
+
 ### Implementation
-- In the read path, short-circuit when `benchmark.status == "published"` (published ⇒ readable by any authenticated user). Keep membership path for draft/private.
+- In the read path, short-circuit when `benchmark.status == "published"` (published ⇒ readable by any authenticated user; compared case-insensitively — seeds store `published` lowercase while other states are uppercase). Keep membership path for draft/private.
 - Make `require_permission("benchmark:execute")` real for the version the submit targets: allow if parent benchmark published, else require org membership.
-- Apply the same published rule to `dispatch-targets` enumeration.
+- Apply the same published rule to `dispatch-targets` enumeration (published + caller's active-org drafts only).
+- `create_execution` path param is now `uuid.UUID` (invalid ids → 422 instead of 400), and submission still requires an existing version + benchmark row (404).
 
 ### Commit
 `fix(backend): published benchmarks readable catalog; real submit authorization per version`
 
 ### Verify
 ```
-uv run pytest tests/backend/test_benchmark_discovery.py tests/backend/test_api_authz.py tests/backend/test_api_benchmarks.py -q
-# live (version ID from activity or leaderboard --history):
-atlas benchmark get 181d1c91-15f9-43e7-866d-33809aaaedf1 --output json
-atlas benchmark versions 181d1c91-15f9-43e7-866d-33809aaaedf1 --output json
-atlas run submit <version-id> --target-model mock
+uv run pytest tests/backend/test_published_benchmark_discovery.py tests/backend/test_api_authz.py tests/backend/test_api_benchmarks.py tests/api/test_execution_contract.py -q
+# live (HumanEval = published catalog entry in org 11111111; demo user is NOT a member):
+atlas benchmark get 44444444-4444-4444-4444-444444444444 --output json
+atlas benchmark versions 44444444-4444-4444-4444-444444444444 --output json
+atlas run submit 55555555-5555-5555-5555-555555555555 --target-model mock
+# draft remains gated:
+atlas benchmark get cd9e64fc-a4d9-42ca-aff3-b818da63c352 --output json   # exit 4 (unchanged)
+atlas run submit 181d1c91-15f9-43e7-866d-33809aaaedf1 --target-model mock  # exit 4 (NEW — was allowed pre-slice-2)
 ```
-Expect: `get` and `versions` now exit 0 (were exit 4); versions return `id` fields that feed submit directly.
+Expect: `get`/`versions` on a published benchmark now exit 0 (were exit 4); versions return `id` fields that feed submit directly; submitting to **drafts** the caller doesn't own now returns exit 4 (403).
 
 ---
 

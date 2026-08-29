@@ -4,10 +4,16 @@ import uuid
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from apps.backend.authz import require_permission
-from apps.backend.dependencies import get_db_session
+from apps.backend.authz import (
+    ProjectAuthorizationService,
+    get_project_authz_service,
+    require_permission,
+)
+from apps.backend.dependencies import TokenClaims, get_db_session, require_authenticated
+from atlas_db.models.core import MembershipStatus, OrganizationMember, OrganizationRole, Project
 from atlas_db.repositories.authoring import BenchmarkRepository
 from packages.execution_engine.api.dtos import (
     ArtifactResponse,
@@ -103,35 +109,48 @@ def map_to_response(execution: Execution) -> ExecutionResponse:
     status_code=201,
 )
 def create_execution(
-    benchmark_version_id: str,
+    benchmark_version_id: uuid.UUID,
     payload: ExecutionCreateRequest = Body(default_factory=ExecutionCreateRequest),
     db: Session = Depends(get_db_session),
     service: ExecutionApplicationService = Depends(get_execution_service),
-    current_user: dict = Depends(require_permission("benchmark:execute")),
+    project_authz: ProjectAuthorizationService = Depends(get_project_authz_service),
+    claims: TokenClaims = Depends(require_authenticated),
 ):
     """
     Creates and queues a new execution for a specific benchmark version.
+
+    Submission is authorized for published benchmarks (public artifacts) or for
+    drafts owned by an organization the caller is an active member of.
     """
-    try:
-        bv_uuid = uuid.UUID(benchmark_version_id)
-    except (ValueError, TypeError):
-        raise HTTPException(
-            status_code=400, detail=f"Invalid benchmark_version_id: {benchmark_version_id}"
-        )
+    from atlas_db.models.authoring import Benchmark, BenchmarkVersion
 
-    from atlas_db.models.authoring import BenchmarkVersion
-
-    benchmark_version = db.query(BenchmarkVersion).filter(BenchmarkVersion.id == bv_uuid).first()
+    benchmark_version = (
+        db.query(BenchmarkVersion).filter(BenchmarkVersion.id == benchmark_version_id).first()
+    )
     if not benchmark_version:
         raise HTTPException(
             status_code=404, detail=f"BenchmarkVersion {benchmark_version_id} not found"
         )
 
-    sub = current_user.get("sub", str(uuid.uuid4()))
-    try:
-        user_id = uuid.UUID(sub)
-    except (ValueError, TypeError):
-        user_id = uuid.uuid4()
+    benchmark = db.query(Benchmark).filter(Benchmark.id == benchmark_version.benchmark_id).first()
+    if not benchmark:
+        raise HTTPException(
+            status_code=404, detail=f"Benchmark {benchmark_version.benchmark_id} not found"
+        )
+
+    if str(benchmark.status).lower() != "published":
+        project_authz.authorize_project_access(
+            project_id=benchmark.project_id,
+            user_id=claims.sub,
+            allowed_roles=[
+                OrganizationRole.VIEWER,
+                OrganizationRole.MEMBER,
+                OrganizationRole.ADMIN,
+                OrganizationRole.OWNER,
+            ],
+        )
+
+    user_id = claims.sub
 
     target_model = (
         payload.target_model if payload and payload.target_model else "groq/llama-3.1-8b-instant"
@@ -166,7 +185,7 @@ def create_execution(
         )
 
     execution = service.submit_execution(
-        benchmark_version_id=bv_uuid,
+        benchmark_version_id=benchmark_version_id,
         dataset_version_id=dataset_version_id,
         submitted_by=user_id,
         target_model=target_model,
@@ -184,13 +203,29 @@ def create_execution(
 @executions_router.get("/executions/dispatch-targets", response_model=list[DispatchTargetResponse])
 def list_dispatch_targets(
     db: Session = Depends(get_db_session),
-    current_user: dict = Depends(require_permission("execution:read")),
+    claims: TokenClaims = Depends(require_authenticated),
 ):
     """
     Lists benchmark versions that can be dispatched, each with a resolved dataset version.
+
+    Published benchmarks are dispatchable by any authenticated user. Drafts are
+    dispatchable only when the caller is an active member of the organization
+    owning the benchmark's project.
     """
     from atlas_db.models.authoring import Benchmark, BenchmarkVersion
     from atlas_db.models.tasks import TestCase
+
+    active_org_ids = [
+        row[0]
+        for row in db.query(OrganizationMember.organization_id)
+        .filter(
+            OrganizationMember.user_id == claims.sub,
+            OrganizationMember.status == MembershipStatus.ACTIVE,
+        )
+        .all()
+    ]
+
+    visible = or_(Benchmark.status == "published", Project.org_id.in_(active_org_ids))
 
     rows = (
         db.query(
@@ -200,6 +235,8 @@ def list_dispatch_targets(
             BenchmarkVersion.primary_dataset_version_id,
         )
         .join(Benchmark, Benchmark.id == BenchmarkVersion.benchmark_id)
+        .join(Project, Project.id == Benchmark.project_id)
+        .filter(visible)
         .order_by(Benchmark.name, BenchmarkVersion.created_at.desc())
         .all()
     )
