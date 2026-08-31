@@ -1,6 +1,6 @@
 # Atlas CLI v2 — Implementation Plan (Agent-Loop Readiness)
 
-> **Status:** Slices 1–4 **shipped** on `feature/atlas-cli-v2` (slice 1 `b3b9e54`, slice 2 `34fafec`, slice 3 `46be18c`, slice 4 committed after this doc update). Slices 5–7 not started.
+> **Status:** Slices 1–5 **shipped** on `feature/atlas-cli-v2` (slice 1 `b3b9e54`, slice 2 `34fafec`, slice 3 `46be18c`, slice 4 `b5365b8`, slice 5 `956763e`). Slices 6–7 not started.
 > **Source inputs:** `docs/guides/atlas-cli-v2-workflow-audit.md` (facts) + `docs/guides/atlas-cli-v2-architecture-investigation.md` (design decisions).
 
 ## Mandates (from the user)
@@ -215,8 +215,16 @@ atlas run submit 00000000-0000-0000-0000-000000000000 --target-model mock --prev
 - `cli/cli/client.py`: `build_client(cfg, *, token_supplier=None, timeout=...)` returns `AtlasClient(base_url=cfg.base_url, token_supplier=..., timeout=..., max_retries=cfg.retries)`; migrate the 12 sites (mechanical; watch keeps its `timeout=5.0` override via parameter).
 - `cli/cli/app.py`, `cli/cli/config.py`: add `retries` (int, default 3).
 
+### Implementation notes (shipped)
+- **One shared construction path:** every command now builds its client via `cli/cli/client.py:build_client()` — 18 `AtlasClient(...)` sites across 8 command files (the plan estimated 12) funnel through it. The builder owns the token-supplier + timeout plumbing and passes `max_retries=cfg.retries` to the SDK constructor, so the value reaches the SDK's *actual* retry loop (verified, see below), not just a displayed config.
+- **Default `retries = 3`** mirrors the SDK's own `_MAX_RETRIES`, so behavior is byte-identical to v1 unless a flag/env says otherwise. `0` disables retries.
+- **Validation is Click-native:** `--retries` is `type=int` with `envvar=ATLAS_RETRIES` plus a callback rejecting negatives — Click runs the callback for both the flag *and* the env value, so `ATLAS_RETRIES=-2` also exits 2. Non-integers exit 2 via Click's type coercion.
+- **Retry semantics are the SDK's, unchanged:** only idempotent GET/HEAD (`_get`, `retry=True`) retry on 429/5xx/transport errors; POST (`_post`, `retry=False`) never does — `run submit` stays non-retried. Proven by a builder test that drives a *real* SDK client through a scripted transport: 503-then-200 with `retries=1` → 2 attempts for a GET; with `retries=0` → 1 attempt then `ServerError`; a POST with `retries=5` → exactly 1 attempt.
+- **Test patch targets moved:** unit tests previously mocked `cli.commands.<module>.AtlasClient`; they now mock `cli.client.AtlasClient` (the single construction point), so a future command that hand-rolls its own client fails loudly in tests instead of silently no-op'ing.
+- **Live verification:** healthy GETs round-trip at `--retries 0/3/5` (exit 0); pointing at a port where connects hang showed the retry count changing real wire behavior (~14s = 1 attempt at `--retries 0` vs ~42s = 3 attempts at `--retries 2`, dominated by the 10s connect timeout); `--retries -1`, `--retries abc`, and `ATLAS_RETRIES=-2` all exit 2; authenticated `run get` at `--retries 0` and a real `run submit` POST both exit 0.
+
 ### Commit
-`feat(cli): expose SDK retry count via global --retries (config.plumbed, POST still non-idempotent)`
+`feat(cli): expose SDK retry count via global --retries (config.plumbed, POST still non-retried)`
 
 ### Verify
 ```
@@ -225,7 +233,6 @@ uv run --directory cli pytest -q
 atlas --retries 0 health --output json; echo "exit=$LASTEXITCODE"   # works; SDK won't retry
 atlas --retries -1 health; echo "exit=$LASTEXITCODE"                 # exit 2 usage
 atlas --retries 3 run get <id> --output json                         # healthy round-trip
-```
 
 ---
 

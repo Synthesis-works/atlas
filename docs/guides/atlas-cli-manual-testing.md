@@ -238,10 +238,13 @@ atlas whoami --output json        # Error: No such option: --output  (exit 2)
 | Base URL | `--base-url` | URL | `ATLAS_BASE_URL` | API base (default `http://localhost:8000`) |
 | Profile | `--profile` | name | `ATLAS_PROFILE` | Profile section read/written in `%APPDATA%\Atlas\config.toml` (default `default`) |
 | Timeout | `--timeout` | float seconds | `ATLAS_TIMEOUT` | Request timeout (default `60.0`) |
+| Retries | `--retries` | integer ≥ 0 | `ATLAS_RETRIES` | Max retries for idempotent GET/HEAD requests (default `3`); `0` disables them |
 | No color | `--no-color` | flag | — | Disables ANSI colors |
 | Version | `--version` / `-V` | flag | — | Prints `atlas, version 0.1.0` and exits 0 |
 
 Precedence (highest wins): **CLI flag > environment variable > saved profile > built-in default** (`cli/config.py`). A token, when set, comes from `ATLAS_TOKEN` (env) or the saved profile — flags do not take a token.
+
+**Retry semantics:** `--retries` (default `3`, matching the SDK) controls the SDK's built-in retry loop, which applies **only to idempotent GET/HEAD requests** on transient failures (429, 5xx, or transport errors). `run submit` (POST) and other non-idempotent calls are **never** automatically retried, regardless of `--retries`. Negative values and non-integers are usage errors (exit 2).
 
 ### 5.2 Bare invocations
 

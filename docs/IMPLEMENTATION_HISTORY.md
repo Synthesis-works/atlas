@@ -11,6 +11,14 @@ This document tracks all major implementation milestones for Atlas.
 - **Impact**: `run get` now reads the authoritative row (status/timestamps/progress consistent with reports/dashboard). Published benchmarks and their versions are readable by any authenticated user; `run submit` is authorized for published benchmarks or drafts of an organization the caller is an active member of; `dispatch-targets` exposes only published + own-org drafts.
 - **Current status**: Complete. Backend, CLI (322), SDK (165) suites green; live backend verified.
 
+### Slice 5: expose SDK retry capability via global `--retries`
+- **Date**: August 2026
+- **Purpose**: surface the SDK's existing `max_retries` (default 3) through the CLI so agents can tune retry resilience, without re-inventing retry.
+- **Files changed**: new `cli/cli/client.py` (`build_client(cfg, *, token_supplier=None, timeout=None)` — the single shared client-construction path, passing `max_retries=cfg.retries`), `cli/cli/config.py` (`AtlasConfig.retries`, `_env_int`), `cli/cli/app.py` (global `--retries` with `ATLAS_RETRIES` env + negative-value callback), all 18 `AtlasClient(...)` sites across 8 command files migrated to `build_client` (watch keeps its `timeout=5.0` override), test patch targets moved from `cli.commands.<module>.AtlasClient` → `cli.client.AtlasClient`, new `cli/tests/test_client_builder.py` (10 tests incl. real-SDK behavioral proof via a scripted transport), plus additions to `test_config.py` / `test_cli_parsing.py`.
+- **Reason**: retries were hard-coded inside the SDK; the CLI had no way to lower them for fast failure or raise them for flaky networks, forcing agent scripts to accept fixed latency.
+- **Impact**: `--retries N` (env `ATLAS_RETRIES`) flows into the SDK's actual retry loop for idempotent GET/HEAD only; POST (`run submit`) is never retried; default 3 keeps v1 behavior byte-identical. Negative/non-integer values exit 2 (flag *and* env). Live-verified: healthy GETs round-trip at 0/3/5; against a hanging port `--retries 0` ≈ 1 attempt vs `--retries 2` ≈ 3 attempts (wire-proven by elapsed time); invalid values exit 2; authenticated `run get` and a real `run submit` POST exit 0.
+- **Current status**: Complete. Commit `956763e`. CLI suite 366 passed, SDK 169 passed/2 skipped, ruff + mypy clean on touched files.
+
 ### Slice 4: safe `run submit` (required `--target-model`) + cost-free `--preview`
 - **Date**: August 2026
 - **Purpose**: eliminate the silent paying default on submissions and add a deterministic, read-only dry-run so agents can preflight before POSTing.
