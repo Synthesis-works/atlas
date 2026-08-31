@@ -1,6 +1,6 @@
 # Atlas CLI v2 — Implementation Plan (Agent-Loop Readiness)
 
-> **Status:** Slices 1–5 **shipped** on `feature/atlas-cli-v2` (slice 1 `b3b9e54`, slice 2 `34fafec`, slice 3 `46be18c`, slice 4 `b5365b8`, slice 5 `956763e`). Slices 6–7 not started.
+> **Status:** Slices 1–6 **shipped** on `feature/atlas-cli-v2` (slice 1 `b3b9e54`, slice 2 `34fafec`, slice 3 `46be18c`, slice 4 `b5365b8`, slice 5 `956763e`; slice 6 commit pending). Slice 6 shipped **`--json-schema` only** — `--fields` was dropped after the mandated pre-implementation review (see Slice 6 notes). Slice 7 not started (decision point).
 > **Source inputs:** `docs/guides/atlas-cli-v2-workflow-audit.md` (facts) + `docs/guides/atlas-cli-v2-architecture-investigation.md` (design decisions).
 
 ## Mandates (from the user)
@@ -236,35 +236,34 @@ atlas --retries 3 run get <id> --output json                         # healthy r
 
 ---
 
-## Slice 6 — `--fields` projection + `--json-schema` (P1/P2, CLI, "where justified")
+## Slice 6 — `--json-schema` self-description (P9/P10, CLI, "where justified")
 
-**Goal:** tame heavy/heterogeneous JSON (`dashboard`, `activity`) and let agents select fields without learning shapes by heart — **no separate agent mode**.
+**Goal (as shipped):** let agents discover the exact JSON shape of a command's output with a deterministic, machine-readable document — resolved **offline** from the SDK pydantic model, exactly like `--help`.
 
-**Design:**
-- `cli/cli/output/project.py`: `project(data, fields)` — comma-separated dot-paths (`id,status,benchmark_version_id`); arrays map element-wise; prefix semantics explicit. Unknown field → CLI usage error (exit 2) for determinism. No `--fields` ⇒ output byte-identical (regression-guarded by `test_golden`).
-- Justified command set (heavy or heterogeneous or discovery-critical): `dashboard`, `activity`, `run get`, `run list`, `report get`, `report summary`, `leaderboard --history`, `leaderboard model`, `leaderboard benchmark`, `benchmark list/get/versions`.
-- `--json-schema` on the same set: prints the JSON Schema of that command's SDK response model (from the pydantic model `model_json_schema()`), exit 0 — the self-description that kills P9/P10 drift without renaming fields.
+**Realised scope (reduced after the mandated review):**
+- `--json-schema` is added **only** to commands whose JSON output is a *faithful pydantic model dump*, i.e. the schema can name the exact document: `dashboard` (`DashboardSnapshot`), `run get` (`ExecutionResponse`), `report get` (`ReportSummaryRead`, incl. nested `scores[]` via `$defs`/`$ref`), `leaderboard benchmark` (`LeaderboardRead`), `leaderboard model` (`ModelSummary`), `leaderboard model --history` (`array[TrendPoint]`), `leaderboard model --benchmarks` (`array[ModelBenchmarkHistory]`), `benchmark list` (`PageResponse[BenchmarkRead]`), `benchmark get` (`BenchmarkRead`).
+- Emitted **offline**: the flag short-circuits before `build_client()`, so it works with no backend — verified by tests patching `cli.client.AtlasClient` and asserting it is never called.
+- `$schema` dialect key is added; nested DTOs ride pydantic's `$defs`/`$ref`. Deterministic, stable field order (same renderer as normal output). `--quiet` still wins (no stdout, exit 0). Excluded commands (`activity`, `run list`, `run cancel`, `report list`, `report export`, `benchmark versions`) reject the flag with exit 2 — no single faithful model behind those outputs.
+- **`--fields` was dropped.** Evidence: value is covered by `jq`/`ConvertFrom-Json`; unknown-field validation would need a per-command schema registry on heterogeneous shapes (the forbidden "giant generic serialization framework"); hand-built wrappers (`run list` omits `next_cursor`) make dot-path semantics drift-prone. `-project.py` was therefore never created.
 
-### Tests first
-1. `cli/tests/test_output.py`: `project` unit cases (flat, nested, arrays, missing key, unknown field → usage error, empty), full-shape passthrough with no `--fields`.
-2. `cli/tests/test_output_contract.py`: `dashboard --fields id,status` on fixture prunes exactly; `report get --json-schema` emits a JSON Schema document containing the model's properties (e.g. `status`, `literal` enum values preserved); `activity --fields` works on heterogeneous items.
-3. `cli/tests/test_golden.py`: `--help` shows both flags on the justified commands.
+**Deliberate v2 changes:** new flag only; no default-output change; field names untouched (guarded by the full contract suite).
 
-### Deliberate v2 changes
-- New flags only; no default-output change; field names untouched.
+### Tests first (shipped)
+- `cli/tests/test_json_schema.py` (31 tests): helper unit cases (`SchemaDocument`, `ArraySchemaDocument`), offline emission per command (AtlasClient never constructed), nested `$defs` structures (report `scores`, leaderboard entries), bare-array variants, determinism, agreement across `--output` modes, `--quiet` silence, help-surface listing, and rejected-flag exit-2 list for all excluded commands.
 
 ### Commit
-`feat(cli): add --fields projection and --json-schema to justified outputs`
+`feat(cli): add offline --json-schema self-description to faithful-model outputs`
 
 ### Verify
 ```
 uv run --directory cli pytest -q
 # live:
-atlas dashboard --fields id,status --output json
-atlas activity --type executions --fields id,benchmark_name,status --output json
-atlas report get bf6c70b3-... --json-schema --output json | Out-Null
-atlas dashboard --fields no.such.field --output json; echo "exit=$LASTEXITCODE"  # exit 2
-atlas dashboard --output json   # unchanged vs v1 shape (spot check)
+atlas dashboard --json-schema | Out-Null             # exit 0, offline; full $defs/$ref doc
+atlas leaderboard model mock --history --json-schema # array[TrendPoint], exit 0
+atlas report get <run-id> --json-schema              # nested scores via $defs, exit 0
+atlas --quiet dashboard --json-schema                # empty stdout, exit 0
+atlas activity --json-schema; echo "exit=$LASTEXITCODE"          # exit 2
+atlas --output json dashboard                          # unchanged vs v1 shape (spot check)
 ```
 
 ---
@@ -289,12 +288,12 @@ Not planned in this round. Candidates held back, ranked, each gated on real agen
 4. `feat(cli): bound run watch with --timeout (exit 9, last-state JSON on expiry)`
 5. `feat(cli): require target model for run submit; add cost-free --preview`
 6. `feat(cli): expose SDK retry count via global --retries ...`
-7. `feat(cli): add --fields projection and --json-schema to justified outputs`
+7. `feat(cli): add offline --json-schema self-description to faithful-model outputs`
 
 Each commit: tests green in its package + affected backend tests + ruff/mypy clean + live-check done, per the baseline table. Never `git push`/`git merge`/PR. After the last commit, update this plan's status and report.
 
 ## Done-criteria for the sprint (minimal, not kitchen-sink)
 - `run get` == `report` == `dashboard` for the same run (live, incl. the previously-stuck `bf6c70b3`)…
 - `benchmark get/versions` reachable for published benchmarks; submit is real-authz; draft execution blocked for outsiders.
-- `watch` bounded (`--timeout`, exit 9, last-state JSON); `submit` requires an explicit model + offers `--preview`; `--retries` plumbed; `--fields`/`--json-schema` on justified outputs.
+- `watch` bounded (`--timeout`, exit 9, last-state JSON); `submit` requires an explicit model + offers `--preview`; `--retries` plumbed; offline `--json-schema` self-description on faithful-model outputs (`--fields` dropped after review).
 - Full CLI + SDK + affected backend suites green; all commits local; no push.

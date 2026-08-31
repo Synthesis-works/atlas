@@ -16,13 +16,14 @@ Implements:
 from __future__ import annotations
 
 import click
-from atlas_sdk import ModelBenchmarkHistory, ModelSummary, TrendPoint
+from atlas_sdk import LeaderboardRead, ModelBenchmarkHistory, ModelSummary, TrendPoint
 
 from cli.app import Context, _pass_context
 from cli.client import build_client
 from cli.config import AtlasConfig
 from cli.output.errors import error_exit
 from cli.output.json import render_json
+from cli.output.schema import emit_json_schema
 from cli.output.table import render_kv, render_table
 
 
@@ -43,6 +44,12 @@ def leaderboard_group() -> None:
 
 
 @leaderboard_group.command(name="benchmark")
+@click.option(
+    "--json-schema",
+    is_flag=True,
+    default=False,
+    help="Print the JSON Schema of this command's JSON output (offline) and exit.",
+)
 @_pass_context
 @click.argument("benchmark_version_id")
 @click.option(
@@ -62,6 +69,7 @@ def benchmark_cmd(
     benchmark_version_id: str,
     limit: int,
     offset: int,
+    json_schema: bool,
 ) -> None:
     """Show the ranked leaderboard for a benchmark version.
 
@@ -75,9 +83,15 @@ def benchmark_cmd(
       atlas leaderboard benchmark <benchmark-version-id>
 
       atlas leaderboard benchmark <benchmark-version-id> --limit 50
+
+      atlas leaderboard benchmark <benchmark-version-id> --json-schema
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
+
+    if json_schema:
+        emit_json_schema(LeaderboardRead, output_mode=output_mode)
+        return
 
     try:
         with build_client(cfg) as client:
@@ -122,6 +136,12 @@ def benchmark_cmd(
 
 
 @leaderboard_group.command(name="model")
+@click.option(
+    "--json-schema",
+    is_flag=True,
+    default=False,
+    help="Print the JSON Schema of the selected variant's output (offline) and exit.",
+)
 @_pass_context
 @click.argument("model_name")
 @click.option(
@@ -139,6 +159,7 @@ def model_cmd(
     model_name: str,
     history: bool,
     benchmarks: bool,
+    json_schema: bool,
 ) -> None:
     """Show the overall performance profile for a model.
 
@@ -156,6 +177,8 @@ def model_cmd(
       atlas leaderboard model mock --history
 
       atlas leaderboard model mock --benchmarks
+
+      atlas leaderboard model mock --json-schema
     """
     if history and benchmarks:
         raise click.UsageError(
@@ -164,6 +187,15 @@ def model_cmd(
 
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
+
+    if json_schema:
+        if history:
+            emit_json_schema(TrendPoint, output_mode=output_mode, array=True)
+        elif benchmarks:
+            emit_json_schema(ModelBenchmarkHistory, output_mode=output_mode, array=True)
+        else:
+            emit_json_schema(ModelSummary, output_mode=output_mode)
+        return
 
     try:
         with build_client(cfg) as client:

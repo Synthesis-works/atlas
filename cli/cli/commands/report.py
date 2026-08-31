@@ -22,6 +22,7 @@ import os
 import sys
 
 import click
+from atlas_sdk import ReportSummaryRead
 from atlas_sdk.errors import ConflictError
 
 from cli.app import Context, _pass_context
@@ -29,6 +30,7 @@ from cli.client import build_client
 from cli.config import AtlasConfig
 from cli.output.errors import error_exit
 from cli.output.json import render_json
+from cli.output.schema import emit_json_schema
 from cli.output.table import render_kv, render_table
 
 
@@ -156,9 +158,15 @@ def list_cmd(
 
 
 @report_group.command(name="get")
+@click.option(
+    "--json-schema",
+    is_flag=True,
+    default=False,
+    help="Print the JSON Schema of this command's JSON output (offline) and exit.",
+)
 @_pass_context
 @click.argument("run_id")
-def get_cmd(ctx: Context, run_id: str) -> None:
+def get_cmd(ctx: Context, run_id: str, json_schema: bool) -> None:
     """Fetch the detailed report for a single execution run.
 
     RUN_ID is the execution run UUID.
@@ -167,9 +175,15 @@ def get_cmd(ctx: Context, run_id: str) -> None:
     Examples:
 
       atlas report get <run-id>
+
+      atlas report get <run-id> --json-schema
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
+
+    if json_schema:
+        emit_json_schema(ReportSummaryRead, output_mode=output_mode)
+        return
 
     try:
         with build_client(cfg) as client:

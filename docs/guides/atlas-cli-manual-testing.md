@@ -262,26 +262,28 @@ atlas
 ├─ logout
 ├─ whoami
 ├─ health
-├─ dashboard
+├─ dashboard [--json-schema]
 ├─ activity [--type benchmarks|executions|models] [--limit]
 ├─ benchmark
-│  ├─ list
-│  ├─ get BENCHMARK_ID
+│  ├─ list [--json-schema]
+│  ├─ get BENCHMARK_ID [--json-schema]
 │  └─ versions BENCHMARK_ID
 ├─ leaderboard
-│  ├─ benchmark BENCHMARK_ID [--limit] [--offset]
-│  └─ model MODEL_NAME [--history | --benchmarks]
+│  ├─ benchmark BENCHMARK_ID [--limit] [--offset] [--json-schema]
+│  └─ model MODEL_NAME [--history | --benchmarks] [--json-schema]
 ├─ run
 │  ├─ submit BENCHMARK_VERSION_ID --target-model [--dataset-version-id] [--preview]
-│  ├─ get EXECUTION_ID
+│  ├─ get EXECUTION_ID [--json-schema]
 │  ├─ list [--benchmark-version-id] [--status] [--limit] [--offset]
 │  ├─ watch EXECUTION_ID [--interval]
 │  └─ cancel EXECUTION_ID
 └─ report
    ├─ list [--status] [--benchmark-id] [--benchmark-version] [--target-model] [--limit] [--offset]
-   ├─ get RUN_ID
+   ├─ get RUN_ID [--json-schema]
    └─ export RUN_ID [--format] [--output-file] [--include-prompt] [--include-expected-output] [--force]
 ```
+
+**Schema self-description (`--json-schema`):** the commands marked `[--json-schema]` print the **JSON Schema document** describing that command's JSON output and exit 0 — resolved **offline from the pydantic model**, no backend round-trip (works exactly like `--help`), deterministic, and machine-readable for agents. Commands *without* the flag reject it as an unknown option (exit 2). `--quiet` still wins (silent, exit 0). Only commands whose JSON output is a faithful model dump expose the flag: `activity`, `run list`, `run cancel`, `report list`, `report export`, `benchmark versions`, and `health` deliberately do not.
 
 ---
 
@@ -311,6 +313,24 @@ Conventions used below:
 - `A=` prefix means the arg is required.
 - An example "simple verification anchor" that is known to work with the current seeded DB on this machine is given per command (obtained live). IDs are shown so you can copy them, but §8 shows how to obtain them yourself from earlier commands.
 - Runner used: the installed `atlas` console script (see §2.3). Commands are shown with the global option **before** the subcommand.
+
+### Schema self-description — `--json-schema`
+
+```powershell
+atlas dashboard --json-schema                     # full DashboardSnapshot schema ($defs/$ref), exit 0
+atlas run get 2e56f6ec-dc98-4b18-a8cc-46d931e80ace --json-schema     # ExecutionResponse schema
+atlas report get b94248f7-f5f9-4ed8-992a-b29751b4e710 --json-schema  # nested scores[] via $defs/CapabilityScoreRead
+atlas benchmark list --json-schema                # PageResponse[BenchmarkRead]
+atlas benchmark get 44444444-4444-4444-4444-444444444444 --json-schema
+atlas leaderboard benchmark 181d1c91-15f9-43e7-866d-33809aaaedf1 --json-schema
+atlas leaderboard model mock --json-schema        # ModelSummary
+atlas leaderboard model mock --history --json-schema   # array[TrendPoint] ("type": "array")
+atlas leaderboard model mock --benchmarks --json-schema
+atlas --quiet dashboard --json-schema; echo "exit=$LASTEXITCODE"    # 0, silent
+atlas activity --json-schema; echo "exit=$LASTEXITCODE"              # 2 — outside the faithful-model set
+```
+
+All of the above work with the backend stopped — the schema is derived from the SDK models at parse time. The document uses draft 2020-12 (`"$schema"` at the top) with nested DTOs expressed through `$defs`/`$ref`.
 
 ### 7.1 `atlas whoami`
 
@@ -404,6 +424,7 @@ atlas run submit 00000000-0000-0000-0000-000000000000 --target-model mock --prev
 ```powershell
 atlas run get b94248f7-f5f9-4ed8-992a-b29751b4e710
 atlas run get b94248f7-f5f9-4ed8-992a-b29751b4e710 --output json
+atlas run get b94248f7-f5f9-4ed8-992a-b29751b4e710 --json-schema
 ```
 
 Verified human output (see §10.9 for a status note on this specific ID):
@@ -477,6 +498,7 @@ atlas run cancel <EXECUTION_ID>
 ```powershell
 atlas benchmark list
 atlas benchmark list --output json
+atlas benchmark list --json-schema
 atlas --quiet benchmark list
 ```
 
@@ -529,6 +551,7 @@ JSON keys (verified): `items`, `total`, `page`, `size` (note: differs from `run 
 ```powershell
 atlas report get b94248f7-f5f9-4ed8-992a-b29751b4e710
 atlas report get b94248f7-f5f9-4ed8-992a-b29751b4e710 --output json
+atlas report get b94248f7-f5f9-4ed8-992a-b29751b4e710 --json-schema   # nested scores via $defs/CapabilityScoreRead
 ```
 
 Verified human output:
@@ -603,6 +626,7 @@ Behavior notes (all verified live):
 ```powershell
 atlas leaderboard benchmark 66666666-6666-6666-6666-666666666666      # → exit 5 currently (unknown version id → 404)
 atlas leaderboard benchmark 66666666-6666-6666-6666-666666666666 --limit 50
+atlas leaderboard benchmark 181d1c91-15f9-43e7-866d-33809aaaedf1 --json-schema
 ```
 
 Human output is a ranked table (`Rank`, `Model Name`, `Avg Score %`, `Runs`, `Last Run At`); JSON = ranked model dump.
@@ -617,6 +641,7 @@ Human output is a ranked table (`Rank`, `Model Name`, `Avg Score %`, `Runs`, `La
 atlas leaderboard model mock                    # summary block / table
 atlas leaderboard model mock --history          # per-run execution history
 atlas leaderboard model mock --benchmarks       # per-benchmark breakdown
+atlas leaderboard model mock --json-schema     # ModelSummary; --history → array[TrendPoint]; --benchmarks → array[ModelBenchmarkHistory]
 atlas leaderboard model mock --history --benchmarks; echo "exit=$LASTEXITCODE"   # 2
 atlas leaderboard model does-not-exist --benchmarks; echo "exit=$LASTEXITCODE"   # 0, "(no benchmark data)"
 ```
@@ -631,6 +656,7 @@ Default summary (no flag) shows model `Avg Score`, total/`Computed`/`Healthy` ru
 ```powershell
 atlas dashboard
 atlas dashboard --output json
+atlas dashboard --json-schema
 atlas --quiet dashboard; echo "exit=$LASTEXITCODE"   # 0
 ```
 

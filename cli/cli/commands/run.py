@@ -24,6 +24,7 @@ from cli.config import AtlasConfig
 from cli.errors import ExitCode
 from cli.output.errors import error_exit
 from cli.output.json import render_json
+from cli.output.schema import emit_json_schema
 from cli.output.table import render_kv, render_table
 
 if TYPE_CHECKING:
@@ -205,9 +206,15 @@ def _render_submit_preview(
 
 
 @run_group.command(name="get")
+@click.option(
+    "--json-schema",
+    is_flag=True,
+    default=False,
+    help="Print the JSON Schema of this command's JSON output (offline) and exit.",
+)
 @_pass_context
 @click.argument("execution_id")
-def get_cmd(ctx: Context, execution_id: str) -> None:
+def get_cmd(ctx: Context, execution_id: str, json_schema: bool) -> None:
     """Show details for a single execution.
 
     Calls GET /api/v1/executions/{id} through the SDK.
@@ -215,9 +222,15 @@ def get_cmd(ctx: Context, execution_id: str) -> None:
     Examples:
 
       atlas run get <execution-id>
+
+      atlas run get <execution-id> --json-schema
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
+
+    if json_schema:
+        emit_json_schema(ExecutionResponse, output_mode=output_mode)
+        return
 
     try:
         with build_client(cfg) as client:

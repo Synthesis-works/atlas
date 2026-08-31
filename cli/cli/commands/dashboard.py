@@ -18,12 +18,19 @@ from cli.client import build_client
 from cli.config import AtlasConfig
 from cli.output.errors import error_exit
 from cli.output.json import render_json
+from cli.output.schema import emit_json_schema
 from cli.output.table import render_kv, render_table
 
 
 @click.command(name="dashboard")
+@click.option(
+    "--json-schema",
+    is_flag=True,
+    default=False,
+    help="Print the JSON Schema of this command's JSON output (offline) and exit.",
+)
 @_pass_context
-def dashboard_cmd(ctx: Context) -> None:
+def dashboard_cmd(ctx: Context, json_schema: bool) -> None:
     """Show the workspace dashboard summary.
 
     Displays run counters, platform resource counts, recent runs, and
@@ -34,9 +41,15 @@ def dashboard_cmd(ctx: Context) -> None:
       atlas dashboard
 
       atlas dashboard --output json
+
+      atlas dashboard --json-schema
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
+
+    if json_schema:
+        emit_json_schema(DashboardSnapshot, output_mode=output_mode)
+        return
 
     try:
         with build_client(cfg) as client:

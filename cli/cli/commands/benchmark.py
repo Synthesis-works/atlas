@@ -15,12 +15,14 @@ Implements:
 from __future__ import annotations
 
 import click
+from atlas_sdk import BenchmarkRead, PageResponse
 
 from cli.app import Context, _pass_context
 from cli.client import build_client
 from cli.config import AtlasConfig
 from cli.output.errors import error_exit
 from cli.output.json import render_json
+from cli.output.schema import emit_json_schema
 from cli.output.table import render_kv, render_table
 
 
@@ -39,8 +41,14 @@ def benchmark_group() -> None:
 
 
 @benchmark_group.command(name="list")
+@click.option(
+    "--json-schema",
+    is_flag=True,
+    default=False,
+    help="Print the JSON Schema of this command's JSON output (offline) and exit.",
+)
 @_pass_context
-def list_cmd(ctx: Context) -> None:
+def list_cmd(ctx: Context, json_schema: bool) -> None:
     """List published benchmarks.
 
     Calls GET /api/v1/benchmarks through the SDK.
@@ -50,9 +58,15 @@ def list_cmd(ctx: Context) -> None:
       atlas benchmark list
 
       atlas benchmark list --output json
+
+      atlas benchmark list --json-schema
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
+
+    if json_schema:
+        emit_json_schema(PageResponse[BenchmarkRead], output_mode=output_mode)
+        return
 
     try:
         with build_client(cfg) as client:
@@ -87,9 +101,15 @@ def list_cmd(ctx: Context) -> None:
 
 
 @benchmark_group.command(name="get")
+@click.option(
+    "--json-schema",
+    is_flag=True,
+    default=False,
+    help="Print the JSON Schema of this command's JSON output (offline) and exit.",
+)
 @_pass_context
 @click.argument("benchmark_id")
-def get_cmd(ctx: Context, benchmark_id: str) -> None:
+def get_cmd(ctx: Context, benchmark_id: str, json_schema: bool) -> None:
     """Show details for a single benchmark.
 
     Calls GET /api/v1/benchmarks/{id} through the SDK.
@@ -97,9 +117,15 @@ def get_cmd(ctx: Context, benchmark_id: str) -> None:
     Examples:
 
       atlas benchmark get <benchmark-id>
+
+      atlas benchmark get <benchmark-id> --json-schema
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
+
+    if json_schema:
+        emit_json_schema(BenchmarkRead, output_mode=output_mode)
+        return
 
     try:
         with build_client(cfg) as client:
