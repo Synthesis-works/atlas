@@ -1,6 +1,6 @@
 # Atlas CLI v2 — Implementation Plan (Agent-Loop Readiness)
 
-> **Status:** Slices 1–6 **shipped** on `feature/atlas-cli-v2` (slice 1 `b3b9e54`, slice 2 `34fafec`, slice 3 `46be18c`, slice 4 `b5365b8`, slice 5 `956763e`; slice 6 commit pending). Slice 6 shipped **`--json-schema` only** — `--fields` was dropped after the mandated pre-implementation review (see Slice 6 notes). Slice 7 not started (decision point).
+> **Status:** Slices 1–6 **shipped** on `feature/atlas-cli-v2` (slice 1 `b3b9e54`, slice 2 `34fafec`, slice 3 `46be18c`, slice 4 `b5365b8`, slice 5 `956763e`, slice 6 `a850693`). Slice 6 shipped **`--json-schema` only** — `--fields` was dropped after the mandated pre-implementation review (see Slice 6 notes). Slice 7 not started (decision point).
 > **Source inputs:** `docs/guides/atlas-cli-v2-workflow-audit.md` (facts) + `docs/guides/atlas-cli-v2-architecture-investigation.md` (design decisions).
 
 ## Mandates (from the user)
