@@ -90,6 +90,18 @@ class ExecutionCreateRequest(BaseModel):
     execution_config: dict[str, Any] | None = None
 
 
+class DispatchTarget(BaseModel):
+    """A benchmark version the caller may submit to, with its resolved dataset.
+
+    Mirrors ``DispatchTargetResponse`` from ``GET /api/v1/executions/dispatch-targets``.
+    """
+
+    benchmark_version_id: uuid.UUID
+    benchmark_name: str
+    version_string: str
+    dataset_version_id: uuid.UUID | None = None
+
+
 class ExecutionListResponse(BaseModel):
     """Paginated list of executions returned by ``GET /api/v1/executions``."""
 

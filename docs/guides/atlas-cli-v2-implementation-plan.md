@@ -1,6 +1,6 @@
 # Atlas CLI v2 — Implementation Plan (Agent-Loop Readiness)
 
-> **Status:** Slices 1–3 **shipped** on `feature/atlas-cli-v2` (slice 1 `b3b9e54`, slice 2 `34fafec`, slice 3 committed after this doc update). Slices 4–7 not started.
+> **Status:** Slices 1–4 **shipped** on `feature/atlas-cli-v2` (slice 1 `b3b9e54`, slice 2 `34fafec`, slice 3 `46be18c`, slice 4 committed after this doc update). Slices 5–7 not started.
 > **Source inputs:** `docs/guides/atlas-cli-v2-workflow-audit.md` (facts) + `docs/guides/atlas-cli-v2-architecture-investigation.md` (design decisions).
 
 ## Mandates (from the user)
@@ -175,16 +175,26 @@ atlas run watch <completed-id> --timeout 5 --output json   # expect 0
 ### Deliberate v2 changes
 - `--target-model` now required; new `--preview` flag. Everything else byte-identical.
 
+### Implementation notes (shipped)
+- **Preview resolution source:** the backend's `GET /api/v1/executions/dispatch-targets` (surfaced as `AtlasClient.list_dispatch_targets()` + `DispatchTarget` DTO in the SDK) instead of a `benchmark.versions` scan. It returns exactly the set the submit endpoint would accept (published + the caller's own-org drafts) with the backend's own default `dataset_version_id` resolution — so preview mirrors submit eligibility 1:1, read-only, in one GET.
+- **Non-dispatchable version → exit 5** (`NotFoundError`, "not a dispatchable target (unknown, unpublished, or not in your organizations)"). dispatch-targets omits non-eligible versions rather than returning 404/403, so a real-but-inaccessible draft and a nonexistent ID both surface as exit 5 with an honest message (mirrors the plan's "exit 5 via SDK NotFound").
+- **Adapter kind is advisory:** `mock|mocked` → `mock`, else `real` — computed at `cli/`, printed for the human/agent to plan against; the backend remains the sole truth.
+- **`--dataset-version-id` respected in preview:** the override (if given) is shown verbatim; otherwise the plan shows the backend-resolved default.
+- **Zero-POST guarantee:** preview builds the plan purely from `list_dispatch_targets()`; `submit_execution`/cancel are never invoked (asserted in tests: `mock.submit_execution.assert_not_called()`).
+
 ### Commit
 `feat(cli): require target model for run submit; add cost-free --preview`
 
 ### Verify
 ```
 uv run --directory cli pytest -q
-# live:
-atlas run submit 181d1c91-15f9-43e7-866d-33809aaaedf1 --output json          # exit 2 usage
-atlas run submit 181d1c91-15f9-43e7-866d-33809aaaedf1 --preview --output json  # exit 0, plan, NO run created
-atlas run submit 181d1c91-15f9-43e7-866d-33809aaaedf1 --target-model mock --output json  # exit 0
+# live (published HumanEval version; drafts are not dispatchable → exit 5):
+atlas run submit 55555555-5555-5555-5555-555555555555                              # exit 2 usage (required option)
+atlas run submit 55555555-5555-5555-5555-555555555555 --target-model mock --preview  # exit 0, plan JSON, NO run created
+atlas run submit 55555555-5555-5555-5555-555555555555 --target-model mock --output json  # exit 0, QUEUED
+atlas run submit 55555555-5555-5555-5555-555555555555 --target-model mock --preview --output json  # exit 0, adapter_kind mock
+atlas run submit 55555555-5555-5555-5555-555555555555 --target-model gemini-2.5-flash --preview --output json  # exit 0, adapter_kind real
+atlas run submit 00000000-0000-0000-0000-000000000000 --target-model mock --preview  # exit 5, no POST
 ```
 
 ---

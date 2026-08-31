@@ -15,8 +15,8 @@ import time
 
 import click
 from atlas_sdk import AtlasClient, StaticTokenSupplier
-from atlas_sdk.errors import NetworkError
-from atlas_sdk.models.executions import ExecutionResponse
+from atlas_sdk.errors import NetworkError, NotFoundError
+from atlas_sdk.models.executions import DispatchTarget, ExecutionResponse
 
 from cli.app import Context, _pass_context
 from cli.config import AtlasConfig
@@ -28,6 +28,12 @@ from cli.output.table import render_kv, render_table
 _TERMINAL_STATES = frozenset({"COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"})
 _DEFAULT_POLL_INTERVAL = 3.0
 _MAX_CONSECUTIVE_FAILURES = 3
+_MOCK_MODEL_ALIASES = frozenset({"mock", "mocked"})
+
+
+def _adapter_kind(target_model: str) -> str:
+    """Classify a target model as a mock or real adapter (advisory only)."""
+    return "mock" if target_model.strip().lower() in _MOCK_MODEL_ALIASES else "real"
 
 
 @click.group(name="run")
@@ -42,6 +48,8 @@ def run_group() -> None:
 
       atlas run submit <benchmark-version-id> --target-model mock
 
+      atlas run submit <benchmark-version-id> --target-model mock --preview
+
       atlas run watch <execution-id>
 
       atlas run cancel <execution-id>
@@ -53,30 +61,42 @@ def run_group() -> None:
 @click.argument("benchmark_version_id")
 @click.option(
     "--target-model",
-    default="gemini-2.5-flash",
-    help="Target model for the execution (default: gemini-2.5-flash).",
+    required=True,
+    help="Target model for the execution (required; must be explicit).",
 )
 @click.option(
     "--dataset-version-id",
     default=None,
     help="Dataset version ID (default: resolved from benchmark version).",
 )
+@click.option(
+    "--preview",
+    is_flag=True,
+    default=False,
+    help=(
+        "Dry-run: print the submission plan (benchmark, version, dataset, "
+        "adapter kind) without creating an execution. Read-only — no POST."
+    ),
+)
 def submit_cmd(
     ctx: Context,
     benchmark_version_id: str,
     target_model: str,
     dataset_version_id: str | None,
+    preview: bool,
 ) -> None:
     """Submit an execution for a benchmark version.
 
-    Calls POST /api/v1/benchmarks/{id}/executions through the SDK.
-    The execution is created in QUEUED state and dispatched asynchronously.
+    Calls POST /api/v1/benchmarks/{id}/executions through the SDK.  With
+    --preview the plan is resolved from the read-only dispatch-targets
+    endpoint and nothing is submitted.  --target-model is always required
+    (there is no silent default model).
 
     Examples:
 
-      atlas run submit <benchmark-version-id>
-
       atlas run submit <benchmark-version-id> --target-model mock
+
+      atlas run submit <benchmark-version-id> --target-model gpt-4o --preview
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
@@ -89,13 +109,25 @@ def submit_cmd(
             token_supplier=supplier,
             timeout=cfg.timeout,
         ) as client:
-            execution = client.submit_execution(
-                benchmark_version_id,
-                target_model=target_model,
-                dataset_version_id=dataset_version_id,
-            )
+            if preview:
+                _render_submit_preview(
+                    client,
+                    benchmark_version_id,
+                    target_model,
+                    dataset_version_id,
+                    output_mode,
+                )
+            else:
+                execution = client.submit_execution(
+                    benchmark_version_id,
+                    target_model=target_model,
+                    dataset_version_id=dataset_version_id,
+                )
     except Exception as exc:
         error_exit(exc, output_mode)
+
+    if preview:
+        return
 
     if output_mode == "json":
         render_json(execution.model_dump(mode="json"))
@@ -112,6 +144,66 @@ def submit_cmd(
             ("Created", execution.created_at.isoformat()),
         ]
         render_kv(rows, title="Execution Submitted")
+
+
+def _render_submit_preview(
+    client: AtlasClient,
+    benchmark_version_id: str,
+    target_model: str,
+    dataset_version_id: str | None,
+    output_mode: str,
+) -> None:
+    """Resolve and print the submission plan without creating an execution.
+
+    Uses GET /api/v1/executions/dispatch-targets (read-only).  The version
+    is eligible only if it appears in the dispatchable set — the exact set
+    the backend would accept — and the dataset mirrors the backend's default
+    resolution when no explicit override is given.
+    """
+    targets: list[DispatchTarget] = client.list_dispatch_targets()
+    target = next(
+        (t for t in targets if str(t.benchmark_version_id) == benchmark_version_id),
+        None,
+    )
+    if target is None:
+        raise NotFoundError(
+            status=404,
+            message=(
+                f"benchmark version {benchmark_version_id} is not a dispatchable "
+                "target (unknown, unpublished, or not in your organizations)"
+            ),
+        )
+
+    adapter_kind = _adapter_kind(target_model)
+    resolved_dataset = dataset_version_id or (
+        str(target.dataset_version_id) if target.dataset_version_id else None
+    )
+    plan: dict[str, object] = {
+        "benchmark_version_id": benchmark_version_id,
+        "benchmark_name": target.benchmark_name,
+        "version_string": target.version_string,
+        "dataset_version_id": resolved_dataset,
+        "target_model": target_model,
+        "adapter_kind": adapter_kind,
+        "preview": True,
+        "note": "no execution created (--preview)",
+    }
+
+    if output_mode == "json":
+        render_json(plan)
+    elif output_mode == "quiet":
+        pass
+    else:
+        rows: list[tuple[str, str]] = [
+            ("Benchmark Version", benchmark_version_id),
+            ("Benchmark Name", target.benchmark_name),
+            ("Version", target.version_string),
+            ("Dataset Version", resolved_dataset or "(none)"),
+            ("Target Model", target_model),
+            ("Adapter Kind", adapter_kind),
+        ]
+        render_kv(rows, title="Execution Plan (preview)")
+        click.echo("  No execution created (--preview).")
 
 
 @run_group.command(name="get")

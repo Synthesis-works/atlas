@@ -31,7 +31,11 @@ from atlas_sdk.models.benchmarks import (
     PageResponse,
 )
 from atlas_sdk.models.dashboard import DashboardSnapshot
-from atlas_sdk.models.executions import ExecutionPage, ExecutionResponse
+from atlas_sdk.models.executions import (
+    DispatchTarget,
+    ExecutionPage,
+    ExecutionResponse,
+)
 from atlas_sdk.models.health import HealthData, LivenessResponse, ReadinessResponse
 from atlas_sdk.models.history import ExecutionHistoryRead, ModelActivityRead
 from atlas_sdk.models.leaderboard import (
@@ -412,6 +416,24 @@ class AtlasClient:
         return self._unwrap(response, list[BenchmarkVersionRead])
 
     # -- executions --
+
+    def list_dispatch_targets(self) -> list[DispatchTarget]:
+        """List benchmark versions the caller may submit to.
+
+        ``GET /api/v1/executions/dispatch-targets``
+
+        Published benchmarks are always listed; drafts are listed only when
+        the caller is an active member of the owning organization.  Each
+        target carries the dataset version the backend would resolve by
+        default when no explicit ``dataset_version_id`` is supplied.
+
+        The response is a bare list, not wrapped in ``APIResponse``.
+        """
+        response = self._get_raw("/api/v1/executions/dispatch-targets")
+        return self._parse_bare(
+            response,
+            lambda raw: [DispatchTarget.model_validate(item) for item in raw],
+        )
 
     def submit_execution(
         self,

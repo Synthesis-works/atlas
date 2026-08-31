@@ -269,7 +269,7 @@ atlas
 │  ├─ benchmark BENCHMARK_ID [--limit] [--offset]
 │  └─ model MODEL_NAME [--history | --benchmarks]
 ├─ run
-│  ├─ submit BENCHMARK_VERSION_ID [--target-model] [--dataset-version-id]
+│  ├─ submit BENCHMARK_VERSION_ID --target-model [--dataset-version-id] [--preview]
 │  ├─ get EXECUTION_ID
 │  ├─ list [--benchmark-version-id] [--status] [--limit] [--offset]
 │  ├─ watch EXECUTION_ID [--interval]
@@ -376,16 +376,21 @@ Any single probe failing makes `overall` `degraded` **and exit code 1** (all out
 
 ### 7.3 `atlas run …`
 
-> `run submit` and `run cancel` create/change backend state. Use them only if you intend to actually invoke a (eager) execution or cancel one. Everything else in this guide is read-only.
+> `run submit` (without `--preview`) and `run cancel` create/change backend state. Use them only if you intend to actually invoke a (eager) execution or cancel one. `--preview` is strictly read-only. Everything else in this guide is read-only.
 
 #### `atlas run submit BENCHMARK_VERSION_ID`
 
 - **API:** `POST /api/v1/benchmarks/{id}/executions`
-- **Options:** `--target-model TEXT` (default `gemini-2.5-flash`), `--dataset-version-id TEXT` (default: resolved from benchmark version)
-- **Warning:** creates a real execution (QUEUED then dispatched by the eager worker).
+- **Options:** `--target-model TEXT` (**required** — no default; v2 removed the silent `gemini-2.5-flash` default), `--dataset-version-id TEXT` (default: resolved from benchmark version), `--preview` (read-only dry-run; **no POST**)
+- **Warning:** without `--preview`, creates a real execution (QUEUED then dispatched by the eager worker).
+- **`--preview` plan:** resolved from `GET /api/v1/executions/dispatch-targets` (the exact dispatchable set — published benchmarks + any benchmark draft in organizations you actively belong to), prints `benchmark_version_id`, `benchmark_name`, `version_string`, `dataset_version_id`, `target_model`, `adapter_kind` (`mock|mocked` → `mock`, else `real`), `preview: true`, and a "no execution created" note. Exit 0. A version that is NOT a dispatchable target → exit 5, message "not a dispatchable target (unknown, unpublished, or not in your organizations)" — covers both nonexistent IDs and real drafts you lack membership for (dispatch-targets omits them rather than returning 403).
 
 ```powershell
-atlas run submit 181d1c91-15f9-43e7-866d-33809aaaedf1 --target-model mock
+atlas run submit 55555555-5555-5555-5555-555555555555                                 # exit 2: Missing option '--target-model'
+atlas run submit 55555555-5555-5555-5555-555555555555 --target-model mock --preview   # exit 0, plan, NO run created
+atlas run submit 55555555-5555-5555-5555-555555555555 --target-model mock             # exit 0, QUEUED (real execution)
+atlas run submit cd9e64fc-a4d9-42ca-aff3-b818da63c352 --target-model mock             # draft, non-member → exit 4
+atlas run submit 00000000-0000-0000-0000-000000000000 --target-model mock --preview   # exit 5, no POST
 ```
 
 #### `atlas run get EXECUTION_ID`

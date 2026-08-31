@@ -10,7 +10,11 @@ import uuid
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
-from atlas_sdk.models.executions import ExecutionPage, ExecutionResponse
+from atlas_sdk.models.executions import (
+    DispatchTarget,
+    ExecutionPage,
+    ExecutionResponse,
+)
 from click.testing import CliRunner
 
 from cli.app import main
@@ -83,6 +87,40 @@ def _mock_client_error(
     return mock
 
 
+def _dispatch_target(
+    *,
+    benchmark_version_id: str = BENCH_VERSION_ID,
+    benchmark_name: str = "HumanEval Benchmark",
+    version_string: str = "1.0.0",
+    dataset_version_id: str | None = "44444444-4444-4444-4444-444444444444",
+) -> DispatchTarget:
+    return DispatchTarget(
+        benchmark_version_id=uuid.UUID(benchmark_version_id),
+        benchmark_name=benchmark_name,
+        version_string=version_string,
+        dataset_version_id=(
+            uuid.UUID(dataset_version_id) if dataset_version_id else None
+        ),
+    )
+
+
+def _mock_preview_client(
+    targets: list[DispatchTarget] | None = None,
+    *,
+    dispatch_error: Exception | None = None,
+) -> MagicMock:
+    mock = MagicMock()
+    mock.__enter__ = MagicMock(return_value=mock)
+    mock.__exit__ = MagicMock(return_value=False)
+    if dispatch_error is not None:
+        mock.list_dispatch_targets.side_effect = dispatch_error
+    elif targets is not None:
+        mock.list_dispatch_targets.return_value = targets
+    else:
+        mock.list_dispatch_targets.return_value = [_dispatch_target()]
+    return mock
+
+
 # ── discovery ───────────────────────────────────────────────────────────
 
 
@@ -107,7 +145,7 @@ def test_submit_human(runner: CliRunner) -> None:
         return_value=_mock_client(),
     ):
         result = runner.invoke(
-            main, ["run", "submit", BENCH_VERSION_ID]
+            main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"]
         )
     assert result.exit_code == 0
     assert "11111111-1111-1111-1111-111111111111" in result.output
@@ -139,7 +177,8 @@ def test_submit_json(runner: CliRunner) -> None:
     ):
         result = runner.invoke(
             main,
-            ["--output", "json", "run", "submit", BENCH_VERSION_ID],
+            ["--output", "json", "run", "submit", BENCH_VERSION_ID,
+                "--target-model", "mock"],
         )
     assert result.exit_code == 0
     parsed = json.loads(result.output)
@@ -160,7 +199,7 @@ def test_submit_quiet(runner: CliRunner) -> None:
         return_value=_mock_client(),
     ):
         result = runner.invoke(
-            main, ["--quiet", "run", "submit", BENCH_VERSION_ID]
+            main, ["--quiet", "run", "submit", BENCH_VERSION_ID, "--target-model", "mock"]
         )
     assert result.exit_code == 0
     assert result.output == ""
@@ -178,7 +217,7 @@ def test_submit_no_token(runner: CliRunner) -> None:
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
-            main, ["run", "submit", BENCH_VERSION_ID]
+            main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"]
         )
     assert result.exit_code == 3
 
@@ -193,7 +232,8 @@ def test_submit_no_token_json(runner: CliRunner) -> None:
     ):
         result = runner.invoke(
             main,
-            ["--output", "json", "run", "submit", BENCH_VERSION_ID],
+            ["--output", "json", "run", "submit", BENCH_VERSION_ID,
+                "--target-model", "mock"],
         )
     assert result.exit_code == 3
     parsed = json.loads(result.output)
@@ -213,7 +253,7 @@ def test_submit_forbidden(runner: CliRunner) -> None:
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
-            main, ["run", "submit", BENCH_VERSION_ID]
+            main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"]
         )
     assert result.exit_code == 4
 
@@ -228,7 +268,8 @@ def test_submit_forbidden_json(runner: CliRunner) -> None:
     ):
         result = runner.invoke(
             main,
-            ["--output", "json", "run", "submit", BENCH_VERSION_ID],
+            ["--output", "json", "run", "submit", BENCH_VERSION_ID,
+                "--target-model", "mock"],
         )
     assert result.exit_code == 4
     parsed = json.loads(result.output)
@@ -248,7 +289,8 @@ def test_submit_not_found(runner: CliRunner) -> None:
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
-            main, ["run", "submit", "00000000-0000-0000-0000-000000000000"]
+            main, ["run", "submit", "00000000-0000-0000-0000-000000000000",
+     "--target-model", "mock"]
         )
     assert result.exit_code == 5
 
@@ -266,6 +308,7 @@ def test_submit_not_found_json(runner: CliRunner) -> None:
             [
                 "--output", "json", "run", "submit",
                 "00000000-0000-0000-0000-000000000000",
+                "--target-model", "mock",
             ],
         )
     assert result.exit_code == 5
@@ -286,7 +329,7 @@ def test_submit_validation_error(runner: CliRunner) -> None:
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
-            main, ["run", "submit", BENCH_VERSION_ID]
+            main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"]
         )
     assert result.exit_code == 7
 
@@ -303,7 +346,7 @@ def test_submit_network_error(runner: CliRunner) -> None:
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
-            main, ["run", "submit", BENCH_VERSION_ID]
+            main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"]
         )
     assert result.exit_code == 6
 
@@ -318,7 +361,8 @@ def test_submit_network_error_json(runner: CliRunner) -> None:
     ):
         result = runner.invoke(
             main,
-            ["--output", "json", "run", "submit", BENCH_VERSION_ID],
+            ["--output", "json", "run", "submit", BENCH_VERSION_ID,
+                "--target-model", "mock"],
         )
     assert result.exit_code == 6
     parsed = json.loads(result.output)
@@ -337,9 +381,233 @@ def test_submit_server_error(runner: CliRunner) -> None:
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
-            main, ["run", "submit", BENCH_VERSION_ID]
+            main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"]
         )
     assert result.exit_code == 1
+
+
+# ── required --target-model ─────────────────────────────────────────
+
+
+def test_submit_requires_target_model(runner: CliRunner) -> None:
+    """Submit without --target-model is a usage error (no silent default)."""
+    with patch(
+        "cli.commands.run.AtlasClient",
+        return_value=_mock_client(),
+    ):
+        result = runner.invoke(main, ["run", "submit", BENCH_VERSION_ID])
+    assert result.exit_code == 2
+    assert "Missing option" in result.output
+    assert "--target-model" in result.output
+
+
+def test_submit_preview_requires_target_model(runner: CliRunner) -> None:
+    """--preview also requires an explicit target model."""
+    with patch(
+        "cli.commands.run.AtlasClient",
+        return_value=_mock_preview_client(),
+    ):
+        result = runner.invoke(
+            main, ["run", "submit", BENCH_VERSION_ID, "--preview"]
+        )
+    assert result.exit_code == 2
+    assert "Missing option" in result.output
+    assert "--target-model" in result.output
+
+
+# ── --preview (read-only plan) ────────────────────────────────────────
+
+
+def test_preview_json(runner: CliRunner) -> None:
+    """Preview emits a machine-readable plan and never submits."""
+    mock = _mock_preview_client()
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(
+            main,
+            [
+                "--output", "json", "run", "submit", BENCH_VERSION_ID,
+                "--target-model", "mock", "--preview",
+            ],
+        )
+    assert result.exit_code == 0
+    parsed = json.loads(result.output)
+    assert parsed["benchmark_version_id"] == BENCH_VERSION_ID
+    assert parsed["benchmark_name"] == "HumanEval Benchmark"
+    assert parsed["version_string"] == "1.0.0"
+    assert parsed["dataset_version_id"] == "44444444-4444-4444-4444-444444444444"
+    assert parsed["target_model"] == "mock"
+    assert parsed["adapter_kind"] == "mock"
+    assert parsed["preview"] is True
+    mock.submit_execution.assert_not_called()
+    mock.list_dispatch_targets.assert_called_once_with()
+
+
+def test_preview_human(runner: CliRunner) -> None:
+    """Preview human output shows the plan and a no-write note."""
+    mock = _mock_preview_client()
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(
+            main,
+            [
+                "run", "submit", BENCH_VERSION_ID,
+                "--target-model", "mock", "--preview",
+            ],
+        )
+    assert result.exit_code == 0
+    assert BENCH_VERSION_ID in result.output
+    assert "HumanEval Benchmark" in result.output
+    assert "mock" in result.output
+    assert "no execution created" in result.output.lower()
+    mock.submit_execution.assert_not_called()
+
+
+def test_preview_quiet(runner: CliRunner) -> None:
+    """Quiet preview: silent, exit 0, no POST."""
+    mock = _mock_preview_client()
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(
+            main,
+            [
+                "--quiet", "run", "submit", BENCH_VERSION_ID,
+                "--target-model", "mock", "--preview",
+            ],
+        )
+    assert result.exit_code == 0
+    assert result.output == ""
+    mock.submit_execution.assert_not_called()
+
+
+def test_preview_never_posts(runner: CliRunner) -> None:
+    """Preview is strictly read-only: zero submit/cancel calls."""
+    mock = _mock_preview_client()
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(
+            main,
+            [
+                "run", "submit", BENCH_VERSION_ID,
+                "--target-model", "mock", "--preview",
+            ],
+        )
+    assert result.exit_code == 0
+    mock.submit_execution.assert_not_called()
+    mock.cancel_execution.assert_not_called()
+
+
+def test_preview_real_adapter(runner: CliRunner) -> None:
+    """Non-mock models are flagged adapter_kind 'real'."""
+    mock = _mock_preview_client()
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(
+            main,
+            [
+                "--output", "json", "run", "submit", BENCH_VERSION_ID,
+                "--target-model", "gemini-2.5-flash", "--preview",
+            ],
+        )
+    assert result.exit_code == 0
+    parsed = json.loads(result.output)
+    assert parsed["adapter_kind"] == "real"
+    mock.submit_execution.assert_not_called()
+
+
+def test_preview_mocked_alias_adapter(runner: CliRunner) -> None:
+    """'mocked' maps to the mock adapter kind."""
+    mock = _mock_preview_client()
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(
+            main,
+            [
+                "--output", "json", "run", "submit", BENCH_VERSION_ID,
+                "--target-model", "mocked", "--preview",
+            ],
+        )
+    assert result.exit_code == 0
+    parsed = json.loads(result.output)
+    assert parsed["adapter_kind"] == "mock"
+
+
+def test_preview_dataset_override_respected(runner: CliRunner) -> None:
+    """--dataset-version-id overrides the resolved dataset in the plan."""
+    mock = _mock_preview_client()
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(
+            main,
+            [
+                "--output", "json", "run", "submit", BENCH_VERSION_ID,
+                "--target-model", "mock", "--preview",
+                "--dataset-version-id", "99999999-9999-9999-9999-999999999999",
+            ],
+        )
+    assert result.exit_code == 0
+    parsed = json.loads(result.output)
+    assert parsed["dataset_version_id"] == "99999999-9999-9999-9999-999999999999"
+    mock.submit_execution.assert_not_called()
+
+
+def test_preview_unknown_version_exit_5(runner: CliRunner) -> None:
+    """Unknown/non-dispatchable version → exit 5, no POST attempted."""
+    mock = _mock_preview_client(targets=[])
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(
+            main,
+            [
+                "--output", "json", "run", "submit", BENCH_VERSION_ID,
+                "--target-model", "mock", "--preview",
+            ],
+        )
+    assert result.exit_code == 5
+    parsed = json.loads(result.output)
+    assert parsed["error"]["status"] == 404
+    mock.submit_execution.assert_not_called()
+
+
+def test_preview_auth_error_exit_3(runner: CliRunner) -> None:
+    from atlas_sdk.errors import AuthError
+
+    err = AuthError(status=401, message="Not authenticated")
+    mock = _mock_preview_client(dispatch_error=err)
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(
+            main,
+            [
+                "run", "submit", BENCH_VERSION_ID,
+                "--target-model", "mock", "--preview",
+            ],
+        )
+    assert result.exit_code == 3
+
+
+def test_preview_forbidden_exit_4(runner: CliRunner) -> None:
+    """Inaccessible targets (not a member of the owning org) → exit 4."""
+    from atlas_sdk.errors import ForbiddenError
+
+    err = ForbiddenError(status=403, message="Forbidden")
+    mock = _mock_preview_client(dispatch_error=err)
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(
+            main,
+            [
+                "run", "submit", BENCH_VERSION_ID,
+                "--target-model", "mock", "--preview",
+            ],
+        )
+    assert result.exit_code == 4
+
+
+def test_preview_network_error_exit_6(runner: CliRunner) -> None:
+    from atlas_sdk.errors import NetworkError
+
+    err = NetworkError(message="connection refused")
+    mock = _mock_preview_client(dispatch_error=err)
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        result = runner.invoke(
+            main,
+            [
+                "run", "submit", BENCH_VERSION_ID,
+                "--target-model", "mock", "--preview",
+            ],
+        )
+    assert result.exit_code == 6
 
 
 # =====================================================================

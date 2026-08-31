@@ -11,6 +11,14 @@ This document tracks all major implementation milestones for Atlas.
 - **Impact**: `run get` now reads the authoritative row (status/timestamps/progress consistent with reports/dashboard). Published benchmarks and their versions are readable by any authenticated user; `run submit` is authorized for published benchmarks or drafts of an organization the caller is an active member of; `dispatch-targets` exposes only published + own-org drafts.
 - **Current status**: Complete. Backend, CLI (322), SDK (165) suites green; live backend verified.
 
+### Slice 4: safe `run submit` (required `--target-model`) + cost-free `--preview`
+- **Date**: August 2026
+- **Purpose**: eliminate the silent paying default on submissions and add a deterministic, read-only dry-run so agents can preflight before POSTing.
+- **Files changed**: `cli/cli/commands/run.py` (`--target-model` now required; new `--preview` flag; `_render_submit_preview` + `_adapter_kind`), `cli/tests/test_run.py` (13 new tests + legacy submit call sites migrated), SDK (`atlas_sdk/client.py` `list_dispatch_targets()`, `atlas_sdk/models/executions.py` `DispatchTarget`, `sdk/tests/test_client.py` contract tests), `docs/guides/atlas-cli-v2-implementation-plan.md`, `docs/guides/atlas-cli-manual-testing.md`.
+- **Reason**: `run submit` defaulted to `gemini-2.5-flash` — a paid real-provider model an agent could submit "innocently". v2 requires an explicit model and offers a no-POST plan.
+- **Impact**: `submit` without `--target-model` is a usage error (exit 2). `--preview` resolves the version against the backend's `dispatch-targets` (published + own-org drafts, with the backend's own default dataset resolution) via a single read-only GET and prints `benchmark_name`/`version_string`/`dataset_version_id`/`target_model`/`adapter_kind` (advisory `mock|mocked` → mock, else real). Zero POSTs. Non-dispatchable version → exit 5. Real submit path byte-identical apart from the required option.
+- **Current status**: Complete. CLI suite 348 passed, SDK 169 passed/2 skipped, ruff + mypy clean on touched files; live-verified (published `55555555-…` preview in JSON/human/quiet + real adapter, unknown/draft → exit 5, missing `--target-model` → exit 2, real submit → exit 0 QUEUED).
+
 ### Slice 3: `atlas run watch --timeout` (wall-clock bound, exit 9)
 - **Date**: August 2026
 - **Purpose**: deterministic cap on `watch` so agents can bound total wait time and re-poll.

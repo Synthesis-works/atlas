@@ -306,6 +306,95 @@ class TestSubmitExecution:
         client.close()
 
 
+# ── list_dispatch_targets tests ─────────────────────────────────────
+
+
+class TestListDispatchTargets:
+    def test_success_parses_bare_list(
+        self, httpx_mock: pytest.MockTransport
+    ) -> None:
+        """GET /executions/dispatch-targets returns a bare (unwrapped) list."""
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/executions/dispatch-targets",
+            json=[
+                {
+                    "benchmark_version_id": "22222222-2222-2222-2222-222222222222",
+                    "benchmark_name": "HumanEval Benchmark",
+                    "version_string": "1.0.0",
+                    "dataset_version_id": "44444444-4444-4444-4444-444444444444",
+                },
+                {
+                    "benchmark_version_id": "55555555-5555-5555-5555-555555555555",
+                    "benchmark_name": "HumanEval Benchmark",
+                    "version_string": "1.0.1",
+                    "dataset_version_id": None,
+                },
+            ],
+            status_code=200,
+        )
+        client = AtlasClient("http://localhost:8000")
+        try:
+            targets = client.list_dispatch_targets()
+        finally:
+            client.close()
+        assert len(targets) == 2
+        assert str(targets[0].benchmark_version_id) == "22222222-2222-2222-2222-222222222222"
+        assert targets[0].benchmark_name == "HumanEval Benchmark"
+        assert targets[0].version_string == "1.0.0"
+        assert str(targets[0].dataset_version_id) == "44444444-4444-4444-4444-444444444444"
+        assert targets[1].dataset_version_id is None
+
+    def test_sends_auth_header(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/executions/dispatch-targets",
+            json=[],
+            status_code=200,
+        )
+        client = AtlasClient(
+            "http://localhost:8000",
+            token_supplier=StaticTokenSupplier("tok-123"),
+        )
+        try:
+            client.list_dispatch_targets()
+            request = httpx_mock.get_request()
+            assert request is not None
+            assert request.headers.get("Authorization") == "Bearer tok-123"
+        finally:
+            client.close()
+
+    def test_401_raises_auth_error(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/executions/dispatch-targets",
+            json=_err(401, "unauthorized", "Not authenticated"),
+            status_code=401,
+        )
+        client = AtlasClient("http://localhost:8000")
+        try:
+            with pytest.raises(AuthError) as exc_info:
+                client.list_dispatch_targets()
+            assert exc_info.value.status == 401
+        finally:
+            client.close()
+
+    def test_403_raises_forbidden(self, httpx_mock: pytest.MockTransport) -> None:
+        httpx_mock.add_response(
+            method="GET",
+            url="http://localhost:8000/api/v1/executions/dispatch-targets",
+            json=_err(403, "forbidden", "Forbidden"),
+            status_code=403,
+        )
+        client = AtlasClient("http://localhost:8000")
+        try:
+            with pytest.raises(ForbiddenError) as exc_info:
+                client.list_dispatch_targets()
+            assert exc_info.value.status == 403
+        finally:
+            client.close()
+
+
 # ── get_execution tests ─────────────────────────────────────────────
 
 
