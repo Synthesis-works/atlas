@@ -139,7 +139,7 @@ def test_dashboard_subcommand_help(runner: CliRunner) -> None:
 
 
 def test_dashboard_human(runner: CliRunner) -> None:
-    with patch("cli.commands.dashboard.AtlasClient", return_value=_mock_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_client()):
         result = runner.invoke(main, ["dashboard"])
     assert result.exit_code == 0
     assert "Atlas Dashboard" in result.output
@@ -164,7 +164,7 @@ def test_dashboard_human(runner: CliRunner) -> None:
 def test_dashboard_human_empty_activity(runner: CliRunner) -> None:
     snapshot = _snapshot()
     snapshot.activity = []
-    with patch("cli.commands.dashboard.AtlasClient", return_value=_mock_client(snapshot)):
+    with patch("cli.client.AtlasClient", return_value=_mock_client(snapshot)):
         result = runner.invoke(main, ["dashboard"])
     assert result.exit_code == 0
     assert "(no recent activity)" in result.output
@@ -174,7 +174,7 @@ def test_dashboard_human_empty_activity(runner: CliRunner) -> None:
 
 
 def test_dashboard_json_preserves_backend_structure(runner: CliRunner) -> None:
-    with patch("cli.commands.dashboard.AtlasClient", return_value=_mock_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_client()):
         result = runner.invoke(main, ["--output", "json", "dashboard"])
     assert result.exit_code == 0
     data = json.loads(result.output)
@@ -196,7 +196,7 @@ def test_dashboard_json_preserves_backend_structure(runner: CliRunner) -> None:
 
 
 def test_dashboard_quiet(runner: CliRunner) -> None:
-    with patch("cli.commands.dashboard.AtlasClient", return_value=_mock_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_client()):
         result = runner.invoke(main, ["--quiet", "dashboard"])
     assert result.exit_code == 0
     assert result.output == ""
@@ -207,7 +207,7 @@ def test_dashboard_quiet(runner: CliRunner) -> None:
 
 def test_dashboard_calls_get_dashboard(runner: CliRunner) -> None:
     mock = _mock_client()
-    with patch("cli.commands.dashboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         runner.invoke(main, ["dashboard"])
     mock.get_dashboard.assert_called_once_with()
 
@@ -219,7 +219,7 @@ def test_dashboard_401(runner: CliRunner) -> None:
     from atlas_sdk.errors import AuthError
 
     mock = _mock_client_error(AuthError(status=401, message="Unauthorized"))
-    with patch("cli.commands.dashboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["dashboard"])
     assert result.exit_code == 3
 
@@ -228,7 +228,7 @@ def test_dashboard_network_error(runner: CliRunner) -> None:
     from atlas_sdk.errors import NetworkError
 
     mock = _mock_client_error(NetworkError(message="Connection refused"))
-    with patch("cli.commands.dashboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["dashboard"])
     assert result.exit_code == 6
 
@@ -237,6 +237,6 @@ def test_dashboard_json_error(runner: CliRunner) -> None:
     from atlas_sdk.errors import AuthError
 
     mock = _mock_client_error(AuthError(status=401, message="Expired token"))
-    with patch("cli.commands.dashboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["--output", "json", "dashboard"])
     assert result.exit_code == 3

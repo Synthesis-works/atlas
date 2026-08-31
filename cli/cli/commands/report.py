@@ -22,10 +22,10 @@ import os
 import sys
 
 import click
-from atlas_sdk import AtlasClient, StaticTokenSupplier
 from atlas_sdk.errors import ConflictError
 
 from cli.app import Context, _pass_context
+from cli.client import build_client
 from cli.config import AtlasConfig
 from cli.output.errors import error_exit
 from cli.output.json import render_json
@@ -106,14 +106,8 @@ def list_cmd(
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
 
-    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
-
     try:
-        with AtlasClient(
-            cfg.base_url,
-            token_supplier=supplier,
-            timeout=cfg.timeout,
-        ) as client:
+        with build_client(cfg) as client:
             page = client.list_report_runs(
                 status=status,
                 benchmark_id=benchmark_id,
@@ -177,14 +171,8 @@ def get_cmd(ctx: Context, run_id: str) -> None:
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
 
-    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
-
     try:
-        with AtlasClient(
-            cfg.base_url,
-            token_supplier=supplier,
-            timeout=cfg.timeout,
-        ) as client:
+        with build_client(cfg) as client:
             summary = client.get_report_run(run_id)
     except Exception as exc:
         error_exit(exc, output_mode)
@@ -292,14 +280,8 @@ def export_cmd(
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
 
-    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
-
     try:
-        with AtlasClient(
-            cfg.base_url,
-            token_supplier=supplier,
-            timeout=cfg.timeout,
-        ) as client:
+        with build_client(cfg) as client:
             result = client.export_report_run(
                 run_id,
                 format_type=format_type,

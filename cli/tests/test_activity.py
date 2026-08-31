@@ -120,7 +120,7 @@ def test_activity_invalid_type(runner: CliRunner) -> None:
 
 
 def test_activity_human_all_sections(runner: CliRunner) -> None:
-    with patch("cli.commands.activity.AtlasClient", return_value=_mock_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_client()):
         result = runner.invoke(main, ["activity"])
     assert result.exit_code == 0
     assert "Recent Activity" in result.output
@@ -134,7 +134,7 @@ def test_activity_human_all_sections(runner: CliRunner) -> None:
 
 
 def test_activity_human_filtered_type(runner: CliRunner) -> None:
-    with patch("cli.commands.activity.AtlasClient", return_value=_mock_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_client()):
         result = runner.invoke(main, ["activity", "--type", "executions"])
     assert result.exit_code == 0
     assert "Executions" in result.output
@@ -148,7 +148,7 @@ def test_activity_human_empty(runner: CliRunner) -> None:
     mock.get_recent_benchmarks.return_value = []
     mock.get_recent_executions.return_value = []
     mock.get_recent_models.return_value = []
-    with patch("cli.commands.activity.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["activity"])
     assert result.exit_code == 0
     assert "no recent" in result.output.lower()
@@ -158,7 +158,7 @@ def test_activity_human_empty(runner: CliRunner) -> None:
 
 
 def test_activity_json_all_sections(runner: CliRunner) -> None:
-    with patch("cli.commands.activity.AtlasClient", return_value=_mock_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_client()):
         result = runner.invoke(main, ["--output", "json", "activity"])
     assert result.exit_code == 0
     data = json.loads(result.output)
@@ -175,7 +175,7 @@ def test_activity_json_all_sections(runner: CliRunner) -> None:
 
 
 def test_activity_json_filtered_type(runner: CliRunner) -> None:
-    with patch("cli.commands.activity.AtlasClient", return_value=_mock_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_client()):
         result = runner.invoke(main, [
             "--output", "json", "activity", "--type", "benchmarks"
         ])
@@ -190,7 +190,7 @@ def test_activity_json_filtered_type(runner: CliRunner) -> None:
 
 
 def test_activity_quiet(runner: CliRunner) -> None:
-    with patch("cli.commands.activity.AtlasClient", return_value=_mock_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_client()):
         result = runner.invoke(main, ["--quiet", "activity"])
     assert result.exit_code == 0
     assert result.output == ""
@@ -201,7 +201,7 @@ def test_activity_quiet(runner: CliRunner) -> None:
 
 def test_activity_passes_default_limit(runner: CliRunner) -> None:
     mock = _mock_client()
-    with patch("cli.commands.activity.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         runner.invoke(main, ["activity"])
     mock.get_recent_benchmarks.assert_called_once_with(limit=10)
     mock.get_recent_executions.assert_called_once_with(limit=10)
@@ -210,14 +210,14 @@ def test_activity_passes_default_limit(runner: CliRunner) -> None:
 
 def test_activity_passes_explicit_limit(runner: CliRunner) -> None:
     mock = _mock_client()
-    with patch("cli.commands.activity.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         runner.invoke(main, ["activity", "--limit", "3"])
     mock.get_recent_benchmarks.assert_called_once_with(limit=3)
 
 
 def test_activity_filtered_type_skips_other_calls(runner: CliRunner) -> None:
     mock = _mock_client()
-    with patch("cli.commands.activity.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         runner.invoke(main, ["activity", "--type", "models"])
     mock.get_recent_models.assert_called_once_with(limit=10)
     mock.get_recent_benchmarks.assert_not_called()
@@ -231,7 +231,7 @@ def test_activity_401(runner: CliRunner) -> None:
     from atlas_sdk.errors import AuthError
 
     mock = _mock_client_error(AuthError(status=401, message="Unauthorized"))
-    with patch("cli.commands.activity.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["activity"])
     assert result.exit_code == 3
 
@@ -240,6 +240,6 @@ def test_activity_json_error(runner: CliRunner) -> None:
     from atlas_sdk.errors import AuthError
 
     mock = _mock_client_error(AuthError(status=401, message="Expired token"))
-    with patch("cli.commands.activity.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["--output", "json", "activity"])
     assert result.exit_code == 3

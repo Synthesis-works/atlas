@@ -11,9 +11,10 @@ Calls GET /api/v1/dashboard through the SDK.
 from __future__ import annotations
 
 import click
-from atlas_sdk import AtlasClient, DashboardSnapshot, StaticTokenSupplier
+from atlas_sdk import DashboardSnapshot
 
 from cli.app import Context, _pass_context
+from cli.client import build_client
 from cli.config import AtlasConfig
 from cli.output.errors import error_exit
 from cli.output.json import render_json
@@ -37,14 +38,8 @@ def dashboard_cmd(ctx: Context) -> None:
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
 
-    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
-
     try:
-        with AtlasClient(
-            cfg.base_url,
-            token_supplier=supplier,
-            timeout=cfg.timeout,
-        ) as client:
+        with build_client(cfg) as client:
             snapshot = client.get_dashboard()
     except Exception as exc:
         error_exit(exc, output_mode)

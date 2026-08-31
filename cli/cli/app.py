@@ -1,6 +1,7 @@
 """atlas CLI — root entry point and global options (§5, §9.1).
 
-Global flags: --output, --profile, --timeout, --no-color, --quiet, --version, --help
+Global flags: --output, --base-url, --profile, --timeout, --retries, --no-color,
+--quiet, --version, --help
 """
 
 from __future__ import annotations
@@ -9,6 +10,15 @@ import click
 
 from cli import __version__
 from cli.config import AtlasConfig, load_config
+
+
+def _validate_retries(
+    ctx: click.Context, param: click.Parameter, value: int | None
+) -> int | None:
+    """Reject negative retry counts (applies to both flag and env value)."""
+    if value is not None and value < 0:
+        raise click.BadParameter("must be >= 0")
+    return value
 
 
 class Context:
@@ -50,6 +60,14 @@ _pass_context = click.make_pass_decorator(Context, ensure=True)
     help="Request timeout in seconds.",
 )
 @click.option(
+    "--retries",
+    default=None,
+    type=int,
+    envvar="ATLAS_RETRIES",
+    callback=_validate_retries,
+    help="Max retries for idempotent GET/HEAD requests (default: 3). POST is never retried.",
+)
+@click.option(
     "--no-color",
     is_flag=True,
     default=False,
@@ -70,6 +88,7 @@ def main(
     base_url: str | None,
     profile: str | None,
     timeout: float | None,
+    retries: int | None,
     no_color: bool,
     quiet: bool,
 ) -> None:
@@ -90,6 +109,7 @@ def main(
         output=output_mode,
         profile=profile,
         timeout=timeout,
+        retries=retries,
         no_color=no_color,
         quiet=quiet,
     )

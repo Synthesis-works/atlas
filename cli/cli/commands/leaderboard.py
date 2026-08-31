@@ -16,15 +16,10 @@ Implements:
 from __future__ import annotations
 
 import click
-from atlas_sdk import (
-    AtlasClient,
-    ModelBenchmarkHistory,
-    ModelSummary,
-    StaticTokenSupplier,
-    TrendPoint,
-)
+from atlas_sdk import ModelBenchmarkHistory, ModelSummary, TrendPoint
 
 from cli.app import Context, _pass_context
+from cli.client import build_client
 from cli.config import AtlasConfig
 from cli.output.errors import error_exit
 from cli.output.json import render_json
@@ -84,14 +79,8 @@ def benchmark_cmd(
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
 
-    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
-
     try:
-        with AtlasClient(
-            cfg.base_url,
-            token_supplier=supplier,
-            timeout=cfg.timeout,
-        ) as client:
+        with build_client(cfg) as client:
             leaderboard = client.get_benchmark_leaderboard(
                 benchmark_version_id,
                 limit=limit,
@@ -176,14 +165,8 @@ def model_cmd(
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
 
-    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
-
     try:
-        with AtlasClient(
-            cfg.base_url,
-            token_supplier=supplier,
-            timeout=cfg.timeout,
-        ) as client:
+        with build_client(cfg) as client:
             if history:
                 points = client.get_model_history(model_name)
             elif benchmarks:

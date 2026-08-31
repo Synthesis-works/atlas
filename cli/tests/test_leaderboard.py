@@ -111,7 +111,7 @@ def test_leaderboard_benchmark_subcommand_help(runner: CliRunner) -> None:
 
 def test_leaderboard_benchmark_human(runner: CliRunner) -> None:
     leaderboard = _leaderboard()
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_client(leaderboard)):
+    with patch("cli.client.AtlasClient", return_value=_mock_client(leaderboard)):
         result = runner.invoke(main, ["leaderboard", "benchmark", _BV_ID])
     assert result.exit_code == 0
     assert "Benchmark Version 1.0.0" in result.output
@@ -124,7 +124,7 @@ def test_leaderboard_benchmark_human(runner: CliRunner) -> None:
 
 def test_leaderboard_benchmark_human_empty(runner: CliRunner) -> None:
     leaderboard = _leaderboard(items=[], total=0)
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_client(leaderboard)):
+    with patch("cli.client.AtlasClient", return_value=_mock_client(leaderboard)):
         result = runner.invoke(main, ["leaderboard", "benchmark", _BV_ID])
     assert result.exit_code == 0
     assert "(no entries)" in result.output
@@ -132,7 +132,7 @@ def test_leaderboard_benchmark_human_empty(runner: CliRunner) -> None:
 
 def test_leaderboard_benchmark_human_pagination_hint(runner: CliRunner) -> None:
     leaderboard = _leaderboard(items=[_entry()], total=50)
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_client(leaderboard)):
+    with patch("cli.client.AtlasClient", return_value=_mock_client(leaderboard)):
         result = runner.invoke(main, ["leaderboard", "benchmark", _BV_ID])
     assert result.exit_code == 0
     assert "Showing 1 of 50" in result.output
@@ -149,7 +149,7 @@ def test_leaderboard_benchmark_human_rank_delta(runner: CliRunner) -> None:
         metadata=None,
     )
     leaderboard = _leaderboard(items=[entry])
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_client(leaderboard)):
+    with patch("cli.client.AtlasClient", return_value=_mock_client(leaderboard)):
         result = runner.invoke(main, ["leaderboard", "benchmark", _BV_ID])
     assert result.exit_code == 0
     assert "-2" in result.output
@@ -160,7 +160,7 @@ def test_leaderboard_benchmark_human_rank_delta(runner: CliRunner) -> None:
 
 def test_leaderboard_benchmark_json_preserves_backend_structure(runner: CliRunner) -> None:
     leaderboard = _leaderboard()
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_client(leaderboard)):
+    with patch("cli.client.AtlasClient", return_value=_mock_client(leaderboard)):
         result = runner.invoke(main, ["--output", "json", "leaderboard", "benchmark", _BV_ID])
     assert result.exit_code == 0
     data = json.loads(result.output)
@@ -185,7 +185,7 @@ def test_leaderboard_benchmark_json_preserves_backend_structure(runner: CliRunne
 
 def test_leaderboard_benchmark_json_empty(runner: CliRunner) -> None:
     leaderboard = _leaderboard(items=[], total=0)
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_client(leaderboard)):
+    with patch("cli.client.AtlasClient", return_value=_mock_client(leaderboard)):
         result = runner.invoke(main, ["--output", "json", "leaderboard", "benchmark", _BV_ID])
     assert result.exit_code == 0
     data = json.loads(result.output)
@@ -197,14 +197,14 @@ def test_leaderboard_benchmark_json_empty(runner: CliRunner) -> None:
 
 
 def test_leaderboard_benchmark_quiet(runner: CliRunner) -> None:
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_client()):
         result = runner.invoke(main, ["--quiet", "leaderboard", "benchmark", _BV_ID])
     assert result.exit_code == 0
     assert result.output == ""
 
 
 def test_leaderboard_benchmark_quiet_via_shorthand(runner: CliRunner) -> None:
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_client()):
         result = runner.invoke(main, ["-q", "leaderboard", "benchmark", _BV_ID])
     assert result.exit_code == 0
     assert result.output == ""
@@ -215,14 +215,14 @@ def test_leaderboard_benchmark_quiet_via_shorthand(runner: CliRunner) -> None:
 
 def test_leaderboard_benchmark_default_params(runner: CliRunner) -> None:
     mock = _mock_client()
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         runner.invoke(main, ["leaderboard", "benchmark", _BV_ID])
     mock.get_benchmark_leaderboard.assert_called_once_with(_BV_ID, limit=20, offset=0)
 
 
 def test_leaderboard_benchmark_pagination_params(runner: CliRunner) -> None:
     mock = _mock_client()
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         runner.invoke(main, [
             "leaderboard", "benchmark", _BV_ID, "--limit", "10", "--offset", "5"
         ])
@@ -241,7 +241,7 @@ def test_leaderboard_benchmark_401(runner: CliRunner) -> None:
     from atlas_sdk.errors import AuthError
 
     mock = _mock_client_error(AuthError(status=401, message="Unauthorized"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "benchmark", _BV_ID])
     assert result.exit_code == 3
 
@@ -250,7 +250,7 @@ def test_leaderboard_benchmark_403(runner: CliRunner) -> None:
     from atlas_sdk.errors import ForbiddenError
 
     mock = _mock_client_error(ForbiddenError(status=403, message="Forbidden"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "benchmark", _BV_ID])
     assert result.exit_code == 4
 
@@ -259,7 +259,7 @@ def test_leaderboard_benchmark_404(runner: CliRunner) -> None:
     from atlas_sdk.errors import NotFoundError
 
     mock = _mock_client_error(NotFoundError(status=404, message="Not found"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "benchmark", _BV_ID])
     assert result.exit_code == 5
 
@@ -268,7 +268,7 @@ def test_leaderboard_benchmark_422(runner: CliRunner) -> None:
     from atlas_sdk.errors import ValidationError
 
     mock = _mock_client_error(ValidationError(status=422, message="Invalid parameters"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "benchmark", _BV_ID])
     assert result.exit_code == 7
 
@@ -277,7 +277,7 @@ def test_leaderboard_benchmark_network_error(runner: CliRunner) -> None:
     from atlas_sdk.errors import NetworkError
 
     mock = _mock_client_error(NetworkError(message="Connection refused"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "benchmark", _BV_ID])
     assert result.exit_code == 6
 
@@ -286,7 +286,7 @@ def test_leaderboard_benchmark_server_error(runner: CliRunner) -> None:
     from atlas_sdk.errors import ServerError
 
     mock = _mock_client_error(ServerError(status=500, message="Internal error"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "benchmark", _BV_ID])
     assert result.exit_code == 1
 
@@ -295,7 +295,7 @@ def test_leaderboard_benchmark_json_error(runner: CliRunner) -> None:
     from atlas_sdk.errors import AuthError
 
     mock = _mock_client_error(AuthError(status=401, message="Expired token"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, [
             "--output", "json", "leaderboard", "benchmark", _BV_ID
         ])
@@ -356,7 +356,7 @@ def test_leaderboard_model_subcommand_help(runner: CliRunner) -> None:
 
 def test_leaderboard_model_human(runner: CliRunner) -> None:
     summary = _summary(latest_delta=2)
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_summary_client(summary)):
+    with patch("cli.client.AtlasClient", return_value=_mock_summary_client(summary)):
         result = runner.invoke(main, ["leaderboard", "model", "mock"])
     assert result.exit_code == 0
     assert "Model Summary" in result.output
@@ -377,7 +377,7 @@ def test_leaderboard_model_human_omits_null_fields(runner: CliRunner) -> None:
         last_execution=None,
 latest_delta=None,
     )
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_summary_client(summary)):
+    with patch("cli.client.AtlasClient", return_value=_mock_summary_client(summary)):
         result = runner.invoke(main, ["leaderboard", "model", "mock"])
     assert result.exit_code == 0
     assert "Model Summary" in result.output
@@ -391,7 +391,7 @@ latest_delta=None,
 def test_leaderboard_model_human_unknown(runner: CliRunner) -> None:
     summary = _summary(model="nope", benchmarks=0, best_rank=None, average_rank=None,
                        average_score=None, last_execution=None, latest_delta=None)
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_summary_client(summary)):
+    with patch("cli.client.AtlasClient", return_value=_mock_summary_client(summary)):
         result = runner.invoke(main, ["leaderboard", "model", "nope"])
     assert result.exit_code == 0
     assert "No benchmark data for model 'nope'" in result.output
@@ -399,7 +399,7 @@ def test_leaderboard_model_human_unknown(runner: CliRunner) -> None:
 
 def test_leaderboard_model_json_preserves_backend_structure(runner: CliRunner) -> None:
     summary = _summary(latest_delta=2)
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_summary_client(summary)):
+    with patch("cli.client.AtlasClient", return_value=_mock_summary_client(summary)):
         result = runner.invoke(main, ["--output", "json", "leaderboard", "model", "mock"])
     assert result.exit_code == 0
     data = json.loads(result.output)
@@ -415,7 +415,7 @@ def test_leaderboard_model_json_preserves_backend_structure(runner: CliRunner) -
 def test_leaderboard_model_json_unknown_preserves_nulls(runner: CliRunner) -> None:
     summary = _summary(model="nope", benchmarks=0, best_rank=None, average_rank=None,
                        average_score=None, last_execution=None, latest_delta=None)
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_summary_client(summary)):
+    with patch("cli.client.AtlasClient", return_value=_mock_summary_client(summary)):
         result = runner.invoke(main, ["--output", "json", "leaderboard", "model", "nope"])
     assert result.exit_code == 0
     data = json.loads(result.output)
@@ -429,14 +429,14 @@ def test_leaderboard_model_json_unknown_preserves_nulls(runner: CliRunner) -> No
 
 
 def test_leaderboard_model_quiet(runner: CliRunner) -> None:
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_summary_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_summary_client()):
         result = runner.invoke(main, ["--quiet", "leaderboard", "model", "mock"])
     assert result.exit_code == 0
     assert result.output == ""
 
 
 def test_leaderboard_model_quiet_via_shorthand(runner: CliRunner) -> None:
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_summary_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_summary_client()):
         result = runner.invoke(main, ["-q", "leaderboard", "model", "mock"])
     assert result.exit_code == 0
     assert result.output == ""
@@ -444,7 +444,7 @@ def test_leaderboard_model_quiet_via_shorthand(runner: CliRunner) -> None:
 
 def test_leaderboard_model_passes_model_name(runner: CliRunner) -> None:
     mock = _mock_summary_client()
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         runner.invoke(main, ["leaderboard", "model", "mock"])
     mock.get_model_summary.assert_called_once_with("mock")
 
@@ -458,7 +458,7 @@ def test_leaderboard_model_401(runner: CliRunner) -> None:
     from atlas_sdk.errors import AuthError
 
     mock = _mock_summary_client_error(AuthError(status=401, message="Unauthorized"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "model", "mock"])
     assert result.exit_code == 3
 
@@ -467,7 +467,7 @@ def test_leaderboard_model_403(runner: CliRunner) -> None:
     from atlas_sdk.errors import ForbiddenError
 
     mock = _mock_summary_client_error(ForbiddenError(status=403, message="Forbidden"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "model", "mock"])
     assert result.exit_code == 4
 
@@ -476,7 +476,7 @@ def test_leaderboard_model_404(runner: CliRunner) -> None:
     from atlas_sdk.errors import NotFoundError
 
     mock = _mock_summary_client_error(NotFoundError(status=404, message="Not found"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "model", "mock"])
     assert result.exit_code == 5
 
@@ -485,7 +485,7 @@ def test_leaderboard_model_422(runner: CliRunner) -> None:
     from atlas_sdk.errors import ValidationError
 
     mock = _mock_summary_client_error(ValidationError(status=422, message="Invalid parameters"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "model", "mock"])
     assert result.exit_code == 7
 
@@ -494,7 +494,7 @@ def test_leaderboard_model_network_error(runner: CliRunner) -> None:
     from atlas_sdk.errors import NetworkError
 
     mock = _mock_summary_client_error(NetworkError(message="Connection refused"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "model", "mock"])
     assert result.exit_code == 6
 
@@ -503,7 +503,7 @@ def test_leaderboard_model_server_error(runner: CliRunner) -> None:
     from atlas_sdk.errors import ServerError
 
     mock = _mock_summary_client_error(ServerError(status=500, message="Internal error"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "model", "mock"])
     assert result.exit_code == 1
 
@@ -512,7 +512,7 @@ def test_leaderboard_model_json_error(runner: CliRunner) -> None:
     from atlas_sdk.errors import AuthError
 
     mock = _mock_summary_client_error(AuthError(status=401, message="Expired token"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["--output", "json", "leaderboard", "model", "mock"])
     assert result.exit_code == 3
 # -- model --history ------------------------------------------------------
@@ -570,7 +570,7 @@ def test_leaderboard_model_history_human(runner: CliRunner) -> None:
             execution_id="b94248f7-f5f9-4ed8-992a-b29751b4e710",
         ),
     ]
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_history_client(points)):
+    with patch("cli.client.AtlasClient", return_value=_mock_history_client(points)):
         result = runner.invoke(main, ["leaderboard", "model", "mock", "--history"])
     assert result.exit_code == 0
     assert "Model History: mock" in result.output
@@ -584,7 +584,7 @@ def test_leaderboard_model_history_human(runner: CliRunner) -> None:
 
 
 def test_leaderboard_model_history_human_empty(runner: CliRunner) -> None:
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_history_client([])):
+    with patch("cli.client.AtlasClient", return_value=_mock_history_client([])):
         result = runner.invoke(main, ["leaderboard", "model", "nope", "--history"])
     assert result.exit_code == 0
     assert "No history for model 'nope'" in result.output
@@ -596,7 +596,7 @@ def test_leaderboard_model_history_json_preserves_backend_structure(runner: CliR
         _point(timestamp="2026-08-23T07:05:00.000000", score=99.5, rank=2,
                benchmark_version=None, execution_id="abc"),
     ]
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_history_client(points)):
+    with patch("cli.client.AtlasClient", return_value=_mock_history_client(points)):
         result = runner.invoke(main, [
             "--output", "json", "leaderboard", "model", "mock", "--history"
         ])
@@ -613,14 +613,14 @@ def test_leaderboard_model_history_json_preserves_backend_structure(runner: CliR
 
 
 def test_leaderboard_model_history_quiet(runner: CliRunner) -> None:
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_history_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_history_client()):
         result = runner.invoke(main, ["--quiet", "leaderboard", "model", "mock", "--history"])
     assert result.exit_code == 0
     assert result.output == ""
 
 
 def test_leaderboard_model_history_quiet_via_shorthand(runner: CliRunner) -> None:
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_history_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_history_client()):
         result = runner.invoke(main, ["-q", "leaderboard", "model", "mock", "--history"])
     assert result.exit_code == 0
     assert result.output == ""
@@ -628,7 +628,7 @@ def test_leaderboard_model_history_quiet_via_shorthand(runner: CliRunner) -> Non
 
 def test_leaderboard_model_history_passes_model_name(runner: CliRunner) -> None:
     mock = _mock_history_client()
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         runner.invoke(main, ["leaderboard", "model", "mock", "--history"])
     mock.get_model_history.assert_called_once_with("mock")
 
@@ -637,7 +637,7 @@ def test_leaderboard_model_history_401(runner: CliRunner) -> None:
     from atlas_sdk.errors import AuthError
 
     mock = _mock_history_client_error(AuthError(status=401, message="Unauthorized"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "model", "mock", "--history"])
     assert result.exit_code == 3
 
@@ -646,7 +646,7 @@ def test_leaderboard_model_history_403(runner: CliRunner) -> None:
     from atlas_sdk.errors import ForbiddenError
 
     mock = _mock_history_client_error(ForbiddenError(status=403, message="Forbidden"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "model", "mock", "--history"])
     assert result.exit_code == 4
 
@@ -655,7 +655,7 @@ def test_leaderboard_model_history_404(runner: CliRunner) -> None:
     from atlas_sdk.errors import NotFoundError
 
     mock = _mock_history_client_error(NotFoundError(status=404, message="Not found"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "model", "mock", "--history"])
     assert result.exit_code == 5
 
@@ -664,7 +664,7 @@ def test_leaderboard_model_history_422(runner: CliRunner) -> None:
     from atlas_sdk.errors import ValidationError
 
     mock = _mock_history_client_error(ValidationError(status=422, message="Invalid params"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "model", "mock", "--history"])
     assert result.exit_code == 7
 
@@ -673,7 +673,7 @@ def test_leaderboard_model_history_network_error(runner: CliRunner) -> None:
     from atlas_sdk.errors import NetworkError
 
     mock = _mock_history_client_error(NetworkError(message="Connection refused"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "model", "mock", "--history"])
     assert result.exit_code == 6
 
@@ -682,7 +682,7 @@ def test_leaderboard_model_history_server_error(runner: CliRunner) -> None:
     from atlas_sdk.errors import ServerError
 
     mock = _mock_history_client_error(ServerError(status=500, message="Internal error"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "model", "mock", "--history"])
     assert result.exit_code == 1
 
@@ -691,7 +691,7 @@ def test_leaderboard_model_history_json_error(runner: CliRunner) -> None:
     from atlas_sdk.errors import AuthError
 
     mock = _mock_history_client_error(AuthError(status=401, message="Expired token"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, [
             "--output", "json", "leaderboard", "model", "mock", "--history"
         ])
@@ -788,7 +788,7 @@ def test_leaderboard_model_benchmarks_in_help(runner: CliRunner) -> None:
 
 
 def test_leaderboard_model_benchmarks_human(runner: CliRunner) -> None:
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_benchmarks_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_benchmarks_client()):
         result = runner.invoke(main, ["leaderboard", "model", "mock", "--benchmarks"])
     assert result.exit_code == 0
     assert "Model Benchmarks: mock" in result.output
@@ -805,7 +805,7 @@ def test_leaderboard_model_benchmarks_human(runner: CliRunner) -> None:
 
 
 def test_leaderboard_model_benchmarks_human_empty(runner: CliRunner) -> None:
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_benchmarks_client([])):
+    with patch("cli.client.AtlasClient", return_value=_mock_benchmarks_client([])):
         result = runner.invoke(main, ["leaderboard", "model", "nope", "--benchmarks"])
     assert result.exit_code == 0
     assert "No benchmark data for model 'nope'" in result.output
@@ -831,7 +831,7 @@ def test_leaderboard_model_benchmarks_json_preserves_backend_structure(
         )
     ]
     with patch(
-        "cli.commands.leaderboard.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_benchmarks_client(entries),
     ):
         result = runner.invoke(main, [
@@ -849,7 +849,7 @@ def test_leaderboard_model_benchmarks_json_preserves_backend_structure(
 
 
 def test_leaderboard_model_benchmarks_quiet(runner: CliRunner) -> None:
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=_mock_benchmarks_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_benchmarks_client()):
         result = runner.invoke(main, ["--quiet", "leaderboard", "model", "mock", "--benchmarks"])
     assert result.exit_code == 0
     assert result.output == ""
@@ -857,7 +857,7 @@ def test_leaderboard_model_benchmarks_quiet(runner: CliRunner) -> None:
 
 def test_leaderboard_model_benchmarks_passes_model_name(runner: CliRunner) -> None:
     mock = _mock_benchmarks_client()
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         runner.invoke(main, ["leaderboard", "model", "mock", "--benchmarks"])
     mock.get_model_benchmarks.assert_called_once_with("mock")
 
@@ -875,7 +875,7 @@ def test_leaderboard_model_benchmarks_401(runner: CliRunner) -> None:
     from atlas_sdk.errors import AuthError
 
     mock = _mock_benchmarks_client_error(AuthError(status=401, message="Unauthorized"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "model", "mock", "--benchmarks"])
     assert result.exit_code == 3
 
@@ -884,6 +884,6 @@ def test_leaderboard_model_benchmarks_network_error(runner: CliRunner) -> None:
     from atlas_sdk.errors import NetworkError
 
     mock = _mock_benchmarks_client_error(NetworkError(message="Connection refused"))
-    with patch("cli.commands.leaderboard.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["leaderboard", "model", "mock", "--benchmarks"])
     assert result.exit_code == 6

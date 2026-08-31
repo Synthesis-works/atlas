@@ -26,14 +26,14 @@ def _mock_client_all_fail():
 
 
 def test_health_degraded_all_down(runner: CliRunner) -> None:
-    with patch("cli.commands.health.AtlasClient", return_value=_mock_client_all_fail()):
+    with patch("cli.client.AtlasClient", return_value=_mock_client_all_fail()):
         result = runner.invoke(main, ["health"])
     assert result.exit_code == 1
     assert "degraded" in result.output.lower()
 
 
 def test_health_degraded_json_all_down(runner: CliRunner) -> None:
-    with patch("cli.commands.health.AtlasClient", return_value=_mock_client_all_fail()):
+    with patch("cli.client.AtlasClient", return_value=_mock_client_all_fail()):
         result = runner.invoke(main, ["--output", "json", "health"])
     assert result.exit_code == 1
     parsed = json.loads(result.output)
@@ -44,7 +44,7 @@ def test_health_degraded_json_all_down(runner: CliRunner) -> None:
 
 
 def test_health_quiet_mode_degraded(runner: CliRunner) -> None:
-    with patch("cli.commands.health.AtlasClient", return_value=_mock_client_all_fail()):
+    with patch("cli.client.AtlasClient", return_value=_mock_client_all_fail()):
         result = runner.invoke(main, ["--quiet", "health"])
     # Quiet mode: no stdout, exit 1 for degraded.
     assert result.output == ""

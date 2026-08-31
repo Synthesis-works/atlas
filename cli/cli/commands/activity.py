@@ -15,15 +15,10 @@ from __future__ import annotations
 from datetime import datetime
 
 import click
-from atlas_sdk import (
-    AtlasClient,
-    BenchmarkRead,
-    ExecutionHistoryRead,
-    ModelActivityRead,
-    StaticTokenSupplier,
-)
+from atlas_sdk import BenchmarkRead, ExecutionHistoryRead, ModelActivityRead
 
 from cli.app import Context, _pass_context
+from cli.client import build_client
 from cli.config import AtlasConfig
 from cli.output.errors import error_exit
 from cli.output.json import render_json
@@ -70,14 +65,8 @@ def activity_cmd(
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
 
-    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
-
     try:
-        with AtlasClient(
-            cfg.base_url,
-            token_supplier=supplier,
-            timeout=cfg.timeout,
-        ) as client:
+        with build_client(cfg) as client:
             kwargs = {"limit": limit}
             if activity_type in (None, "benchmarks"):
                 benchmarks = client.get_recent_benchmarks(**kwargs)

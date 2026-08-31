@@ -13,11 +13,10 @@ import sys
 from typing import Any
 
 import click
-from atlas_sdk import AtlasClient
-from atlas_sdk.auth import StaticTokenSupplier
 from atlas_sdk.errors import ApiError, NetworkError
 
 from cli.app import Context, _pass_context
+from cli.client import build_client
 from cli.config import AtlasConfig
 from cli.errors import ExitCode
 from cli.output.errors import error_exit
@@ -42,14 +41,8 @@ def health_cmd(ctx: Context) -> None:
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
 
-    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
-
     try:
-        with AtlasClient(
-            cfg.base_url,
-            token_supplier=supplier,
-            timeout=cfg.timeout,
-        ) as client:
+        with build_client(cfg) as client:
             health_data = None
             with contextlib.suppress(ApiError, NetworkError):
                 health_data = client.health_summary()

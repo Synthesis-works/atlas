@@ -58,7 +58,7 @@ def test_whoami_error_json_matches_golden(runner: CliRunner) -> None:
 
 def test_health_degraded_json_matches_golden(runner: CliRunner) -> None:
     """Record the expected shape of `atlas health --output json` when degraded."""
-    with patch("cli.commands.health.AtlasClient", return_value=_mock_all_fail()):
+    with patch("cli.client.AtlasClient", return_value=_mock_all_fail()):
         result = runner.invoke(main, ["--output", "json", "health"])
     assert result.exit_code == 1
     parsed = json.loads(result.output)

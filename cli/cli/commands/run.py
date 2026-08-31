@@ -12,18 +12,22 @@ from __future__ import annotations
 
 import sys
 import time
+from typing import TYPE_CHECKING
 
 import click
-from atlas_sdk import AtlasClient, StaticTokenSupplier
 from atlas_sdk.errors import NetworkError, NotFoundError
 from atlas_sdk.models.executions import DispatchTarget, ExecutionResponse
 
 from cli.app import Context, _pass_context
+from cli.client import build_client
 from cli.config import AtlasConfig
 from cli.errors import ExitCode
 from cli.output.errors import error_exit
 from cli.output.json import render_json
 from cli.output.table import render_kv, render_table
+
+if TYPE_CHECKING:
+    from atlas_sdk import AtlasClient
 
 _TERMINAL_STATES = frozenset({"COMPLETED", "FAILED", "CANCELLED", "TIMED_OUT"})
 _DEFAULT_POLL_INTERVAL = 3.0
@@ -101,14 +105,8 @@ def submit_cmd(
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
 
-    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
-
     try:
-        with AtlasClient(
-            cfg.base_url,
-            token_supplier=supplier,
-            timeout=cfg.timeout,
-        ) as client:
+        with build_client(cfg) as client:
             if preview:
                 _render_submit_preview(
                     client,
@@ -221,14 +219,8 @@ def get_cmd(ctx: Context, execution_id: str) -> None:
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
 
-    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
-
     try:
-        with AtlasClient(
-            cfg.base_url,
-            token_supplier=supplier,
-            timeout=cfg.timeout,
-        ) as client:
+        with build_client(cfg) as client:
             execution = client.get_execution(execution_id)
     except Exception as exc:
         error_exit(exc, output_mode)
@@ -301,14 +293,8 @@ def list_cmd(
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
 
-    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
-
     try:
-        with AtlasClient(
-            cfg.base_url,
-            token_supplier=supplier,
-            timeout=cfg.timeout,
-        ) as client:
+        with build_client(cfg) as client:
             page = client.list_executions(
                 benchmark_version_id=benchmark_version_id,
                 status=status,
@@ -414,14 +400,8 @@ def watch_cmd(
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
 
-    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
-
     try:
-        with AtlasClient(
-            cfg.base_url,
-            token_supplier=supplier,
-            timeout=5.0,
-        ) as client:
+        with build_client(cfg, timeout=5.0) as client:
             _poll_execution(client, execution_id, interval, output_mode, timeout)
     except KeyboardInterrupt:
         sys.exit(ExitCode.INTERRUPTED)
@@ -556,14 +536,8 @@ def cancel_cmd(ctx: Context, execution_id: str) -> None:
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
 
-    supplier = StaticTokenSupplier(cfg.token) if cfg.token else None
-
     try:
-        with AtlasClient(
-            cfg.base_url,
-            token_supplier=supplier,
-            timeout=cfg.timeout,
-        ) as client:
+        with build_client(cfg) as client:
             execution = client.cancel_execution(execution_id)
     except Exception as exc:
         error_exit(exc, output_mode)

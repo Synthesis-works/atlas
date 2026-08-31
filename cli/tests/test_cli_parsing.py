@@ -46,6 +46,45 @@ def test_output_flag_invalid(runner: CliRunner) -> None:
     assert result.exit_code != 0
 
 
+def test_retries_in_help(runner: CliRunner) -> None:
+    result = runner.invoke(main, ["--help"])
+    assert result.exit_code == 0
+    assert "--retries" in result.output
+
+
+def test_entrypoint_negative_retries_exits_2(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr("sys.argv", ["atlas", "--retries", "-1", "health"])
+    with pytest.raises(SystemExit) as exc_info:
+        entrypoint()
+    assert exc_info.value.code == 2
+    captured = capsys.readouterr().err
+    assert "retries" in captured
+    assert "Traceback" not in captured
+
+
+def test_entrypoint_noninteger_retries_exits_2(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr("sys.argv", ["atlas", "--retries", "many", "health"])
+    with pytest.raises(SystemExit) as exc_info:
+        entrypoint()
+    assert exc_info.value.code == 2
+    assert "Traceback" not in capsys.readouterr().err
+
+
+def test_entrypoint_negative_retries_env_exits_2(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr("sys.argv", ["atlas", "health"])
+    monkeypatch.setenv("ATLAS_RETRIES", "-2")
+    with pytest.raises(SystemExit) as exc_info:
+        entrypoint()
+    assert exc_info.value.code == 2
+    assert "retries" in capsys.readouterr().err
+
+
 # ── entrypoint (console script) behavior ─────────────────────────────────
 #
 # Tests invoke ``main`` via CliRunner, which swallows click exceptions and

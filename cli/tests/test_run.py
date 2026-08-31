@@ -141,7 +141,7 @@ def test_run_submit_in_help(runner: CliRunner) -> None:
 
 def test_submit_human(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(),
     ):
         result = runner.invoke(
@@ -156,7 +156,7 @@ def test_submit_human(runner: CliRunner) -> None:
 def test_submit_human_custom_model(runner: CliRunner) -> None:
     exec_resp = _exec_response(target_model="gpt-4o")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(execution=exec_resp),
     ):
         result = runner.invoke(
@@ -172,7 +172,7 @@ def test_submit_human_custom_model(runner: CliRunner) -> None:
 
 def test_submit_json(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(),
     ):
         result = runner.invoke(
@@ -195,7 +195,7 @@ def test_submit_json(runner: CliRunner) -> None:
 
 def test_submit_quiet(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(),
     ):
         result = runner.invoke(
@@ -213,7 +213,7 @@ def test_submit_no_token(runner: CliRunner) -> None:
 
     err = AuthError(status=401, message="Not authenticated")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
@@ -227,7 +227,7 @@ def test_submit_no_token_json(runner: CliRunner) -> None:
 
     err = AuthError(status=401, message="Not authenticated")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
@@ -249,7 +249,7 @@ def test_submit_forbidden(runner: CliRunner) -> None:
 
     err = ForbiddenError(status=403, message="Forbidden")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
@@ -263,7 +263,7 @@ def test_submit_forbidden_json(runner: CliRunner) -> None:
 
     err = ForbiddenError(status=403, message="Forbidden")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
@@ -285,7 +285,7 @@ def test_submit_not_found(runner: CliRunner) -> None:
 
     err = NotFoundError(status=404, message="BenchmarkVersion not found")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
@@ -300,7 +300,7 @@ def test_submit_not_found_json(runner: CliRunner) -> None:
 
     err = NotFoundError(status=404, message="BenchmarkVersion not found")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
@@ -325,7 +325,7 @@ def test_submit_validation_error(runner: CliRunner) -> None:
 
     err = ValidationError(status=422, message="Validation error")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
@@ -342,7 +342,7 @@ def test_submit_network_error(runner: CliRunner) -> None:
 
     err = NetworkError(message="connection refused")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
@@ -356,7 +356,7 @@ def test_submit_network_error_json(runner: CliRunner) -> None:
 
     err = NetworkError(message="connection refused")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
@@ -377,7 +377,7 @@ def test_submit_server_error(runner: CliRunner) -> None:
 
     err = ServerError(status=500, message="Internal server error")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
@@ -392,7 +392,7 @@ def test_submit_server_error(runner: CliRunner) -> None:
 def test_submit_requires_target_model(runner: CliRunner) -> None:
     """Submit without --target-model is a usage error (no silent default)."""
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(),
     ):
         result = runner.invoke(main, ["run", "submit", BENCH_VERSION_ID])
@@ -404,7 +404,7 @@ def test_submit_requires_target_model(runner: CliRunner) -> None:
 def test_submit_preview_requires_target_model(runner: CliRunner) -> None:
     """--preview also requires an explicit target model."""
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_preview_client(),
     ):
         result = runner.invoke(
@@ -421,7 +421,7 @@ def test_submit_preview_requires_target_model(runner: CliRunner) -> None:
 def test_preview_json(runner: CliRunner) -> None:
     """Preview emits a machine-readable plan and never submits."""
     mock = _mock_preview_client()
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(
             main,
             [
@@ -445,7 +445,7 @@ def test_preview_json(runner: CliRunner) -> None:
 def test_preview_human(runner: CliRunner) -> None:
     """Preview human output shows the plan and a no-write note."""
     mock = _mock_preview_client()
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(
             main,
             [
@@ -464,7 +464,7 @@ def test_preview_human(runner: CliRunner) -> None:
 def test_preview_quiet(runner: CliRunner) -> None:
     """Quiet preview: silent, exit 0, no POST."""
     mock = _mock_preview_client()
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(
             main,
             [
@@ -480,7 +480,7 @@ def test_preview_quiet(runner: CliRunner) -> None:
 def test_preview_never_posts(runner: CliRunner) -> None:
     """Preview is strictly read-only: zero submit/cancel calls."""
     mock = _mock_preview_client()
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(
             main,
             [
@@ -496,7 +496,7 @@ def test_preview_never_posts(runner: CliRunner) -> None:
 def test_preview_real_adapter(runner: CliRunner) -> None:
     """Non-mock models are flagged adapter_kind 'real'."""
     mock = _mock_preview_client()
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(
             main,
             [
@@ -513,7 +513,7 @@ def test_preview_real_adapter(runner: CliRunner) -> None:
 def test_preview_mocked_alias_adapter(runner: CliRunner) -> None:
     """'mocked' maps to the mock adapter kind."""
     mock = _mock_preview_client()
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(
             main,
             [
@@ -529,7 +529,7 @@ def test_preview_mocked_alias_adapter(runner: CliRunner) -> None:
 def test_preview_dataset_override_respected(runner: CliRunner) -> None:
     """--dataset-version-id overrides the resolved dataset in the plan."""
     mock = _mock_preview_client()
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(
             main,
             [
@@ -547,7 +547,7 @@ def test_preview_dataset_override_respected(runner: CliRunner) -> None:
 def test_preview_unknown_version_exit_5(runner: CliRunner) -> None:
     """Unknown/non-dispatchable version → exit 5, no POST attempted."""
     mock = _mock_preview_client(targets=[])
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(
             main,
             [
@@ -566,7 +566,7 @@ def test_preview_auth_error_exit_3(runner: CliRunner) -> None:
 
     err = AuthError(status=401, message="Not authenticated")
     mock = _mock_preview_client(dispatch_error=err)
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(
             main,
             [
@@ -583,7 +583,7 @@ def test_preview_forbidden_exit_4(runner: CliRunner) -> None:
 
     err = ForbiddenError(status=403, message="Forbidden")
     mock = _mock_preview_client(dispatch_error=err)
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(
             main,
             [
@@ -599,7 +599,7 @@ def test_preview_network_error_exit_6(runner: CliRunner) -> None:
 
     err = NetworkError(message="connection refused")
     mock = _mock_preview_client(dispatch_error=err)
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(
             main,
             [
@@ -649,7 +649,7 @@ def test_run_get_in_help(runner: CliRunner) -> None:
 
 def test_get_human(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(get_execution=_exec_response_running()),
     ):
         result = runner.invoke(main, ["run", "get", EXEC_ID])
@@ -665,7 +665,7 @@ def test_get_human(runner: CliRunner) -> None:
 
 def test_get_json(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(get_execution=_exec_response_running()),
     ):
         result = runner.invoke(
@@ -684,7 +684,7 @@ def test_get_json(runner: CliRunner) -> None:
 
 def test_get_quiet(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(get_execution=_exec_response_running()),
     ):
         result = runner.invoke(
@@ -702,7 +702,7 @@ def test_get_no_token(runner: CliRunner) -> None:
 
     err = AuthError(status=401, message="Not authenticated")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err, method="get"),
     ):
         result = runner.invoke(main, ["run", "get", EXEC_ID])
@@ -714,7 +714,7 @@ def test_get_no_token_json(runner: CliRunner) -> None:
 
     err = AuthError(status=401, message="Not authenticated")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err, method="get"),
     ):
         result = runner.invoke(
@@ -734,7 +734,7 @@ def test_get_forbidden(runner: CliRunner) -> None:
 
     err = ForbiddenError(status=403, message="Forbidden")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err, method="get"),
     ):
         result = runner.invoke(main, ["run", "get", EXEC_ID])
@@ -749,7 +749,7 @@ def test_get_not_found(runner: CliRunner) -> None:
 
     err = NotFoundError(status=404, message="Execution not found")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err, method="get"),
     ):
         result = runner.invoke(
@@ -763,7 +763,7 @@ def test_get_not_found_json(runner: CliRunner) -> None:
 
     err = NotFoundError(status=404, message="Execution not found")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err, method="get"),
     ):
         result = runner.invoke(
@@ -784,7 +784,7 @@ def test_get_network_error(runner: CliRunner) -> None:
 
     err = NetworkError(message="connection refused")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err, method="get"),
     ):
         result = runner.invoke(main, ["run", "get", EXEC_ID])
@@ -799,7 +799,7 @@ def test_get_server_error(runner: CliRunner) -> None:
 
     err = ServerError(status=500, message="Internal server error")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err, method="get"),
     ):
         result = runner.invoke(main, ["run", "get", EXEC_ID])
@@ -863,7 +863,7 @@ def test_run_list_in_help(runner: CliRunner) -> None:
 
 def test_list_human(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(list_executions=_list_items()),
     ):
         result = runner.invoke(main, ["run", "list"])
@@ -878,7 +878,7 @@ def test_list_human(runner: CliRunner) -> None:
 
 def test_list_human_empty(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(list_executions=[]),
     ):
         result = runner.invoke(main, ["run", "list"])
@@ -888,7 +888,7 @@ def test_list_human_empty(runner: CliRunner) -> None:
 
 def test_list_human_pagination_hint(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(list_executions=_list_items(), total=47),
     ):
         result = runner.invoke(main, ["run", "list"])
@@ -901,7 +901,7 @@ def test_list_human_pagination_hint(runner: CliRunner) -> None:
 
 def test_list_json(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(list_executions=_list_items(), total=2),
     ):
         result = runner.invoke(main, ["--output", "json", "run", "list"])
@@ -920,7 +920,7 @@ def test_list_json(runner: CliRunner) -> None:
 
 def test_list_json_empty(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(list_executions=[]),
     ):
         result = runner.invoke(main, ["--output", "json", "run", "list"])
@@ -934,7 +934,7 @@ def test_list_json_empty(runner: CliRunner) -> None:
 
 def test_list_quiet(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(list_executions=_list_items()),
     ):
         result = runner.invoke(main, ["--quiet", "run", "list"])
@@ -947,7 +947,7 @@ def test_list_quiet(runner: CliRunner) -> None:
 
 def test_list_passes_filters(runner: CliRunner) -> None:
     mock = _mock_client(list_executions=[])
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         runner.invoke(
             main,
             [
@@ -974,7 +974,7 @@ def test_list_no_token(runner: CliRunner) -> None:
 
     err = AuthError(status=401, message="Not authenticated")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err, method="list"),
     ):
         result = runner.invoke(main, ["run", "list"])
@@ -986,7 +986,7 @@ def test_list_no_token_json(runner: CliRunner) -> None:
 
     err = AuthError(status=401, message="Not authenticated")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err, method="list"),
     ):
         result = runner.invoke(
@@ -1005,7 +1005,7 @@ def test_list_not_found(runner: CliRunner) -> None:
 
     err = NotFoundError(status=404, message="Not found")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err, method="list"),
     ):
         result = runner.invoke(main, ["run", "list"])
@@ -1020,7 +1020,7 @@ def test_list_network_error(runner: CliRunner) -> None:
 
     err = NetworkError(message="connection refused")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err, method="list"),
     ):
         result = runner.invoke(main, ["run", "list"])
@@ -1035,7 +1035,7 @@ def test_list_server_error(runner: CliRunner) -> None:
 
     err = ServerError(status=500, message="Internal server error")
     with patch(
-        "cli.commands.run.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err, method="list"),
     ):
         result = runner.invoke(main, ["run", "list"])
@@ -1120,7 +1120,7 @@ def test_watch_already_terminal(runner: CliRunner) -> None:
         get_execution_side_effect=[_exec_response_for("COMPLETED")],
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep") as mock_sleep,
     ):
         result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
@@ -1137,7 +1137,7 @@ def test_watch_failed_terminal(runner: CliRunner) -> None:
         get_execution_side_effect=[_exec_response_for("FAILED")],
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep"),
     ):
         result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
@@ -1150,7 +1150,7 @@ def test_watch_cancelled_terminal(runner: CliRunner) -> None:
         get_execution_side_effect=[_exec_response_for("CANCELLED")],
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep"),
     ):
         result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
@@ -1163,7 +1163,7 @@ def test_watch_timed_out_terminal(runner: CliRunner) -> None:
         get_execution_side_effect=[_exec_response_for("TIMED_OUT")],
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep"),
     ):
         result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
@@ -1184,7 +1184,7 @@ def test_watch_polls_to_completed(runner: CliRunner) -> None:
         ],
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep") as mock_sleep,
     ):
         result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
@@ -1206,7 +1206,7 @@ def test_watch_json_final_state_only(runner: CliRunner) -> None:
         ],
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep"),
     ):
         result = runner.invoke(
@@ -1226,7 +1226,7 @@ def test_watch_quiet(runner: CliRunner) -> None:
         get_execution_side_effect=[_exec_response_for("COMPLETED")],
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep"),
     ):
         result = runner.invoke(
@@ -1247,7 +1247,7 @@ def test_watch_keyboard_interrupt(runner: CliRunner) -> None:
         ],
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep"),
     ):
         result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
@@ -1268,7 +1268,7 @@ def test_watch_transient_network_failure(runner: CliRunner) -> None:
         ],
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep"),
     ):
         result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
@@ -1291,7 +1291,7 @@ def test_watch_consecutive_network_failures(runner: CliRunner) -> None:
         ],
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep"),
     ):
         result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
@@ -1311,7 +1311,7 @@ def test_watch_consecutive_network_failures_json(runner: CliRunner) -> None:
         ],
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep"),
     ):
         result = runner.invoke(
@@ -1330,7 +1330,7 @@ def test_watch_401(runner: CliRunner) -> None:
 
     err = AuthError(status=401, message="Unauthorized")
     mock = _mock_watch_client(get_execution_side_effect=err)
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
     assert result.exit_code == 3
 
@@ -1340,7 +1340,7 @@ def test_watch_403(runner: CliRunner) -> None:
 
     err = ForbiddenError(status=403, message="Forbidden")
     mock = _mock_watch_client(get_execution_side_effect=err)
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
     assert result.exit_code == 4
 
@@ -1350,7 +1350,7 @@ def test_watch_404(runner: CliRunner) -> None:
 
     err = NotFoundError(status=404, message="Not found")
     mock = _mock_watch_client(get_execution_side_effect=err)
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
     assert result.exit_code == 5
 
@@ -1364,7 +1364,7 @@ def test_watch_custom_interval(runner: CliRunner) -> None:
         get_execution_side_effect=[_exec_response_for("COMPLETED")],
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep") as mock_sleep,
     ):
         result = runner.invoke(
@@ -1383,7 +1383,7 @@ def test_watch_interval_used_between_polls(runner: CliRunner) -> None:
         ],
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep") as mock_sleep,
     ):
         result = runner.invoke(
@@ -1425,7 +1425,7 @@ def test_watch_timeout_json_emits_last_non_terminal(runner: CliRunner) -> None:
     mock = _mock_watch_client()
     mock.get_execution.side_effect = lambda *a, **k: _exec_response_for("RUNNING")
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time", _FakeClock()),
     ):
         result = runner.invoke(
@@ -1448,7 +1448,7 @@ def test_watch_timeout_human_message(runner: CliRunner) -> None:
     mock = _mock_watch_client()
     mock.get_execution.side_effect = lambda *a, **k: _exec_response_for("RUNNING")
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time", _FakeClock()),
     ):
         result = runner.invoke(
@@ -1467,7 +1467,7 @@ def test_watch_timeout_quiet_silent(runner: CliRunner) -> None:
     mock = _mock_watch_client()
     mock.get_execution.side_effect = lambda *a, **k: _exec_response_for("RUNNING")
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time", _FakeClock()),
     ):
         result = runner.invoke(
@@ -1489,7 +1489,7 @@ def test_watch_timeout_no_state_observed_json_empty(runner: CliRunner) -> None:
         get_execution_side_effect=NetworkError(message="down"),
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time", _FakeClock()),
     ):
         result = runner.invoke(
@@ -1513,7 +1513,7 @@ def test_watch_completion_within_budget_exit_0(runner: CliRunner) -> None:
         ],
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time", _FakeClock()),
     ):
         result = runner.invoke(
@@ -1537,7 +1537,7 @@ def test_watch_timeout_network_cap_regression(runner: CliRunner) -> None:
         ],
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time", _FakeClock()),
     ):
         result = runner.invoke(
@@ -1558,7 +1558,7 @@ def test_watch_timeout_capped_sleep_wall_clock(runner: CliRunner) -> None:
 
     mock = _mock_watch_client()
     mock.get_execution.side_effect = lambda *a, **k: _exec_response_for("RUNNING")
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         start = _time.monotonic()
         result = runner.invoke(
             main,
@@ -1604,7 +1604,7 @@ def test_watch_default_remains_unbounded(runner: CliRunner) -> None:
         ],
     )
     with (
-        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time", _FakeClock()),
     ):
         result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
@@ -1671,7 +1671,7 @@ def test_cancel_human_cancelling(runner: CliRunner) -> None:
     mock = _mock_cancel_client(
         cancel_return=_cancel_exec_response("CANCELLING"),
     )
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
     assert result.exit_code == 0
     assert "CANCELLING" in result.output
@@ -1683,7 +1683,7 @@ def test_cancel_human_running(runner: CliRunner) -> None:
     mock = _mock_cancel_client(
         cancel_return=_cancel_exec_response("RUNNING"),
     )
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
     assert result.exit_code == 0
     assert "RUNNING" in result.output
@@ -1694,7 +1694,7 @@ def test_cancel_human_queued(runner: CliRunner) -> None:
     mock = _mock_cancel_client(
         cancel_return=_cancel_exec_response("QUEUED"),
     )
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
     assert result.exit_code == 0
     assert "QUEUED" in result.output
@@ -1704,7 +1704,7 @@ def test_cancel_json(runner: CliRunner) -> None:
     """JSON mode returns the actual ExecutionResponse."""
     resp = _cancel_exec_response("CANCELLING")
     mock = _mock_cancel_client(cancel_return=resp)
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(
             main, ["--output", "json", "run", "cancel", EXEC_ID_CANCEL]
         )
@@ -1719,7 +1719,7 @@ def test_cancel_quiet(runner: CliRunner) -> None:
     mock = _mock_cancel_client(
         cancel_return=_cancel_exec_response("CANCELLING"),
     )
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(
             main, ["--quiet", "run", "cancel", EXEC_ID_CANCEL]
         )
@@ -1735,7 +1735,7 @@ def test_cancel_calls_cancel_execution(runner: CliRunner) -> None:
     mock = _mock_cancel_client(
         cancel_return=_cancel_exec_response("CANCELLING"),
     )
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
     mock.cancel_execution.assert_called_once_with(EXEC_ID_CANCEL)
 
@@ -1748,7 +1748,7 @@ def test_cancel_401(runner: CliRunner) -> None:
 
     err = AuthError(status=401, message="Unauthorized")
     mock = _mock_cancel_client(cancel_side_effect=err)
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
     assert result.exit_code == 3
 
@@ -1758,7 +1758,7 @@ def test_cancel_403(runner: CliRunner) -> None:
 
     err = ForbiddenError(status=403, message="Forbidden")
     mock = _mock_cancel_client(cancel_side_effect=err)
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
     assert result.exit_code == 4
 
@@ -1768,7 +1768,7 @@ def test_cancel_404(runner: CliRunner) -> None:
 
     err = NotFoundError(status=404, message="Not found")
     mock = _mock_cancel_client(cancel_side_effect=err)
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
     assert result.exit_code == 5
 
@@ -1782,7 +1782,7 @@ def test_cancel_terminal_409(runner: CliRunner) -> None:
         message="Execution is in terminal state 'COMPLETED' and cannot be cancelled.",
     )
     mock = _mock_cancel_client(cancel_side_effect=err)
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
     assert result.exit_code == 8
 
@@ -1792,7 +1792,7 @@ def test_cancel_network_error(runner: CliRunner) -> None:
 
     err = NetworkError(message="connection refused")
     mock = _mock_cancel_client(cancel_side_effect=err)
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
     assert result.exit_code == 6
 
@@ -1802,7 +1802,7 @@ def test_cancel_server_error(runner: CliRunner) -> None:
 
     err = ServerError(status=500, message="Internal error")
     mock = _mock_cancel_client(cancel_side_effect=err)
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
     assert result.exit_code == 1
 
@@ -1813,6 +1813,6 @@ def test_cancel_no_token(runner: CliRunner) -> None:
 
     err = AuthError(status=401, message="Not authenticated")
     mock = _mock_cancel_client(cancel_side_effect=err)
-    with patch("cli.commands.run.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["run", "cancel", EXEC_ID_CANCEL])
     assert result.exit_code == 3

@@ -17,6 +17,7 @@ from pathlib import Path
 _DEFAULT_BASE_URL = "http://localhost:8000"
 _DEFAULT_TIMEOUT = 60.0
 _DEFAULT_OUTPUT = "human"
+_DEFAULT_RETRIES = 3  # mirrors the SDK's built-in retry cap; 0 disables retries
 
 
 @dataclass
@@ -30,6 +31,7 @@ class AtlasConfig:
     no_color: bool = False
     quiet: bool = False
     token: str | None = None
+    retries: int = _DEFAULT_RETRIES
 
     def effective_output(self) -> str:
         """Return the effective output mode, respecting --quiet shorthand."""
@@ -52,6 +54,7 @@ def load_config(
     profile: str | None = None,
     no_color: bool = False,
     quiet: bool = False,
+    retries: int | None = None,
     config_path: Path | None = None,
 ) -> AtlasConfig:
     """Build an AtlasConfig from flag values, env vars, profile, and defaults.
@@ -81,6 +84,11 @@ def load_config(
         or os.environ.get("ATLAS_OUTPUT")
         or _DEFAULT_OUTPUT
     )
+    resolved_retries = (
+        retries
+        if retries is not None
+        else _env_int("ATLAS_RETRIES", _DEFAULT_RETRIES)
+    )
 
     return AtlasConfig(
         base_url=resolved_base_url,
@@ -90,6 +98,7 @@ def load_config(
         no_color=no_color,
         quiet=quiet,
         token=os.environ.get("ATLAS_TOKEN") or saved.get("token"),
+        retries=resolved_retries,
     )
 
 
@@ -160,5 +169,15 @@ def _env_float(key: str, default: float) -> float:
         return default
     try:
         return float(raw)
+    except ValueError:
+        return default
+
+
+def _env_int(key: str, default: int) -> int:
+    raw = os.environ.get(key)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
     except ValueError:
         return default

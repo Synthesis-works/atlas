@@ -14,9 +14,9 @@ from __future__ import annotations
 import sys
 
 import click
-from atlas_sdk import AtlasClient, StaticTokenSupplier
 
 from cli.app import Context, _pass_context
+from cli.client import build_client
 from cli.config import AtlasConfig, clear_saved_token, save_profile
 from cli.errors import ExitCode
 from cli.output.errors import error_exit
@@ -49,8 +49,7 @@ def whoami_cmd(ctx: Context) -> None:
         sys.exit(ExitCode.AUTH_REQUIRED)
 
     try:
-        supplier = StaticTokenSupplier(cfg.token)
-        with AtlasClient(cfg.base_url, token_supplier=supplier, timeout=cfg.timeout) as client:
+        with build_client(cfg) as client:
             user = client.whoami()
     except Exception as exc:
         error_exit(exc, output_mode)
@@ -111,7 +110,7 @@ def login_cmd(ctx: Context, email: str | None, password_stdin: bool) -> None:
         password = click.prompt("Password", hide_input=True)
 
     try:
-        with AtlasClient(cfg.base_url, timeout=cfg.timeout) as client:
+        with build_client(cfg) as client:
             token = client.login(email=email, password=password).access_token
     except Exception as exc:
         error_exit(exc, output_mode)

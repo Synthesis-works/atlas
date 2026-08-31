@@ -112,7 +112,7 @@ def test_benchmark_list_in_help(runner: CliRunner) -> None:
 
 def test_benchmark_list_human(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(),
     ):
         result = runner.invoke(main, ["benchmark", "list"])
@@ -123,7 +123,7 @@ def test_benchmark_list_human(runner: CliRunner) -> None:
 
 def test_benchmark_list_human_empty(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_empty(),
     ):
         result = runner.invoke(main, ["benchmark", "list"])
@@ -136,7 +136,7 @@ def test_benchmark_list_human_empty(runner: CliRunner) -> None:
 
 def test_benchmark_list_json(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(),
     ):
         result = runner.invoke(
@@ -152,7 +152,7 @@ def test_benchmark_list_json(runner: CliRunner) -> None:
 
 def test_benchmark_list_json_empty(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_empty(),
     ):
         result = runner.invoke(
@@ -169,7 +169,7 @@ def test_benchmark_list_json_empty(runner: CliRunner) -> None:
 
 def test_benchmark_list_quiet(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client(),
     ):
         result = runner.invoke(main, ["--quiet", "benchmark", "list"])
@@ -186,7 +186,7 @@ def test_benchmark_list_no_token(runner: CliRunner) -> None:
 
     err = AuthError(status=401, message="Not authenticated")
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(main, ["benchmark", "list"])
@@ -198,7 +198,7 @@ def test_benchmark_list_no_token_json(runner: CliRunner) -> None:
 
     err = AuthError(status=401, message="Not authenticated")
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
@@ -218,7 +218,7 @@ def test_benchmark_list_sdk_error(runner: CliRunner) -> None:
 
     err = NetworkError(message="connection refused")
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
@@ -244,7 +244,7 @@ def test_benchmark_get_in_help(runner: CliRunner) -> None:
 def test_benchmark_get_human(runner: CliRunner) -> None:
     bench = _bench(name="My Benchmark")
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_get(bench),
     ):
         result = runner.invoke(
@@ -261,7 +261,7 @@ def test_benchmark_get_human(runner: CliRunner) -> None:
 def test_benchmark_get_json(runner: CliRunner) -> None:
     bench = _bench(name="JSON Bench")
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_get(bench),
     ):
         result = runner.invoke(
@@ -280,7 +280,7 @@ def test_benchmark_get_json(runner: CliRunner) -> None:
 def test_benchmark_get_quiet(runner: CliRunner) -> None:
     bench = _bench()
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_get(bench),
     ):
         result = runner.invoke(
@@ -298,7 +298,7 @@ def test_benchmark_get_not_found(runner: CliRunner) -> None:
 
     err = NotFoundError(status=404, message="Benchmark not found")
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_get_error(err),
     ):
         result = runner.invoke(
@@ -312,7 +312,7 @@ def test_benchmark_get_not_found_json(runner: CliRunner) -> None:
 
     err = NotFoundError(status=404, message="Benchmark not found")
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_get_error(err),
     ):
         result = runner.invoke(
@@ -334,7 +334,7 @@ def test_benchmark_get_no_token(runner: CliRunner) -> None:
 
     err = AuthError(status=401, message="Not authenticated")
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_get_error(err),
     ):
         result = runner.invoke(
@@ -351,7 +351,7 @@ def test_benchmark_get_network_error(runner: CliRunner) -> None:
 
     err = NetworkError(message="connection refused")
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_get_error(err),
     ):
         result = runner.invoke(
@@ -365,7 +365,7 @@ def test_benchmark_get_network_error_json(runner: CliRunner) -> None:
 
     err = NetworkError(message="connection refused")
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_get_error(err),
     ):
         result = runner.invoke(
@@ -438,7 +438,7 @@ def test_benchmark_versions_in_help(runner: CliRunner) -> None:
 
 def test_benchmark_versions_human(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_versions(),
     ):
         result = runner.invoke(
@@ -451,7 +451,7 @@ def test_benchmark_versions_human(runner: CliRunner) -> None:
 
 def test_benchmark_versions_human_empty(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_versions_empty(),
     ):
         result = runner.invoke(
@@ -466,7 +466,7 @@ def test_benchmark_versions_human_empty(runner: CliRunner) -> None:
 
 def test_benchmark_versions_json(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_versions(),
     ):
         result = runner.invoke(
@@ -483,7 +483,7 @@ def test_benchmark_versions_json(runner: CliRunner) -> None:
 
 def test_benchmark_versions_json_empty(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_versions_empty(),
     ):
         result = runner.invoke(
@@ -501,7 +501,7 @@ def test_benchmark_versions_json_empty(runner: CliRunner) -> None:
 
 def test_benchmark_versions_quiet(runner: CliRunner) -> None:
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_versions(),
     ):
         result = runner.invoke(
@@ -519,7 +519,7 @@ def test_benchmark_versions_not_found(runner: CliRunner) -> None:
 
     err = NotFoundError(status=404, message="Benchmark not found")
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_versions_error(err),
     ):
         result = runner.invoke(
@@ -533,7 +533,7 @@ def test_benchmark_versions_not_found_json(runner: CliRunner) -> None:
 
     err = NotFoundError(status=404, message="Benchmark not found")
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_versions_error(err),
     ):
         result = runner.invoke(
@@ -554,7 +554,7 @@ def test_benchmark_versions_no_token(runner: CliRunner) -> None:
 
     err = AuthError(status=401, message="Not authenticated")
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_versions_error(err),
     ):
         result = runner.invoke(
@@ -571,7 +571,7 @@ def test_benchmark_versions_network_error(runner: CliRunner) -> None:
 
     err = NetworkError(message="connection refused")
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_versions_error(err),
     ):
         result = runner.invoke(
@@ -585,7 +585,7 @@ def test_benchmark_versions_network_error_json(runner: CliRunner) -> None:
 
     err = NetworkError(message="connection refused")
     with patch(
-        "cli.commands.benchmark.AtlasClient",
+        "cli.client.AtlasClient",
         return_value=_mock_client_versions_error(err),
     ):
         result = runner.invoke(

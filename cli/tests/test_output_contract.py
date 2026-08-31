@@ -25,7 +25,7 @@ def test_health_json_stdout_is_pure_json(runner: CliRunner) -> None:
     mock.health_summary.side_effect = NetworkError(message="no server")
     mock.system_live.side_effect = NetworkError(message="no server")
     mock.system_ready.side_effect = NetworkError(message="no server")
-    with patch("cli.commands.health.AtlasClient", return_value=mock):
+    with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["--output", "json", "health"])
     parsed = json.loads(result.output)
     assert isinstance(parsed, dict)

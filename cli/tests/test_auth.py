@@ -45,7 +45,7 @@ def _mock_login_client_error(exc: Exception) -> MagicMock:
 
 
 def test_login_success_persists_token(runner: CliRunner, tmp_path: Path) -> None:
-    with patch("cli.commands.auth.AtlasClient", return_value=_mock_login_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_login_client()):
         result = runner.invoke(main, ["login"], input="demo@atlas.val\npassword123\n")
     assert result.exit_code == 0
     assert "Logged in" in result.output
@@ -58,7 +58,7 @@ def test_login_success_persists_token(runner: CliRunner, tmp_path: Path) -> None
 def test_login_email_flag_prompts_only_for_password(
     runner: CliRunner, tmp_path: Path
 ) -> None:
-    with patch("cli.commands.auth.AtlasClient", return_value=_mock_login_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_login_client()):
         result = runner.invoke(
             main, ["login", "--email", "demo@atlas.val"], input="password123\n"
         )
@@ -69,7 +69,7 @@ def test_login_email_flag_prompts_only_for_password(
 
 
 def test_login_password_stdin_success(runner: CliRunner, tmp_path: Path) -> None:
-    with patch("cli.commands.auth.AtlasClient", return_value=_mock_login_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_login_client()):
         result = runner.invoke(
             main,
             ["login", "--email", "demo@atlas.val", "--password-stdin"],
@@ -83,7 +83,7 @@ def test_login_password_stdin_success(runner: CliRunner, tmp_path: Path) -> None
 def test_login_password_stdin_empty_is_validation_error(
     runner: CliRunner, tmp_path: Path
 ) -> None:
-    with patch("cli.commands.auth.AtlasClient", return_value=_mock_login_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_login_client()):
         result = runner.invoke(
             main,
             ["login", "--email", "demo@atlas.val", "--password-stdin"],
@@ -97,7 +97,7 @@ def test_login_password_stdin_empty_is_validation_error(
 def test_login_json_payload_never_contains_token(
     runner: CliRunner, tmp_path: Path
 ) -> None:
-    with patch("cli.commands.auth.AtlasClient", return_value=_mock_login_client("secret-token")):
+    with patch("cli.client.AtlasClient", return_value=_mock_login_client("secret-token")):
         result = runner.invoke(
             main,
             [
@@ -120,7 +120,7 @@ def test_login_json_payload_never_contains_token(
 
 
 def test_login_quiet_emits_no_stdout(runner: CliRunner, tmp_path: Path) -> None:
-    with patch("cli.commands.auth.AtlasClient", return_value=_mock_login_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_login_client()):
         result = runner.invoke(
             main,
             ["--quiet", "login", "--email", "demo@atlas.val", "--password-stdin"],
@@ -135,7 +135,7 @@ def test_login_invalid_credentials_exits_auth_code(
     runner: CliRunner, tmp_path: Path
 ) -> None:
     err = AuthError(status=401, message="Invalid credentials")
-    with patch("cli.commands.auth.AtlasClient", return_value=_mock_login_client_error(err)):
+    with patch("cli.client.AtlasClient", return_value=_mock_login_client_error(err)):
         result = runner.invoke(main, ["login"], input="demo@atlas.val\nwrongpass\n")
     assert result.exit_code == 3
     assert load_config(config_path=_profile_path(tmp_path)).token is None
@@ -143,7 +143,7 @@ def test_login_invalid_credentials_exits_auth_code(
 
 def test_login_invalid_credentials_json(runner: CliRunner, tmp_path: Path) -> None:
     err = AuthError(status=401, message="Invalid credentials")
-    with patch("cli.commands.auth.AtlasClient", return_value=_mock_login_client_error(err)):
+    with patch("cli.client.AtlasClient", return_value=_mock_login_client_error(err)):
         result = runner.invoke(
             main,
             ["--output", "json", "login", "--email", "demo@atlas.val", "--password-stdin"],
@@ -156,7 +156,7 @@ def test_login_invalid_credentials_json(runner: CliRunner, tmp_path: Path) -> No
 
 
 def test_login_saves_active_base_url(runner: CliRunner, tmp_path: Path) -> None:
-    with patch("cli.commands.auth.AtlasClient", return_value=_mock_login_client()):
+    with patch("cli.client.AtlasClient", return_value=_mock_login_client()):
         result = runner.invoke(
             main,
             ["--base-url", "http://saved:9000", "login"],

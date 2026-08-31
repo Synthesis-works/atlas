@@ -17,6 +17,7 @@ def test_defaults() -> None:
     assert cfg.profile == "default"
     assert cfg.no_color is False
     assert cfg.quiet is False
+    assert cfg.retries == 3
 
 
 def test_cli_flags_override() -> None:
@@ -73,6 +74,28 @@ def test_invalid_timeout_falls_back_to_default(monkeypatch: object) -> None:
         assert cfg.timeout == 60.0
     finally:
         mp.undo()
+
+
+def test_retries_from_cli_flag() -> None:
+    assert load_config(retries=0).retries == 0
+    assert load_config(retries=9).retries == 9
+
+
+def test_retries_from_env_var(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ATLAS_RETRIES", "5")
+    assert load_config().retries == 5
+
+
+def test_cli_flag_over_env_retries(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ATLAS_RETRIES", "5")
+    assert load_config(retries=0).retries == 0
+
+
+def test_invalid_retries_env_falls_back_to_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ATLAS_RETRIES", "not-a-number")
+    assert load_config().retries == 3
 
 
 def test_quiet_overrides_output() -> None:
