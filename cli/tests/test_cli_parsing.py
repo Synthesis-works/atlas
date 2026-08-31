@@ -87,3 +87,21 @@ def test_entrypoint_mutually_exclusive_exits_2(
         entrypoint()
     assert exc_info.value.code == 2
     assert "mutually exclusive" in capsys.readouterr().err
+
+
+def test_entrypoint_watch_timeout_zero_exits_2(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "atlas", "run", "watch", "11111111-1111-1111-1111-111111111111",
+            "--timeout", "0",
+        ],
+    )
+    with pytest.raises(SystemExit) as exc_info:
+        entrypoint()
+    assert exc_info.value.code == 2
+    captured = capsys.readouterr().err
+    assert "greater than 0" in captured
+    assert "Traceback" not in captured

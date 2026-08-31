@@ -1,6 +1,6 @@
 # Atlas CLI v2 — Implementation Plan (Agent-Loop Readiness)
 
-> **Status:** Slices 1–2 **shipped** on `feature/atlas-cli-v2` (`b3b9e54` for slice 1; slice 2 committed after this doc update). Slices 3–7 not started.
+> **Status:** Slices 1–3 **shipped** on `feature/atlas-cli-v2` (slice 1 `b3b9e54`, slice 2 `34fafec`, slice 3 committed after this doc update). Slices 4–7 not started.
 > **Source inputs:** `docs/guides/atlas-cli-v2-workflow-audit.md` (facts) + `docs/guides/atlas-cli-v2-architecture-investigation.md` (design decisions).
 
 ## Mandates (from the user)
@@ -134,6 +134,14 @@ Expect: `get`/`versions` on a published benchmark now exit 0 (were exit 4); vers
 
 ### Deliberate v2 changes
 - New option (`--timeout`) + new documented exit code 9; default behavior identical to v1.
+
+### Implementation notes (shipped)
+- `--timeout` is wall-clock via `time.monotonic()`; each poll's sleep is capped at the remaining time so the deadline is never overslept (fast, accurate; real elapsed ≈ bound + one poll).
+- **`0` resolution:** the plan's "default 0 = unbounded" collides with "reject 0". Resolved as: *omitted* `--timeout` = unbounded (v1), while an *explicit* `0` or negative is rejected (`must be greater than 0`). `--timeout` is float; `9 = WATCH_TIMEOUT` added to `cli/errors.py`.
+- Timeout exit paths: JSON emits the last non-terminal `ExecutionResponse` (`model_dump(mode="json")`) once, or nothing if no state was ever observed; human prints `timed out after <N>s — status <S> (x/y items); re-run with a larger --timeout` to stderr; quiet is silent.
+- Tests: deterministic loop tests use a `_FakeClock` injected over `cli.commands.run.time`; plus one **real-wall-clock** test (`--timeout 0.4 --interval 60` → exit 9, elapsed ∈ [0.2, 3.0)s) proving the capped sleep. 13 new tests: `cli/tests/test_run.py`, `cli/tests/test_exit_codes.py`, `cli/tests/test_cli_parsing.py`.
+- Live verified: QUEUED seed run `05282d72-add1-41e6-90d2-930c32fd36ec` with `--timeout 2` → exit 9 (JSON last-state / human message / quiet silent); completed `b94248f7-…` within bound → exit 0; `--timeout 0` and `-5` → exit 2.
+- Exit-code table in `docs/guides/atlas-cli-manual-testing.md` updated (row 9); also corrected stale 403-not-known-limitation + `run get` discrepancy sections from slices 1–2.
 
 ### Commit
 `feat(cli): bound run watch with --timeout (exit 9, last-state JSON on expiry)`

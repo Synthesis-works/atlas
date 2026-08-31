@@ -297,6 +297,7 @@ Defined in `cli/errors.py`; commands exit via `error_exit()` (`cli/output/errors
 | 6 | Network | Connection refused / DNS / timeout |
 | 7 | Validation | 422 from backend |
 | 8 | Conflict | `report export` destination already exists without `--force` |
+| 9 | Watch timed out | `run watch` reached its `--timeout` bound while the execution was still non-terminal (e.g. QUEUED/RUNNING) |
 | 130 | Interrupted | Ctrl-C during `run watch` |
 
 ---
@@ -430,11 +431,19 @@ Human table columns: `ID` (first 8 chars), `Status`, `Model`, `Progress`, `Creat
 #### `atlas run watch EXECUTION_ID`
 
 - **API:** polls `GET /api/v1/executions/{id}`
-- **Options:** `--interval FLOAT` (default `3.0`, must be > 0)
+- **Options:** `--interval FLOAT` (default `3.0`, must be > 0); `--timeout FLOAT` (must be > 0 when set; omitted = unbounded, v1 behavior)
 - Polls until status ∈ {`COMPLETED`, `FAILED`, `CANCELLED`, `TIMED_OUT`}; prints progress to stderr in human mode, final state once. Ctrl-C → exit 130. After 3 consecutive network errors → exit 1.
+- `--timeout` bounds the wait by wall clock (each poll's sleep is capped so the deadline is not overslept). On expiry:
+  - exit **9** (WATCH_TIMEOUT);
+  - JSON mode emits the **last observed non-terminal** execution on stdout (empty stdout if no state was ever observed);
+  - human mode prints `timed out after <N>s — status <STATUS> (x/y items); re-run with a larger --timeout` to stderr;
+  - quiet mode stays completely silent.
 
 ```powershell
 atlas run watch b94248f7-f5f9-4ed8-992a-b29751b4e710 --interval 2
+atlas run watch b94248f7-f5f9-4ed8-992a-b29751b4e710 --timeout 30
+atlas --output json run watch b94248f7-f5f9-4ed8-992a-b29751b4e710 --timeout 30   # exit 9 + last state on expiry
+atlas --quiet run watch b94248f7-f5f9-4ed8-992a-b29751b4e710 --timeout 30          # exit 9, silent
 ```
 
 #### `atlas run cancel EXECUTION_ID`
@@ -450,7 +459,7 @@ atlas run cancel <EXECUTION_ID>
 
 ### 7.4 `atlas benchmark …`
 
-> **Known limitation:** all published benchmarks in the seeded DB live in project `33333333-…` under "Atlas Core Org", and no seeded test user is a member of that org. `benchmark get`/`versions` therefore return **403 (exit 4)** for every current test credential. This is verified backend behavior, not a CLI bug — see §10.4.
+> **Note:** **published** benchmarks are readable by any authenticated user, so `benchmark get`/`versions` work for every test credential. **Draft** benchmarks are org-gated: a non-member gets 403 (exit 4) — see §10.3.
 
 #### `atlas benchmark list`
 
@@ -468,11 +477,13 @@ Verified human output is a table (`Name`, `ID`, `State`) listing the 8 published
 #### `atlas benchmark get BENCHMARK_ID` / `atlas benchmark versions BENCHMARK_ID`
 
 - **API:** `GET /api/v1/benchmarks/{id}`, `GET /api/v1/benchmarks/{id}/versions`
-- **Anchor (both return 403 for test users — see note above):** `66666666-6666-6666-6666-666666666666`
+- **Anchor (published → exit 0 for any logged-in user):** `44444444-4444-4444-4444-444444444444` (HumanEval), version `55555555-5555-5555-5555-555555555555`
+- **Draft anchor (→ exit 4 for non-members):** `cd9e64fc-a4d9-42ca-aff3-b818da63c352`
 
 ```powershell
-atlas benchmark get 66666666-6666-6666-6666-666666666666      # → exit 4 currently
-atlas benchmark versions 66666666-6666-6666-6666-666666666666  # → exit 4 currently
+atlas benchmark get 44444444-4444-4444-4444-444444444444      # published → exit 0
+atlas benchmark versions 44444444-4444-4444-4444-444444444444  # published → exit 0
+atlas benchmark get cd9e64fc-a4d9-42ca-aff3-b818da63c352       # draft, non-member → exit 4
 ```
 
 `get` human output: `Name`, `ID`, `Project ID`, `State`; JSON = benchmark object dump. `versions` human output: `Version`, `ID`, `State`; JSON = `{"items": [...], "total": N}`.
@@ -839,11 +850,11 @@ atlas ... --output json
 - `test_execution_backend_routing.py`: 2 failures (pre-existing, execution backend routing).
 - `test_d7_reporting_async.py`: 4 errors under SQLite (`TRUNCATE` not supported — PostgreSQL-only fixture). Run the reporting async tests against PostgreSQL to confirm; on the SQLite dev DB they error, not fail logic.
 
-### 10.3 `benchmark get`/`versions` → 403 with seeded data
-All published benchmarks in the seeded SQLite DB belong to project `33333333-…` (org "Atlas Core Org"); no seeded user holds membership there, so `benchmark get`/`versions` → exit 4 for `demo@atlas.val` and `cli-test2@atlas.dev` alike. To see a successful `benchmark get`, use a benchmark whose project belongs to an org you are an ACTIVE member of.
+### 10.3 `benchmark get`/`versions` on draft benchmarks → 403 for non-members
+**Published** benchmarks are readable by any authenticated user (verified live with `demo@atlas.val`: `benchmark get`/`versions` on HumanEval `44444444-…` exit 0). **Draft** benchmarks remain org-gated: a non-member of the owning project's org gets exit 4 (e.g. draft `cd9e64fc-…` in the "Default" project, whose org is `None`).
 
-### 10.4 `run get` on `b94248f7` reports `RUNNING` while the report is `COMPLETED`
-The execution detail endpoint sources the separate `ee_executions` table (`status RUNNING`, progress `0/1`), while `report get` on the same ID returns `COMPLETED` / score 100.0. Backend data-source discrepancy — the CLI faithfully renders each endpoint.
+### 10.4 `run get` execution status is authoritative and report-consistent
+`run get`/`run list`/`run watch` read the authoritative `executions` row (Slice 1 fix). Verified live: `b94248f7-f5f9-4ed8-992a-b29751b4e710` reports `COMPLETED` 3/3, matching `report get`.
 
 ### 10.5 Usage-error exit codes (fixed January 2026)
 The console-script entrypoint previously surfaced Click usage errors as uncaught tracebacks with exit 1. `entrypoint()` now catches `click.ClickException` and prints `Error: <message>` to stderr, exiting with `exit_code` (2). Verified live: unknown command, invalid `--type` Choice, and mutually exclusive `--history --benchmarks` all → exit 2 with a one-line message and no traceback, for both the installed `atlas` script and the `python -c` form.
@@ -873,15 +884,15 @@ Ruff/pytest warn about LF→CRLF on checkout; harmless and unrelated to CLI beha
 | `exit 3` with no friendly message on `--output json whoami` | Same, JSON error envelope is on stderr. |
 | `atlas: The term 'atlas' is not recognized …` | Scripts folder not on `PATH` — add `C:\Users\Sujal\AppData\Local\Python\pythoncore-3.14-64\Scripts` (§2.3). |
 | `Logged in as …` succeeded but `whoami` still exits 3 | `$env:ATLAS_TOKEN` set to something stale — it overrides the saved token (§5.1). `Remove-Item Env:ATLAS_TOKEN`. |
-| `exit 4`, JSON body `"You are not an active member of the project's organization"` | Resource belongs to an org you aren't active in (§10.3). |
+| `exit 4`, JSON body `"You are not an active member of the project's organization"` | Resource (e.g. a **draft** benchmark) belongs to an org you aren't active in (§10.3). **Published** benchmarks are readable by anyone. |
 | `exit 5` | 404 — check the ID from §8.10. |
 | `exit 6` | Backend down/unreachable/timeout. Start it (§3), check `atlas health`. |
 | `exit 7` after `--password-stdin` | Empty password on stdin — pipe exactly one line, e.g. `'password123' \| atlas login --email … --password-stdin`. |
 | `exit 8` `Destination already exists` | Add `--force`. |
+| `exit 9` after `run watch --timeout` | The execution did not reach a terminal state within the bound. Re-run with a larger `--timeout`, or check the run separately (`run get`). |
 | `exit 2` `No such option: --output` | Global option placed after the subcommand (§5.1). |
 | `exit 2` + `Error: …` on unknown command / bad choice | Normal Click usage error — historically a traceback (see §10.5). |
 | `TLS verification disabled for localhost` on stderr | Harmless httpx notice (§10.7). |
-| Empty JSON output + exit 0 for benchmark get | Not reproducible; benchmark get currently 403s (§10.3). |
 | `run watch` prints progress to stderr | By design; only the terminal state goes to stdout in human mode. |
 | Colors look wrong in a pipe | `--no-color` disables them. |
 | `ImportError: cannot import name '__version__' from 'cli' (unknown location)` | Folder-name clash when cwd is the repo root. Use the installed `atlas` script, or set `$env:PYTHONPATH="D:\atlas\cli;D:\atlas\sdk\python"`, or run from `D:\atlas\cli` (§5.1, §2.3). Not a broken install. |

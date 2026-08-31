@@ -11,6 +11,14 @@ This document tracks all major implementation milestones for Atlas.
 - **Impact**: `run get` now reads the authoritative row (status/timestamps/progress consistent with reports/dashboard). Published benchmarks and their versions are readable by any authenticated user; `run submit` is authorized for published benchmarks or drafts of an organization the caller is an active member of; `dispatch-targets` exposes only published + own-org drafts.
 - **Current status**: Complete. Backend, CLI (322), SDK (165) suites green; live backend verified.
 
+### Slice 3: `atlas run watch --timeout` (wall-clock bound, exit 9)
+- **Date**: August 2026
+- **Purpose**: deterministic cap on `watch` so agents can bound total wait time and re-poll.
+- **Files changed**: `cli/cli/commands/run.py` (wall-clock deadline + capped sleep + `_exit_watch_timeout`), `cli/cli/errors.py` (`EXITCODE_WATCH_TIMEOUT = 9`), `cli/tests/test_run.py` / `test_exit_codes.py` / `test_cli_parsing.py` (13 new tests, incl. one real-wall-clock test), exit-code table + stale slice-1/2 sections in `docs/guides/atlas-cli-manual-testing.md`.
+- **Reason**: `watch` polled indefinitely on a stuck run; only Ctrl-C (130) or the 3-failure network cap stopped it, giving agents no way to bound wait time.
+- **Impact**: `--timeout N` (float, omitted = unbounded; explicit `0`/negative rejected) caps the poll loop by wall clock without oversleeping; on expiry exit 9 with the last non-terminal state (JSON) / clear message (human) / silence (quiet). Polling behavior, interval default, and the 3-consecutive-network-failure cap are untouched.
+- **Current status**: Complete. CLI suite 335 passed; live-verified against a real QUEUED execution (`05282d72-…` → exit 9 each mode), a completed run within bound (exit 0), and `--timeout 0`/`-5` (exit 2).
+
 ## Milestone: Project Initialization
 - **Date**: Pre-2026
 - **Branch**: `main`

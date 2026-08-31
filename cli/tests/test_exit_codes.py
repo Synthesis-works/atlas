@@ -63,4 +63,5 @@ def test_exit_code_constants() -> None:
     assert ExitCode.NETWORK == 6
     assert ExitCode.VALIDATION == 7
     assert ExitCode.CONFLICT == 8
+    assert ExitCode.WATCH_TIMEOUT == 9
     assert ExitCode.INTERRUPTED == 130

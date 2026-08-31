@@ -265,6 +265,14 @@ def _validate_interval(ctx: click.Context, param: click.Parameter, value: float)
     return value
 
 
+def _validate_timeout(
+    ctx: click.Context, param: click.Parameter, value: float | None
+) -> float | None:
+    if value is not None and value <= 0:
+        raise click.BadParameter("must be greater than 0")
+    return value
+
+
 @run_group.command(name="watch")
 @_pass_context
 @click.argument("execution_id")
@@ -276,19 +284,40 @@ def _validate_interval(ctx: click.Context, param: click.Parameter, value: float)
     is_eager=False,
     help=f"Polling interval in seconds (default: {_DEFAULT_POLL_INTERVAL}).",
 )
-def watch_cmd(ctx: Context, execution_id: str, interval: float) -> None:
+@click.option(
+    "--timeout",
+    default=None,
+    type=float,
+    callback=_validate_timeout,
+    help=(
+        "Wall-clock wait bound in seconds; must be > 0 when set. "
+        "Omitted = unbounded (v1 behavior). On expiry exits 9 "
+        "(WATCH_TIMEOUT) with the last observed non-terminal state."
+    ),
+)
+def watch_cmd(
+    ctx: Context,
+    execution_id: str,
+    interval: float,
+    timeout: float | None,
+) -> None:
     """Watch an execution until it reaches a terminal state.
 
     Polls GET /api/v1/executions/{id} until the execution completes,
-    fails, is cancelled, or times out.
+    fails, is cancelled, times out, or the --timeout bound is hit.
 
     Terminal states: COMPLETED, FAILED, CANCELLED, TIMED_OUT.
+
+    With --timeout, watch is bounded by wall clock; on expiry it exits 9
+    (WATCH_TIMEOUT) — in JSON mode the last non-terminal state is emitted.
 
     Examples:
 
       atlas run watch <execution-id>
 
       atlas run watch <execution-id> --interval 5
+
+      atlas run watch <execution-id> --timeout 30
     """
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
@@ -301,7 +330,7 @@ def watch_cmd(ctx: Context, execution_id: str, interval: float) -> None:
             token_supplier=supplier,
             timeout=5.0,
         ) as client:
-            _poll_execution(client, execution_id, interval, output_mode)
+            _poll_execution(client, execution_id, interval, output_mode, timeout)
     except KeyboardInterrupt:
         sys.exit(ExitCode.INTERRUPTED)
     except Exception as exc:
@@ -313,15 +342,20 @@ def _poll_execution(
     execution_id: str,
     interval: float,
     output_mode: str,
+    timeout: float | None = None,
 ) -> None:
-    """Poll get_execution until terminal or unrecoverable error.
+    """Poll get_execution until terminal, the wall-clock bound, or unrecoverable error.
 
     This is the core watch loop, separated for testability.
     """
     consecutive_failures = 0
     last_execution = None
+    deadline = None if timeout is None else time.monotonic() + timeout
 
     while True:
+        if deadline is not None and time.monotonic() >= deadline:
+            _exit_watch_timeout(last_execution, timeout, output_mode)
+
         try:
             execution = client.get_execution(execution_id)
             consecutive_failures = 0
@@ -352,7 +386,40 @@ def _poll_execution(
                     render_json(last_execution.model_dump(mode="json"))
                 sys.exit(ExitCode.UNSPECIFIED)
 
-        time.sleep(interval)
+        if deadline is None:
+            time.sleep(interval)
+            continue
+
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            continue
+        time.sleep(min(interval, remaining))
+
+
+def _exit_watch_timeout(
+    last_execution: ExecutionResponse | None,
+    timeout: float | None,
+    output_mode: str,
+) -> None:
+    """Exit 9 (WATCH_TIMEOUT), surfacing the last observed non-terminal state."""
+    label = f"{timeout:g}" if timeout is not None else "0"
+    if output_mode == "json" and last_execution is not None:
+        render_json(last_execution.model_dump(mode="json"))
+    elif output_mode == "human":
+        if last_execution is not None:
+            progress = f"{last_execution.completed_items}/{last_execution.total_items}"
+            click.echo(
+                f"  timed out after {label}s — status {last_execution.status} "
+                f"({progress} items); re-run with a larger --timeout",
+                err=True,
+            )
+        else:
+            click.echo(
+                f"  timed out after {label}s — no state observed; "
+                f"re-run with a larger --timeout",
+                err=True,
+            )
+    sys.exit(ExitCode.WATCH_TIMEOUT)
 
 
 def _render_watch_final(execution: ExecutionResponse, output_mode: str) -> None:

@@ -816,6 +816,24 @@ def _mock_watch_client(
     return mock
 
 
+class _FakeClock:
+    """Deterministic stand-in for the ``time`` module inside ``run.py``.
+
+    ``monotonic()`` returns the accumulated clock; ``sleep(dt)`` advances it.
+    Replacing ``cli.commands.run.time`` with one of these makes the watch
+    deadline logic fully deterministic (no real wall-clock waits).
+    """
+
+    def __init__(self, start: float = 0.0) -> None:
+        self.now = start
+
+    def monotonic(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.now += seconds
+
+
 # ── discovery ───────────────────────────────────────────────────────────
 
 
@@ -1122,6 +1140,209 @@ def test_watch_invalid_interval_negative(runner: CliRunner) -> None:
     result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH, "--interval", "-3"])
     assert result.exit_code != 0
     assert "greater than 0" in result.output
+
+
+# ── watch --timeout ─────────────────────────────────────────────────────
+
+
+def test_watch_help_shows_timeout_option(runner: CliRunner) -> None:
+    """The new --timeout option is advertised in watch help."""
+    result = runner.invoke(main, ["run", "watch", "--help"])
+    assert result.exit_code == 0
+    assert "--timeout" in result.output
+
+
+def test_watch_timeout_json_emits_last_non_terminal(runner: CliRunner) -> None:
+    """JSON mode --timeout 6 --interval 2: exit 9, last RUNNING state once."""
+    mock = _mock_watch_client()
+    mock.get_execution.side_effect = lambda *a, **k: _exec_response_for("RUNNING")
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time", _FakeClock()),
+    ):
+        result = runner.invoke(
+            main,
+            [
+                "--output", "json", "run", "watch", EXEC_ID_WATCH,
+                "--timeout", "6", "--interval", "2",
+            ],
+        )
+    assert result.exit_code == 9
+    parsed = json.loads(result.output)
+    assert parsed["id"] == EXEC_ID_WATCH
+    assert parsed["status"] == "RUNNING"
+    assert parsed["completed_items"] == 3
+    assert parsed["total_items"] == 10
+
+
+def test_watch_timeout_human_message(runner: CliRunner) -> None:
+    """Human mode: timeout clearly stated with last known state + hint."""
+    mock = _mock_watch_client()
+    mock.get_execution.side_effect = lambda *a, **k: _exec_response_for("RUNNING")
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time", _FakeClock()),
+    ):
+        result = runner.invoke(
+            main,
+            ["run", "watch", EXEC_ID_WATCH, "--timeout", "6", "--interval", "2"],
+        )
+    assert result.exit_code == 9
+    assert "timed out after 6s" in result.output
+    assert "status RUNNING" in result.output
+    assert "3/10" in result.output
+    assert "re-run with a larger --timeout" in result.output
+
+
+def test_watch_timeout_quiet_silent(runner: CliRunner) -> None:
+    """Quiet mode --timeout: complete silence, exit 9."""
+    mock = _mock_watch_client()
+    mock.get_execution.side_effect = lambda *a, **k: _exec_response_for("RUNNING")
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time", _FakeClock()),
+    ):
+        result = runner.invoke(
+            main,
+            [
+                "--quiet", "run", "watch", EXEC_ID_WATCH,
+                "--timeout", "6", "--interval", "2",
+            ],
+        )
+    assert result.exit_code == 9
+    assert result.output == ""
+
+
+def test_watch_timeout_no_state_observed_json_empty(runner: CliRunner) -> None:
+    """Timeout hit before any successful poll: no state to emit → empty stdout, exit 9."""
+    from atlas_sdk.errors import NetworkError
+
+    mock = _mock_watch_client(
+        get_execution_side_effect=NetworkError(message="down"),
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time", _FakeClock()),
+    ):
+        result = runner.invoke(
+            main,
+            [
+                "--output", "json", "run", "watch", EXEC_ID_WATCH,
+                "--timeout", "0.4", "--interval", "60",
+            ],
+        )
+    assert result.exit_code == 9
+    assert result.output == ""
+
+
+def test_watch_completion_within_budget_exit_0(runner: CliRunner) -> None:
+    """A bound larger than completion time still exits 0 with the terminal render."""
+    mock = _mock_watch_client(
+        get_execution_side_effect=[
+            _exec_response_for("QUEUED"),
+            _exec_response_for("RUNNING"),
+            _exec_response_for("COMPLETED"),
+        ],
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time", _FakeClock()),
+    ):
+        result = runner.invoke(
+            main,
+            ["run", "watch", EXEC_ID_WATCH, "--timeout", "60", "--interval", "2"],
+        )
+    assert result.exit_code == 0
+    assert "COMPLETED" in result.output
+    assert mock.get_execution.call_count == 3
+
+
+def test_watch_timeout_network_cap_regression(runner: CliRunner) -> None:
+    """3 consecutive network errors still exit 1 even with a large --timeout."""
+    from atlas_sdk.errors import NetworkError
+
+    mock = _mock_watch_client(
+        get_execution_side_effect=[
+            NetworkError(message="fail 1"),
+            NetworkError(message="fail 2"),
+            NetworkError(message="fail 3"),
+        ],
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time", _FakeClock()),
+    ):
+        result = runner.invoke(
+            main,
+            ["run", "watch", EXEC_ID_WATCH, "--timeout", "120", "--interval", "2"],
+        )
+    assert result.exit_code == 1
+
+
+def test_watch_timeout_capped_sleep_wall_clock(runner: CliRunner) -> None:
+    """Real elapsed time ≈ the timeout (capped sleep), and does NOT sleep the interval.
+
+    Deterministic timing: --timeout 0.4 --interval 60. The first non-terminal poll
+    must not be followed by a 60 s sleep; the capped sleep ends at the deadline so
+    total runtime stays under a second.
+    """
+    import time as _time
+
+    mock = _mock_watch_client()
+    mock.get_execution.side_effect = lambda *a, **k: _exec_response_for("RUNNING")
+    with patch("cli.commands.run.AtlasClient", return_value=mock):
+        start = _time.monotonic()
+        result = runner.invoke(
+            main,
+            ["run", "watch", EXEC_ID_WATCH, "--timeout", "0.4", "--interval", "60"],
+        )
+        elapsed = _time.monotonic() - start
+    assert result.exit_code == 9
+    assert 0.2 <= elapsed < 3.0, f"elapsed {elapsed:.2f}s outside expected window"
+
+
+def test_watch_timeout_zero_rejected(runner: CliRunner) -> None:
+    """--timeout 0 is invalid (explicit zero is never a valid bound)."""
+    result = runner.invoke(
+        main, ["run", "watch", EXEC_ID_WATCH, "--timeout", "0"]
+    )
+    assert result.exit_code != 0
+    assert "greater than 0" in result.output
+
+
+def test_watch_timeout_negative_rejected(runner: CliRunner) -> None:
+    """--timeout -5 is invalid."""
+    result = runner.invoke(
+        main, ["run", "watch", EXEC_ID_WATCH, "--timeout", "-5"]
+    )
+    assert result.exit_code != 0
+    assert "greater than 0" in result.output
+
+
+def test_watch_timeout_non_numeric_rejected(runner: CliRunner) -> None:
+    """--timeout abc is a usage error."""
+    result = runner.invoke(
+        main, ["run", "watch", EXEC_ID_WATCH, "--timeout", "abc"]
+    )
+    assert result.exit_code == 2
+
+
+def test_watch_default_remains_unbounded(runner: CliRunner) -> None:
+    """No --timeout: v1 polling behavior preserved (Runs until terminal)."""
+    mock = _mock_watch_client(
+        get_execution_side_effect=[
+            _exec_response_for("QUEUED"),
+            _exec_response_for("COMPLETED"),
+        ],
+    )
+    with (
+        patch("cli.commands.run.AtlasClient", return_value=mock),
+        patch("cli.commands.run.time", _FakeClock()),
+    ):
+        result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH])
+    assert result.exit_code == 0
+    assert "COMPLETED" in result.output
+    assert mock.get_execution.call_count == 2
 
 
 # =====================================================================

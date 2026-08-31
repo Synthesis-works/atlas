@@ -31,6 +31,7 @@ class ExitCode:
     NETWORK = 6
     VALIDATION = 7
     CONFLICT = 8
+    WATCH_TIMEOUT = 9
     INTERRUPTED = 130
 
 
