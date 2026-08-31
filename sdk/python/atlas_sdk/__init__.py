@@ -51,6 +51,7 @@ from atlas_sdk.models.leaderboard import (
     ModelSummary,
     TrendPoint,
 )
+from atlas_sdk.models.models import ModelRead, ModelStatus
 from atlas_sdk.models.reports import (
     CapabilityScoreRead,
     DownloadResult,
@@ -90,6 +91,8 @@ __all__ = [
     "ModelActivityRead",
     "ModelBenchmarkHistory",
     "ModelBenchmarkVersionHistory",
+    "ModelRead",
+    "ModelStatus",
     "ModelSummary",
     "TrendPoint",
     "NetworkError",

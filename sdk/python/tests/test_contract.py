@@ -21,6 +21,7 @@ import pytest
 
 from atlas_sdk.models.auth import AuthUserRead, TokenResponse
 from atlas_sdk.models.health import HealthData
+from atlas_sdk.models.models import ModelRead
 from atlas_sdk.models.responses import ErrorDetail, ResponseMeta
 
 # ── Expected OpenAPI schema shapes (Phase 1 endpoints) ────────────────
@@ -75,6 +76,17 @@ _EXPECTED_SCHEMAS: dict[str, dict[str, Any]] = {
             "details": {},
         },
     },
+    "ModelRead": {
+        "type": "object",
+        "required": ["id", "provider", "display_name", "status"],
+        "properties": {
+            "id": {"type": "string"},
+            "provider": {"type": "string"},
+            "display_name": {"type": "string"},
+            "status": {"type": "string"},
+            "is_test_only": {"type": "boolean", "default": False},
+        },
+    },
 }
 
 
@@ -106,6 +118,7 @@ class TestContractBaseline:
             ("HealthData", HealthData),
             ("ResponseMeta", ResponseMeta),
             ("ErrorDetail", ErrorDetail),
+            ("ModelRead", ModelRead),
         ],
     )
     def test_dto_matches_schema(

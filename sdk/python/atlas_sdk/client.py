@@ -44,6 +44,7 @@ from atlas_sdk.models.leaderboard import (
     ModelSummary,
     TrendPoint,
 )
+from atlas_sdk.models.models import ModelRead
 from atlas_sdk.models.reports import (
     DownloadResult,
     PaginatedReportRunsRead,
@@ -598,6 +599,23 @@ class AtlasClient:
                 ModelBenchmarkHistory.model_validate(item) for item in raw
             ],
         )
+
+    # -- models --
+
+    def list_models(self) -> list[ModelRead]:
+        """List the execution target models ``run submit --target-model`` accepts.
+
+        ``GET /api/v1/models``
+
+        Returns one entry per known model for the current deployment.  Every
+        ``id`` is a canonical value accepted by ``run submit --target-model``
+        (``mock`` or ``provider/model``).  ``status`` is ``AVAILABLE`` when
+        the deployment is configured to execute the model (credentials/host
+        present) and ``NOT_CONFIGURED`` otherwise — ``NOT_CONFIGURED`` does
+        not mean the id is invalid.
+        """
+        response = self._get("/api/v1/models")
+        return self._unwrap(response, list[ModelRead])
 
     def get_dashboard(self) -> DashboardSnapshot:
         """Fetch the aggregated workspace dashboard snapshot.

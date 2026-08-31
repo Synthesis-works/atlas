@@ -127,6 +127,7 @@ from cli.commands.benchmark import benchmark_group as _benchmark_group  # noqa: 
 from cli.commands.dashboard import dashboard_cmd as _dashboard_cmd  # noqa: E402
 from cli.commands.health import health_cmd as _health_cmd  # noqa: E402
 from cli.commands.leaderboard import leaderboard_group as _leaderboard_group  # noqa: E402
+from cli.commands.models import model_group as _model_group  # noqa: E402
 from cli.commands.report import report_group as _report_group  # noqa: E402
 from cli.commands.run import run_group as _run_group  # noqa: E402
 
@@ -138,6 +139,7 @@ main.add_command(_benchmark_group)  # type: ignore[has-type]
 main.add_command(_dashboard_cmd)  # type: ignore[has-type]
 main.add_command(_health_cmd)  # type: ignore[has-type]
 main.add_command(_leaderboard_group)  # type: ignore[has-type]
+main.add_command(_model_group)  # type: ignore[has-type]
 main.add_command(_report_group)  # type: ignore[has-type]
 main.add_command(_run_group)  # type: ignore[has-type]
 

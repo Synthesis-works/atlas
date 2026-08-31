@@ -147,6 +147,15 @@ def test_benchmark_get_json_schema(runner: CliRunner) -> None:
     assert {"id", "project_id", "state", "name"} == set(schema["properties"])
 
 
+def test_model_list_json_schema_is_array_schema(runner: CliRunner) -> None:
+    with patch("cli.client.AtlasClient") as mock_client:
+        schema = _schema(runner, ["model", "list", "--json-schema"])
+    mock_client.assert_not_called()
+    assert schema["type"] == "array"
+    items = schema["items"]["properties"]
+    assert {"id", "provider", "display_name", "status", "is_test_only"} == set(items)
+
+
 # --- flag semantics ----------------------------------------------------------
 
 
@@ -195,6 +204,7 @@ def test_excluded_commands_reject_json_schema(runner: CliRunner, args: list[str]
         ["report", "get", "--help"],
         ["leaderboard", "model", "--help"],
         ["benchmark", "get", "--help"],
+        ["model", "list", "--help"],
     ],
 )
 def test_help_lists_json_schema_flag(runner: CliRunner, args: list[str]) -> None:
