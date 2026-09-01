@@ -271,6 +271,8 @@ atlas
 ├─ leaderboard
 │  ├─ benchmark BENCHMARK_ID [--limit] [--offset] [--json-schema]
 │  └─ model MODEL_NAME [--history | --benchmarks] [--json-schema]
+├─ model
+│  └─ list [--json-schema]
 ├─ run
 │  ├─ submit BENCHMARK_VERSION_ID --target-model [--dataset-version-id] [--preview]
 │  ├─ get EXECUTION_ID [--json-schema]
@@ -648,7 +650,24 @@ atlas leaderboard model does-not-exist --benchmarks; echo "exit=$LASTEXITCODE"  
 
 Default summary (no flag) shows model `Avg Score`, total/`Computed`/`Healthy` runs, and the last run timestamp; `--history` renders each execution (`Timestamp`, `Status`, `Score`, `Execution ID`); `--benchmarks` propagates each benchmark's `Name`, `Version`, run count, latest `Score`, `Timestamp`, `Execution ID` (latest = max `(timestamp, execution_id)`). Unknown model names are **not** an error — they print `(no data)` / `(no benchmark data …)` and exit 0.
 
-### 7.7 `atlas dashboard`
+### 7.7 `atlas model …`
+
+#### `atlas model list`
+
+- **API:** `GET /api/v1/models` (auth required)
+- **Semantics:** lists the **execution target models** `run submit --target-model` accepts for this deployment, from the same provider client table + `config/providers.json` overrides + app defaults the execution path uses. `status=AVAILABLE` ⇔ `client.health()` passes (the runtime gate execution actually applies); `NOT_CONFIGURED` = recognized id but this deployment lacks the credential/host — **still a legal `--target-model` value**, not invalid.
+
+```powershell
+atlas model list                          # table: Model | Provider | Status | Test Only, title "Available Models"
+atlas --output json model list            # bare array of ModelRead
+atlas --quiet model list; echo "exit=$LASTEXITCODE"   # silent, 0
+atlas model list --json-schema            # offline array[ModelRead], exit 0
+atlas --output json model list | ConvertFrom-Json | Select-Object -First 1   # inspect one entry
+```
+
+Canonical `id` values are `mock` (test-only, always present) or `provider/model`. On this machine `ollama/qwen2.5-coder:1.5b` shows `NOT_CONFIGURED` (no live ollama host); the cloud providers show `AVAILABLE`/`NOT_CONFIGURED` according to which API keys exist in the backend process environment.
+
+### 7.8 `atlas dashboard`
 
 - **API:** `GET /api/v1/dashboard` (bare response, unauthenticated-friendly)
 - **Args/options:** none
@@ -662,7 +681,7 @@ atlas --quiet dashboard; echo "exit=$LASTEXITCODE"   # 0
 
 Human output (verified) is three blocks: **Recent Runs** (a deduped table of job submissions — `Job ID`, `Benchmark`, `Model`, `Status`, `Queued`), **Recent Activity** (latest `Benchmark Read` / `Execution History` / `Model Activity` lines), and **Runtime Stats** (`DB`, `Storage`, `Queue`). Empty activity renders `(no recent activity)`. JSON keys match the SDK `DashboardSnapshot` (summary, hierarchy, running_jobs, recent_verified_runs, active_executions, activity, runtime, capability).
 
-### 7.8 `atlas activity`
+### 7.9 `atlas activity`
 
 - **API:** `GET /api/v1/history/{benchmarks|executions|models}/recent?limit=N`
 - **Options:** `--type [benchmarks|executions|models]` (default `benchmarks`), `--limit INTEGER` (default 10)
@@ -700,6 +719,8 @@ atlas dashboard --help
 atlas activity --help
 atlas benchmark --help
 atlas leaderboard model --help     # mentions --history and --benchmarks
+atlas model --help
+atlas model list --help            # mentions --json-schema
 atlas run --help
 atlas report --help
 ```
@@ -850,6 +871,13 @@ atlas activity --type bogus; echo "exit=$LASTEXITCODE"                # 2, "Inva
 atlas leaderboard model mock --benchmarks; echo "exit=$LASTEXITCODE"  # 0, per-benchmark breakdown
 atlas leaderboard model unknown-model --benchmarks; echo "exit=$LASTEXITCODE"  # 0, "(no benchmark data)"
 atlas leaderboard model mock --history --benchmarks; echo "exit=$LASTEXITCODE" # 2, mutually exclusive
+
+# model list: execution-target catalog
+atlas model list; echo "exit=$LASTEXITCODE"                            # 0, "Available Models" table
+atlas --output json model list | Out-Null; echo "exit=$LASTEXITCODE"   # 0, bare array of ModelRead
+atlas --quiet model list; echo "exit=$LASTEXITCODE"                    # 0, silent
+atlas model list --json-schema | Select-String '"type": "array"'       # offline array[ModelRead]
+atlas --output json model list | ConvertFrom-Json | Where-Object { $_.status -eq 'NOT_CONFIGURED' } | Select-Object id, status
 ```
 
 ---
@@ -861,8 +889,9 @@ The CLI is designed agent-first: prefer `--output json` for anything the agent w
 - **Every command supports `--output json`** (optionally `--quiet` for exit-code-only checks).
 - JSON goes to **stdout**, one document per invocation. Errors (JSON mode) go to **stderr** in the envelope `{"error": {"status", "code", "message", "details"}}`.
 - Caveat: raw binary endpoints — `report export … --output-file -` — emit **bytes, not JSON**. Verify content type before `json.loads` on export output.
-- Empty collections render as `{"items": [], "total": 0, ...}` (not `null`).
+- Empty collections render as `{"items": [], "total": 0, ...}` (not `null`). Two exceptions: `leaderboard model … --history|--benchmarks` and `model list` emit **bare arrays** (`[]` empty for `model list`).
 - Watch out for pagination key differences: `run list` returns `limit`/`offset`; `report list` returns `page`/`size`.
+- **Model discovery:** `atlas model list --output json` returns a bare array of `ModelRead`; each `id` is a canonical `--target-model` value — filter `status == "AVAILABLE"` for models submittable right now, but don't treat `NOT_CONFIGURED` as invalid.
 - Recommended pattern for a poll loop:
 
 ```bash

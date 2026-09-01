@@ -1,6 +1,6 @@
 # Atlas CLI v2 — Implementation Plan (Agent-Loop Readiness)
 
-> **Status:** Slices 1–6 **shipped** on `feature/atlas-cli-v2` (slice 1 `b3b9e54`, slice 2 `34fafec`, slice 3 `46be18c`, slice 4 `b5365b8`, slice 5 `956763e`, slice 6 `a850693`). Slice 6 shipped **`--json-schema` only** — `--fields` was dropped after the mandated pre-implementation review (see Slice 6 notes). Slice 7 not started (decision point).
+> **Status:** Slices 1–7 **shipped** on `feature/atlas-cli-v2` (slice 1 `b3b9e54`, slice 2 `34fafec`, slice 3 `46be18c`, slice 4 `b5365b8`, slice 5 `956763e`, slice 6 `a850693`, slice 7 `a70d23d`). Slice 6 shipped **`--json-schema` only** — `--fields` was dropped after the mandated pre-implementation review (see Slice 6 notes). Slice 7 shipped as **`atlas model list`** — the authoritative execution-target catalog (see Slice 7 notes).
 > **Source inputs:** `docs/guides/atlas-cli-v2-workflow-audit.md` (facts) + `docs/guides/atlas-cli-v2-architecture-investigation.md` (design decisions).
 
 ## Mandates (from the user)
@@ -26,14 +26,14 @@
 
 | Concern | Command |
 |---|---|
-| CLI unit tests (322 v1) | `uv run --directory cli pytest -q` |
-| SDK unit tests (165 v1) | `uv run --directory sdk/python pytest -q` |
+| CLI unit tests (current: 408) | `uv run --directory cli pytest -q` |
+| SDK unit tests (current: 177) | `uv run --directory sdk/python pytest -q` |
 | Backend tests (affected files) | `uv run pytest tests/backend/test_<file>.py -q` |
 | Root lint | `uv run ruff check <changed packages>` |
 | Root typecheck | `uv run mypy <changed packages>` (as exercised in v1) |
 | Live API smoke | `curl.exe -s -m 10 http://localhost:8000/health` |
 
-**Live-env prerequisites:** backend up on `:8000` (currently PID 3516; restart recipe in `docs/guides/atlas-cli-manual-testing.md` §3.2 — never run `start_atlas.cmd`) and `atlas login` present (demo@atlas.val). Shell note for your manual runs: capture `$LASTEXITCODE` immediately after the call; avoid `2>&1` in PowerShell (clobbers it) — use `2>$null` for quiet runs or `cmd /c "... 2>err.txt"` when you need to inspect stderr.
+**Live-env prerequisites:** backend up on `:8000` (PID changes each restart — find it via `Get-NetTCPConnection -LocalPort 8000 -State Listen`; restart recipe in `docs/guides/atlas-cli-manual-testing.md` §3.2 — never run `start_atlas.cmd`) and `atlas login` present (demo@atlas.val). Shell note for your manual runs: capture `$LASTEXITCODE` immediately after the call; avoid `2>&1` in PowerShell (clobbers it) — use `2>$null` for quiet runs or `cmd /c "... 2>err.txt"` when you need to inspect stderr.
 
 ---
 
@@ -268,15 +268,27 @@ atlas --output json dashboard                          # unchanged vs v1 shape (
 
 ---
 
-## Slice 7 — Remaining v2 features (P2; decision point)
+## Slice 7 — Assets left in this round (shipped as `atlas model list`)
 
-Not planned in this round. Candidates held back, ranked, each gated on real agent workflows:
+An **authoritative execution-target catalog** was pulled forward out of the (otherwise deferred) P2 list, because agents/CLI users had **no way to ask "which models can I actually submit?"** before — the previous `/api/v1/models` router was a dead stub calling a nonexistent factory method, and nothing else enumerated execution targets.
+
+### Design decision (user-gated, pre-implementation)
+- `atlas model list` — **not** a static CLI table (would rot against provider catalogs) and **not** the agent-tool `ModelRegistry` (different domain: agent-side available-tool models). The catalog enumerates on the **execution-adapter side**, the exact inputs `RealModelAdapter.predict` resolves at submit time.
+- `GET /api/v1/models`: auth required (any authenticated user), **no org filtering** (execution targets are deployment-scoped, not org-scoped).
+- "Available" semantics pinned to the runtime gate: `status=AVAILABLE` ⇔ `client.health()` passes (the same check execution applies); `NOT_CONFIGURED` = recognized id but this deployment lacks the credential/host — **`NOT_CONFIGURED` ≠ invalid**; it is still a legal `--target-model` value.
+
+### Implementation (shipped, commit `a70d23d`)
+- `apps/backend/adapters/registry.py` — `list_models()` enumerates: `mock` (always present/test-only) + each `ProviderAdapter` client's `list_models()` + per-provider `config/providers.json` `model` field + `DEFAULT_TARGET_MODELS` (`gemini-2.5-flash`, `groq/llama-3.1-8b-instant` — the app-code defaults the clients' static lists omit). Canonical `id` = `mock` or `provider/model`; client entries already carrying the `provider/` prefix are normalized (kills `groq/groq/x`, which the resolver would mis-parse). `status` from `adapter.clients[provider].health()`.
+- `AdapterFactory.get_available_models()` (was a phantom) + real `apps/backend/routers/models.py` (authed) + mounted in `main.py`.
+- SDK `AtlasClient.list_models() -> list[ModelRead]`; SDK `ModelRead`/`ModelStatus` DTOs exported.
+- CLI `atlas model list`: table / `--output json` (bare array) / `--quiet` / `--json-schema` (offline `ArraySchemaDocument(ModelRead)`).
+- Tests-first throughout: backend `tests/backend/test_models_catalog.py` (11), SDK `tests/test_models.py` (+contract DTO), CLI `tests/test_models.py` + `test_json_schema.py` coverage. Live-verified against the restarted backend (16 ids; `groq/groq/...` double-prefix regression caught live and fixed).
+
+### Deferred but recorded (P2 candidates, still gated)
 1. `run list`/`report list` **pagination + filters** (biggest remaining agent ergonomics gap — do first if any P2s are approved).
 2. Profiles/config polish (profiles exist; only small ergonomic fixes, no migration).
 3. `compare` — only if a concrete workflow needs side-by-side; not otherwise.
-4. Anything requiring new backend endpoints beyond the two contract fixes — treat as a new proposal, not part of this plan.
-
-**Recommended posture:** close out Slices 1–6, re-run the full v1 audit-checklist, then re-evaluate 7.x against actual agent task traces. Nothing here without your sign-off.
+4. Anything requiring new backend endpoints beyond the contract fixes shipped in this plan — treat as a new proposal, not part of this plan.
 
 ---
 
@@ -289,11 +301,12 @@ Not planned in this round. Candidates held back, ranked, each gated on real agen
 5. `feat(cli): require target model for run submit; add cost-free --preview`
 6. `feat(cli): expose SDK retry count via global --retries ...`
 7. `feat(cli): add offline --json-schema self-description to faithful-model outputs`
+8. `feat(cli): add atlas model list backed by an authoritative execution catalog` (`a70d23d`)
 
 Each commit: tests green in its package + affected backend tests + ruff/mypy clean + live-check done, per the baseline table. Never `git push`/`git merge`/PR. After the last commit, update this plan's status and report.
 
 ## Done-criteria for the sprint (minimal, not kitchen-sink)
 - `run get` == `report` == `dashboard` for the same run (live, incl. the previously-stuck `bf6c70b3`)…
 - `benchmark get/versions` reachable for published benchmarks; submit is real-authz; draft execution blocked for outsiders.
-- `watch` bounded (`--timeout`, exit 9, last-state JSON); `submit` requires an explicit model + offers `--preview`; `--retries` plumbed; offline `--json-schema` self-description on faithful-model outputs (`--fields` dropped after review).
+- `watch` bounded (`--timeout`, exit 9, last-state JSON); `submit` requires an explicit model + offers `--preview`; `--retries` plumbed; offline `--json-schema` self-description on faithful-model outputs (`--fields` dropped after review); `model list` authoritative execution-target catalog (table/json/quiet/`--json-schema`).
 - Full CLI + SDK + affected backend suites green; all commits local; no push.
