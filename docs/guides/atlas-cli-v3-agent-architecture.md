@@ -1,0 +1,325 @@
+# Atlas CLI v3 — Agentic Layer (Gemini-CLI-style) Investigation & Design
+
+> **Status:** Design/decision input only. **No code changed.**
+> **Branch under consideration:** `feature/atlas-cli-v3` (to be created from `feature/atlas-cli-v2` at `84b1a4f`).
+> **Goal shape:** `atlas` → interactive REPL agent loop; `atlas "task..."` → non-interactive one-shot; `atlas <cmd> ...` → unchanged deterministic CLI mode.
+
+## 0. Executive summary
+
+This document investigates how to turn the Atlas CLI into a Gemini-CLI-style
+**agentic terminal** while preserving the deterministic commands as the
+execution layer underneath. Key conclusions:
+
+- The existing v1/v2 CLI is a clean, regular, deterministic foundation: every
+  command is `click → build_client(cfg) → AtlasClient SDK method → typed DTO →
+  renderer`, with a shared `error_exit` → exit-code mapping. The agent layer
+  should sit **on top** of this, never replacing it.
+- A full **backend** agent loop already exists (`apps/backend/agent/`:
+  `AtlasAgent`, `ToolRegistry`, `ProviderRouter`, `GeminiAgentProvider`), but it
+  is **server-side and authoring-oriented** (create dataset → run benchmark →
+  generate report). The CLI agent needed here is **client-side and
+  control-plane-oriented** (query readers + submit/watch/report on the caller's
+  own runs). We reuse its **patterns** (Gemini function-declaration tool
+  schemas, `AgentDecision`-style structured model), not its server loop.
+- **Decision (user-approved):** the agent's LLM "brain" = **reuse
+  `packages/llm` `GeminiClient`** (already used by the backend agent, hand-rolled
+  httpx REST client with native Gemini function calling, no new `uv` dependency).
+- **Decision (user-approved):** the loop runs **client-side in the CLI**. The
+  agent's tools call the **same `AtlasClient` SDK methods** the deterministic
+  commands already use, so tools and CLI can never drift.
+- **Decision (user-approved):** the existing **Gemini model-name inconsistency**
+  (four divergent values across the repo) is **deferred — documented only** for
+  now; the agent's default model stays configurable.
+
+## 1. The goal (from the user)
+
+Turn Atlas CLI into a Gemini-CLI-like agentic terminal for the Atlas platform:
+
+```
+                    atlas
+                      │
+              ┌───────┴────────┐
+              │                │
+        Normal commands     Agent mode
+              │                │
+     atlas run ...       atlas "task"
+     atlas benchmark...       │
+     atlas report ...         ▼
+     atlas model ...     Atlas Agent
+                              │
+                    ┌─────────┴─────────┐
+                    │ Atlas tool layer  │
+                    ├───────────────────┤
+                    │ benchmarks models  │
+                    │ runs reports       │
+                    │ leaderboards       │
+                    │ execution/watch    │
+                    │ export             │
+                    └─────────┬─────────┘
+                              │
+                              ▼
+                       Atlas SDK / API
+```
+
+Two personalities:
+- **CLI mode**: precise, deterministic, scriptable (unchanged).
+- **Agent mode**: exploratory, conversational, multi-step.
+
+The defining property of agent mode is the **loop**:
+
+```
+USER INTENT → LLM REASONING → TOOL CALL → ATLAS → OBSERVATION →
+→ LLM REASONING → MORE TOOLS if necessary → FINAL RESPONSE
+```
+
+"Like Gemini CLI" is **not** `atlas ask "..."` returning an LLM paragraph; it is
+a loop that can *call tools against the Atlas platform and consume their
+observations across multiple steps*.
+
+## 2. The deterministic foundation (current v2 state, all preserved)
+
+### 2.1 CLI structure (`cli/`)
+- `cli/cli/app.py`: root `main` click group (`invoke_without_command=True`),
+  global options (`--output/-o`, `--base-url`, `--profile`, `--timeout`,
+  `--retries`, `--no-color`, `--quiet`, `--version`), a `Context` object
+  (`ctx.config: AtlasConfig`) passed to every subcommand via `_pass_context`.
+  Prints help when no subcommand is invoked (`app.py:117-118`) — this is the
+  natural hook for `atlas` → interactive REPL.
+- `cli/cli/config.py`: `AtlasConfig` (base_url, timeout, output, profile,
+  no_color, quiet, token, retries), `load_config()` precedence (flags > env >
+  saved profile > defaults), credentials persisted in
+  `%APPDATA%\Atlas\config.toml`.
+- `cli/cli/client.py`: shared `build_client(cfg, *, token_supplier, timeout)`
+  → `AtlasClient`. All commands use it as a context manager.
+- `cli/cli/errors.py` + `cli/cli/output/errors.py`: exit codes (0-9, 130),
+  `error_exit(exc, output_mode)` mapping SDK exceptions → codes.
+- `cli/cli/output/{json,table,schema,quiet}.py`: renderers. `render_json`
+  dumps whatever it is given (no auto-envelope); JSON-mode errors go to stderr
+  as `{"error":{status,code,message,details}}`.
+
+### 2.2 Capability → Endpoint → SDK method map (the agent's tool palette)
+
+| Capability | CLI | SDK method | Endpoint |
+|---|---|---|---|
+| Auth | `login`/`logout`/`whoami` | `login` / `whoami` | `/api/v1/auth/*` |
+| Health | `health` | `health_summary` etc. | `/health`, `/api/v1/system/*` |
+| Dashboard | `dashboard` | `get_dashboard` | `/api/v1/dashboard` |
+| Activity | `activity --type` | `get_recent_benchmarks/executions/models` | `/api/v1/history/*/recent` |
+| Benchmarks | `benchmark list/get/versions` | `list_benchmarks`/`get_benchmark`/`list_benchmark_versions` | `/api/v1/benchmarks*` |
+| Leaderboards | `leaderboard benchmark/model` | `get_benchmark_leaderboard`/`get_model_summary|history|benchmarks` | `/api/v1/models/{name}/*`, `/benchmarks/{bv}/leaderboard` |
+| Models | `model list` | `list_models` | `/api/v1/models` |
+| Runs (submit/preview) | `run submit --target-model [--preview]` | `submit_execution` / `list_dispatch_targets` | `POST /benchmarks/{bv}/executions`, `GET /executions/dispatch-targets` |
+| Runs (get/list) | `run get` / `run list` | `get_execution` / `list_executions` | `/api/v1/executions*` |
+| Runs (watch) | `run watch --timeout` | `get_execution` (polling) | `/api/v1/executions/{id}` |
+| Runs (cancel) | `run cancel` | `cancel_execution` | `POST /executions/{id}/cancel` |
+| Reports | `report list/get/export` | `list_report_runs`/`get_report_run`/`export_report_run` | `/api/v1/reports/runs*` |
+
+### 2.3 SDK layer (`sdk/python`)
+- `atlas_sdk/client.py`: `AtlasClient` with `StaticTokenSupplier` auth,
+  `timeout`/`max_retries`, `_unwrap` (enveloped `APIResponse.data`),
+  `_parse_bare`/`_get_raw` (direct data), `_post` never retried.
+- `atlas_sdk/models/*`: typed DTOs (`BenchmarkRead`, `ModelRead`,
+  `ExecutionResponse`, `ReportSummaryRead`, `LeaderboardRead`, …).
+
+### 2.4 Why the agent can reuse this wholesale
+The CLI already speaks structured JSON (`--output json`) and typed DTOs. The
+agent's "observations" are simply the same DTOs the deterministic commands
+render. There is **no new capability** the agent needs beyond what the SDK
+already provides — the only new piece is the **LLM reasoning + tool-dispatch
+loop** in the CLI.
+
+## 3. Reusable existing agent infrastructure (patterns, not the loop)
+
+`apps/backend/agent/` already provides battle-tested patterns to mirror:
+
+- `state.py`: `AgentTask`, `AgentDecision`/`AgentDecisionType`, `PlanStep`,
+  `ToolCallRecord`, `ObservationRecord`, permission model, hard limits.
+- `tools/base.py` + `tools/registry.py`: `BaseTool` with
+  `get_gemini_schema()` (UPPERCASE JSON-schema types) and an abstract
+  `execute()`; `ToolRegistry` builds Gemini `functionDeclarations`.
+- `providers/gemini.py`: `GeminiAgentProvider` drives the loop with native
+  Gemini function calling via `GeminiClient`, sending `functionDeclarations`
+  in the `generateContent` payload and parsing the `functionCall` response.
+- `planner.py`, `executor.py`, `memory.py`: orchestration + prompt context.
+
+**But**: the backend loop is server-side and *authoring*-oriented (its tools
+create datasets/benchmarks and run whole evaluations server-side). The CLI
+agent is *client-side* and *control-plane*-oriented (read queries + submit the
+caller's own run + watch + report + export). Therefore we do **not** route the
+CLI agent through `POST /api/v1/agent/tasks`. Instead the CLI hosts a
+**local loop** whose tools invoke the **same SDK methods** as the deterministic
+commands (§2.2).
+
+We adopt the same *shape*: a `BaseTool`-like contract, a tool registry that can
+emit Gemini `functionDeclarations`, and a provider-style `decide()` that
+returns a structured next-action (call tool X with args Y / clarify / finalize)
+rather than free text.
+
+## 4. Proposed architecture (client-side)
+
+```
+atlas                          → interactive REPL (agent mode)
+atlas "Find the latest ..."    → non-interactive one-shot agent run
+atlas benchmark list ...       → unchanged (CLI mode)
+```
+
+### 4.1 Entrypoint wiring (`cli/`)
+Two minimal additions to `cli/cli/app.py`, preserving all existing commands:
+
+1. **One-shot agent:** a new hidden-style subcommand (or a `--agent "task"`
+   global flag) that runs the loop once over a quoted task string and exits
+   with a documented code. Proposed surface:
+   ```
+   atlas "task..."            # non-interactive (best effort)
+   ```
+   Because `main` is `invoke_without_command=True`, a bare quoted string is not
+   currently a valid invocation; we must decide the exact surface (see §6.1).
+2. **Interactive REPL:** fill the `invoked_subcommand is None` branch
+   (`app.py:117-118`) so that bare `atlas` (no args, TTY) starts the REPL
+   rather than printing help. Non-TTY / piped `atlas` should keep printing help
+   so existing scripts that generate help are unaffected.
+
+### 4.2 New modules in `cli/cli/` (proposed)
+- `cli/cli/agent/__init__.py`
+- `cli/cli/agent/tools.py` — **tool layer**: one tool per §2.2 capability. Each
+  tool wraps `build_client(cfg)` → SDK method → typed DTO. Exposes a Gemini
+  `functionDeclarations` schema + an `execute(args) -> observation` contract
+  (JSON-serializable). This is the "Atlas tool layer" in the user's diagram.
+- `cli/cli/agent/loop.py` — the **loop**: LLM `decide` → dispatch tool →
+  observation → repeat until final answer; enforces step/tool-call/deadline
+  limits.
+- `cli/cli/agent/provider.py` — thin adapter over `packages/llm`'s
+  `GeminiClient` that mirrors `backend .../providers/gemini.py`'s
+  `decide(...) -> Decision` contract, but client-side.
+- `cli/cli/agent/repl.py` — interactive REPL: `You >` / `Atlas >` rendering,
+  tool-call progress (`✓ benchmark list`, `✓ model list`, …), Ctrl-C handling.
+- `cli/cli/agent/state.py` — small local state Pydantic models
+  (`AgentTask`, `ToolCallRecord`, `ObservationRecord`, `AgentDecision`,
+  limits), mirroring the backend `state.py` shape but scoped to CLI needs.
+- `cli/cli/agent/prompt.py` — builds the system + dynamic context for the LLM
+  from the user task + tool results, Gemini-CLI-tone.
+
+### 4.3 Dependency (user-approved: reuse `packages/llm`)
+- `cli/` gains a dependency on **`packages/llm`** (the shared client library),
+  or vendors the minimal `GeminiClient` directly. Preferred: declare
+  `packages/llm` as a path/local dependency of `cli` in `cli/pyproject.toml`
+  and add it to the workspace/`uv` dependency graph (AGENTS.md §4: modify
+  `pyproject.toml` + regenerate `uv.lock` via `uv`). No third-party LLM SDK is
+  introduced.
+- `GeminiClient(model=..., api_key_env=...)` reads `GEMINI_API_KEY` from the
+  environment (same as the backend), so the CLI agent's "brain" needs a
+  `GEMINI_API_KEY` in the backend process env, independent of `atlas login`
+  (which authorizes the CLI → Atlas API, not Atlas → Gemini).
+
+### 4.4 Auth model
+- **CLI ⇄ Atlas API:** use the existing `AtlasConfig` token via
+  `build_client(cfg)` (from `atlas login`).
+- **CLI ⇄ Gemini (brain):** `GEMINI_API_KEY` env (or a configurable
+  `api_key_env` / `--agent-model`), separate from Atlas auth. Default model
+  configurable via `AGENT_MODEL` env / `AtlasConfig.agent_model` field (the
+  concrete default is deferred — see §5.3). When the brain is unavailable, the
+  agent refuses to start with exit 10 (§6.4).
+
+## 5. Design decisions & open questions
+
+### 5.1 Loop location — client-side ✅ (user-approved)
+Rejected: routing through backend `POST /api/v1/agent/tasks`. Rationale: the
+backend loop authoring-oriented and would not exercise the CLI's deterministic
+commands; a client loop using the same SDK means the agent *is* the CLI.
+
+### 5.2 LLM brain — reuse `packages/llm` ✅ (user-approved)
+Rejected: adding `google-genai` via `uv` (full streaming parity but heavier
+dependency + couples CLI to backend provider stack). Accepted trade-off:
+`GeminiClient` has **no streaming** (`supports_streaming()==False`). The REPL
+should reflect that (show progress via tool calls, not token-by-token output).
+
+### 5.3 Gemini model-name inconsistency — defer, document only ✅ (user-approved)
+Four divergent values exist:
+- `config/providers.json` → `gemini-2.5-flash`
+- `packages/llm/clients/gemini.py:list_models()` → `gemini-3.5-flash-lite`, `gemini-3.1-flash-lite`
+- `apps/backend/config.py:110` default → `gemini-3.5-flash-lite`
+- backend agent `state.py:155` default → `gemini-3.5-flash-lite`
+- CLI/SDK `run submit` default target model → `gemini-2.5-flash`
+
+This is a genuine **doc/code conflict** flagged per AGENTS.md §9. For the agent
+work we **do not** standardize the repo defaults (out of scope, risky); we make
+the agent's model **configurable** (`--agent-model` / `AGENT_MODEL` / config
+field, defaulting deliberately and documented). A separate follow-up should
+reconcile the backend/execution defaults.
+
+### 5.4 Tool permission / safety
+Deterministic CLI mode is unchanged (it already enforces auth + exit codes).
+Agent mode tools run **as the logged-in user** with **no elevated
+permissions** — the same backend auth the equivalent `atlas` command would
+have (e.g. `run submit` still requires a dispatchable target; `report export`
+still requires the caller to own/see the run). For interactive `--preview`
+confirmation before any mutating POST (`run submit`), propose a **confirmation
+gate** in the REPL for writes (submission/export), mirroring the backend agent's
+permission model, before committing.
+
+### 5.5 Tool set (initial)
+Start with **read + submit + watch + report + export** — the exact trace from
+the v2 acceptance audit:
+- `model list` (choose a target)
+- `benchmark list` / `benchmark get` / `benchmark versions`
+- `run list` / `run get` / `run submit --preview` / `run submit` / `run watch` / `run cancel`
+- `report get` / `report list` / `report export`
+- `leaderboard model --history` (summarize performance)
+
+> Tool schema note: `--output json` already gives the agent machine-readable
+> observations, so each tool returns the **DTO (json-able)**, not rendered text.
+> This keeps observations structured for LLM reasoning.
+
+### 5.6 Exit codes in agent (one-shot) mode
+Reuse the existing `ExitCode` table where a single tool failure is the cause
+(e.g. `run submit` forbidden → exit 4). Add only what's needed for the loop
+itself — one new code: **exit 10 = `AGENT_UNAVAILABLE`** (LLM brain absent or
+offline; see §6.4), leaving exit 9 (watch timeout) and 130 (interrupt) intact.
+
+## 6. Final decisions (user-confirmed)
+
+1. **One-shot surface:** `atlas agent "task text"` — an explicit `agent`
+   subcommand for non-interactive runs; **bare `atlas`** = interactive REPL
+   (fills the `invoked_subcommand is None` branch). This reserves the `agent`
+   name, is unambiguous, and keeps the interactive + one-shot entrypoints
+   distinct.
+2. **Milestone 1 scope:** ship **REPL + one-shot together** in the first slice.
+3. **Write confirmation:** the interactive REPL **prompts before mutating
+   actions** (`run submit`, `report export --force` overwrite); one-shot
+   `atlas agent "..."` **auto-confirms** (stays non-interactive). This mirrors
+   the backend agent's permission gate.
+4. **Brain unavailable:** the agent **refuses to start** with a clear message
+   and a **new exit code 10** when the LLM brain
+   (`GEMINI_API_KEY`/`AGENT_MODEL`) is unavailable or the provider is offline.
+   Exit 10 (`AGENT_UNAVAILABLE`) is unused by every existing condition.
+
+## 6.1 Remaining open questions
+
+_None — all outstanding items resolved above._
+
+Additionally, future reconciliation of the Gemini model-name inconsistency
+(§5.3) should be its own follow-up, not folded into this slice.
+
+## 7. Recommended phasing (after sign-off)
+
+- **Phase 0 (design gate, done):** this document.
+- **Phase 1:** add `packages/llm` dependency to `cli` (uv/pyproject/lock);
+  scaffold `cli/cli/agent/` skeletons + shared state/limits (tests-first).
+- **Phase 2:** client-side tool layer (one tool per §2.2 capability) backed by
+  the SDK; tests against mocked `AtlasClient`.
+- **Phase 3:** the loop (`decide` → dispatch → observe) over `packages/llm`
+  `GeminiClient`; structured `AgentDecision`; limits.
+- **Phase 4:** interactive REPL (`You >` / `Atlas >`, progress `✓ ...`,
+  Ctrl-C) + one-shot mode (§6.1) + wiring in `app.py`.
+- **Phase 5:** docs (architecture, manual-testing, IMPLEMENTATION_HISTORY,
+  v3 plan) + live verification against the running backend + gemini key.
+- Cross-cutting: tests-first, ruff/mypy clean, commit locally only on
+  `feature/atlas-cli-v3` (per AGENTS.md §9 and the established v2 practice).
+
+## 8. Non-goals / guardrails
+- Keep the deterministic CLI byte-for-byte compatible (no changes to existing
+  command behavior, exit codes, or JSON shapes).
+- No new repo-wide backend changes; the agent is a **CLI-layer** feature.
+- Do not wire the CLI agent into the backend `/agent/tasks` server loop.
+- No `google-genai`/`openai`/`anthropic` SDK dependencies by default.
+- Do not standardize the Gemini model-name conflict in this change (deferred).
