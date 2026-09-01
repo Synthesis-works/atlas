@@ -221,6 +221,16 @@ Two minimal additions to `cli/cli/app.py`, preserving all existing commands:
   environment (same as the backend), so the CLI agent's "brain" needs a
   `GEMINI_API_KEY` in the backend process env, independent of `atlas login`
   (which authorizes the CLI → Atlas API, not Atlas → Gemini).
+- **Phase 3 note (implemented):** the loop (`cli/agent/loop.py`) mirrors the
+  backend pattern of rendering the whole conversation into a per-turn
+  `prompt_context` (via the new `cli/agent/prompt.py`'s `build_context`), so
+  observations are sent back to Gemini as a rendered transcript rather than via
+  a multi-turn-native provider API — the Phase 1 `AgentProvider` is unchanged.
+  Every tool call / observation is recorded in `AgentContext`; unknown-tool,
+  malformed-argument, and tool-exception failures become failing observations
+  (never escaping tracebacks); and steps / tool-call ceiling / wall-clock
+  deadline are enforced with the authoritative `GoalExceededError`. The loop
+  does **not** perform mutation confirmation — that stays in Phase 4's REPL.
 
 ### 4.4 Auth model
 - **CLI ⇄ Atlas API:** use the existing `AtlasConfig` token via
