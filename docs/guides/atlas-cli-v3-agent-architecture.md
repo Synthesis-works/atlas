@@ -206,6 +206,17 @@ Two minimal additions to `cli/cli/app.py`, preserving all existing commands:
   and add it to the workspace/`uv` dependency graph (AGENTS.md §4: modify
   `pyproject.toml` + regenerate `uv.lock` via `uv`). No third-party LLM SDK is
   introduced.
+- **Phase 1a wiring (implemented):** `uv path-deps` are not viable in this env
+  (`uv run` requires building `atlas-sdk` → `pyyaml` against MSVC C++ Build
+  Tools, which are absent). Instead `packages/llm` is wired into the CLI by:
+  1. adding `D:/atlas/packages` to global `sys.path` via
+     `site-packages/atlas_packages.pth` (mirrors the pre-existing
+     `atlas_db.pth` pattern), and
+  2. making `packages` a regular package with a new `packages/__init__.py`, and
+  3. a scoped `sys.path` bootstrap in `cli/agent/provider.py` +
+     `cli/tests/conftest.py` that adds the repo root (parent of `packages`)
+     only where needed — never on the global site path, so the installed
+     `atlas` executable and its editable `cli` package are unaffected.
 - `GeminiClient(model=..., api_key_env=...)` reads `GEMINI_API_KEY` from the
   environment (same as the backend), so the CLI agent's "brain" needs a
   `GEMINI_API_KEY` in the backend process env, independent of `atlas login`
