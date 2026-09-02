@@ -14,6 +14,7 @@ from typing import Any
 from cli.agent.state import AgentContext, ObservationRecord, ToolCallRecord
 
 _MAX_TRANSCRIPT = 12
+_MAX_HISTORY = 8
 
 
 def _tool_call_line(call: ToolCallRecord) -> str:
@@ -35,9 +36,28 @@ def _observation_line(obs: ObservationRecord) -> str:
     return f"  result: {_result_summary(obs.output)}"
 
 
-def build_context(context: AgentContext) -> str:
-    """Render the user goal and recent tool transcript for the LLM."""
-    lines: list[str] = [f"User goal: {context.goal}"]
+def build_context(
+    context: AgentContext,
+    *,
+    conversation_history: list[tuple[str, str]] | None = None,
+) -> str:
+    """Render the user goal and recent tool transcript for the LLM.
+
+    ``conversation_history`` is an optional list of prior ``(user, assistant)``
+    turns from an interactive session, so the agent can reference earlier
+    context across REPL turns.  It is prepended, bounded, and omitted for
+    one-shot runs (where it is None).
+    """
+    lines: list[str] = []
+
+    if conversation_history:
+        lines.append("Earlier in this conversation:")
+        for user_text, assistant_text in conversation_history[-_MAX_HISTORY:]:
+            lines.append(f"  you: {user_text}")
+            lines.append(f"  atlas: {assistant_text}")
+        lines.append("")
+
+    lines.append(f"User goal: {context.goal}")
 
     calls = context.tool_calls[-_MAX_TRANSCRIPT:]
     obs_by_call = {o.call_id: o for o in context.observations}

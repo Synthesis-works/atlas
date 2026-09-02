@@ -16,14 +16,18 @@ machinery, and converts unknown-tool / malformed-argument / tool-exception
 failures into failing observations the LLM can reason about — never letting a
 Python traceback escape to the user.
 
-Mutation confirmation is intentionally NOT implemented here; that is Phase 4's
-REPL concern.
+Mutation confirmation (Phase 4): an injectable ``confirm`` callback gates WRITE
+tools before dispatch.  When it returns False, the tool is NOT executed and a
+structured "declined" observation is recorded so the agent knows the user
+declined rather than treating it as an execution failure.  The default
+(``confirm=None``) auto-approves — used by non-interactive one-shot mode.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -59,12 +63,20 @@ class AgentLoop:
         client: object,
         context: AgentContext | None = None,
         now: Callable[[], datetime] | None = None,
+        confirm: Callable[[str, dict], bool] | None = None,
+        on_tool: Callable[[ToolCallRecord, Any], None] | None = None,
+        conversation_history: list[tuple[str, str]] | None = None,
     ) -> None:
         self.provider = provider
         self.registry = registry or ToolRegistry()
         self.client = client
         self.context = context
         self._now = now or (lambda: datetime.now(UTC))
+        # ``confirm`` gates WRITE tools; None auto-approves (one-shot).
+        self._confirm = confirm
+        # ``on_tool`` fires after each tool call for REPL progress display.
+        self._on_tool = on_tool
+        self._conversation_history = conversation_history
 
     def _reset_context(self, task: str) -> None:
         if self.context is None:
@@ -87,31 +99,44 @@ class AgentLoop:
         call: ToolCallRecord = self.context.record_tool_call(tool_name, arguments)
 
         tool = self.registry.get(tool_name)
+        obs: Any = None
         if tool is None:
-            self.context.record_observation(
+            obs = self.context.record_observation(
                 call_id=call.call_id,
                 tool_name=tool_name,
                 success=False,
                 error=f"unknown tool '{tool_name}'",
             )
-            return
+        elif self.registry.is_mutating(tool_name) and self._confirm is not None:
+            allowed = self._confirm(tool_name, arguments)
+            if not allowed:
+                obs = self.context.record_observation(
+                    call_id=call.call_id,
+                    tool_name=tool_name,
+                    success=False,
+                    output={"tool_name": tool_name, "arguments": arguments},
+                    error="mutation declined by user",
+                )
+        if obs is None:
+            try:
+                result = self.registry.execute(tool_name, self.client, arguments)
+                obs = self.context.record_observation(
+                    call_id=call.call_id,
+                    tool_name=tool_name,
+                    success=result.ok,
+                    output=result,
+                    error=result.error,
+                )
+            except Exception as exc:  # noqa: BLE001
+                obs = self.context.record_observation(
+                    call_id=call.call_id,
+                    tool_name=tool_name,
+                    success=False,
+                    error=str(exc),
+                )
 
-        try:
-            result = self.registry.execute(tool_name, self.client, arguments)
-            self.context.record_observation(
-                call_id=call.call_id,
-                tool_name=tool_name,
-                success=result.ok,
-                output=result,
-                error=result.error,
-            )
-        except Exception as exc:  # noqa: BLE001
-            self.context.record_observation(
-                call_id=call.call_id,
-                tool_name=tool_name,
-                success=False,
-                error=str(exc),
-            )
+        if self._on_tool is not None:
+            self._on_tool(call, obs)
 
     def run(self, task: str) -> AgentResult:
         """Execute the agent loop for ``task`` and return a terminal result."""
@@ -125,7 +150,9 @@ class AgentLoop:
             self._check_deadline()
             ctx.bump_step()
 
-            prompt_context = build_context(ctx)
+            prompt_context = build_context(
+                ctx, conversation_history=self._conversation_history
+            )
             decision = self.provider.decide(  # type: ignore[attr-defined]
                 ctx.goal, prompt_context, declarations
             )

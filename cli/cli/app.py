@@ -6,10 +6,14 @@ Global flags: --output, --base-url, --profile, --timeout, --retries, --no-color,
 
 from __future__ import annotations
 
+import sys
+
 import click
 
 from cli import __version__
 from cli.config import AtlasConfig, load_config
+from cli.errors import ExitCode
+from cli.output.errors import error_exit
 
 
 def _validate_retries(
@@ -115,7 +119,77 @@ def main(
     )
     click_ctx = click.get_current_context()
     if click_ctx.invoked_subcommand is None:
+        # A bare, interactive ``atlas`` starts the agent REPL (Gemini-CLI style).
+        # Non-TTY / piped invocations keep printing help so automation that
+        # runs ``atlas`` for help output is unaffected.
+        if _is_tty():
+            raise SystemExit(_run_repl(ctx))
         click.echo(click_ctx.get_help())
+
+
+def _is_tty() -> bool:
+    """True only when stdin is an interactive terminal (drives the REPL)."""
+    try:
+        return bool(sys.stdin.isatty())
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _agent_unavailable_message() -> str:
+    return (
+        "error: Atlas agent brain unavailable. Set GEMINI_API_KEY (or "
+        "AGENT_MODEL for a custom model) to use the Atlas agent."
+    )
+
+
+def _run_repl(ctx: Context) -> int:
+    """Start the interactive agent REPL; returns a process exit code."""
+    from cli.agent.repl import AgentREPL, build_agent_provider
+    from cli.client import build_client
+
+    provider = build_agent_provider()
+    if not provider.available:
+        click.echo(_agent_unavailable_message(), err=True)
+        return ExitCode.AGENT_UNAVAILABLE
+
+    cfg: AtlasConfig = ctx.config
+    repl = AgentREPL(
+        provider=provider,
+        client_factory=lambda: build_client(cfg),
+    )
+    try:
+        return repl.interact()
+    except Exception as exc:  # noqa: BLE001
+        error_exit(exc, cfg.effective_output())
+        raise SystemExit(ExitCode.UNSPECIFIED) from exc
+
+
+@click.command(name="agent")
+@click.argument("task")
+@_pass_context
+def agent_cmd(ctx: Context, task: str) -> None:
+    """Run the Atlas agent once over a quoted task (non-interactive).
+
+    Example:
+
+      atlas agent "List the available benchmarks"
+    """
+    from cli.agent.repl import build_agent_provider, run_one_shot
+    from cli.client import build_client
+
+    provider = build_agent_provider()
+    if not provider.available:
+        click.echo(_agent_unavailable_message(), err=True)
+        raise SystemExit(ExitCode.AGENT_UNAVAILABLE)
+
+    cfg: AtlasConfig = ctx.config
+    try:
+        with build_client(cfg) as client:
+            code = run_one_shot(task, provider=provider, client=client)
+    except Exception as exc:  # noqa: BLE001
+        error_exit(exc, cfg.effective_output())
+        raise SystemExit(ExitCode.UNSPECIFIED) from exc
+    raise SystemExit(code)
 
 
 # ── command registration ───────────────────────────────────────────────
@@ -131,6 +205,7 @@ from cli.commands.models import model_group as _model_group  # noqa: E402
 from cli.commands.report import report_group as _report_group  # noqa: E402
 from cli.commands.run import run_group as _run_group  # noqa: E402
 
+main.add_command(agent_cmd)
 main.add_command(_login_cmd)  # type: ignore[has-type]
 main.add_command(_logout_cmd)  # type: ignore[has-type]
 main.add_command(_whoami_cmd)  # type: ignore[has-type]

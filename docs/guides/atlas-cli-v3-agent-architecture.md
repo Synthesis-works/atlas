@@ -230,7 +230,21 @@ Two minimal additions to `cli/cli/app.py`, preserving all existing commands:
   malformed-argument, and tool-exception failures become failing observations
   (never escaping tracebacks); and steps / tool-call ceiling / wall-clock
   deadline are enforced with the authoritative `GoalExceededError`. The loop
-  does **not** perform mutation confirmation — that stays in Phase 4's REPL.
+  accepts an injectable `confirm` hook (added in Phase 4) that gates WRITE
+  tools; `None` auto-approves.
+- **Phase 4 note (implemented):** the CLI surface wraps the Phase 3 loop:
+  `cli/agent/repl.py` provides the interactive `AgentREPL` (`You >` / `Atlas >`,
+  per-turn session history, Ctrl-C/EOF clean exit, `[ok]`/`[!]` tool-progress
+  with an ASCII fallback for non-UTF-8 consoles) and the non-interactive
+  `run_one_shot` (auto-approve, no prompts). `app.py` wires a new `atlas agent
+  "task"` subcommand and routes a bare interactive `atlas` (stdin TTY) into the
+  REPL — non-TTY/piped `atlas` still prints help so automation is unaffected.
+  WRITE tools are gated by the loop's `confirm` hook (prompted in the REPL,
+  auto-approved in one-shot); a rejected mutation is recorded as a structured
+  *declined* observation (not an execution failure). Brain-unavailable
+  (`GEMINI_API_KEY` unset) refuses to start with **exit code 10**
+  (`AGENT_UNAVAILABLE`), and only that case maps to 10 — unrelated agent/SDK
+  errors map through the usual codes.
 
 ### 4.4 Auth model
 - **CLI ⇄ Atlas API:** use the existing `AtlasConfig` token via

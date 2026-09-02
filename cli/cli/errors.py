@@ -32,6 +32,7 @@ class ExitCode:
     VALIDATION = 7
     CONFLICT = 8
     WATCH_TIMEOUT = 9
+    AGENT_UNAVAILABLE = 10  # agent brain (LLM) unavailable — see exit 10 usage
     INTERRUPTED = 130
 
 
