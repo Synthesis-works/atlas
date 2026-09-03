@@ -31,6 +31,11 @@ from atlas_sdk.models.benchmarks import (
     PageResponse,
 )
 from atlas_sdk.models.dashboard import DashboardSnapshot
+from atlas_sdk.models.datasets import (
+    DatasetRead,
+    DatasetValidationResult,
+    DatasetVersionRead,
+)
 from atlas_sdk.models.executions import (
     DispatchTarget,
     ExecutionPage,
@@ -568,6 +573,127 @@ class AtlasClient:
             f"/api/v1/benchmarks/{benchmark_id}/versions"
         )
         return self._unwrap(response, list[BenchmarkVersionRead])
+
+    # -- datasets (v3.3) --
+
+    def list_datasets(self, project_id: str) -> list[DatasetRead]:
+        """List datasets in a project.
+
+        ``GET /api/v1/projects/{project_id}/datasets``
+
+        Returns a bare list of ``DatasetRead`` (not wrapped in
+        ``APIResponse``).
+        """
+        response = self._get_raw(f"/api/v1/projects/{project_id}/datasets")
+        return self._parse_bare(
+            response,
+            lambda raw: [DatasetRead.model_validate(item) for item in raw],
+        )
+
+    def get_dataset(self, project_id: str, dataset_id: str) -> DatasetRead:
+        """Fetch a single dataset by ID (with versions + sample tasks).
+
+        ``GET /api/v1/projects/{project_id}/datasets/{dataset_id}``
+
+        Returns a bare ``DatasetRead`` (not wrapped in ``APIResponse``).
+        """
+        response = self._get_raw(
+            f"/api/v1/projects/{project_id}/datasets/{dataset_id}"
+        )
+        return DatasetRead.model_validate(response.json())
+
+    def create_dataset(
+        self,
+        project_id: str,
+        *,
+        name: str,
+        description: str | None = None,
+        tasks: list[dict[str, Any]] | None = None,
+        version_string: str = "v1.0.0",
+    ) -> DatasetRead:
+        """Create a new dataset in a project.
+
+        ``POST /api/v1/projects/{project_id}/datasets``
+
+        Optionally seeds an initial version whose tasks are provided via
+        ``tasks`` (each ``{input, expected_output, description}``).
+
+        Returns a bare ``DatasetRead`` (not wrapped in ``APIResponse``).
+        """
+        body: dict[str, Any] = {"name": name, "version_string": version_string}
+        if description is not None:
+            body["description"] = description
+        if tasks:
+            body["tasks"] = tasks
+        response = self._post_raw(
+            f"/api/v1/projects/{project_id}/datasets", json=body
+        )
+        return DatasetRead.model_validate(response.json())
+
+    def update_dataset(
+        self,
+        project_id: str,
+        dataset_id: str,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> DatasetRead:
+        """Update a dataset's metadata.
+
+        ``PUT /api/v1/projects/{project_id}/datasets/{dataset_id}``
+
+        Only provided fields are changed.  Returns a bare ``DatasetRead``.
+        """
+        body: dict[str, Any] = {}
+        if name is not None:
+            body["name"] = name
+        if description is not None:
+            body["description"] = description
+        response = self._put(
+            f"/api/v1/projects/{project_id}/datasets/{dataset_id}", json=body
+        )
+        self._raise_for_status(response)
+        return DatasetRead.model_validate(response.json())
+
+    def upload_dataset_tasks(
+        self,
+        project_id: str,
+        dataset_id: str,
+        tasks: list[dict[str, Any]],
+        *,
+        version_string: str = "v1.0.0",
+    ) -> DatasetVersionRead:
+        """Replace a dataset's tasks as a fresh version.
+
+        ``POST /api/v1/projects/{project_id}/datasets/{dataset_id}/tasks``
+
+        Each task is ``{input, expected_output, description}``.  Returns
+        the newly created version (bare ``DatasetVersionRead``).
+        """
+        body: dict[str, Any] = {
+            "version_string": version_string,
+            "tasks": tasks,
+        }
+        response = self._post_raw(
+            f"/api/v1/projects/{project_id}/datasets/{dataset_id}/tasks",
+            json=body,
+        )
+        return DatasetVersionRead.model_validate(response.json())
+
+    def validate_dataset(
+        self, project_id: str, dataset_id: str
+    ) -> DatasetValidationResult:
+        """Validate a dataset's latest version.
+
+        ``POST /api/v1/projects/{project_id}/datasets/{dataset_id}/validate``
+
+        Returns ``DatasetValidationResult`` with lifecycle + per-version
+        messages.
+        """
+        response = self._post_raw(
+            f"/api/v1/projects/{project_id}/datasets/{dataset_id}/validate"
+        )
+        return DatasetValidationResult.model_validate(response.json())
 
     # -- executions --
 

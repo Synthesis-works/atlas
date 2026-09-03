@@ -708,7 +708,7 @@ Human output is a per-section `Recent <Type>` table (`Timestamp`, `Name`/`Status
 
 ---
 
-### 7.10 `atlas agent …`  (v3 Phase 4 — interactive REPL + one-shot; v3.1 provider fallback; v3.2 benchmark authoring + destructive double-confirm)
+### 7.10 `atlas agent …`  (v3 Phase 4 — interactive REPL + one-shot; v3.1 provider fallback; v3.2 benchmark authoring + destructive double-confirm; v3.3 dataset authoring)
 
 #### `atlas agent "TASK"` — one-shot (non-interactive)
 
@@ -790,6 +790,29 @@ atlas agent "delete benchmark <BENCHMARK_ID>"                                   
 > reaching `review`, so an invalid-state publish is reported back as a typed
 > failure (not silently swallowed). Deletion is refused on archived benchmarks
 > (immutability).
+
+**Dataset-authoring examples (v3.3):**
+```powershell
+# discovery → create(with tasks) → get → upload a new version → validate,
+# all through the agent tools over the REST/SDK chain
+atlas agent "list the datasets in project <PROJECT_ID>"                 # READ, no prompt
+atlas agent "get dataset <DATASET_ID>"                                  # READ
+atlas agent "create a dataset named 'My MMLU' in project <PROJECT_ID> with two tasks"  # WRITE, REPL confirms
+atlas agent "upload more tasks to dataset <DATASET_ID>"                 # WRITE (new version)
+atlas agent "validate dataset <DATASET_ID>"                            # WRITE (lifecycle check)
+atlas agent "rename dataset <DATASET_ID> to 'My MMLU v2'"              # WRITE (metadata update)
+```
+> New in v3.3: `update_dataset`, `upload_dataset_tasks`, and `validate_dataset`
+> are backed by **new legitimate REST endpoints**
+> (`PUT …/datasets/{id}`, `POST …/datasets/{id}/tasks`,
+> `POST …/datasets/{id}/validate`). The CLI agent never writes the DB directly
+> (unlike the legacy web dataset tools) — it goes through the same API/SDK
+> chain as every other capability, so authz/project-scoping always applies.
+> None of the dataset tools are destructive.
+> Note: `DatasetVersion.version_number` is SQLAlchemy's optimistic-lock
+> `version_id_col`, so it is NOT a stable app-level "v1/v2" sequence — the
+> service selects the latest version by creation order and relies on the model
+> default for `version_number`.
 
 ```powershell
 # interactive REPL (needs a brain key + auth token)

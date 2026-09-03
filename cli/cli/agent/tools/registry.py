@@ -21,6 +21,14 @@ from cli.agent.tools.authoring import (
     UpdateBenchmarkTool,
 )
 from cli.agent.tools.base import AgentPermission, BaseTool, ToolResult
+from cli.agent.tools.datasets import (
+    CreateDatasetTool,
+    GetDatasetTool,
+    ListDatasetsTool,
+    UpdateDatasetTool,
+    UploadDatasetTasksTool,
+    ValidateDatasetTool,
+)
 from cli.agent.tools.library import (
     ExportReportTool,
     GetActivityTool,
@@ -72,6 +80,12 @@ class ToolRegistry:
             PublishBenchmarkVersionTool(),
             ArchiveBenchmarkVersionTool(),
             DeleteBenchmarkTool(),
+            ListDatasetsTool(),
+            GetDatasetTool(),
+            CreateDatasetTool(),
+            UpdateDatasetTool(),
+            UploadDatasetTasksTool(),
+            ValidateDatasetTool(),
         ]
 
     @property

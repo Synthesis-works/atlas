@@ -20,6 +20,7 @@ from atlas_sdk.models.dashboard import (
     DashboardSnapshot,
     DashboardSummary,
 )
+from atlas_sdk.models.datasets import DatasetRead, DatasetValidationResult, DatasetVersionRead
 from atlas_sdk.models.executions import (
     ArtifactResponse,
     ExecutionAttemptResponse,
@@ -71,6 +72,9 @@ __all__ = [
     "DashboardRuntime",
     "DashboardSnapshot",
     "DashboardSummary",
+    "DatasetRead",
+    "DatasetValidationResult",
+    "DatasetVersionRead",
     "ArtifactResponse",
     "ExecutionAttemptResponse",
     "ExecutionCreateRequest",

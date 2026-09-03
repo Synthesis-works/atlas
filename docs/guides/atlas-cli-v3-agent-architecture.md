@@ -272,8 +272,23 @@ Two minimal additions to `cli/cli/app.py`, preserving all existing commands:
   `archive_benchmark_version`) set `BaseTool.destructive=True` for a **stronger
   double-confirm** prompt. Live backend semantics surfaced as typed SDK errors
   (e.g. publish/delete rejected on a benchmark whose state machine forbids it)
-  are reported back to the agent as failed observations for it to relay. Docs:
-  §5.4, §5.5 below.
+   are reported back to the agent as failed observations for it to relay. Docs:
+   §5.4, §5.5 below.
+- **v3.3 note (dataset capability parity, implemented):** the agent can now do
+  everything for datasets that the web agent can — but **over the legitimate
+  `/api/v1` REST surface via the SDK**, never by replicating the web agent's
+  direct-DB writes (`apps/backend/agent/tools/dataset_tools.py` bypasses
+  authz). This required three **new legitimate backend endpoints** so both the
+  CLI agent and the web agent can converge on one clean API/SDK chain:
+  `PUT /projects/{project_id}/datasets/{dataset_id}` (metadata update),
+  `POST …/datasets/{dataset_id}/tasks` (append a new version with tasks), and
+  `POST …/datasets/{dataset_id}/validate` (lifecycle check). Six CLI tools land
+  in `cli/agent/tools/datasets.py`: `list_datasets`, `get_dataset` (READ) and
+  `create_dataset`, `update_dataset`, `upload_dataset_tasks`, `validate_dataset`
+  (WRITE, single-confirm; none destructive). The SDK gained matching methods and
+  DTOs. The backend `DatasetService` was rewritten to own version/task seeding
+  (create-with-tasks, upload-new-version, validate, enriched get). Docs: §5.4,
+  §5.5 below.
 
 ### 4.4 Auth model
 - **CLI ⇄ Atlas API:** use the existing `AtlasConfig` token via
@@ -348,6 +363,12 @@ the v2 acceptance audit:
 > (WRITE), `archive_benchmark_version` (WRITE+destructive),
 > `delete_benchmark` (WRITE+destructive) — bringing the registered tool count
 > from 14 to 22.
+>
+> **v3.3 dataset tools (added):** `list_datasets` (READ), `get_dataset`
+> (READ), `create_dataset` (WRITE), `update_dataset` (WRITE, no-op guard),
+> `upload_dataset_tasks` (WRITE), `validate_dataset` (WRITE) — all via the
+> legitimate REST/SDK chain (three new backend endpoints back these), bringing
+> the registered tool count from **22 to 28**. None are destructive. See §4.3.
 
 ### 5.6 Exit codes in agent (one-shot) mode
 Reuse the existing `ExitCode` table where a single tool failure is the cause
