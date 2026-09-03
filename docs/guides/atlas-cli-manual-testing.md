@@ -41,6 +41,16 @@ atlas leaderboard model mock
 
 `atlas login` stores the token (and the active base URL) in `%APPDATA%\Atlas\config.toml` and **never prints it**. From then on every `atlas` command auto-authenticates from the saved profile. `atlas logout` removes the stored token.
 
+**Known test accounts for the local dev database:**
+
+| Account | Credentials | Org / Project | Notes |
+|---------|-------------|---------------|-------|
+| `demo@atlas.val` | `password123` | Atlas Development Team / Demo Project | Seeded by `packages/database/scripts/seed.py`; ADMIN. Used in most examples below. |
+| `test@test.com` | `test123456` | Test Org / Test Project | Manually registered via `POST /api/v1/auth/register` on the local SQLite DB (`atlas_dev.db`); OWNER of Test Org/Test Project/Test Benchmark (`10593d98-…`, version `0fcf5afe-…`). Use for authoring smoke tests. |
+| `admin@atlas.local` | (see `seed.py` hash) | Atlas Development Team | Seeded admin (password is a fixed hash in `seed.py`, not printed here). |
+
+> The references below that use `demo@atlas.val` / `password123` are the recommended account for the copy/paste paths; `test@test.com` / `test123456` is convenient when you want an OWNER-scoped identity for benchmark-authoring / publish / archive / delete flows.
+
 Then jump to §8 for the full copy/paste test sequence.
 
 ---
