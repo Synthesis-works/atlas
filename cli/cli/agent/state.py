@@ -46,6 +46,7 @@ class AgentDecision(BaseModel):
     arguments: dict[str, Any] = Field(default_factory=dict)
     response: str | None = None
     error_message: str | None = None
+    detail: str | None = None
     reasoning: str | None = None
 
 

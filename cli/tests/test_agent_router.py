@@ -115,7 +115,8 @@ class TestRouterFallback:
         router = ProviderRouter(providers=[groq, gemini])
         decision = router.decide("t", "c", [])
         assert decision.type is AgentDecisionType.FAIL
-        assert "all available Atlas agent providers failed" in decision.error_message
+        assert "temporarily unavailable" in decision.error_message
+        assert decision.detail and "providers failed" in decision.detail
         assert groq.calls == 1
         assert gemini.calls == 1
 
@@ -133,7 +134,7 @@ class TestRouterFallback:
         )
         decision = router.decide("t", "c", [])
         assert decision.type is AgentDecisionType.FAIL
-        assert "no Atlas agent brain available" in decision.error_message
+        assert "No AI provider is configured" in decision.error_message
 
     def test_non_availability_error_returns_fail_immediately(self) -> None:
         groq = _Stub(name="groq", raise_on_decide=ValueError("Invalid API key"))
@@ -141,7 +142,8 @@ class TestRouterFallback:
         router = ProviderRouter(providers=[groq, gemini])
         decision = router.decide("t", "c", [])
         assert decision.type is AgentDecisionType.FAIL
-        assert "agent provider decision failed" in decision.error_message
+        assert "unexpected error" in decision.error_message
+        assert decision.detail and "Invalid API key" in decision.detail
         assert gemini.calls == 0
 
 

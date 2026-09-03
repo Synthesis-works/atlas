@@ -16,6 +16,13 @@ Fallback semantics
 
     ``allow_fallback=False`` (an explicit ``--provider`` choice) disables the
     cross-provider bounce: only the named provider runs.
+
+User-facing messages
+    The router returns a *friendly* ``error_message`` for provider-failure
+    cases (e.g. "The AI provider is temporarily unavailable. Please try again
+    in a moment.").  The raw technical detail is stored in the ``detail`` field
+    of the ``AgentDecision`` so that callers can surface it in verbose/debug
+    mode without cluttering the default interactive experience.
 """
 
 from __future__ import annotations
@@ -78,13 +85,17 @@ class ProviderRouter(LLMProvider):
             names = [p.name for p in self.ordered]
             available_names = self.available_provider_ids()
             avail_str = ", ".join(available_names) if available_names else "none"
+            detail = (
+                f"No provider available. Configured: {', '.join(names)}; "
+                f"available: {avail_str}. Set GROQ_API_KEY or GEMINI_API_KEY."
+            )
             return AgentDecision(
                 type=AgentDecisionType.FAIL,
                 error_message=(
-                    "no Atlas agent brain available "
-                    f"(configured: {', '.join(names)}; available: {avail_str}). "
-                    "Set GROQ_API_KEY or GEMINI_API_KEY."
+                    "No AI provider is configured. "
+                    "Set GROQ_API_KEY or GEMINI_API_KEY to use the agent."
                 ),
+                detail=detail,
             )
 
         # Explicit --provider: pin to the named provider; no fallback.
@@ -95,39 +106,49 @@ class ProviderRouter(LLMProvider):
                 return AgentDecision(
                     type=AgentDecisionType.FAIL,
                     error_message=(
-                        f"provider '{self.default_provider}' is not available "
-                        f"(available: {avail_str})"
+                        f"Provider '{self.default_provider}' is not available "
+                        f"(available: {avail_str})."
                     ),
                 )
             try:
                 return pinned.decide(task, prompt_context, available_tools)
             except AgentProviderUnavailableError as exc:
+                raw = f"{pinned.name}: {exc}"
                 return AgentDecision(
                     type=AgentDecisionType.FAIL,
-                    error_message=f"provider '{pinned.name}' unavailable: {exc}",
+                    error_message=(
+                        f"Provider '{pinned.name}' is temporarily unavailable. "
+                        "Please try again in a moment."
+                    ),
+                    detail=raw,
                 )
 
         # Auto / fallback mode: try each available provider in order.
-        last_error: str | None = None
+        last_raw: str | None = None
         for provider in available:
             try:
                 decision = provider.decide(task, prompt_context, available_tools)
             except AgentProviderUnavailableError as exc:
-                last_error = f"{provider.name}: {exc}"
+                last_raw = f"{provider.name}: {exc}"
                 continue
             except Exception as exc:  # noqa: BLE001
                 # Unexpected provider bug: NOT an availability failure.  Return a
                 # FAIL decision instead of bouncing to another provider.
                 return AgentDecision(
                     type=AgentDecisionType.FAIL,
-                    error_message=f"agent provider decision failed: {exc}",
+                    error_message=(
+                        "The AI provider returned an unexpected error. "
+                        "Please try again in a moment."
+                    ),
+                    detail=f"agent provider decision failed: {exc}",
                 )
             return decision
 
         return AgentDecision(
             type=AgentDecisionType.FAIL,
             error_message=(
-                f"all available Atlas agent providers failed: "
-                f"{last_error or 'unknown error'}"
+                "The AI provider is temporarily unavailable. "
+                "Please try again in a moment."
             ),
+            detail=f"All providers failed: {last_raw or 'unknown error'}",
         )

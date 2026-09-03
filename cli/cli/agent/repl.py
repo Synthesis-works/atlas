@@ -213,4 +213,6 @@ def run_one_shot(
         echo(result.response or "I need more information to answer that.")
         return ExitCode.SUCCESS
     echo(f"error: {result.error or 'agent could not complete the task'}")
+    if result.detail:
+        echo(f"detail: {result.detail}")
     return ExitCode.UNSPECIFIED

@@ -49,6 +49,7 @@ class AgentResult(BaseModel):
     ok: bool
     response: str | None = None
     error: str | None = None
+    detail: str | None = None
     needs_clarification: bool = False
 
 
@@ -183,4 +184,5 @@ class AgentLoop:
                 error=decision.error_message
                 or decision.response
                 or "agent could not complete the task",
+                detail=decision.detail,
             )
