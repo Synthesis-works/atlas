@@ -698,6 +698,92 @@ Human output is a per-section `Recent <Type>` table (`Timestamp`, `Name`/`Status
 
 ---
 
+### 7.10 `atlas agent …`  (v3 Phase 4 — interactive REPL + one-shot; v3.1 provider fallback)
+
+#### `atlas agent "TASK"` — one-shot (non-interactive)
+
+- **API:** drives the same Atlas REST endpoints as deterministic commands, orchestrated by an LLM running client-side.
+- **Auth:** requires a valid token (profile or `ATLAS_TOKEN`) **and** at least one brain key — `GROQ_API_KEY` (default) or `GEMINI_API_KEY`.
+- **Behavior:** auto-approves all tool calls (no prompts), executes the task once, prints the final response to stdout, exits with agent-specific codes.
+- **Options:** inherits global options (`--output json`, `--quiet`, `--base-url`, etc.) plus `--provider`.
+  - `--provider auto` (default): fallback router — tries **Groq → Gemini** for genuine availability failures (DNS/network, timeout, 429, 5xx). Invalid-key/invalid-request errors are surfaced, not bounced.
+  - `--provider groq` / `--provider gemini`: pin; **no fallback** to the other provider.
+
+**Exit codes (agent one-shot):**
+| Code | Meaning |
+|------|---------|
+| 0 | Task completed (final response) |
+| 1 | Ambiguous/clarification needed |
+| 2 | Goal exceeded (step/call/deadline limits) |
+| 3 | Unauthenticated (no token) |
+| 4 | Forbidden (resource access denied) |
+| 5 | Not found (404 from backend) |
+| 6 | Backend unreachable |
+| 7 | Invalid request / validation error |
+| 8 | Conflict / overwrite refused |
+| 9 | Watch timeout (not used here) |
+| **10** | **`AGENT_UNAVAILABLE` — no `GROQ_API_KEY`/`GEMINI_API_KEY` set, or every provider offline/unavailable** |
+| 130 | Interrupted (SIGINT) |
+
+```powershell
+# one-shot (needs a brain key + auth token)
+$env:GROQ_API_KEY = "your-groq-key-here"      # default provider (Groq)
+# $env:GEMINI_API_KEY = "your-key-here"        # alternatively Gemini
+atlas agent "List the available benchmarks"
+atlas agent "What models can I use?"
+atlas agent "Show me the leaderboard for mock"
+atlas agent "Submit a run for benchmark <BENCHMARK_ID> on mock"   # mutates; auto-approves
+atlas agent --provider groq "List the available benchmarks"       # pin Groq (no fallback)
+atlas agent --provider gemini "List the available benchmarks"     # pin Gemini (no fallback)
+atlas agent --provider auto "List the available benchmarks"       # fallback router (default)
+atlas --output json agent "List the available benchmarks"          # final text on stdout
+atlas --quiet agent "List the available benchmarks"; echo "exit=$LASTEXITCODE"
+# without any brain key:
+atlas agent "any task"  # → exit 10, "error: Atlas agent brain unavailable..."
+```
+
+#### `atlas` (bare, interactive TTY) — REPL
+
+- **API:** same as one-shot; conversation context preserved across turns.
+- **Auth:** same requirements (token + at least one brain key: `GROQ_API_KEY` or `GEMINI_API_KEY`).
+- **Prompt:** `You >` for input, `Atlas >` for assistant response.
+- **Session history:** each turn prepended to the next prompt (bounded by step ceiling).
+- **Mutation confirmation:** before executing any **WRITE** tool (`submit_run`, etc.), the REPL prompts:
+  `Atlas is about to call submit_run(...). Proceed? [y/N]`
+  - `y` / `yes` → executes, prints `[ok] submit_run`, continues.
+  - `n` / `no` / Enter → prints `[!] submit_run`, records a structured **declined** observation (not an execution failure), continues.
+- **READ tools** (`list_benchmarks`, `get_run`, `model list`, etc.) **never prompt**.
+- **Progress:** every tool call prints `[ok] tool_name` on success, `[!] tool_name` on failure/decline (ASCII-safe on all consoles).
+- **Exit:** `exit`, `quit`, `q`, Ctrl-C, or EOF (Ctrl-Z on Windows, Ctrl-D on Unix) → clean exit 0.
+
+```powershell
+# interactive REPL (needs a brain key + auth token)
+$env:GROQ_API_KEY = "your-groq-key-here"     # or GEMINI_API_KEY
+atlas
+
+# Inside REPL:
+You > What models are available?
+Atlas > [lists models via list_models tool]
+You > List the available benchmarks
+Atlas > [lists benchmarks via list_benchmarks tool]
+You > Submit a run for benchmark <BENCHMARK_ID> on mock
+Atlas is about to call submit_run(...). Proceed? [y/N] y
+Atlas > [run submitted]
+You > exit
+
+# non-TTY / piped stdin → prints help (preserves automation)
+echo "" | atlas   # usage help, exit 0 (no REPL)
+```
+
+**Routing rules (verified):**
+| Invocation | stdin is TTY? | Result |
+|------------|---------------|--------|
+| `atlas` | yes | REPL |
+| `atlas` | no (piped/redirected) | help (exit 0) |
+| `atlas agent "task"` | any | one-shot (exit 10 if no `GROQ_API_KEY`/`GEMINI_API_KEY`) |
+
+---
+
 ## 8. End-to-end copy/paste smoke-test sequence
 
 All commands below are **read-only** and were verified on this machine. Get `atlas` on `PATH` first:
@@ -723,6 +809,7 @@ atlas model --help
 atlas model list --help            # mentions --json-schema
 atlas run --help
 atlas report --help
+atlas agent --help                 # one-shot command help  (lists --provider auto|groq|gemini)
 ```
 
 ### 8.2 Health (no auth needed)

@@ -52,17 +52,37 @@ _PROGRESS_OK, _PROGRESS_FAIL = _progress_glyphs()
 
 
 def build_agent_provider(
-    *, model: str | None = None, api_key_env: str = "GEMINI_API_KEY"
+    *,
+    model: str | None = None,
+    api_key_env: str = "GEMINI_API_KEY",
+    provider_name: str | None = None,
 ) -> Any:
-    """Construct the agent's LLM provider (``AgentProvider`` adapter).
+    """Construct the agent's LLM provider (a ``ProviderRouter``, v3.1).
 
-    ``available`` reflects whether the brain (``GEMINI_API_KEY``) is present;
-    the app checks it to refuse to start with exit code 10 when unavailable.
+    ``provider_name`` selects an explicit provider ("groq", "gemini"); ``auto``
+    (or omitted) builds a fallback router that tries available providers in
+    order.  ``available`` reflects whether at least one brain is configured; the
+    app checks it to refuse to start with exit code 10 when unavailable.
     """
-    from cli.agent.provider import AgentProvider
+    from cli.agent.provider import GeminiProvider, GroqProvider
+    from cli.agent.router import ProviderRouter
 
     agent_model = model or os.environ.get("AGENT_MODEL")
-    return AgentProvider(model=agent_model, api_key_env=api_key_env)
+    gemini = GeminiProvider(model=agent_model, api_key_env=api_key_env)
+    groq = GroqProvider(model=os.environ.get("AGENT_GROQ_MODEL"))
+
+    if provider_name and provider_name != "auto":
+        return ProviderRouter(
+            providers=[gemini, groq],
+            default_provider=provider_name,
+            allow_fallback=False,
+        )
+
+    return ProviderRouter(
+        providers=[groq, gemini],
+        default_provider=None,
+        allow_fallback=True,
+    )
 
 
 def _fmt_args(arguments: dict[str, Any]) -> str:

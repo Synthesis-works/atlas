@@ -17,6 +17,7 @@ from click.testing import CliRunner
 
 from cli.agent.loop import AgentLoop
 from cli.agent.repl import AgentREPL, _progress_glyphs, build_agent_provider, run_one_shot
+from cli.agent.router import ProviderRouter
 from cli.agent.state import AgentDecision, AgentDecisionType
 from cli.agent.tools.registry import ToolRegistry
 from cli.app import main
@@ -296,19 +297,48 @@ class TestRouting:
 
 
 class TestProviderAvailability:
-    def test_build_agent_provider_unavailable_without_key(
+    def test_build_agent_provider_unavailable_without_any_key(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+        monkeypatch.delenv("GROQ_API_KEY", raising=False)
         provider = build_agent_provider()
         assert provider.available is False
 
-    def test_build_agent_provider_available_with_key(
+    def test_build_agent_provider_available_with_gemini_key(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+        monkeypatch.delenv("GROQ_API_KEY", raising=False)
         provider = build_agent_provider()
         assert provider.available is True
+
+    def test_build_agent_provider_available_with_groq_key(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+        monkeypatch.setenv("GROQ_API_KEY", "test-key")
+        provider = build_agent_provider()
+        assert provider.available is True
+
+    def test_build_agent_provider_default_prioritizes_groq_over_gemini(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("GROQ_API_KEY", "test-key")
+        monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+        provider = build_agent_provider()
+        assert isinstance(provider, ProviderRouter)
+        assert provider.ordered[0].name == "groq"
+
+    def test_build_agent_provider_explicit_provider_no_fallback(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key")
+        monkeypatch.delenv("GROQ_API_KEY", raising=False)
+        provider = build_agent_provider(provider_name="gemini")
+        assert isinstance(provider, ProviderRouter)
+        assert provider.default_provider == "gemini"
+        assert provider.allow_fallback is False
 
 
 class TestProgressGlyphs:

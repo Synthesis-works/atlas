@@ -245,6 +245,17 @@ Two minimal additions to `cli/cli/app.py`, preserving all existing commands:
   (`GEMINI_API_KEY` unset) refuses to start with **exit code 10**
   (`AGENT_UNAVAILABLE`), and only that case maps to 10 — unrelated agent/SDK
   errors map through the usual codes.
+- **v3.1 note (implemented):** the agent brain is no longer single-provider.
+  `cli/agent/provider.py` was refactored into an `LLMProvider` abstraction
+  (`GeminiProvider`, `GroqProvider`) plus an availability classifier, and
+  `cli/agent/router.py` adds a `ProviderRouter` that presents the same
+  `decide()` surface to the loop while (by default) trying **Groq → Gemini**
+  in order. Fallback happens **only** for genuine availability failures (no key,
+  DNS/network, timeout, 429, 5xx); invalid-key, invalid-request, and malformed
+  output return a `FAIL` decision instead of bouncing providers. `atlas agent`
+  gains a `--provider auto|groq|gemini` flag (`auto` = fallback router, default);
+  `--provider groq|gemini` pins and disables fallback. The loop, tool registry,
+  and all 14 tools are unchanged. Docs: §5.2, §5.6, §6.4 below.
 
 ### 4.4 Auth model
 - **CLI ⇄ Atlas API:** use the existing `AtlasConfig` token via
@@ -308,8 +319,9 @@ the v2 acceptance audit:
 ### 5.6 Exit codes in agent (one-shot) mode
 Reuse the existing `ExitCode` table where a single tool failure is the cause
 (e.g. `run submit` forbidden → exit 4). Add only what's needed for the loop
-itself — one new code: **exit 10 = `AGENT_UNAVAILABLE`** (LLM brain absent or
-offline; see §6.4), leaving exit 9 (watch timeout) and 130 (interrupt) intact.
+itself — one new code: **exit 10 = `AGENT_UNAVAILABLE`** (no Atlas agent brain
+configured — no `GROQ_API_KEY`/`GEMINI_API_KEY` — or every provider offline; see
+§6.4), leaving exit 9 (watch timeout) and 130 (interrupt) intact.
 
 ## 6. Final decisions (user-confirmed)
 
@@ -324,9 +336,10 @@ offline; see §6.4), leaving exit 9 (watch timeout) and 130 (interrupt) intact.
    `atlas agent "..."` **auto-confirms** (stays non-interactive). This mirrors
    the backend agent's permission gate.
 4. **Brain unavailable:** the agent **refuses to start** with a clear message
-   and a **new exit code 10** when the LLM brain
-   (`GEMINI_API_KEY`/`AGENT_MODEL`) is unavailable or the provider is offline.
-   Exit 10 (`AGENT_UNAVAILABLE`) is unused by every existing condition.
+   and a **new exit code 10** when no LLM brain is configured
+   (`GROQ_API_KEY`/`GEMINI_API_KEY` both unset) or every configured provider is
+   offline. Exit 10 (`AGENT_UNAVAILABLE`) is unused by every existing condition.
+   An explicit `--provider groq|gemini` that is unavailable also exits 10.
 
 ## 6.1 Remaining open questions
 

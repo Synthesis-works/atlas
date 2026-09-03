@@ -137,8 +137,8 @@ def _is_tty() -> bool:
 
 def _agent_unavailable_message() -> str:
     return (
-        "error: Atlas agent brain unavailable. Set GEMINI_API_KEY (or "
-        "AGENT_MODEL for a custom model) to use the Atlas agent."
+        "error: Atlas agent brain unavailable. Set GROQ_API_KEY or GEMINI_API_KEY "
+        "to use the Atlas agent."
     )
 
 
@@ -166,8 +166,19 @@ def _run_repl(ctx: Context) -> int:
 
 @click.command(name="agent")
 @click.argument("task")
+@click.option(
+    "--provider",
+    "provider",
+    type=click.Choice(["auto", "groq", "gemini"], case_sensitive=False),
+    default="auto",
+    show_default=True,
+    help=(
+        "LLM provider for the agent brain: auto (fallback across configured "
+        "providers), groq, or gemini."
+    ),
+)
 @_pass_context
-def agent_cmd(ctx: Context, task: str) -> None:
+def agent_cmd(ctx: Context, task: str, provider: str) -> None:
     """Run the Atlas agent once over a quoted task (non-interactive).
 
     Example:
@@ -177,15 +188,15 @@ def agent_cmd(ctx: Context, task: str) -> None:
     from cli.agent.repl import build_agent_provider, run_one_shot
     from cli.client import build_client
 
-    provider = build_agent_provider()
-    if not provider.available:
+    provider_obj = build_agent_provider(provider_name=provider)
+    if not provider_obj.available:
         click.echo(_agent_unavailable_message(), err=True)
         raise SystemExit(ExitCode.AGENT_UNAVAILABLE)
 
     cfg: AtlasConfig = ctx.config
     try:
         with build_client(cfg) as client:
-            code = run_one_shot(task, provider=provider, client=client)
+            code = run_one_shot(task, provider=provider_obj, client=client)
     except Exception as exc:  # noqa: BLE001
         error_exit(exc, cfg.effective_output())
         raise SystemExit(ExitCode.UNSPECIFIED) from exc
