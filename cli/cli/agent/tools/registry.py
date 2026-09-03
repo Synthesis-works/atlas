@@ -10,6 +10,16 @@ from __future__ import annotations
 
 from typing import Any
 
+from cli.agent.tools.authoring import (
+    ArchiveBenchmarkVersionTool,
+    CreateBenchmarkTool,
+    CreateBenchmarkVersionTool,
+    DeleteBenchmarkTool,
+    ListOrganizationsTool,
+    ListProjectsTool,
+    PublishBenchmarkVersionTool,
+    UpdateBenchmarkTool,
+)
 from cli.agent.tools.base import AgentPermission, BaseTool, ToolResult
 from cli.agent.tools.library import (
     ExportReportTool,
@@ -54,6 +64,14 @@ class ToolRegistry:
             GetDashboardTool(),
             GetHealthTool(),
             WhoAmITool(),
+            ListOrganizationsTool(),
+            ListProjectsTool(),
+            CreateBenchmarkTool(),
+            UpdateBenchmarkTool(),
+            CreateBenchmarkVersionTool(),
+            PublishBenchmarkVersionTool(),
+            ArchiveBenchmarkVersionTool(),
+            DeleteBenchmarkTool(),
         ]
 
     @property
@@ -85,6 +103,16 @@ class ToolRegistry:
         """True when the named tool mutates state (WRITE) and needs confirmation."""
         tool = self._tools.get(tool_name)
         return bool(tool and tool.required_permission is AgentPermission.WRITE)
+
+    def is_destructive(self, tool_name: str) -> bool:
+        """True when a WRITE tool is destructive (delete/archive) and warrants a
+        stronger confirmation prompt in the REPL."""
+        tool = self._tools.get(tool_name)
+        return bool(
+            tool
+            and tool.required_permission is AgentPermission.WRITE
+            and tool.destructive
+        )
 
     def execute(self, tool_name: str, client: Any, arguments: dict[str, Any]) -> ToolResult:
         """Validate and dispatch a tool call to the given AtlasClient."""

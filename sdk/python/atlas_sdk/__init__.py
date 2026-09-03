@@ -52,6 +52,7 @@ from atlas_sdk.models.leaderboard import (
     TrendPoint,
 )
 from atlas_sdk.models.models import ModelRead, ModelStatus
+from atlas_sdk.models.projects import OrganizationRead, ProjectRead
 from atlas_sdk.models.reports import (
     CapabilityScoreRead,
     DownloadResult,
@@ -94,6 +95,8 @@ __all__ = [
     "ModelRead",
     "ModelStatus",
     "ModelSummary",
+    "OrganizationRead",
+    "ProjectRead",
     "TrendPoint",
     "NetworkError",
     "NotFoundError",

@@ -256,6 +256,24 @@ Two minimal additions to `cli/cli/app.py`, preserving all existing commands:
   gains a `--provider auto|groq|gemini` flag (`auto` = fallback router, default);
   `--provider groq|gemini` pins and disables fallback. The loop, tool registry,
   and all 14 tools are unchanged. Docs: §5.2, §5.6, §6.4 below.
+- **v3.2 note (benchmark authoring, implemented):** the agent tool surface now
+  covers authoring, but **only through the existing backend `/api/v1` write
+  routes** — the agent never fabricates HTTP. Eight tools were added in a new
+  `cli/agent/tools/authoring.py`: two READ discovery tools
+  (`list_organizations`, `list_projects` — the minimal reads a `create_benchmark`
+  needs to find a `project_id`) and six WRITE tools (`create_benchmark`,
+  `update_benchmark`, `create_benchmark_version`, `publish_benchmark_version`,
+  `archive_benchmark_version`, `delete_benchmark`). The SDK (`AtlasClient`)
+  gained the matching writers (`create/update/delete_benchmark`,
+  `create/publish/archive_benchmark_version`, `list_organizations`,
+  `list_projects`) plus `_put`/`_delete_raw` helpers. Confirmation model (user-
+  confirmed): **all** WRITE tools prompt in the REPL (one-shot still
+  auto-approves); destructive operations (`delete_benchmark`,
+  `archive_benchmark_version`) set `BaseTool.destructive=True` for a **stronger
+  double-confirm** prompt. Live backend semantics surfaced as typed SDK errors
+  (e.g. publish/delete rejected on a benchmark whose state machine forbids it)
+  are reported back to the agent as failed observations for it to relay. Docs:
+  §5.4, §5.5 below.
 
 ### 4.4 Auth model
 - **CLI ⇄ Atlas API:** use the existing `AtlasConfig` token via
@@ -303,6 +321,14 @@ confirmation before any mutating POST (`run submit`), propose a **confirmation
 gate** in the REPL for writes (submission/export), mirroring the backend agent's
 permission model, before committing.
 
+> **v3.2 confirmation model (implemented):** every WRITE authoring tool prompts
+> in the REPL via the same `confirm` hook used by `run submit`. Destructive
+> authoring tools (`delete_benchmark`, `archive_benchmark_version`) additionally
+> flag `BaseTool.destructive = True`, and the REPL's default
+> `_prompt_confirm` issues a second, explicit "Really …? This cannot be undone."
+> prompt for those. One-shot mode (`confirm=None`) auto-approves all writes,
+> unchanged from v3.1.
+
 ### 5.5 Tool set (initial)
 Start with **read + submit + watch + report + export** — the exact trace from
 the v2 acceptance audit:
@@ -315,6 +341,13 @@ the v2 acceptance audit:
 > Tool schema note: `--output json` already gives the agent machine-readable
 > observations, so each tool returns the **DTO (json-able)**, not rendered text.
 > This keeps observations structured for LLM reasoning.
+>
+> **v3.2 authoring tools (added):** `list_organizations` (READ),
+> `list_projects` (READ), `create_benchmark` (WRITE), `update_benchmark`
+> (WRITE), `create_benchmark_version` (WRITE), `publish_benchmark_version`
+> (WRITE), `archive_benchmark_version` (WRITE+destructive),
+> `delete_benchmark` (WRITE+destructive) — bringing the registered tool count
+> from 14 to 22.
 
 ### 5.6 Exit codes in agent (one-shot) mode
 Reuse the existing `ExitCode` table where a single tool failure is the cause

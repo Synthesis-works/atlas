@@ -125,6 +125,17 @@ class AgentREPL:
         raise RuntimeError("AgentREPL requires a client or client_factory")
 
     def _prompt_confirm(self, tool_name: str, arguments: dict) -> bool:
+        if self.registry.is_destructive(tool_name):
+            warning = "This operation is destructive and cannot be undone."
+            first = click.confirm(
+                f"{warning}\nAllow {tool_name}({_fmt_args(arguments)})?",
+                default=False,
+            )
+            if not first:
+                return False
+            return click.confirm(
+                f"Really {tool_name}? This cannot be undone.", default=False
+            )
         return click.confirm(
             f"Allow {tool_name}({_fmt_args(arguments)})?", default=False
         )

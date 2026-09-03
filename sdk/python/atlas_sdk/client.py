@@ -45,6 +45,7 @@ from atlas_sdk.models.leaderboard import (
     TrendPoint,
 )
 from atlas_sdk.models.models import ModelRead
+from atlas_sdk.models.projects import OrganizationRead, ProjectRead
 from atlas_sdk.models.reports import (
     DownloadResult,
     PaginatedReportRunsRead,
@@ -317,6 +318,26 @@ class AtlasClient:
         self._raise_for_status(response)
         return response
 
+    def _put(
+        self,
+        path: str,
+        *,
+        json: Any = None,
+        params: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        return self._do_request("PUT", path, json=json, params=params, retry=False)
+
+    def _delete_raw(
+        self,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+    ) -> httpx.Response:
+        """DELETE with error handling (204 returns an empty body)."""
+        response = self._do_request("DELETE", path, params=params, retry=False)
+        self._raise_for_status(response)
+        return response
+
     # ── public API (Phase 1 subset) ──────────────────────────────────
 
     # -- auth --
@@ -401,6 +422,138 @@ class AtlasClient:
         """
         response = self._get(f"/api/v1/benchmarks/{benchmark_id}")
         return self._unwrap(response, BenchmarkRead)
+
+    # ── authoring (v3.2) ────────────────────────────────────────────────
+
+    # ── discovery (v3.2, supporting reads for authoring) ─────────────────
+
+    def list_organizations(self) -> list[OrganizationRead]:
+        """List organizations the current user belongs to.
+
+        ``GET /api/v1/organizations``
+
+        Returns ``APIResponse[list[OrganizationRead]]``.
+        """
+        response = self._get("/api/v1/organizations")
+        return self._unwrap(response, list[OrganizationRead])
+
+    def list_projects(self, org_id: str) -> list[ProjectRead]:
+        """List projects in an organization (to find a ``project_id``).
+
+        ``GET /api/v1/organizations/{org_id}/projects``
+
+        Returns ``APIResponse[list[ProjectRead]]``.
+        """
+        response = self._get(f"/api/v1/organizations/{org_id}/projects")
+        return self._unwrap(response, list[ProjectRead])
+
+    def create_benchmark(
+        self,
+        project_id: str,
+        *,
+        name: str,
+        objective: str | None = None,
+        category_ids: list[str] | None = None,
+        capability_ids: list[str] | None = None,
+    ) -> BenchmarkRead:
+        """Create a new benchmark in the given project.
+
+        ``POST /api/v1/projects/{project_id}/benchmarks``
+
+        Requires MEMBER/ADMIN/OWNER role on the project.  A benchmark is created
+        in a non-published state; versions are then added and published via
+        :meth:`create_benchmark_version` / :meth:`publish_benchmark_version`.
+        """
+        body: dict[str, Any] = {"name": name}
+        if objective is not None:
+            body["objective"] = objective
+        if category_ids:
+            body["category_ids"] = [str(c) for c in category_ids]
+        if capability_ids:
+            body["capability_ids"] = [str(c) for c in capability_ids]
+        response = self._post(
+            f"/api/v1/projects/{project_id}/benchmarks", json=body
+        )
+        return self._unwrap(response, BenchmarkRead)
+
+    def update_benchmark(
+        self,
+        benchmark_id: str,
+        *,
+        name: str | None = None,
+        objective: str | None = None,
+        category_ids: list[str] | None = None,
+        capability_ids: list[str] | None = None,
+    ) -> BenchmarkRead:
+        """Update a benchmark's fields.
+
+        ``PUT /api/v1/benchmarks/{benchmark_id}``
+
+        Only provided fields are changed; omitted fields keep their values.
+        Requires MEMBER/ADMIN/OWNER role on the owning project.
+        """
+        body: dict[str, Any] = {}
+        if name is not None:
+            body["name"] = name
+        if objective is not None:
+            body["objective"] = objective
+        if category_ids is not None:
+            body["category_ids"] = [str(c) for c in category_ids]
+        if capability_ids is not None:
+            body["capability_ids"] = [str(c) for c in capability_ids]
+        response = self._put(f"/api/v1/benchmarks/{benchmark_id}", json=body)
+        return self._unwrap(response, BenchmarkRead)
+
+    def delete_benchmark(self, benchmark_id: str) -> None:
+        """Delete a benchmark (idempotent; 204 on success).
+
+        ``DELETE /api/v1/benchmarks/{benchmark_id}``
+
+        Requires MEMBER/ADMIN/OWNER role on the owning project.
+        """
+        self._delete_raw(f"/api/v1/benchmarks/{benchmark_id}")
+
+    def create_benchmark_version(
+        self,
+        benchmark_id: str,
+        *,
+        version_string: str,
+        dataset_version_ids: list[str] | None = None,
+        evaluation_strategy_id: str | None = None,
+    ) -> BenchmarkVersionRead:
+        """Create a new version of a benchmark.
+
+        ``POST /api/v1/benchmarks/{benchmark_id}/versions``
+
+        Returns the new version (non-published until published explicitly).
+        """
+        body: dict[str, Any] = {"version_string": version_string}
+        if dataset_version_ids:
+            body["dataset_version_ids"] = [str(d) for d in dataset_version_ids]
+        if evaluation_strategy_id is not None:
+            body["evaluation_strategy_id"] = str(evaluation_strategy_id)
+        response = self._post(
+            f"/api/v1/benchmarks/{benchmark_id}/versions", json=body
+        )
+        return self._unwrap(response, BenchmarkVersionRead)
+
+    def publish_benchmark_version(self, version_id: str) -> None:
+        """Publish a benchmark version (requires ADMIN/OWNER).
+
+        ``POST /api/v1/benchmark-versions/{version_id}/publish``
+        """
+        self._raise_for_status(
+            self._post(f"/api/v1/benchmark-versions/{version_id}/publish")
+        )
+
+    def archive_benchmark_version(self, version_id: str) -> None:
+        """Archive a benchmark version (requires ADMIN/OWNER).
+
+        ``POST /api/v1/benchmark-versions/{version_id}/archive``
+        """
+        self._raise_for_status(
+            self._post(f"/api/v1/benchmark-versions/{version_id}/archive")
+        )
 
     def list_benchmark_versions(
         self, benchmark_id: str

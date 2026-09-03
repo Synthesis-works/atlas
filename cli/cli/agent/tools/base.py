@@ -60,6 +60,7 @@ class BaseTool(ABC):
     name: str
     description: str
     required_permission: AgentPermission = AgentPermission.READ
+    destructive: bool = False
     parameters_schema: dict[str, Any]
 
     def get_gemini_schema(self) -> dict[str, Any]:

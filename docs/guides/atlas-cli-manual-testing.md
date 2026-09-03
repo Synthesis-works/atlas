@@ -698,7 +698,7 @@ Human output is a per-section `Recent <Type>` table (`Timestamp`, `Name`/`Status
 
 ---
 
-### 7.10 `atlas agent …`  (v3 Phase 4 — interactive REPL + one-shot; v3.1 provider fallback)
+### 7.10 `atlas agent …`  (v3 Phase 4 — interactive REPL + one-shot; v3.1 provider fallback; v3.2 benchmark authoring + destructive double-confirm)
 
 #### `atlas agent "TASK"` — one-shot (non-interactive)
 
@@ -748,13 +748,38 @@ atlas agent "any task"  # → exit 10, "error: Atlas agent brain unavailable..."
 - **Auth:** same requirements (token + at least one brain key: `GROQ_API_KEY` or `GEMINI_API_KEY`).
 - **Prompt:** `You >` for input, `Atlas >` for assistant response.
 - **Session history:** each turn prepended to the next prompt (bounded by step ceiling).
-- **Mutation confirmation:** before executing any **WRITE** tool (`submit_run`, etc.), the REPL prompts:
+- **Mutation confirmation:** before executing any **WRITE** tool (`submit_run`,
+  `create_benchmark`, `update_benchmark`, `create_benchmark_version`,
+  `publish_benchmark_version`, `delete_benchmark`, `archive_benchmark_version`,
+  `export_report`, …), the REPL prompts:
   `Atlas is about to call submit_run(...). Proceed? [y/N]`
-  - `y` / `yes` → executes, prints `[ok] submit_run`, continues.
-  - `n` / `no` / Enter → prints `[!] submit_run`, records a structured **declined** observation (not an execution failure), continues.
-- **READ tools** (`list_benchmarks`, `get_run`, `model list`, etc.) **never prompt**.
+  - `y` / `yes` → executes, prints `[ok] tool_name`, continues.
+  - `n` / `no` / Enter → prints `[!] tool_name`, records a structured **declined** observation (not an execution failure), continues.
+- **Destructive double-confirm (v3.2):** `delete_benchmark` and
+  `archive_benchmark_version` get a stronger two-step prompt. After the first
+  "Allow …?" is confirmed, the REPL asks again:
+  `Really delete_benchmark? This cannot be undone.` — declining either step
+  records a declined observation and skips the mutation.
+- **READ tools** (`list_benchmarks`, `get_run`, `model list`,
+  `list_organizations`, `list_projects`, etc.) **never prompt**.
 - **Progress:** every tool call prints `[ok] tool_name` on success, `[!] tool_name` on failure/decline (ASCII-safe on all consoles).
 - **Exit:** `exit`, `quit`, `q`, Ctrl-C, or EOF (Ctrl-Z on Windows, Ctrl-D on Unix) → clean exit 0.
+
+**Benchmark-authoring examples (v3.2):**
+```powershell
+# discovery → create → version → publish, all through the agent tools
+atlas agent "list the organizations I belong to"
+atlas agent "list projects in organization <ORG_ID>"
+atlas agent "create a benchmark named 'My Agent Bench' in project <PROJECT_ID>"   # WRITE, prompts in REPL
+atlas agent "create version 1.0.0 of benchmark <BENCHMARK_ID>"                     # WRITE
+atlas agent "publish benchmark version <VERSION_ID>"                              # WRITE
+atlas agent "delete benchmark <BENCHMARK_ID>"                                     # WRITE + destructive (double-confirm)
+```
+> Note: authoring tools visit the same backend state machine as the REST API.
+> E.g. a freshly-created benchmark sits in `proposal`; publishing requires
+> reaching `review`, so an invalid-state publish is reported back as a typed
+> failure (not silently swallowed). Deletion is refused on archived benchmarks
+> (immutability).
 
 ```powershell
 # interactive REPL (needs a brain key + auth token)
