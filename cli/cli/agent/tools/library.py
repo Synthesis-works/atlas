@@ -61,6 +61,13 @@ class _LeaderboardArgs(BaseModel):
     offset: int = Field(0, ge=0)
 
 
+class _SearchArgs(BaseModel):
+    project_id: str
+    q: str
+    entity_types: list[str] = Field(default_factory=list)
+    limit: int = Field(20, ge=1, le=100)
+
+
 class _ModelNameArgs(BaseModel):
     model_name: str
 
@@ -175,6 +182,63 @@ class ListModelsTool(BaseTool):
         ]
         ids = ", ".join(it["id"] for it in items[:20])
         return _ok(f"Available models: {ids}", {"models": items, "total": len(items)})
+
+
+class SearchTool(BaseTool):
+    name = "search"
+    description = (
+        "Free-text search within a project across benchmarks and executions "
+        "(e.g. find benchmarks related to 'counting', or executions for a "
+        "model). Takes a project_id, a query string, and an optional "
+        "entity_types list (benchmark|execution). Results are scoped to the "
+        "given project only."
+    )
+    parameters_schema = {
+        "type": "object",
+        "properties": {
+            "project_id": {"type": "string", "description": "Project UUID."},
+            "q": {"type": "string", "description": "Search query string."},
+            "entity_types": {
+                "type": "array",
+                "items": {"type": "string", "enum": ["benchmark", "execution"]},
+                "description": "Optional entity types to restrict the search to.",
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Max results (1-100).",
+                "default": 20,
+            },
+        },
+        "required": ["project_id", "q"],
+    }
+
+    def execute(self, client: Any, **kwargs: Any) -> ToolResult:
+        parsed = _parse(_SearchArgs, kwargs)
+        if isinstance(parsed, ValidationError):
+            return ToolResult(ok=False, summary="invalid arguments", error=str(parsed))
+        page = client.search(
+            parsed.project_id,
+            parsed.q,
+            entity_types=parsed.entity_types or None,
+            limit=parsed.limit,
+        )
+        items = [
+            {
+                "id": str(r.id),
+                "entity_type": r.entity_type,
+                "title": r.title,
+                "subtitle": r.subtitle,
+                "score": r.score,
+            }
+            for r in page.items
+        ]
+        summary = "; ".join(
+            f"[{it['entity_type']}] {it['title']} ({it['id']})" for it in items[:15]
+        )
+        return _ok(
+            f"{len(items)} result(s) for '{parsed.q}' in project {parsed.project_id}: {summary}",
+            {"items": items, "total": page.total},
+        )
 
 
 class SubmitRunTool(BaseTool):

@@ -15,10 +15,15 @@ class SearchProvider(Protocol):
         """The type of entity this provider handles (e.g., 'benchmark')."""
         ...
 
-    def search(self, request: SearchRequest) -> list[SearchResult]:
+    def search(self, request: SearchRequest, project_ids: list | None = None) -> list[SearchResult]:
         """
         Execute a search for this specific domain.
         Must normalize relevance score to a 0.0 - 1.0 scale.
         Should return up to the requested limit.
+
+        ``project_ids`` optionally restricts results to rows owned by one of
+        the given projects. ``None`` leaves the provider unscoped (used only
+        when access control is enforced upstream, e.g. the global search
+        endpoint resolving the caller's accessible projects).
         """
         ...

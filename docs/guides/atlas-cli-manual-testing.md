@@ -836,6 +836,24 @@ atlas agent "list the reports in project <PROJECT_ID>"                          
 > CLI gap by copying the web agent's direct-DB approach). None of the v3.4 tools
 > are destructive.
 
+**Search / retrieval examples (v3.5):**
+```powershell
+# free-text project-scoped retrieval across benchmarks and executions (READ, no confirm)
+atlas agent "find benchmarks related to counting in project <PROJECT_ID>"        # READ
+atlas agent "find my recent runs (executions) for the counting benchmark in project <PROJECT_ID>"  # READ
+atlas agent "search for 'Rust' benchmarks only in project <PROJECT_ID>"          # READ, entity_type=benchmark
+```
+> New in v3.5: `search` is backed by a **new legitimate project-scoped REST
+> endpoint** `GET /projects/{project_id}/search` (authenticated +
+> `authorize_project_access` with READ roles), which drives the existing
+> `SearchService` benchmark + execution providers — **not** the web agent's
+> direct-DB `search_benchmarks` (§project rule: never close a CLI gap by copying
+> the web agent's direct-DB approach). The existing global `GET /search` was also
+> **hardened** to require authentication and scope to the caller's accessible
+> projects. `search_memory` (semantic/Ollama) is deferred; results are strictly
+> scoped so a user can never discover another project's private rows by changing
+> `project_id`.
+
 ```powershell
 # interactive REPL (needs a brain key + auth token)
 $env:GROQ_API_KEY = "your-groq-key-here"     # or GEMINI_API_KEY

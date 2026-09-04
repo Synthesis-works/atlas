@@ -71,6 +71,7 @@ from atlas_sdk.models.responses import (
     ErrorDetail,
     ResponseMeta,
 )
+from atlas_sdk.models.search import SearchResult
 
 __all__ = [
     "AuthUserRead",
@@ -134,4 +135,5 @@ __all__ = [
     "APIErrorResponse",
     "ErrorDetail",
     "ResponseMeta",
+    "SearchResult",
 ]

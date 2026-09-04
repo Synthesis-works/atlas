@@ -66,6 +66,7 @@ from atlas_sdk.models.reports import (
     ReportSummaryRead,
 )
 from atlas_sdk.models.responses import APIResponse
+from atlas_sdk.models.search import SearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -916,6 +917,39 @@ class AtlasClient:
         """
         response = self._get_raw(f"/api/v1/projects/{project_id}/reports")
         return ReportListRead.model_validate(response.json())
+
+    # -- search (v3.5) --
+
+    def search(
+        self,
+        project_id: str,
+        q: str,
+        *,
+        entity_types: list[str] | None = None,
+        limit: int = 20,
+    ) -> PageResponse[SearchResult]:
+        """Search benchmarks and executions within a project.
+
+        ``GET /api/v1/projects/{project_id}/search``
+
+        The caller must be an active member of the project's organization.
+        Results are strictly scoped to the single requested project.
+
+        ``q`` is required; ``entity_types`` optionally restricts to e.g.
+        ``["benchmark"]`` or ``["execution"]``; ``limit`` is clamped to
+        1..100.
+
+        Note: this endpoint returns ``PageResponse[SearchResult]`` directly
+        (not wrapped in ``APIResponse``), like the execution endpoints.
+        """
+        params: dict[str, Any] = {"q": q, "limit": limit}
+        if entity_types:
+            params["entity_types"] = ",".join(entity_types)
+        response = self._get_raw(
+            f"/api/v1/projects/{project_id}/search", params=params
+        )
+        return PageResponse[SearchResult].model_validate(response.json())
+
 
     # -- leaderboard --
 

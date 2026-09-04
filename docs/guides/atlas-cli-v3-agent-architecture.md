@@ -309,6 +309,27 @@ Two minimal additions to `cli/cli/app.py`, preserving all existing commands:
   the agent then polls `get_evaluation_results`; evaluation is never run
   synchronously on the API thread. Docs: §5.5 below.
 
+- **v3.5 note (retrieval/search parity + `/search` security hardening,
+  implemented):** the agent can now do **free-text retrieval/search** across
+  benchmarks and executions — **over the legitimate `/api/v1` REST surface via
+  the SDK**, never by replicating the web agent's direct-DB `search_benchmarks`
+  (`apps/backend/agent/tools/benchmark_tools.py` queries the DB directly,
+  bypassing authz). This added one **new legitimate, project-scoped endpoint**
+  `GET /projects/{project_id}/search` (authenticated + `authorize_project_access`
+  READ roles, strictly scoped to that project) that drives the existing
+  `SearchService` with its benchmark and execution providers. The existing
+  **global** `GET /search` endpoint was also **hardened**: it now requires
+  authentication and is scoped to the caller's **accessible projects** (active
+  org membership → org → project), closing a pre-existing unscoped/unauthenticated
+  hole without changing the public response shape. Along the way a **pre-existing
+  bug** was fixed in `BenchmarkSearchProvider`: it referenced a
+  non-existent `Benchmark.description` column instead of the real `objective`
+  field, which would have crashed both endpoints on any benchmark match. The SDK
+  gained a `search(project_id, q, …)` method + `SearchResult` DTO, and the CLI
+  gained one READ tool `search` in `cli/agent/tools/library.py` (no confirmation,
+  registered 34 → 35). `search_memory` (semantic/Ollama) is **deferred** to a
+  later milestone. Docs: §5.5 below.
+
 ### 4.4 Auth model
 - **CLI ⇄ Atlas API:** use the existing `AtlasConfig` token via
   `build_client(cfg)` (from `atlas login`).
@@ -395,6 +416,12 @@ the v2 acceptance audit:
 > `create_evaluation_cases` (WRITE), `generate_report` (WRITE) — all via the
 > legitimate REST/SDK chain (five new backend endpoints back these), bringing
 > the registered tool count from **28 to 34**. None are destructive. See §4.3.
+
+> **v3.5 search tool (added):** `search` (READ) — free-text project-scoped
+> retrieval across benchmarks and executions via the legitimate REST/SDK chain
+> (`GET /projects/{project_id}/search`), bringing the registered tool count from
+> **34 to 35**. None destructive, never confirms. `search_memory` (semantic/
+> Ollama) is deferred out of v3.5. See §4.3.
 
 ### 5.6 Exit codes in agent (one-shot) mode
 Reuse the existing `ExitCode` table where a single tool failure is the cause

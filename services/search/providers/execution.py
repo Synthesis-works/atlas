@@ -15,8 +15,14 @@ class ExecutionSearchProvider(SearchProvider):
     def entity_type(self) -> str:
         return "execution"
 
-    def search(self, request: SearchRequest) -> list[SearchResult]:
+    def search(self, request: SearchRequest, project_ids: list | None = None) -> list[SearchResult]:
         query = self.db.query(Execution)
+
+        # Scope to an explicit set of projects when provided. This is the
+        # enforcement point for project-scoped access: only rows owned by the
+        # authorized project(s) are ever considered.
+        if project_ids is not None:
+            query = query.filter(Execution.project_id.in_(project_ids))
 
         if request.q:
             search_term = f"%{request.q}%"
