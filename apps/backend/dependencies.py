@@ -205,6 +205,15 @@ def get_execution_app_service(db: Session = Depends(get_db_session)) -> Executio
     return ExecutionApplicationService(execution_repo=repo)
 
 
+from apps.backend.services.evaluation_parity import EvaluationParityService
+
+
+def get_evaluation_parity_service(
+    db: Session = Depends(get_db_session),
+) -> EvaluationParityService:
+    return EvaluationParityService(db)
+
+
 from apps.backend.services.leaderboard import LeaderboardApplicationService
 from atlas_db.repositories.leaderboard import LeaderboardRepository
 

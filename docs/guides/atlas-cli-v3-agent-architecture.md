@@ -288,7 +288,26 @@ Two minimal additions to `cli/cli/app.py`, preserving all existing commands:
   (WRITE, single-confirm; none destructive). The SDK gained matching methods and
   DTOs. The backend `DatasetService` was rewritten to own version/task seeding
   (create-with-tasks, upload-new-version, validate, enriched get). Docs: §5.4,
-  §5.5 below.
+   §5.5 below.
+- **v3.4 note (evaluation capability parity, implemented):** the agent can now
+  read evaluation outcomes, author evaluation-case metadata, compare executions,
+  and persist reports — **over the legitimate `/api/v1` REST surface via the
+  SDK**, never by replicating the web agent's direct-DB writes
+  (`apps/backend/agent/tools/evaluation_tools.py` bypasses authz) nor the legacy
+  synchronous `EvaluationService.evaluate_execution()` shortcut. This required
+  **five new legitimate backend endpoints**: `GET …/executions/{eid}/evaluation-results`
+  (read results of a completed evaluation), `POST …/datasets/{did}/evaluation-cases`
+  (merge eval-case metadata into test-case expected_output), `POST …/executions/compare`
+  (read-only best-first ranking), `POST …/reports` (create/persist a report) and
+  `GET …/reports` (list). A new `EvaluationParityService` backs them. Six CLI
+  tools land in `cli/agent/tools/evaluation.py`: `get_evaluation_results`,
+  `compare_results`, `list_report_runs` (READ) and `evaluate_run`
+  (enqueues the async Celery evaluation), `create_evaluation_cases`,
+  `generate_report` (WRITE, single-confirm; none destructive). The SDK gained
+  matching methods/DTOs. Crucially `evaluate_run` triggers the **legitimate
+  async enqueue flow** (`POST …/executions/{eid}/evaluate` → Celery → 202) and
+  the agent then polls `get_evaluation_results`; evaluation is never run
+  synchronously on the API thread. Docs: §5.5 below.
 
 ### 4.4 Auth model
 - **CLI ⇄ Atlas API:** use the existing `AtlasConfig` token via
@@ -369,6 +388,13 @@ the v2 acceptance audit:
 > `upload_dataset_tasks` (WRITE), `validate_dataset` (WRITE) — all via the
 > legitimate REST/SDK chain (three new backend endpoints back these), bringing
 > the registered tool count from **22 to 28**. None are destructive. See §4.3.
+>
+> **v3.4 evaluation tools (added):** `get_evaluation_results` (READ),
+> `compare_results` (READ, non-mutating compare), `list_report_runs` (READ),
+> `evaluate_run` (WRITE — enqueues the async Celery evaluation), 
+> `create_evaluation_cases` (WRITE), `generate_report` (WRITE) — all via the
+> legitimate REST/SDK chain (five new backend endpoints back these), bringing
+> the registered tool count from **28 to 34**. None are destructive. See §4.3.
 
 ### 5.6 Exit codes in agent (one-shot) mode
 Reuse the existing `ExitCode` table where a single tool failure is the cause

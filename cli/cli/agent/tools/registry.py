@@ -29,6 +29,14 @@ from cli.agent.tools.datasets import (
     UploadDatasetTasksTool,
     ValidateDatasetTool,
 )
+from cli.agent.tools.evaluation import (
+    CompareResultsTool,
+    CreateEvaluationCasesTool,
+    EvaluateRunTool,
+    GenerateReportTool,
+    GetEvaluationResultsTool,
+    ListReportRunsTool,
+)
 from cli.agent.tools.library import (
     ExportReportTool,
     GetActivityTool,
@@ -86,6 +94,12 @@ class ToolRegistry:
             UpdateDatasetTool(),
             UploadDatasetTasksTool(),
             ValidateDatasetTool(),
+            GetEvaluationResultsTool(),
+            EvaluateRunTool(),
+            CreateEvaluationCasesTool(),
+            CompareResultsTool(),
+            GenerateReportTool(),
+            ListReportRunsTool(),
         ]
 
     @property

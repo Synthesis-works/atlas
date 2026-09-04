@@ -70,6 +70,7 @@ def create_app() -> FastAPI:
         benchmarks,
         datasets,
         evaluation,
+        evaluation_parity,
         executions,
         history,
         internal_workers,
@@ -100,6 +101,7 @@ def create_app() -> FastAPI:
     app.include_router(history.router, prefix="/api/v1")
     app.include_router(internal_workers.workers_router, prefix="/api/v1/internal/workers")
     app.include_router(evaluation.router, prefix="/api/v1")
+    app.include_router(evaluation_parity.router, prefix="/api/v1")
     app.include_router(reporting.router, prefix="/api/v1")
     app.include_router(search.router, prefix="/api/v1")
     app.include_router(system.router, prefix="/api/v1")

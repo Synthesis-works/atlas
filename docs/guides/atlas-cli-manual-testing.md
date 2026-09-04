@@ -814,6 +814,28 @@ atlas agent "rename dataset <DATASET_ID> to 'My MMLU v2'"              # WRITE (
 > service selects the latest version by creation order and relies on the model
 > default for `version_number`.
 
+**Evaluation examples (v3.4):**
+```powershell
+# discovery → enqueue async evaluation → poll results → compare → report,
+# all through the agent tools over the REST/SDK chain
+atlas agent "get the evaluation results for execution <EXECUTION_ID> in project <PROJECT_ID>"  # READ
+atlas agent "evaluate run <EXECUTION_ID> in project <PROJECT_ID>"                  # WRITE, enqueues async Celery eval, REPL confirms
+atlas agent "compare executions <EXECUTION_ID_1> and <EXECUTION_ID_2> in project <PROJECT_ID>"  # READ (non-mutating)
+atlas agent "add evaluation case expected answer 42 for task <TASK_ID> in dataset <DATASET_ID>" # WRITE
+atlas agent "generate a report titled 'Q1 Results' for execution <EXECUTION_ID> in project <PROJECT_ID>"  # WRITE
+atlas agent "list the reports in project <PROJECT_ID>"                            # READ
+```
+> New in v3.4: `get_evaluation_results`, `evaluate_run`, `compare_results`,
+> `create_evaluation_cases`, `generate_report`, and `list_report_runs` are
+> backed by **five new legitimate REST endpoints**
+> (`GET …/executions/{eid}/evaluation-results`,
+> `POST …/datasets/{did}/evaluation-cases`, `POST …/executions/compare`,
+> `POST …/reports`, `GET …/reports`). `evaluate_run` uses the **legitimate async
+> enqueue → poll flow** — it does not replicate the web agent's direct-DB sync
+> `EvaluationService.evaluate_execution()` shortcut (§project rule: never close a
+> CLI gap by copying the web agent's direct-DB approach). None of the v3.4 tools
+> are destructive.
+
 ```powershell
 # interactive REPL (needs a brain key + auth token)
 $env:GROQ_API_KEY = "your-groq-key-here"     # or GEMINI_API_KEY

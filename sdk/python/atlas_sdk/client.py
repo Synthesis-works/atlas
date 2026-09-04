@@ -36,6 +36,15 @@ from atlas_sdk.models.datasets import (
     DatasetValidationResult,
     DatasetVersionRead,
 )
+from atlas_sdk.models.evaluation import (
+    EvaluationCaseItem,
+    EvaluationCaseWriteResponse,
+    EvaluationEnqueuedRead,
+    EvaluationResultsRead,
+    ExecutionCompareResponse,
+    ReportListRead,
+    ReportRead,
+)
 from atlas_sdk.models.executions import (
     DispatchTarget,
     ExecutionPage,
@@ -796,6 +805,117 @@ class AtlasClient:
         """
         response = self._post_raw(f"/api/v1/executions/{execution_id}/cancel")
         return ExecutionResponse.model_validate(response.json())
+
+    # -- evaluation parity --
+
+    def enqueue_evaluation(self, project_id: str, execution_id: str) -> EvaluationEnqueuedRead:
+        """Enqueue a background evaluation for a completed execution.
+
+        ``POST /api/v1/projects/{project_id}/executions/{execution_id}/evaluate``
+
+        Returns ``EvaluationEnqueuedRead`` (202 Accepted).  The actual
+        evaluation runs asynchronously in a Celery worker; poll
+        :meth:`get_evaluation_results` for the outcome.
+        """
+        response = self._post_raw(
+            f"/api/v1/projects/{project_id}/executions/{execution_id}/evaluate"
+        )
+        return EvaluationEnqueuedRead.model_validate(response.json())
+
+    def get_evaluation_results(
+        self, project_id: str, execution_id: str
+    ) -> EvaluationResultsRead:
+        """Read the evaluation results for an execution.
+
+        ``GET /api/v1/projects/{project_id}/executions/{execution_id}/evaluation-results``
+
+        Returns ``EvaluationResultsRead`` with the overall score and the
+        per-output evaluation results written by the evaluation worker.
+        """
+        response = self._get_raw(
+            f"/api/v1/projects/{project_id}/executions/{execution_id}/evaluation-results"
+        )
+        return EvaluationResultsRead.model_validate(response.json())
+
+    def create_evaluation_cases(
+        self,
+        project_id: str,
+        dataset_id: str,
+        cases: list[EvaluationCaseItem],
+    ) -> EvaluationCaseWriteResponse:
+        """Attach evaluation-case metadata to tasks/test cases in a dataset.
+
+        ``POST /api/v1/projects/{project_id}/datasets/{dataset_id}/evaluation-cases``
+
+        Each item merges ``expected_answer``/``evaluation_method``/
+        ``accepted_answers``/``rubric_criteria`` into the target test
+        case's ``expected_output``.  Returns ``EvaluationCaseWriteResponse``.
+        """
+        body: dict[str, Any] = {
+            "evaluation_cases": [
+                case.model_dump(mode="json", exclude_none=True) for case in cases
+            ]
+        }
+        response = self._post_raw(
+            f"/api/v1/projects/{project_id}/datasets/{dataset_id}/evaluation-cases",
+            json=body,
+        )
+        return EvaluationCaseWriteResponse.model_validate(response.json())
+
+    def compare_executions(
+        self, project_id: str, execution_ids: list[str]
+    ) -> ExecutionCompareResponse:
+        """Rank a set of executions by overall evaluation score.
+
+        ``POST /api/v1/projects/{project_id}/executions/compare``
+
+        Returns ``ExecutionCompareResponse`` whose ``leaderboard`` is
+        sorted best-first with a ``rank`` per row.
+        """
+        response = self._post_raw(
+            f"/api/v1/projects/{project_id}/executions/compare",
+            json={"execution_ids": [str(e) for e in execution_ids]},
+        )
+        return ExecutionCompareResponse.model_validate(response.json())
+
+    def generate_report(
+        self,
+        project_id: str,
+        title: str,
+        *,
+        benchmark_id: str | None = None,
+        execution_id: str | None = None,
+        version_string: str | None = None,
+    ) -> ReportRead:
+        """Create a persisted report (with metrics) for a project.
+
+        ``POST /api/v1/projects/{project_id}/reports``
+
+        When ``execution_id`` is given, the report is populated with the
+        execution's evaluation metrics.  Returns the created ``ReportRead``.
+        """
+        body: dict[str, Any] = {"title": title}
+        if benchmark_id is not None:
+            body["benchmark_id"] = benchmark_id
+        if execution_id is not None:
+            body["execution_id"] = execution_id
+        if version_string is not None:
+            body["version_string"] = version_string
+        response = self._post_raw(
+            f"/api/v1/projects/{project_id}/reports", json=body
+        )
+        return ReportRead.model_validate(response.json())
+
+    def list_reports(self, project_id: str) -> ReportListRead:
+        """List persisted reports for a project.
+
+        ``GET /api/v1/projects/{project_id}/reports``
+
+        Returns ``ReportListRead`` with the project's reports and their
+        versions/metrics.
+        """
+        response = self._get_raw(f"/api/v1/projects/{project_id}/reports")
+        return ReportListRead.model_validate(response.json())
 
     # -- leaderboard --
 
