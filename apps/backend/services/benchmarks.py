@@ -144,15 +144,19 @@ class BenchmarkApplicationService:
             offset=page_req.offset,
         )
 
-    def get_recent_benchmarks(self, limit: int = 10) -> list[BenchmarkRead]:
+    def get_recent_benchmarks(
+        self, limit: int = 10, project_ids: list[uuid.UUID] | None = None
+    ) -> list[BenchmarkRead]:
         # A convenience method for the recent history endpoint
-        # Fetches published benchmarks globally, ordered by updated_at desc
+        # Fetches published benchmarks for the caller's accessible projects (or
+        # globally when project_ids is None), ordered by updated_at desc
         benchmarks, _ = self.benchmark_repo.get_benchmarks_paginated(
             limit=limit,
             offset=0,
             sort_field="updated_at",
             sort_order="desc",
             status="published",  # assuming published is a valid state
+            project_ids=project_ids,
         )
         return [
             BenchmarkRead(

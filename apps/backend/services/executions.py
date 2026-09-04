@@ -172,7 +172,7 @@ class ExecutionApplicationService:
     ):
         self.execution_repo = execution_repo
 
-    def get_recent_executions(self, limit: int = 10):
+    def get_recent_executions(self, limit: int = 10, project_ids: list[uuid.UUID] | None = None):
         from apps.backend.schemas.executions import ExecutionHistoryRead
         from atlas_db.models.authoring import BenchmarkVersion, Benchmark
 
@@ -181,6 +181,7 @@ class ExecutionApplicationService:
             offset=0,
             sort_field="created_at",
             sort_order="desc",
+            project_ids=project_ids,
         )
 
         if not executions:
@@ -218,10 +219,10 @@ class ExecutionApplicationService:
             )
         return results
 
-    def get_recent_models(self, limit: int = 10):
+    def get_recent_models(self, limit: int = 10, project_ids: list[uuid.UUID] | None = None):
         from apps.backend.schemas.executions import ModelActivityRead
 
-        models_data = self.execution_repo.get_recent_models(limit=limit)
+        models_data = self.execution_repo.get_recent_models(limit=limit, project_ids=project_ids)
 
         results = []
         for target_model, last_executed_at, execution_count in models_data:

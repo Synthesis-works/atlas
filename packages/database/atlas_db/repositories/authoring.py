@@ -43,6 +43,7 @@ class BenchmarkRepository(BaseRepository[Benchmark]):
         status: str | None = None,
         category_ids: list[uuid.UUID] | None = None,
         capability_ids: list[uuid.UUID] | None = None,
+        project_ids: list[uuid.UUID] | None = None,
     ) -> tuple[list[Benchmark], int]:
         from atlas_db.repositories.query_utils import (
             apply_pagination,
@@ -55,6 +56,8 @@ class BenchmarkRepository(BaseRepository[Benchmark]):
 
         if project_id:
             query = query.filter(self.model.project_id == project_id)
+        if project_ids is not None:
+            query = query.filter(self.model.project_id.in_(project_ids))
         if owner_id:
             query = query.filter(self.model.author_id == owner_id)
         if status:
