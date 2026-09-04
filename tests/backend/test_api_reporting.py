@@ -5,7 +5,12 @@ from unittest.mock import Mock
 import pytest
 from fastapi.testclient import TestClient
 
-from apps.backend.dependencies import get_reporting_service, require_authenticated
+from apps.backend.authz import ProjectAuthorizationService, get_project_authz_service
+from apps.backend.dependencies import (
+    get_db_session,
+    get_reporting_service,
+    require_authenticated,
+)
 from apps.backend.main import app
 from apps.backend.schemas.auth import TokenClaims
 from apps.backend.schemas.reporting import (
@@ -15,6 +20,7 @@ from apps.backend.schemas.reporting import (
     ReportRunEntryRead,
     ReportSummaryRead,
 )
+from atlas_db.models.execution import Execution as DBExecution
 from services.report.models.read_models import (
     ReportExportRead,
     ReportRunsFilter,
@@ -30,16 +36,41 @@ def mock_reporting_service():
 
 @pytest.fixture
 def test_client(mock_reporting_service):
+    from tests._fakes import FakeDB
+
     app.dependency_overrides[get_reporting_service] = lambda: mock_reporting_service
     app.dependency_overrides[require_authenticated] = lambda: TokenClaims(
         sub=uuid.uuid4(), exp=9999999999, iat=1000000000, jti=uuid.uuid4()
     )
+    app.dependency_overrides[get_db_session] = lambda: FakeDB()
+    authz = Mock(spec=ProjectAuthorizationService)
+    authz.authorize_project_access.return_value = Mock(id=uuid.uuid4())
+    app.dependency_overrides[get_project_authz_service] = lambda: authz
     yield TestClient(app)
     app.dependency_overrides.clear()
 
 
+def _seed_run(run_id: uuid.UUID) -> dict:
+    from tests._fakes import FakeDB
+
+    project_id = uuid.uuid4()
+    row = DBExecution(
+        id=run_id,
+        project_id=project_id,
+        benchmark_version_id=uuid.uuid4(),
+        status="COMPLETED",
+        target_model="gpt-4o",
+        submitted_by_id=uuid.uuid4(),
+    )
+    from apps.backend.dependencies import get_db_session
+
+    app.dependency_overrides[get_db_session] = lambda: FakeDB({DBExecution: [row]})
+    return {"project_id": project_id, "row": row}
+
+
 def test_get_run_summary_success(test_client, mock_reporting_service):
     run_id = uuid.uuid4()
+    _seed_run(run_id)
     benchmark_id = uuid.uuid4()
     now = datetime.now(UTC)
 
@@ -78,6 +109,7 @@ def test_get_run_summary_success(test_client, mock_reporting_service):
 
 def test_get_run_summary_not_found(test_client, mock_reporting_service):
     run_id = uuid.uuid4()
+    _seed_run(run_id)
     mock_reporting_service.get_run_summary.return_value = None
 
     response = test_client.get(f"/api/v1/reports/runs/{run_id}")
@@ -101,6 +133,7 @@ def test_get_runs_filtered_empty(test_client, mock_reporting_service):
 
 def test_export_run_results_json(test_client, mock_reporting_service):
     run_id = uuid.uuid4()
+    _seed_run(run_id)
     from services.report.exporters import ExportResult
 
     document = ReportExportRead()
@@ -131,6 +164,7 @@ def test_export_run_results_json(test_client, mock_reporting_service):
 
 def test_export_run_results_csv(test_client, mock_reporting_service):
     run_id = uuid.uuid4()
+    _seed_run(run_id)
     from services.report.exporters import ExportResult
 
     document = ReportExportRead()
@@ -160,6 +194,7 @@ def test_export_run_results_csv(test_client, mock_reporting_service):
 
 def test_export_run_results_not_found(test_client, mock_reporting_service):
     run_id = uuid.uuid4()
+    _seed_run(run_id)
     mock_reporting_service.build_report_export.return_value = None
 
     response = test_client.get(f"/api/v1/reports/runs/{run_id}/export?format=json")

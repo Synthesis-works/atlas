@@ -1,17 +1,13 @@
 from __future__ import annotations
 
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from apps.backend.authz import (
-    ProjectAuthorizationService,
-    get_project_authz_service,
-    require_permission,
-)
+from apps.backend.authz import ProjectAuthorizationService, get_project_authz_service
 from apps.backend.dependencies import TokenClaims, get_db_session, require_authenticated
 from atlas_db.models.core import MembershipStatus, OrganizationMember, OrganizationRole, Project
 from atlas_db.repositories.authoring import BenchmarkRepository
@@ -27,6 +23,7 @@ from packages.execution_engine.application.execution_app_service import Executio
 from packages.execution_engine.domain.models import Execution
 from packages.execution_engine.domain.services import ExecutionService
 from packages.execution_engine.persistence.repository import SqlAlchemyExecutionRepository
+from services.search.service import resolve_accessible_project_ids
 from apps.backend.worker.wake_client import notify_worker_wake
 
 if TYPE_CHECKING:
@@ -34,6 +31,32 @@ if TYPE_CHECKING:
 
 benchmark_executions_router = APIRouter(tags=["Executions"])
 executions_router = APIRouter(tags=["Executions"])
+
+READ_ROLES = [
+    OrganizationRole.OWNER,
+    OrganizationRole.ADMIN,
+    OrganizationRole.MEMBER,
+    OrganizationRole.VIEWER,
+]
+
+WRITE_ROLES = [
+    OrganizationRole.OWNER,
+    OrganizationRole.ADMIN,
+    OrganizationRole.MEMBER,
+]
+
+
+def _resolve_execution_project_or_404(db: Session, execution_id: uuid.UUID) -> uuid.UUID:
+    """Resolve an execution's owning project from the authoritative DB row.
+
+    Raises 404 (without leaking existence) when the execution does not exist.
+    """
+    from atlas_db.models.execution import Execution as DBExecution
+
+    db_item = db.query(DBExecution).filter(DBExecution.id == execution_id).first()
+    if not db_item:
+        raise HTTPException(status_code=404, detail="Execution not found")
+    return cast("uuid.UUID", db_item.project_id)
 
 
 def get_execution_service(db: Session = Depends(get_db_session)) -> ExecutionApplicationService:
@@ -267,31 +290,45 @@ def list_dispatch_targets(
 def get_execution(
     execution_id: uuid.UUID,
     db: Session = Depends(get_db_session),
-    current_user: dict = Depends(require_permission("execution:read")),
+    authz_service: ProjectAuthorizationService = Depends(get_project_authz_service),
+    claims: TokenClaims = Depends(require_authenticated),
 ):
     """
     Retrieves an execution from the authoritative ``executions`` record.
 
     The same row that feeds reports, listing, and the dashboard — guaranteeing
-    status, progress, and timestamps cannot drift across surfaces.
+    status, progress, and timestamps cannot drift across surfaces. Access is
+    scoped to the execution's owning project.
     """
     from atlas_db.models.execution import Execution as DBExecution
 
+    project_id = _resolve_execution_project_or_404(db, execution_id)
+    authz_service.authorize_project_access(
+        project_id=project_id, user_id=claims.sub, allowed_roles=READ_ROLES
+    )
+
     db_item = db.query(DBExecution).filter(DBExecution.id == execution_id).first()
-    if not db_item:
-        raise HTTPException(status_code=404, detail="Execution not found")
     return map_db_item_to_response(db_item)
 
 
 @executions_router.post("/executions/{execution_id}/cancel", response_model=ExecutionResponse)
 def cancel_execution(
     execution_id: uuid.UUID,
+    db: Session = Depends(get_db_session),
     service: ExecutionApplicationService = Depends(get_execution_service),
-    current_user: dict = Depends(require_permission("execution:cancel")),
+    authz_service: ProjectAuthorizationService = Depends(get_project_authz_service),
+    claims: TokenClaims = Depends(require_authenticated),
 ):
     """
     Cancels a running or queued execution.
+
+    Cancellation is a write operation scoped to the execution's owning project
+    and requires a write role (OWNER/ADMIN/MEMBER); VIEWERs cannot cancel.
     """
+    project_id = _resolve_execution_project_or_404(db, execution_id)
+    authz_service.authorize_project_access(
+        project_id=project_id, user_id=claims.sub, allowed_roles=WRITE_ROLES
+    )
     execution = service.cancel_execution(execution_id)
     return map_to_response(execution)
 
@@ -303,14 +340,22 @@ def list_executions(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db_session),
-    current_user: dict = Depends(require_permission("execution:read")),
+    claims: TokenClaims = Depends(require_authenticated),
 ):
     """
-    Lists executions directly from the database.
+    Lists executions directly from the database, scoped to the projects the
+    caller is an active member of (membership -> org -> project). Empty
+    membership yields no rows.
     """
     from atlas_db.models.execution import Execution as DBExecution
 
+    accessible_ids = resolve_accessible_project_ids(db, user_id=claims.sub)
+
     query = db.query(DBExecution)
+    if accessible_ids:
+        query = query.filter(DBExecution.project_id.in_(accessible_ids))
+    else:
+        query = query.filter(DBExecution.project_id.in_([]))
     if benchmark_version_id:
         query = query.filter(DBExecution.benchmark_version_id == benchmark_version_id)
     if status:

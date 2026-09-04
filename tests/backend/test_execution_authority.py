@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, Mock
 import pytest
 from fastapi.testclient import TestClient
 
+from apps.backend.authz import ProjectAuthorizationService, get_project_authz_service
 from apps.backend.dependencies import get_db_session, require_authenticated
 from apps.backend.main import app
 from apps.backend.routers.executions import get_execution_service
@@ -59,6 +60,8 @@ def _authoritative_row(
 def _configure_db_for_row(db: MagicMock, row: DBExecution) -> None:
     """Wire the db mock so the route's get path and list path resolve ``row``."""
     db.query.return_value.filter.return_value.first.return_value = row
+    db.query.return_value.filter.return_value.count.return_value = 1
+    db.query.return_value.filter.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = [row]
     db.query.return_value.count.return_value = 1
     db.query.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = [row]
 
@@ -89,6 +92,9 @@ def test_client(db: MagicMock, engine_service: Mock) -> Generator[TestClient, No
     app.dependency_overrides[require_authenticated] = lambda: TokenClaims(
         sub=uuid.uuid4(), exp=9999999999, iat=1000000000, jti=uuid.uuid4()
     )
+    authz = Mock(spec=ProjectAuthorizationService)
+    authz.authorize_project_access.return_value = Mock(id=uuid.uuid4())
+    app.dependency_overrides[get_project_authz_service] = lambda: authz
     yield TestClient(app)
     app.dependency_overrides.clear()
 
@@ -128,11 +134,20 @@ def test_get_execution_matches_list_surface(
     test_client: TestClient,
     db: MagicMock,
     execution_id: uuid.UUID,
+    monkeypatch,
 ) -> None:
     """The single-execution read and the list surface (both authoritative) must agree
     field-for-field — this is the 'cannot drift' invariant across surfaces."""
+    from apps.backend.routers import executions as executions_router
+
     row = _authoritative_row(execution_id=execution_id)
     _configure_db_for_row(db, row)
+
+    monkeypatch.setattr(
+        executions_router,
+        "resolve_accessible_project_ids",
+        lambda db, user_id: [row.project_id],
+    )
 
     single = test_client.get(f"/api/v1/executions/{execution_id}").json()
     listed = test_client.get("/api/v1/executions").json()["items"][0]

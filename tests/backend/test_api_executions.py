@@ -75,7 +75,26 @@ def test_list_executions(test_client):
 
 
 def test_cancel_execution(test_client, mock_execution_service):
+    from apps.backend.authz import ProjectAuthorizationService, get_project_authz_service
+    from apps.backend.dependencies import get_db_session
+    from atlas_db.models.execution import Execution as DBExecution
+    from tests._fakes import FakeDB
+
     exec_id = uuid.uuid4()
+    project_id = uuid.uuid4()
+    db_item = DBExecution(
+        id=exec_id,
+        project_id=project_id,
+        benchmark_version_id=uuid.uuid4(),
+        status="QUEUED",
+        target_model="groq/llama-3.1-8b-instant",
+        submitted_by_id=uuid.uuid4(),
+    )
+    app.dependency_overrides[get_db_session] = lambda: FakeDB({DBExecution: [db_item]})
+
+    authz = Mock(spec=ProjectAuthorizationService)
+    app.dependency_overrides[get_project_authz_service] = lambda: authz
+
     execution = Execution(
         id=exec_id,
         benchmark_version_id=uuid.uuid4(),

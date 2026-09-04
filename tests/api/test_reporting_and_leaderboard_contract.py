@@ -85,7 +85,9 @@ def override_leaderboard_and_reporting_dependencies():
         size=50,
     )
 
-    app.dependency_overrides[get_db_session] = lambda: MagicMock()
+    mock_db = MagicMock()
+    mock_db.query.return_value.filter.return_value.all.return_value = []
+    app.dependency_overrides[get_db_session] = lambda: mock_db
     app.dependency_overrides[require_authenticated] = lambda: mock_claims
     app.dependency_overrides[get_leaderboard_app_service] = lambda: mock_lb_service
     app.dependency_overrides[get_reporting_service] = lambda: mock_rep_service

@@ -128,8 +128,10 @@ class RunQueryService:
             scores=scores,
         )
 
-    def get_runs_filtered(self, filter_obj: ReportRunsFilter) -> PaginatedReportRunsRead:
-        rows, total = self.repo.get_runs_filtered(filter_obj)
+    def get_runs_filtered(
+        self, filter_obj: ReportRunsFilter, project_ids: list | None = None
+    ) -> PaginatedReportRunsRead:
+        rows, total = self.repo.get_runs_filtered(filter_obj, project_ids=project_ids)
         items = []
         for run_obj, bv_obj, b_obj, profile_obj in rows:
             eval_status = map_execution_to_report_status(run_obj.status, profile_obj is not None)

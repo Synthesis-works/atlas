@@ -73,8 +73,10 @@ class ReportingService:
             self.cache.set(cache_key, data)
         return data
 
-    def get_runs_filtered(self, filter_obj: ReportRunsFilter) -> PaginatedReportRunsRead:
-        return self.run_query.get_runs_filtered(filter_obj)
+    def get_runs_filtered(
+        self, filter_obj: ReportRunsFilter, project_ids: list | None = None
+    ) -> PaginatedReportRunsRead:
+        return self.run_query.get_runs_filtered(filter_obj, project_ids=project_ids)
 
     def get_capability_dashboard(self, model_identifier: str) -> CapabilityDashboardRead | None:
         cache_key = f"capability_dashboard:{model_identifier}"
