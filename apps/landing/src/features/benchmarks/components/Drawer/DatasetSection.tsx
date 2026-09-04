@@ -14,7 +14,12 @@ export const DatasetSection: React.FC<Props> = ({ benchmark }) => {
   return (
     <div className="p-4 rounded-xl border border-white/5 bg-black/40 space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="text-xs font-semibold text-white">Dataset Split Explorer</h4>
+        <div>
+          <h4 className="text-xs font-semibold text-white">Dataset Split Explorer</h4>
+          <span className="text-[10px] font-mono text-white/40 block">
+            Dataset: {benchmark.datasetId ? `${benchmark.datasetId.slice(0, 8)}...` : '—'} • Cases: {benchmark.evaluationCaseCount ?? '—'}
+          </span>
+        </div>
         <Tabs
           options={[
             { id: 'train', label: 'Train' },

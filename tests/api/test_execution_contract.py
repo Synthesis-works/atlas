@@ -36,8 +36,9 @@ def override_auth_and_services():
 
     execution_cache: dict[str, Execution] = {}
 
-    def mock_submit_execution(benchmark_version_id: uuid.UUID, created_by: uuid.UUID = None):
+    def mock_submit_execution(benchmark_version_id: uuid.UUID, created_by: uuid.UUID = None, **kwargs):
         cache_key = str(benchmark_version_id)
+
         if cache_key in execution_cache:
             return execution_cache[cache_key]
 

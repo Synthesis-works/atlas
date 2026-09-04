@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from enum import Enum
 from uuid import UUID
@@ -25,6 +27,9 @@ class BenchmarkFilterRequest(BaseFilterRequest):
 class BenchmarkCreate(BaseModel):
     name: str = Field(..., max_length=255)
     objective: str | None = None
+    domain: str | None = None
+    difficulty: str | None = None
+    type: str | None = None
     category_ids: list[UUID] | None = []
     capability_ids: list[UUID] | None = []
 
@@ -32,6 +37,9 @@ class BenchmarkCreate(BaseModel):
 class BenchmarkUpdate(BaseModel):
     name: str | None = Field(None, max_length=255)
     objective: str | None = None
+    domain: str | None = None
+    difficulty: str | None = None
+    type: str | None = None
     category_ids: list[UUID] | None = None
     capability_ids: list[UUID] | None = None
 
@@ -41,6 +49,27 @@ class BenchmarkRead(BaseModel):
     project_id: UUID
     state: str
     name: str
+    objective: str | None = None
+    domain: str | None = None
+    difficulty: str | None = None
+    type: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    versions: list[BenchmarkVersionRead] = []
+
+    # Real persisted telemetry fields (null when no execution/evaluation history exists)
+    primary_dataset_id: UUID | None = None
+    primary_dataset_version_id: UUID | None = None
+    evaluation_case_count: int | None = None
+    execution_count: int | None = None
+    completed_execution_count: int | None = None
+    failed_execution_count: int | None = None
+    evaluation_count: int | None = None
+    passed_evaluation_count: int | None = None
+    average_score: float | None = None
+    latest_score: float | None = None
+    latest_execution_at: datetime | None = None
+    average_latency_ms: float | None = None
 
     class Config:
         from_attributes = True
@@ -64,6 +93,11 @@ class BenchmarkVersionRead(BaseModel):
     state: str
     dataset_version_ids: list[UUID] | None = []
     evaluation_strategy_id: UUID | None = None
+    evaluation_case_count: int | None = None
+    execution_count: int | None = None
+    average_score: float | None = None
+    latest_score: float | None = None
 
     class Config:
         from_attributes = True
+

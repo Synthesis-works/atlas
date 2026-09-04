@@ -1,17 +1,29 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { MOCK_BENCHMARKS } from '../../../domain/benchmarks/mock';
 import type { BenchmarkFilterState, BenchmarkSortState } from '../selectors/catalog';
 import { selectBenchmarkCatalog, selectBenchmarkPreview, selectBenchmarkComparisons } from '../selectors/catalog';
 import { useWorkspaceInteractionStore } from '@/store/workspace/interaction/store';
+import { useBenchmarkStore } from '../store/benchmarkStore';
 
 export function useBenchmarkCatalog() {
+  const store = useBenchmarkStore();
+  const rawBenchmarks = store.benchmarks;
+
   // Coordinator State
   const [filters, setFilters] = useState<BenchmarkFilterState>({
-    searchQuery: '',
-    category: 'all',
+    searchQuery: store.searchQuery,
+    category: store.selectedCategory,
     status: 'all',
     difficulty: 'all'
   });
+
+  // Sync header search and category filters into catalog
+  useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      searchQuery: store.searchQuery,
+      category: store.selectedCategory,
+    }));
+  }, [store.searchQuery, store.selectedCategory]);
   
   const [sort, setSort] = useState<BenchmarkSortState>({
     field: 'verificationScore',
@@ -22,9 +34,9 @@ export function useBenchmarkCatalog() {
   const [pageSize, setPageSize] = useState(24);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
 
-  // Simulated Async State
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  // Async State directly from single source of truth store
+  const isLoading = store.isLoading;
+  const error = store.error ? new Error(store.error) : null;
 
   // Global Interaction Store (IDs only)
   const ns = 'benchmarks';
@@ -38,38 +50,31 @@ export function useBenchmarkCatalog() {
   const toggleExpandedStore = useWorkspaceInteractionStore(s => s.toggleExpanded);
 
   const selectedIds = ws?.selection.selectedIds || [];
-  const expandedId = ws?.navigation.expandedIds?.[0] || null; // For grid, we just use the first expanded as the active overlay
+  const expandedId = ws?.navigation.expandedIds?.[0] || null;
   const previewId = ws?.view.previewId || null;
 
   useEffect(() => {
     initWorkspace(ns);
   }, [ns, initWorkspace]);
 
-  // Initial Data Load Simulation
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, []);
-
   // Compute Presentation Models
   const catalog = useMemo(() => {
-    return selectBenchmarkCatalog(MOCK_BENCHMARKS, filters, sort, page, pageSize);
-  }, [filters, sort, page, pageSize]);
+
+    return selectBenchmarkCatalog(rawBenchmarks, filters, sort, page, pageSize);
+  }, [rawBenchmarks, filters, sort, page, pageSize]);
 
   // Compute Active Preview Model
   const previewModel = useMemo(() => {
     if (!previewId) return null;
-    const benchmark = MOCK_BENCHMARKS.find(b => b.id === previewId);
+    const benchmark = rawBenchmarks.find(b => b.id === previewId);
     return selectBenchmarkPreview(benchmark);
-  }, [previewId]);
+  }, [previewId, rawBenchmarks]);
 
   // Compute Comparison Models
   const comparisonModels = useMemo(() => {
     if (selectedIds.length === 0) return [];
-    return selectBenchmarkComparisons(MOCK_BENCHMARKS, selectedIds);
-  }, [selectedIds]);
+    return selectBenchmarkComparisons(rawBenchmarks, selectedIds);
+  }, [selectedIds, rawBenchmarks]);
 
   // Reset page on filter changes
   useEffect(() => {
@@ -122,10 +127,9 @@ export function useBenchmarkCatalog() {
   }, [closePreviewStore]);
 
   const handleRetry = useCallback(() => {
-    setIsLoading(true);
-    setError(null);
-    setTimeout(() => setIsLoading(false), 1200);
-  }, []);
+    store.refresh();
+  }, [store]);
+
 
   return {
     ...catalog,

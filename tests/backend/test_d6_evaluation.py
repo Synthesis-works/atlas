@@ -54,6 +54,7 @@ def test_evaluation_app_service_evaluate_execution():
 
     def mock_query_side_effect(model):
         qs = Mock()
+        qs.filter.return_value.first.return_value = None
         if model == Execution:
             qs.filter.return_value.first.return_value = mock_execution
         elif model == BenchmarkVersion:
@@ -63,6 +64,7 @@ def test_evaluation_app_service_evaluate_execution():
         return qs
 
     mock_session.query.side_effect = mock_query_side_effect
+
 
     mock_publisher = Mock()
 

@@ -6,13 +6,13 @@
  */
 
 import { motion, useInView } from 'framer-motion';
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { pageCrossfade, fadeUp, stagger } from '@/lib/motion';
 import { PageHero } from '@/components/layout/PageHero';
 import { Card, Badge } from '@/design/primitives';
 import { CardFlip } from '@/components/ui/CardFlip';
-import { MOCK_BENCHMARKS as BENCHMARKS } from '@/domain/benchmarks/mock';
+import { getBenchmarks } from '@/features/benchmarks/services/benchmarkService';
 import { BENCHMARK_CATEGORIES } from '@/domain/benchmarks/constants';
 import type { Benchmark } from '@/domain/benchmarks/types';
 import { CapabilitySelector } from '@/components/ui/CapabilitySelector';
@@ -29,11 +29,24 @@ const SCHEMA_STEPS = [
 ];
 
 export default function Benchmarks() {
+  const [benchmarks, setBenchmarks] = useState<Benchmark[]>([]);
   const gridRef = useRef(null);
   const capabilityBoundsRef = useRef<HTMLDivElement>(null);
   const gridInView = useInView(gridRef, { once: false, margin: '-80px' });
   const schemaRef = useRef(null);
   const schemaInView = useInView(schemaRef, { once: false, margin: '-80px' });
+
+  useEffect(() => {
+    let mounted = true;
+    getBenchmarks().then(res => {
+      if (mounted && res.data) {
+        setBenchmarks(res.data);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <motion.div variants={pageCrossfade} initial="initial" animate="animate" exit="exit" className="relative">
@@ -62,56 +75,63 @@ export default function Benchmarks() {
 
       {/* Registry Grid */}
       <section ref={gridRef} className="px-6 pb-32 max-w-6xl mx-auto">
-        <motion.div
-          variants={stagger(0.06, 0)}
-          initial="hidden"
-          animate={gridInView ? 'visible' : 'hidden'}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-        >
-          {BENCHMARKS.map((bm: Benchmark) => {
-            const cat = BENCHMARK_CATEGORIES[bm.category];
-            return (
-              <motion.div key={bm.id} variants={fadeUp}>
-                <CardFlip minHeight="h-[350px]">
-                  <CardFlip.Front>
-                    <div className="group h-full p-6 flex flex-col justify-between">
-                      <div>
-                        <div className="flex items-start justify-between mb-3">
-                          <span className={`text-xs uppercase tracking-widest ${cat?.color || 'text-white/60'}`}>
-                            {cat?.label || bm.category}
-                          </span>
-                          <div className="liquid-glass rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <ArrowUpRight className="w-3.5 h-3.5 text-white/50" />
+        {benchmarks.length > 0 ? (
+          <motion.div
+            variants={stagger(0.06, 0)}
+            initial="hidden"
+            animate={gridInView ? 'visible' : 'hidden'}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          >
+            {benchmarks.map((bm: Benchmark) => {
+              const cat = BENCHMARK_CATEGORIES[bm.category];
+              return (
+                <motion.div key={bm.id} variants={fadeUp}>
+                  <CardFlip minHeight="h-[350px]">
+                    <CardFlip.Front>
+                      <div className="group h-full p-6 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-start justify-between mb-3">
+                            <span className={`text-xs uppercase tracking-widest ${cat?.color || 'text-white/60'}`}>
+                              {cat?.label || bm.category}
+                            </span>
+                            <div className="liquid-glass rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <ArrowUpRight className="w-3.5 h-3.5 text-white/50" />
+                            </div>
+                          </div>
+                          <h3 className="text-lg font-semibold text-white mb-2">{bm.name}</h3>
+                          <p className="text-xs text-white/30 leading-relaxed mb-4">{bm.description}</p>
+                        </div>
+                        <div>
+                          <div className="flex flex-wrap gap-1.5 mb-4">
+                            {bm.tags.map((tag: string) => (
+                              <Badge key={tag}>{tag}</Badge>
+                            ))}
+                          </div>
+                          <div className="flex items-center gap-4 text-xs text-white/15">
+                            <span>v{bm.version}</span>
+                            <span>{bm.tasksCount.toLocaleString()} tasks</span>
+                            <span>{bm.estimatedRuntime}</span>
                           </div>
                         </div>
-                        <h3 className="text-lg font-semibold text-white mb-2">{bm.name}</h3>
-                        <p className="text-xs text-white/30 leading-relaxed mb-4">{bm.description}</p>
                       </div>
-                      <div>
-                        <div className="flex flex-wrap gap-1.5 mb-4">
-                          {bm.tags.map((tag: string) => (
-                            <Badge key={tag}>{tag}</Badge>
-                          ))}
-                        </div>
-                        <div className="flex items-center gap-4 text-xs text-white/15">
-                          <span>v{bm.version}</span>
-                          <span>{bm.tasksCount.toLocaleString()} tasks</span>
-                          <span>{bm.estimatedRuntime}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </CardFlip.Front>
-                  <CardFlip.Back
-                    title={bm.name}
-                    description={bm.details}
-                    features={bm.methodology}
-                    actionLabel="Explore Benchmark →"
-                  />
-                </CardFlip>
-              </motion.div>
-            );
-          })}
-        </motion.div>
+                    </CardFlip.Front>
+                    <CardFlip.Back
+                      title={bm.name}
+                      description={bm.details}
+                      features={bm.methodology}
+                      actionLabel="Explore Benchmark →"
+                    />
+                  </CardFlip>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-20 text-center gap-3 border border-white/5 bg-white/[0.01] rounded-2xl">
+            <p className="text-sm font-medium text-white/50">Benchmark Registry Empty</p>
+            <p className="text-xs text-white/30 max-w-sm">No benchmarks currently published to the live registry.</p>
+          </div>
+        )}
       </section>
 
       {/* Benchmark Schema */}

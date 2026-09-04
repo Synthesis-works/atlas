@@ -1,72 +1,107 @@
 import { useMemo } from 'react';
+import { useBenchmarkStore } from '../store/benchmarkStore';
 import { useWorkspaceStore } from '@/store/workspaceStore';
 import { filterBenchmarksByQuery } from '../lib/searchParser';
 import type { BenchmarkCategory } from '@/domain/benchmarks/types';
 
 export function useBenchmarks() {
-  const store = useWorkspaceStore();
+  const benchmarkStore = useBenchmarkStore();
+  let workspaceStore: any = null;
+  try {
+    // Optional workspace store consumption for queue/notifications
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    workspaceStore = useWorkspaceStore();
+  } catch (_) {
+    // Fallback gracefully if used outside WorkspaceStoreProvider
+  }
+
+  const benchmarks = benchmarkStore.benchmarks;
 
   const filteredBenchmarks = useMemo(() => {
-    let items = store.benchmarks;
+    let items = benchmarks;
 
-    if (store.selectedCategory && store.selectedCategory !== 'all') {
-      items = items.filter((b) => b.category === store.selectedCategory);
+    if (benchmarkStore.selectedCategory && benchmarkStore.selectedCategory !== 'all') {
+      items = items.filter((b) => b.category === benchmarkStore.selectedCategory);
     }
 
-    if (store.searchQuery) {
-      items = filterBenchmarksByQuery(items, store.searchQuery);
+    if (benchmarkStore.searchQuery) {
+      items = filterBenchmarksByQuery(items, benchmarkStore.searchQuery);
     }
 
     return items;
-  }, [store.benchmarks, store.selectedCategory, store.searchQuery]);
+  }, [benchmarks, benchmarkStore.selectedCategory, benchmarkStore.searchQuery]);
 
   const kpis = useMemo(() => {
-    const total = store.benchmarks.length;
-    const categoriesCount = new Set(store.benchmarks.map((b) => b.category)).size;
-    const activeEvaluations = store.queue.filter((q) => q.status === 'Running').length;
+    const total = benchmarks.length;
+    const categoriesCount = new Set(benchmarks.map((b) => b.category)).size;
+    const queue = workspaceStore?.queue || [];
+    const activeEvaluations = queue.filter((q: any) => q.status === 'Running').length;
+
+    // Real score calculation: only consider benchmarks that have real scores recorded
+    const scored = benchmarks.filter(
+      (b) => b.latestScore != null || b.averageScore != null
+    );
     const avgVerification =
-      total > 0
+      scored.length > 0
         ? Math.round(
-            store.benchmarks.reduce((acc, b) => acc + b.verificationScore, 0) / total
+            scored.reduce(
+              (acc, b) => acc + (b.latestScore ?? b.averageScore ?? 0),
+              0
+            ) / scored.length
           )
-        : 100;
+        : null;
+
+    const completedRuns = benchmarks.reduce(
+      (acc, b) => acc + (b.completedExecutionCount ?? 0),
+      0
+    );
+    const totalExecutions = benchmarks.reduce(
+      (acc, b) => acc + (b.executionCount ?? 0),
+      0
+    );
 
     return {
       total,
       categoriesCount,
       activeEvaluations,
       avgVerification,
+      completedRuns,
+      totalExecutions,
     };
-  }, [store.benchmarks, store.queue]);
+  }, [benchmarks, workspaceStore?.queue]);
 
   const compareBenchmarks = useMemo(() => {
-    return store.benchmarks.filter((b) => store.compareBenchmarkIds.includes(b.id));
-  }, [store.benchmarks, store.compareBenchmarkIds]);
+    return benchmarks.filter((b) => benchmarkStore.compareBenchmarkIds.includes(b.id));
+  }, [benchmarks, benchmarkStore.compareBenchmarkIds]);
 
   return {
     benchmarks: filteredBenchmarks,
-    allBenchmarks: store.benchmarks,
+    allBenchmarks: benchmarks,
+    isLoading: benchmarkStore.isLoading,
+    error: benchmarkStore.error,
+    refresh: benchmarkStore.refresh,
     kpis,
-    searchQuery: store.searchQuery,
-    selectedCategory: store.selectedCategory,
-    activeDrawerBenchmark: store.activeDrawerBenchmark,
-    compareBenchmarkIds: store.compareBenchmarkIds,
+    searchQuery: benchmarkStore.searchQuery,
+    selectedCategory: benchmarkStore.selectedCategory,
+    activeDrawerBenchmark: benchmarkStore.selectedBenchmark,
+    compareBenchmarkIds: benchmarkStore.compareBenchmarkIds,
     compareBenchmarks,
-    preferences: store.preferences,
-    queue: store.queue,
-    terminalLogs: store.terminalLogs,
-    notifications: store.notifications,
-    setSearchQuery: store.setSearchQuery,
+    preferences: workspaceStore?.preferences || { viewMode: 'grid', compactMode: false, pinnedIds: [] },
+    queue: workspaceStore?.queue || [],
+    terminalLogs: workspaceStore?.terminalLogs || [],
+    notifications: workspaceStore?.notifications || [],
+    setSearchQuery: benchmarkStore.setSearchQuery,
     setSelectedCategory: (cat: string) =>
-      store.setSelectedCategory(cat as BenchmarkCategory | 'all'),
-    openDrawer: store.setActiveDrawerBenchmark,
-    closeDrawer: () => store.setActiveDrawerBenchmark(null),
-    toggleCompare: store.toggleCompareBenchmark,
-    clearCompare: store.clearCompareBenchmarks,
-    toggleViewMode: store.toggleViewMode,
-    togglePin: store.togglePinBenchmark,
-    triggerRun: store.triggerEvaluationRun,
+      benchmarkStore.setSelectedCategory(cat as BenchmarkCategory | 'all'),
+    openDrawer: benchmarkStore.openDrawer,
+    closeDrawer: benchmarkStore.closeDrawer,
+    toggleCompare: benchmarkStore.toggleCompare,
+    clearCompare: benchmarkStore.clearCompare,
+    toggleViewMode: workspaceStore?.toggleViewMode || (() => {}),
+    togglePin: workspaceStore?.togglePinBenchmark || (() => {}),
+    triggerRun: benchmarkStore.triggerRun,
   };
 }
 
 export default useBenchmarks;
+

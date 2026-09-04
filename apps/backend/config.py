@@ -112,6 +112,18 @@ class Settings(BaseSettings):
         default=30.0, validation_alias="LLM_PROVIDER_TIMEOUT"
     )
 
+    # Ollama Local LLM Configuration
+    ollama_base_url: str = Field(
+        default="http://localhost:11434",
+        validation_alias=AliasChoices("OLLAMA_BASE_URL", "OLLAMA_HOST"),
+    )
+    ollama_default_model: str = Field(
+        default="qwen2.5-coder:7b",
+        validation_alias=AliasChoices("OLLAMA_DEFAULT_MODEL", "OLLAMA_MODEL"),
+    )
+    ollama_timeout: int = Field(default=60, validation_alias="OLLAMA_TIMEOUT")
+
+
     # Billing Configuration (Stripe & Razorpay)
     stripe_api_key: str = Field(default="")
     stripe_webhook_secret: str = Field(default="")

@@ -11,6 +11,10 @@ interface BenchmarkHeaderProps {
   compareCount: number;
   onOpenCompare: () => void;
   onRunClick: () => void;
+  benchmarksCount?: number;
+  activeCount?: number;
+  queueCount?: number;
+  averageScore?: number | null;
 }
 
 export const BenchmarkHeader: React.FC<BenchmarkHeaderProps> = ({
@@ -21,6 +25,10 @@ export const BenchmarkHeader: React.FC<BenchmarkHeaderProps> = ({
   compareCount,
   onOpenCompare,
   onRunClick,
+  benchmarksCount = 0,
+  activeCount = 0,
+  queueCount = 0,
+  averageScore = null,
 }) => {
   return (
     <div className="liquid-glass-card rounded-2xl p-5 sm:p-6 border border-white/10 space-y-5">
@@ -41,7 +49,9 @@ export const BenchmarkHeader: React.FC<BenchmarkHeaderProps> = ({
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-3">
             <span>Benchmark Registry</span>
             <span className="text-xs font-mono font-normal px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/50">
-              24 Active Suites
+              {benchmarksCount === 0
+                ? 'No benchmarks available'
+                : `${activeCount} Active Suite${activeCount === 1 ? '' : 's'}`}
             </span>
           </h1>
 
@@ -56,15 +66,18 @@ export const BenchmarkHeader: React.FC<BenchmarkHeaderProps> = ({
             <div className="flex items-center gap-2">
               <Activity className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-white/40">Queue:</span>
-              <span className="text-white font-semibold">12 Jobs</span>
+              <span className="text-white font-semibold">{queueCount} Job{queueCount === 1 ? '' : 's'}</span>
             </div>
             <div className="w-px h-3 bg-white/10" />
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
               <span className="text-white/40">Score:</span>
-              <span className="text-white font-semibold">98.4%</span>
+              <span className="text-white font-semibold">
+                {averageScore != null ? `${averageScore}%` : '—'}
+              </span>
             </div>
           </div>
+
 
           {compareCount > 0 && (
             <button

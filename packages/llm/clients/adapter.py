@@ -154,12 +154,29 @@ class ProviderAdapter:
         if lower.startswith("grok") or lower.startswith("xai"):
             return "grok", target
         if lower.startswith("mistral"):
-            return "mistral", target
+            # Check if it's mistral-small-latest (cloud) or a local mistral model in Ollama
+            if "mistral" in self.clients and self.clients["mistral"].health():
+                return "mistral", target
+            return "ollama", target
         if lower.startswith("groq"):
             return "groq", target
         if lower.startswith("nvidia"):
             return "nvidia", target
         if lower.startswith("ollama"):
+            return "ollama", target
+
+        # Check if model is discovered in Ollama / ModelRegistry
+        try:
+            from packages.llm.registry import ModelRegistry
+
+            for m in ModelRegistry.get_all_models():
+                if m.get("model") == target or m.get("model") == lower:
+                    return m.get("provider", "ollama"), target
+        except Exception:
+            pass
+
+        # If Ollama client is healthy and target looks like a local model (e.g. qwen, llama, dolphin, glm)
+        if "ollama" in self.clients and self.clients["ollama"].health():
             return "ollama", target
 
         raise ValueError(

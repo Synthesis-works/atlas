@@ -1,10 +1,11 @@
 from uuid import UUID
 
 from atlas_db.models.core import OrganizationRole
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
 
 from apps.backend.authz import ProjectAuthorizationService, get_project_authz_service
-from apps.backend.dependencies import TokenClaims, get_benchmark_app_service, require_authenticated
+from apps.backend.dependencies import TokenClaims, get_benchmark_app_service, get_db_session, require_authenticated
 from apps.backend.schemas.benchmarks import (
     BenchmarkCreate,
     BenchmarkFilterRequest,
@@ -23,6 +24,7 @@ project_benchmarks_router = APIRouter(
 
 # Router for root-level endpoints
 benchmarks_router = APIRouter(prefix="/benchmarks", tags=["Benchmarks"])
+
 
 
 def map_member_role_to_string(role: OrganizationRole) -> str:
@@ -96,8 +98,32 @@ def list_global_benchmarks(
     return APIResponse.success_response(data=benchmarks_page)
 
 
+@benchmarks_router.post(
+    "", response_model=APIResponse[BenchmarkRead], status_code=status.HTTP_201_CREATED
+)
+def create_global_benchmark(
+    data: BenchmarkCreate,
+    project_id: UUID | None = Query(None),
+    claims: TokenClaims = Depends(require_authenticated),
+    app_service: BenchmarkApplicationService = Depends(get_benchmark_app_service),
+    db: Session = Depends(get_db_session),
+):
+    target_project_id = project_id
+    if not target_project_id:
+        from atlas_db.models.core import Project
+        proj = db.query(Project).first()
+        if proj:
+            target_project_id = proj.id
+        else:
+            raise HTTPException(status_code=400, detail="No active project found to attach benchmark.")
+
+    benchmark = app_service.create_benchmark(project_id=target_project_id, author_id=claims.sub, data=data)
+    return APIResponse.success_response(data=benchmark)
+
+
 @benchmarks_router.get("/{benchmark_id}", response_model=APIResponse[BenchmarkRead])
 def get_benchmark(
+
     benchmark_id: UUID,
     claims: TokenClaims = Depends(require_authenticated),
     project_authz: ProjectAuthorizationService = Depends(get_project_authz_service),

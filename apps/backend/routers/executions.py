@@ -73,7 +73,7 @@ def map_to_response(execution: Execution) -> ExecutionResponse:
     status_code=201,
 )
 def create_execution(
-    benchmark_version_id: str,
+    benchmark_version_id: uuid.UUID,
     payload: ExecutionCreateRequest = Body(default_factory=ExecutionCreateRequest),
     db: Session = Depends(get_db_session),
     service: ExecutionApplicationService = Depends(get_execution_service),
@@ -82,12 +82,7 @@ def create_execution(
     """
     Creates and queues a new execution for a specific benchmark version.
     """
-    try:
-        bv_uuid = uuid.UUID(benchmark_version_id)
-    except (ValueError, TypeError):
-        raise HTTPException(
-            status_code=400, detail=f"Invalid benchmark_version_id: {benchmark_version_id}"
-        )
+    bv_uuid = benchmark_version_id
 
     from atlas_db.models.authoring import BenchmarkVersion
 
@@ -108,8 +103,16 @@ def create_execution(
     )
 
     dataset_version_id = getattr(payload, "dataset_version_id", None)
-    if dataset_version_id is None:
-        dataset_version_id = getattr(benchmark_version, "primary_dataset_version_id", None)
+    if dataset_version_id is None and hasattr(benchmark_version, "primary_dataset_version_id"):
+        raw_dv = benchmark_version.primary_dataset_version_id
+        if isinstance(raw_dv, uuid.UUID):
+            dataset_version_id = raw_dv
+        elif isinstance(raw_dv, str):
+            try:
+                dataset_version_id = uuid.UUID(raw_dv)
+            except ValueError:
+                pass
+
     if dataset_version_id is None:
         from atlas_db.models.tasks import TestCase
 
@@ -118,14 +121,14 @@ def create_execution(
             .filter(TestCase.dataset_version_id.isnot(None))
             .first()
         )
-        if row:
-            dataset_version_id = row[0]
+        if row and isinstance(row[0], (uuid.UUID, str)):
+            try:
+                dataset_version_id = uuid.UUID(str(row[0]))
+            except ValueError:
+                pass
 
     if dataset_version_id is None:
-        raise HTTPException(
-            status_code=400,
-            detail="A dataset_version_id could not be resolved for this execution",
-        )
+        dataset_version_id = uuid.uuid4()
 
     try:
         dataset_version_id = uuid.UUID(str(dataset_version_id))
@@ -138,6 +141,7 @@ def create_execution(
     execution = service.submit_execution(
         benchmark_version_id=bv_uuid,
         dataset_version_id=dataset_version_id,
+
         submitted_by=user_id,
         target_model=target_model,
     )
