@@ -67,7 +67,7 @@ class ExecutionApplicationService:
 
             db_exec = DBExecution(
                 id=execution.id,
-                project_id=uuid.UUID("00000000-0000-0000-0000-000000000003"),
+                project_id=project_id,
                 benchmark_version_id=benchmark_version_id,
                 dataset_version_id=dataset_version_id,
                 submitted_by_id=submitted_by,

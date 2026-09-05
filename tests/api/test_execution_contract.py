@@ -6,6 +6,7 @@ X-Request-ID correlation header propagation, idempotency, cancellation contract,
 
 import uuid
 from datetime import datetime, timezone, UTC
+from types import SimpleNamespace
 import pytest
 from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
@@ -73,7 +74,18 @@ def override_auth_and_services():
     mock_service.submit_execution.side_effect = mock_submit_execution
     mock_service.cancel_execution.side_effect = mock_cancel_execution
 
-    app.dependency_overrides[get_db_session] = lambda: MagicMock()
+    # The dispatch invariant requires an existing benchmark version carrying a
+    # primary dataset version and no unlinked foreign datasets.
+    fake_db = MagicMock()
+    fake_version = SimpleNamespace(
+        id=uuid.uuid4(),
+        benchmark_id=uuid.uuid4(),
+        primary_dataset_version_id=uuid.uuid4(),
+        dataset_versions=[],
+    )
+    fake_db.query.return_value.filter.return_value.first.return_value = fake_version
+
+    app.dependency_overrides[get_db_session] = lambda: fake_db
     app.dependency_overrides[require_authenticated] = lambda: mock_claims
     app.dependency_overrides[get_execution_service] = lambda: mock_service
     yield
