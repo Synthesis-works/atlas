@@ -118,12 +118,13 @@ Impact statement:
 - **FKs:** `execution_id → executions.id ON DELETE CASCADE`; `created_by_id`/`updated_by_id → users.id ON DELETE SET NULL`.
 - **Index:** `ix_benchmark_execution_attempts_execution_id` (non-unique).
 - **Additive only.** No existing table/column is altered or dropped. Zero downtime risk; rollback is clean (`downgrade()` drops index, table, enum in reverse order).
-- Supabase note: apply via SQL editor or `alembic upgrade head` from a machine holding the **direct** (non-pooled, IPv4) DB URL; Supabase's PgBouncer transaction pooler can break DDL migrations. Recommended: run `alembic upgrade head` once from the operator laptop with `DATABASE_URL` pointed at Supabase, then verify `\dt benchmark_execution_attempts` and `SELECT unnest(enum_range(NULL::attempt_status));`.
+- Supabase note: apply via SQL editor or `alembic upgrade head` from a machine holding a **connection string that is not the transaction pooler**. Supabase's PgBouncer **transaction** pooler (port `6543`) can break DDL migrations. On the paid plans an IPv4 **direct** connection is available; on the **free plan** use the **session-mode pooler** (port `5432`, IPv4, free) instead — session mode keeps each command on one backend connection, so Alembic's transactional DDL works. Recommended: run `alembic upgrade head` once from the operator laptop with `DATABASE_URL` pointed at the session pooler, then verify `\dt benchmark_execution_attempts` and `SELECT unnest(enum_range(NULL::attempt_status));`. Zero-connectivity alternative: paste the migration SQL into the Supabase dashboard **SQL Editor** and manually set `alembic_version` to the head revision.
 
 > **Since this section was written, migration application is automatic.**
 > `.github/workflows/migrate-db.yml` runs `alembic upgrade head` against
-> `secrets.PROD_DATABASE_URL` (the same direct, non-pooled URL used by the GHA
-> execution backends) on every push to `main`, serialized by a concurrency
+> `secrets.PROD_DATABASE_URL` (use the **session-mode pooler** port `5432` on
+> the free plan — not the `6543` transaction pooler — or the IPv4 direct URL
+> on paid plans) on every push to `main`, serialized by a concurrency
 > group, and idempotent by design. The manual operator steps above remain the
 > correct procedure for the one-time bootstrap, backfills, and any database
 > work done outside a `main` merge. Production drift of exactly this kind
