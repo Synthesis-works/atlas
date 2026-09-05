@@ -47,14 +47,13 @@ const BenchmarksFeatureContent: React.FC = () => {
           const { getModels } = await import('@/features/models/services/modelsService');
           const modelsRes = await getModels();
           const available = (modelsRes.data || []).find(
-            (m) =>
-              m.health?.status === 'healthy' ||
-              m.deployment?.status === 'deployed' ||
-              m.status === 'AVAILABLE'
+            (m) => m.status === 'AVAILABLE' || m.status === 'healthy' || m.status === 'deployed'
           );
-          targetModel = available?.name || 'qwen2.5-coder:7b';
+          // Fall back to the backend's canonical default target model rather
+          // than a hardcoded local Ollama model name.
+          targetModel = available?.name || 'gemini-2.5-flash';
         } catch {
-          targetModel = 'qwen2.5-coder:7b';
+          targetModel = 'gemini-2.5-flash';
         }
       }
 
