@@ -120,6 +120,17 @@ Impact statement:
 - **Additive only.** No existing table/column is altered or dropped. Zero downtime risk; rollback is clean (`downgrade()` drops index, table, enum in reverse order).
 - Supabase note: apply via SQL editor or `alembic upgrade head` from a machine holding the **direct** (non-pooled, IPv4) DB URL; Supabase's PgBouncer transaction pooler can break DDL migrations. Recommended: run `alembic upgrade head` once from the operator laptop with `DATABASE_URL` pointed at Supabase, then verify `\dt benchmark_execution_attempts` and `SELECT unnest(enum_range(NULL::attempt_status));`.
 
+> **Since this section was written, migration application is automatic.**
+> `.github/workflows/migrate-db.yml` runs `alembic upgrade head` against
+> `secrets.PROD_DATABASE_URL` (the same direct, non-pooled URL used by the GHA
+> execution backends) on every push to `main`, serialized by a concurrency
+> group, and idempotent by design. The manual operator steps above remain the
+> correct procedure for the one-time bootstrap, backfills, and any database
+> work done outside a `main` merge. Production drift of exactly this kind
+> (missing `executions.idempotency_key`) surfaced on the live site 2026-09-05
+> as agent failures burned down to `MAX_STEPS`; the migrate workflow prevents a
+> recurrence.
+
 Pre-flight checks before applying [AGENT prepares script, HUMAN runs]:
 1. Confirm prod head is `7d4a9c2f6e81` (`alembic current`).
 2. Confirm `executions` and `users` tables exist with UUID PKs (they do per models).

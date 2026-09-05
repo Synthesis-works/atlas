@@ -1,0 +1,54 @@
+name: Migrate Production Database
+
+# Applies pending Alembic migrations to the production database whenever code
+# lands on main. Production migrations were previously manual-only, which let
+# `executions.idempotency_key` (and future columns) drift out of sync with the
+# deployed API until a runtime error surfaced it. This workflow runs the same
+# operator command documented in docs/PRODUCTION_READINESS_PLAN.md against the
+# direct (non-pooled) production URL. `alembic upgrade head` is idempotent, so
+# repeated runs are cheap no-ops when nothing is pending.
+#
+# Safety:
+# - Runs only when PROD_DATABASE_URL is configured as a repo secret.
+# - Serialized by a concurrency group so two pushes cannot race each other.
+# - Uses the direct Supabase URL (transaction poolers break DDL). Configure
+#   the secret with the IPv4 direct endpoint, exactly like the GHA execution
+#   backends already require.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: migrate-db
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    if: ${{ secrets.PROD_DATABASE_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sync dependencies
+        run: uv sync --frozen
+
+      - name: Apply pending migrations
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          uv run alembic -c packages/database/alembic.ini upgrade head
+
+      - name: Report revision
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          uv run alembic -c packages/database/alembic.ini current
