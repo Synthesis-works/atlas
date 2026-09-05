@@ -28,7 +28,7 @@ export function ActiveEvaluations({ items = [], title = "Recent & Active Evaluat
       <div className="flex items-center justify-between gap-3 mb-3">
         <div>
           <ScrambleSectionTitle text={title} className="text-xs tracking-[0.18em] uppercase text-white/35" />
-          <p className="text-xs text-white/30 mt-1">{items.length} verified executions & active pipeline jobs</p>
+          <p className="text-xs text-white/30 mt-1">{items.length} pipeline executions</p>
         </div>
 
         <Link
@@ -39,6 +39,12 @@ export function ActiveEvaluations({ items = [], title = "Recent & Active Evaluat
         </Link>
       </div>
 
+      {activeRuns.length === 0 ? (
+        <div className="py-8 text-center space-y-1 rounded-xl border border-white/5 bg-white/[0.01]">
+          <p className="text-sm text-white/40">No pipeline executions yet.</p>
+          <p className="text-xs text-white/20">Dispatch a benchmark run to see it here.</p>
+        </div>
+      ) : (
       <motion.div
         variants={stagger(0.06, 0.1)}
         initial="hidden"
@@ -95,6 +101,7 @@ export function ActiveEvaluations({ items = [], title = "Recent & Active Evaluat
           );
         })}
       </motion.div>
+      )}
     </section>
   );
 }
