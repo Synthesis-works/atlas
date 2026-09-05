@@ -82,21 +82,27 @@ LLM cycles. Two hardening layers ship with the persisted store:
 
 - **Cross-instance reads/mutations**: every agent route (`GET`, `cancel`,
   `approve`, `clarify`, `run-again`, `delete`) resolves the task from the
-  `agent_task_records` snapshot when the process-local registry has no live
-  object (`_load_agent_task`). A task created or parked on instance A can be
-  mutated and read from instance B — eliminating the cross-instance 404s seen
-  before this change. The persisted row is the source of truth; the registry
-  is only working memory.
+  `agent_task_records` snapshot — the persisted row is the source of truth and
+  is rehydrated on every read (`_load_agent_task`), refreshing the
+  process-local working copy. A task created or parked on instance A can be
+  mutated and read from instance B, and same-instance reads never return a
+  stale in-memory copy that the worker (running in another process) has since
+  moved on. The registry is only working memory.
 - **Durable loop execution**: `AGENT_TASKS_CELERY_EXECUTION=true` (prod
-  recommendation) re-routes the initial/clarify/approve/run-again loops to
-  `run_agent_task` (`apps/backend/worker/agent_tasks.py`) on the Render
-  worker, instead of a FastAPI `BackgroundTasks` thread that a serverless
-  instance may freeze once the response is sent. The worker checkpoints
-  `instance_id` + `heartbeat_at` onto `agent_task_records` with every persist
-  (migration `add_agent_task_execution_tracking`). Default remains
-  `false` so local dev and unit tests keep the in-process path. The
-  event-driven resume half (`resume_agent_task`) has always run on Celery, so
-  both halves are now co-located on the durable worker.
+  recommendation) changes the initial/clarify/approve/run-again dispatch: the
+  router writes an `AgentRunRequestedEvent` transactional-outbox row in the
+  same DB transaction as the task mutation (no broker on the serverless side),
+  and the Render worker's `outbox_sweep_task` — via the `AgentRunSubscriber`
+  in `apps/backend/worker/agent_tasks.py` — enqueues `run_agent_task` on the
+  worker's own broker. This replaces the old FastAPI `BackgroundTasks` thread
+  (which a serverless instance may freeze once the response is sent) and the
+  earlier direct `run_agent_task.delay(...)` from the API (which silently
+  no-ops without a broker). The worker checkpoints `instance_id` +
+  `heartbeat_at` onto `agent_task_records` with every persist (migration
+  `add_agent_task_execution_tracking`). Default remains `false` so local dev
+  and unit tests keep the in-process path. The event-driven resume half
+  (`resume_agent_task`) has always run on Celery, so both halves are now
+  co-located on the durable worker.
 
 ## Deployment prerequisites
 
@@ -107,8 +113,11 @@ LLM cycles. Two hardening layers ship with the persisted store:
 - Optional tuning: `AGENT_STALE_WAITING_MINUTES` (default 15),
   `AGENT_EXECUTION_WAIT_DEADLINE_SECONDS` (default 480, unchanged).
 - Optional (prod recommends): `AGENT_TASKS_CELERY_EXECUTION=true` on the Vercel
-  API env so initial runs execute on the Render worker instead of the
-  serverless request thread.
+  API env so initial runs are routed through the outbox and execute on the
+  Render worker instead of the serverless request thread. Use the Supabase
+  **transaction pooler (6543)** URL for the API/worker runtime (session pooler
+  5432 caps at 15 client connections → `EMAXCONNSESSION` under concurrency);
+  keep 5432 for alembic migrations.
 
 ## Guarantees
 
