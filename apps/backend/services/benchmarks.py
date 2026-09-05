@@ -30,6 +30,15 @@ from apps.backend.schemas.query import PageRequest, PageResponse, SortRequest
 
 from typing import NoReturn
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def _normalize_fraction(value: float) -> float:
+    """Collapse legacy 0-100 telemetry into the canonical 0-1 score contract."""
+    return value / 100.0 if value > 1.0 else value
+
 
 def map_domain_error(e: Exception) -> NoReturn:
     if isinstance(e, PermissionDeniedError):
@@ -120,21 +129,36 @@ def _map_benchmark_to_read(b, db=None) -> BenchmarkRead:
                 if eval_results:
                     evaluation_count = len(eval_results)
                     passed_evaluation_count = sum(1 for r in eval_results if r.passed)
+                    # Deterministic chronological order; the last result is the latest.
+                    eval_results.sort(
+                        key=lambda r: r.created_at or datetime.min, reverse=False
+                    )
                     scores = []
                     for r in eval_results:
-                        if r.raw_measurements and isinstance(r.raw_measurements, dict) and "score" in r.raw_measurements:
+                        raw_score = None
+                        raw_measurements = r.raw_measurements
+                        if (
+                            isinstance(raw_measurements, dict)
+                            and "score" in raw_measurements
+                        ):
                             try:
-                                scores.append(float(r.raw_measurements["score"]))
+                                raw_score = float(raw_measurements["score"])
                             except (ValueError, TypeError):
-                                scores.append(100.0 if r.passed else 0.0)
-                        else:
-                            scores.append(100.0 if r.passed else 0.0)
+                                raw_score = None
+                        # Never fabricate a numeric score from thin air; a binary
+                        # pass/fail is the only deterministic extrapolation.
+                        if raw_score is None:
+                            raw_score = 1.0 if r.passed else 0.0
+                        scores.append(_normalize_fraction(raw_score))
                     if scores:
-                        average_score = round(sum(scores) / len(scores), 1)
-                        latest_score = round(scores[-1], 1)
+                        average_score = round(sum(scores) / len(scores), 2)
+                        latest_score = round(scores[-1], 2)
                 elif latest_exec.execution_config and "pass_at_1" in latest_exec.execution_config:
                     try:
-                        average_score = round(float(latest_exec.execution_config["pass_at_1"]), 1)
+                        pass_at_1 = _normalize_fraction(
+                            float(latest_exec.execution_config["pass_at_1"])
+                        )
+                        average_score = round(pass_at_1, 2)
                         latest_score = average_score
                     except (ValueError, TypeError):
                         pass
@@ -169,8 +193,9 @@ def _map_benchmark_to_read(b, db=None) -> BenchmarkRead:
                 if dv:
                     primary_dataset_id = dv.dataset_id
         except Exception:
-            # Maintain strict error resilience while returning persisted fields
-            pass
+            # Maintain strict error resilience while returning persisted fields,
+            # but surface the failure in telemetry instead of swallowing it.
+            logger.warning("Failed to enrich benchmark telemetry", exc_info=True)
 
     return BenchmarkRead(
         id=b.id,

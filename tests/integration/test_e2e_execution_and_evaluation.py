@@ -172,4 +172,4 @@ def test_e2e_real_adapter_execution_to_evaluation_flow(db_session):
         .first()
     )
     assert cap_profile is not None
-    assert cap_profile.overall_score == 100.0
+    assert cap_profile.overall_score == 1.0

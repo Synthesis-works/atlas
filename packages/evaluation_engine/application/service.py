@@ -139,7 +139,9 @@ class EvaluationAppService:
                     model_output_id=output.id,
                     strategy_version_id=strategy_version_id,
                     status=EvaluationStatus.COMPLETED,
-                    passed=True if profile.overall_score and profile.overall_score >= 80 else False,
+                    passed=True
+                    if profile.overall_score and profile.overall_score >= 0.8
+                    else False,
                     raw_measurements=raw_measurements.raw_data,
                     evaluation_context={
                         "benchmark_version": context.benchmark_version,
