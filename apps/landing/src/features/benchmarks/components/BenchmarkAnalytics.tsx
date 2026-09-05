@@ -24,13 +24,15 @@ const CATEGORY_COLORS: Record<string, string> = {
 export const BenchmarkAnalytics: React.FC = () => {
   const { benchmarks } = useBenchmarkStore();
 
+  const scoredCount = benchmarks.filter((b) => b.averageScore != null || b.latestScore != null).length;
+
   // Aggregate real category distribution
   const { categoryDistribution, totalTasks, benchmarkTaxonomy } = useMemo(() => {
     if (!benchmarks || benchmarks.length === 0) {
       return {
         categoryDistribution: [],
         totalTasks: 0,
-        benchmarkTaxonomy: [{ label: 'Empty', value: 0 }],
+        benchmarkTaxonomy: [],
       };
     }
 
@@ -76,7 +78,7 @@ export const BenchmarkAnalytics: React.FC = () => {
     return {
       categoryDistribution: dist,
       totalTasks: sumCases,
-      benchmarkTaxonomy: taxonomy.length > 0 ? taxonomy : [{ label: 'Empty', value: 0 }],
+      benchmarkTaxonomy: taxonomy,
     };
   }, [benchmarks]);
 
@@ -130,7 +132,7 @@ export const BenchmarkAnalytics: React.FC = () => {
         <div className="flex items-center gap-2 shrink-0">
           <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-mono text-xs">
             <ShieldCheck className="w-3.5 h-3.5" />
-            Backend Connected
+            {scoredCount > 0 ? `${scoredCount} Scored` : 'Awaiting Telemetry'}
           </span>
           <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/40 font-mono text-xs hidden md:inline-block">
             {benchmarks.length} Total Suites
@@ -146,7 +148,7 @@ export const BenchmarkAnalytics: React.FC = () => {
             <HeatmapCard
               title="Model × Benchmark Capability Matrix"
               subtitle="Normalized accuracy scores (0–100) across real benchmark evaluations"
-              badge="Live Telemetry"
+              badge="Evaluated Benchmarks"
               data={capabilityHeatmapData}
             />
           ) : (
@@ -170,6 +172,7 @@ export const BenchmarkAnalytics: React.FC = () => {
             data={benchmarkTaxonomy}
             size={240}
             innerRadius={70}
+            emptyMessage="No benchmark categories yet"
             centerLabel={`${benchmarks.length} Suites`}
             showLegend={true}
             hoverEffect="grow"
@@ -186,7 +189,7 @@ export const BenchmarkAnalytics: React.FC = () => {
             Domain Task Volume & Category Distribution
           </span>
           <span className="text-[10px] font-mono text-white/30">
-            {totalTasks > 0 ? `${totalTasks.toLocaleString()} Total Cases Configured` : 'Zero Cases Configured'}
+            {totalTasks > 0 ? `${totalTasks.toLocaleString()} Total Cases Configured` : 'No Case Counts Reported'}
           </span>
         </div>
 

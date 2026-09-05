@@ -83,7 +83,7 @@ const BenchmarksFeatureContent: React.FC = () => {
             onOpenCompare={() => setIsCompareModalOpen(true)}
             onRunClick={() => handleRunBenchmark()}
             benchmarksCount={benchmarks.length}
-            activeCount={benchmarks.filter((b) => b.status === 'Ready' || b.status === 'Running' || b.status === 'Completed').length}
+            activeCount={benchmarks.filter((b) => b.status === 'Running').length}
             queueCount={queue.filter((q: any) => q.status === 'Running' || q.status === 'Queued').length}
             averageScore={kpis.avgVerification}
           />

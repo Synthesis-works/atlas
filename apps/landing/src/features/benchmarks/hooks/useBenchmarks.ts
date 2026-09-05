@@ -41,9 +41,10 @@ export function useBenchmarks() {
     const scored = benchmarks.filter(
       (b) => b.latestScore != null || b.averageScore != null
     );
+    const toPercent = (score: number): number => (score > 1 ? Math.round(score) : Math.round(score * 100));
     const avgVerification =
       scored.length > 0
-        ? Math.round(
+        ? toPercent(
             scored.reduce(
               (acc, b) => acc + (b.latestScore ?? b.averageScore ?? 0),
               0

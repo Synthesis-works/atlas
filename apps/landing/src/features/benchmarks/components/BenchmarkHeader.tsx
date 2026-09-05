@@ -36,9 +36,19 @@ export const BenchmarkHeader: React.FC<BenchmarkHeaderProps> = ({
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
         <div className="space-y-1.5 flex-1 min-w-0">
           <div className="flex items-center gap-2 text-xs font-mono text-accent/80 uppercase tracking-widest">
-            <span className="flex items-center gap-1.5 font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Cluster Live
+            <span
+              className={`flex items-center gap-1.5 font-semibold px-2 py-0.5 rounded border ${
+                activeCount > 0
+                  ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20'
+                  : queueCount > 0
+                  ? 'text-amber-300 bg-amber-500/10 border-amber-500/20'
+                  : 'text-white/50 bg-white/5 border-white/10'
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${activeCount > 0 ? 'bg-emerald-400 animate-pulse' : queueCount > 0 ? 'bg-amber-400' : 'bg-white/40'}`}
+              />
+              {activeCount > 0 ? 'Evaluating' : queueCount > 0 ? 'Queued' : 'Standby'}
             </span>
             <span className="text-white/20">•</span>
             <span className="flex items-center gap-1 text-white/60">
