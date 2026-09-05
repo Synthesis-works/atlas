@@ -23,29 +23,19 @@ The loop never needs to know which provider answered; it consumes ``AgentDecisio
 
 from __future__ import annotations
 
-# ``packages.llm`` lives under the repo root and is a top-level ``packages``
-# package (regular package thanks to ``packages/__init__.py``).  Importing it
-# requires the repo root (its parent) on ``sys.path``.  We scope that insertion
-# here rather than polluting the global site path, so the globally-installed
-# ``atlas`` executable and its editable ``cli`` package are unaffected by the
-# top-level folder-name layout.
-import os  # noqa: E402
-import re  # noqa: E402
-import sys  # noqa: E402
+# ``packages.llm`` is bundled into the ``atlas-cli`` distribution alongside
+# ``atlas_sdk`` (see ``cli/pyproject.toml``), so the import is a plain package
+# import with no ``sys.path`` manipulation.
+import os
+import re
 from abc import ABC, abstractmethod
 from typing import Any
 
+from packages.llm.clients.gemini import GeminiClient
+from packages.llm.clients.groq import GroqClient
+from packages.llm.models.prompt import Prompt
+
 from cli.agent.state import AgentDecision, AgentDecisionType
-
-_ATLAS_ROOT = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
-if _ATLAS_ROOT not in sys.path:
-    sys.path.insert(0, _ATLAS_ROOT)
-
-from packages.llm.clients.gemini import GeminiClient  # noqa: E402
-from packages.llm.clients.groq import GroqClient  # noqa: E402
-from packages.llm.models.prompt import Prompt  # noqa: E402
 
 
 class AgentProviderError(Exception):
@@ -318,7 +308,7 @@ class GroqProvider(LLMProvider):
                 response="",
                 reasoning="No choices returned by Groq.",
             )
-        message = (choices[0].get("message") or {})
+        message = choices[0].get("message") or {}
         tool_calls = message.get("tool_calls") or []
         if tool_calls:
             call = tool_calls[0]

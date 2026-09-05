@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,10 +7,12 @@ name = "atlas-cli"
 version = "0.1.0"
 description = "Atlas CLI — first-class programmatic interface to the Atlas control plane."
 requires-python = ">=3.11"
-license = {text = "MIT"}
+license = "MIT"
+readme = "README.md"
 dependencies = [
-    "atlas-sdk>=0.1.0",
     "click>=8.1.0",
+    "httpx>=0.28.1",
+    "pydantic[email]>=2.0.0",
 ]
 
 [project.optional-dependencies]
@@ -18,15 +20,30 @@ dev = [
     "pytest>=7.0.0",
     "ruff>=0.16.0",
     "mypy>=2.0.0",
-    "atlas-sdk>=0.1.0",
 ]
 
 [project.scripts]
 atlas = "cli.app:entrypoint"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["cli*"]
+[tool.setuptools]
+packages = [
+    "atlas_sdk",
+    "atlas_sdk.models",
+    "cli",
+    "cli.agent",
+    "cli.agent.tools",
+    "cli.commands",
+    "cli.output",
+    "packages",
+    "packages.llm",
+    "packages.llm.clients",
+    "packages.llm.models",
+]
+
+[tool.setuptools.package-dir]
+cli = "cli"
+atlas_sdk = "../sdk/python/atlas_sdk"
+packages = "../packages"
 
 [tool.ruff]
 line-length = 100
