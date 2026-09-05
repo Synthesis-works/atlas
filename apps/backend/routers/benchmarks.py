@@ -103,21 +103,26 @@ def list_global_benchmarks(
 )
 def create_global_benchmark(
     data: BenchmarkCreate,
-    project_id: UUID | None = Query(None),
+    project_id: UUID = Query(
+        ...,
+        description=(
+            "Target project id. Required explicitly: attaching a benchmark to an "
+            "arbitrary (e.g. first) project would be ambiguous and unauthorized."
+        ),
+    ),
     claims: TokenClaims = Depends(require_authenticated),
+    project_authz: ProjectAuthorizationService = Depends(get_project_authz_service),
     app_service: BenchmarkApplicationService = Depends(get_benchmark_app_service),
-    db: Session = Depends(get_db_session),
 ):
-    target_project_id = project_id
-    if not target_project_id:
-        from atlas_db.models.core import Project
-        proj = db.query(Project).first()
-        if proj:
-            target_project_id = proj.id
-        else:
-            raise HTTPException(status_code=400, detail="No active project found to attach benchmark.")
+    # Same authorization contract as the project-scoped create: the caller must
+    # be an active member of the project's organization with write access.
+    project_authz.authorize_project_access(
+        project_id=project_id,
+        user_id=claims.sub,
+        allowed_roles=[OrganizationRole.MEMBER, OrganizationRole.ADMIN, OrganizationRole.OWNER],
+    )
 
-    benchmark = app_service.create_benchmark(project_id=target_project_id, author_id=claims.sub, data=data)
+    benchmark = app_service.create_benchmark(project_id=project_id, author_id=claims.sub, data=data)
     return APIResponse.success_response(data=benchmark)
 
 
