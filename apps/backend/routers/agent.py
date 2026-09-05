@@ -60,22 +60,24 @@ def _instance_handle() -> str:
 
 
 def _load_agent_task(db: Session, task_id: UUID) -> Optional["AgentTask"]:
-    """Resolve a task from the live registry, falling back to the DB snapshot.
+    """Resolve a task from its persisted snapshot, the source of truth.
 
-    The live object is preferred when present (same-process loop), but every
-    read and mutation can reconstruct the task from its persisted snapshot on
-    any instance, eliminating cross-instance 404s. The persisted row is the
-    source of truth; the registry is only this process's working memory.
+    The worker parks/runs the task in its own process and checkpoints every
+    state transition to the DB; the creating API instance's in-memory
+    ``_agent_tasks_db`` copy would otherwise stay stale (e.g. PENDING forever)
+    for the lifetime of that warm lambda. Reads and mutations therefore
+    converge on the persisted row: rehydrate it, refresh this process's
+    working copy, and return it. The live object is only a fallback when no
+    row exists yet.
     """
     from atlas_db.models.agent import AgentTaskRecord
 
-    live = _agent_tasks_db.get(task_id)
-    if live is not None:
-        return live
     record = db.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == task_id).first()
     if record is None:
-        return None
-    return AgentTask.model_validate(record.snapshot)
+        return _agent_tasks_db.get(task_id)
+    task = AgentTask.model_validate(record.snapshot)
+    _agent_tasks_db[task_id] = task
+    return task
 
 
 # In-memory storage for active agent tasks (backed by DB models)
@@ -333,14 +335,17 @@ def get_agent_report(report_id: str, db: Session = Depends(get_db_session)):
 
 @router.get("/tasks", response_model=list[dict[str, Any]])
 def list_agent_tasks(db: Session = Depends(get_db_session)):
+    """Read every task from its persisted snapshot, the source of truth.
+
+    The worker checkpoints all state transitions to ``agent_task_records`` in
+    its own process; listing from the DB (instead of the process-local
+    registry first) keeps statuses correct across instances rather than
+    surfacing the stale working copy of whichever warm lambda created a task.
+    """
     from atlas_db.models.agent import AgentTaskRecord
 
-    live = list(_agent_tasks_db.values())
-    live_ids = {t.task_id for t in live}
     records = db.query(AgentTaskRecord).order_by(AgentTaskRecord.created_at.desc()).all()
-    persisted = [AgentTask.model_validate(r.snapshot) for r in records if r.task_id not in live_ids]
-    tasks = list(reversed(live)) + persisted
-    return [_serialize_agent_task(t) for t in tasks]
+    return [_serialize_agent_task(AgentTask.model_validate(r.snapshot)) for r in records]
 
 
 @router.delete("/tasks", response_model=dict[str, Any])
