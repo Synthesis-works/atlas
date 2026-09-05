@@ -73,6 +73,18 @@ class Settings(BaseSettings):
         default="benchmark-execution", validation_alias="GITHUB_DISPATCH_EVENT_TYPE"
     )
 
+    # Agent execution destination. When true, agent reasoning loops (initial
+    # run, clarify/approve resume, run-again) are enqueued to the Celery broker
+    # and execute on the durable Render worker rather than on the ephemeral
+    # FastAPI/serverless thread. Serverless instances are frozen after the
+    # response is sent, which previously stranded loops mid-step; the Render
+    # worker (Redis broker) does not. Defaults to false to preserve the
+    # in-process behavior relied on by local dev and unit tests. The outbox
+    # subscriber in agent_resume.py enqueues to Celery regardless of this flag.
+    agent_tasks_celery_execution: bool = Field(
+        default=False, validation_alias="AGENT_TASKS_CELERY_EXECUTION"
+    )
+
     # Agent async-wait policy. Wall-clock deadline for the sanctioned waiting
     # phase after run_benchmark dispatches remote executions. Derived from the
     # agent's own hard budget (MAX_EXECUTION_TIME = 600s) minus a reserve so

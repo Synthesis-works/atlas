@@ -18,6 +18,7 @@ celery_app = Celery(
         "apps.backend.worker.evaluation_tasks",
         "apps.backend.worker.snapshot_tasks",
         "apps.backend.worker.agent_resume",
+        "apps.backend.worker.agent_tasks",
     ],
 )
 

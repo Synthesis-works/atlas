@@ -31,6 +31,11 @@ class AgentTaskRecord(Base):
     goal: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="PENDING")
     snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    # Execution ownership/liveness: which backend instance currently owns the
+    # live loop (serverless instance id or durable worker id), and when it last
+    # checkpointed. NULL when the task is parked/terminal and owned by no one.
+    instance_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
