@@ -6,12 +6,37 @@
  * 3. Enriched telemetry verification (evaluation_case_count, execution_count, average_score, latency)
  * 4. Polling synchronization proof (creating benchmark and verifying it appears on next cycle)
  * 5. Headless browser DOM check (if Playwright browser available)
+ *
+ * Environment overrides (all optional):
+ *   ATLAS_E2E_BASE_URL        frontend origin                      (default http://localhost:5173)
+ *   ATLAS_E2E_BACKEND_URL     backend API origin                   (default http://127.0.0.1:8000)
+ *   ATLAS_E2E_IDENTIFIER      login identifier                     (default demo@atlas.val)
+ *   ATLAS_E2E_PASSWORD        login password                       (default password123)
+ *   ATLAS_E2E_SMOKE_BENCHMARK benchmark name to assert telemetry on (default Atlas Live Benchmark Smoke Test)
+ *   ATLAS_E2E_EXPECTED_SCORE  expected average_score (0-1 or 0-100); when unset only presence is asserted
+ *   ATLAS_E2E_SCORE_TOLERANCE acceptable absolute deviation        (default 0.005)
  */
 
 import { chromium } from 'playwright';
 
-const BASE_URL = 'http://localhost:5173';
-const BACKEND_URL = 'http://127.0.0.1:8000';
+const BASE_URL = process.env.ATLAS_E2E_BASE_URL || 'http://localhost:5173';
+const BACKEND_URL = process.env.ATLAS_E2E_BACKEND_URL || 'http://127.0.0.1:8000';
+const E2E_IDENTIFIER = process.env.ATLAS_E2E_IDENTIFIER || 'demo@atlas.val';
+const E2E_PASSWORD = process.env.ATLAS_E2E_PASSWORD || 'password123';
+const SMOKE_BENCHMARK = process.env.ATLAS_E2E_SMOKE_BENCHMARK || 'Atlas Live Benchmark Smoke Test';
+const EXPECTED_SCORE = process.env.ATLAS_E2E_EXPECTED_SCORE != null ? parseFloat(process.env.ATLAS_E2E_EXPECTED_SCORE) : null;
+const SCORE_TOLERANCE = process.env.ATLAS_E2E_SCORE_TOLERANCE != null ? parseFloat(process.env.ATLAS_E2E_SCORE_TOLERANCE) : 0.005;
+
+/** Normalizes a canonical 0-1 score (or legacy 0-100) into a display percentage. */
+function toPercent(score) {
+  if (score == null) return null;
+  return score > 1 ? Math.round(score) : Math.round(score * 100);
+}
+
+/** Normalizes a score to the canonical 0-1 range for comparison. */
+function toCanonical(score) {
+  return score > 1 ? score / 100 : score;
+}
 
 async function runAudit() {
   console.log('======================================================================');
@@ -23,10 +48,10 @@ async function runAudit() {
   const loginRes = await fetch(`${BACKEND_URL}/api/v1/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ identifier: 'admin@example.com', password: 'Password123!' }),
+    body: JSON.stringify({ identifier: E2E_IDENTIFIER, password: E2E_PASSWORD }),
   });
   if (!loginRes.ok) {
-    throw new Error(`Login failed: ${loginRes.status} ${await loginRes.text()}`);
+    throw new Error(`Login failed for ${E2E_IDENTIFIER}: ${loginRes.status} ${await loginRes.text()}`);
   }
   const loginData = await loginRes.json();
   const token = loginData.data?.access_token;
@@ -46,11 +71,11 @@ async function runAudit() {
   console.log(`   -> Total Benchmarks in Database: ${items.length}`);
   console.log(`   -> Total count reported by pagination: ${bmData.data?.total}\n`);
 
-  // 3. Inspect Live Ollama Benchmark Smoke Test
-  console.log('[STEP 3] Verifying Live Ollama Smoke Test benchmark telemetry...');
-  const smoke = items.find((b) => b.name === 'Atlas Live Benchmark Smoke Test');
+  // 3. Inspect the smoke-test benchmark telemetry (honest score contract)
+  console.log(`[STEP 3] Verifying '${SMOKE_BENCHMARK}' telemetry...`);
+  const smoke = items.find((b) => b.name === SMOKE_BENCHMARK);
   if (!smoke) {
-    throw new Error('Smoke test benchmark not found in database catalog!');
+    throw new Error(`Smoke test benchmark '${SMOKE_BENCHMARK}' not found in database catalog!`);
   }
   console.log('   -> Found Benchmark: ' + smoke.name);
   console.log('   -> ID: ' + smoke.id);
@@ -59,8 +84,8 @@ async function runAudit() {
   console.log('   -> Evaluation Cases: ' + smoke.evaluation_case_count);
   console.log('   -> Total Executions: ' + smoke.execution_count);
   console.log('   -> Completed Executions: ' + smoke.completed_execution_count);
-  console.log('   -> Average Score: ' + smoke.average_score + '%');
-  console.log('   -> Latest Score: ' + smoke.latest_score + '%');
+  console.log('   -> Average Score: ' + toPercent(smoke.average_score) + '%');
+  console.log('   -> Latest Score: ' + toPercent(smoke.latest_score) + '%');
   console.log('   -> Average Latency: ' + smoke.average_latency_ms + 'ms\n');
 
   if (smoke.evaluation_case_count !== 3) {
@@ -69,8 +94,18 @@ async function runAudit() {
   if (smoke.execution_count < 1) {
     throw new Error(`Expected at least 1 execution, got ${smoke.execution_count}`);
   }
-  if (smoke.average_score !== 100.0) {
-    throw new Error(`Expected 100.0% score, got ${smoke.average_score}`);
+  if (smoke.average_score == null) {
+    throw new Error('Expected an average_score in the 0-1 contract, got null');
+  }
+  if (EXPECTED_SCORE != null) {
+    const actual = toCanonical(smoke.average_score);
+    const expected = toCanonical(EXPECTED_SCORE);
+    if (Math.abs(actual - expected) > SCORE_TOLERANCE) {
+      throw new Error(`Expected average_score≈${expected} (tolerance ${SCORE_TOLERANCE}), got ${actual}`);
+    }
+    console.log(`   -> Score contract verified: average_score ${actual} within tolerance of ${expected}\n`);
+  } else {
+    console.log(`   -> [Note] ATLAS_E2E_EXPECTED_SCORE not set; asserted score presence only (no fabricated 100.0)\n`);
   }
 
   // 4. Test Live Polling Sync: Create a new benchmark and prove store synchronization

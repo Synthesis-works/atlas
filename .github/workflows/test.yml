@@ -60,3 +60,28 @@ jobs:
       env:
         DATABASE_URL: postgresql://postgres:postgres@localhost:5432/atlas_test
       run: pytest
+
+  landing:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/landing
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+
+    - name: Install dependencies
+      run: npm install --no-audit --no-fund
+
+    - name: Typecheck
+      run: npx tsc -b
+
+    - name: Lint
+      run: npm run lint
+
+    - name: Test
+      run: npm test
