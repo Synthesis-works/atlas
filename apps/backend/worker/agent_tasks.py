@@ -17,10 +17,12 @@ Lifecycle (dual-mode)
 ``AGENT_TASKS_CELERY_EXECUTION=false`` (default; local dev + unit tests):
     the router keeps the existing in-process background path.
 ``AGENT_TASKS_CELERY_EXECUTION=true`` (prod recommendation):
-    the router enqueues ``run_agent_task.delay(...)`` and this task runs the
-    loop on the durable Render worker. The outbox-driven resume flow in
-    ``agent_resume.py`` already runs on Celery in both modes, so the two
-    halves of the lifecycle are finally co-located.
+    the router writes an ``AgentRunRequestedEvent`` transactional-outbox row
+    (never enqueues to Redis directly - the serverless API has no broker),
+    and this module's worker-side ``AgentRunSubscriber`` - fired by the outbox
+    sweep - enqueues ``run_agent_task`` on the durable Render worker. The
+    outbox-driven resume flow in ``agent_resume.py`` already runs on Celery in
+    both modes, so the two halves of the lifecycle are finally co-located.
 
 Ownership & liveness
 --------------------
@@ -34,7 +36,7 @@ from __future__ import annotations
 
 import uuid as uuid_module
 from datetime import UTC, datetime
-from typing import Optional
+from typing import Any, Optional
 
 import structlog
 from sqlalchemy.orm import Session
@@ -44,6 +46,31 @@ from atlas_db.models.agent import AgentTaskRecord
 from apps.backend.agent.state import AgentTask, AgentTaskStatus
 
 logger = structlog.get_logger(__name__)
+
+
+class AgentRunSubscriber:
+    """Outbox subscriber: enqueues agent-task runs on the worker side.
+
+    Registered in ``worker.tasks.outbox_sweep_task`` alongside the execution,
+    evaluation, snapshot and resume subscribers. Enqueue-only here; all DB work
+    happens inside ``run_agent_task`` so eager mode executes it inline and
+    brokered mode queues it safely on the worker's own broker.
+    """
+
+    def handle(self, event: Any) -> None:
+        if type(event).__name__ != "AgentRunRequestedEvent":
+            return
+        task_id = getattr(event, "task_id", None)
+        if task_id is None:
+            return
+        provider_type = getattr(event, "provider_type", None) or "gemini"
+        model_override = getattr(event, "model_override", None)
+        logger.info(
+            "agent_task_run_enqueued",
+            task_id=str(task_id),
+            provider_type=provider_type,
+        )
+        run_agent_task.delay(str(task_id), provider_type, model_override)
 
 
 def _build_agent(provider_type: str, model_override: str | None):

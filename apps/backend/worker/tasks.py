@@ -165,6 +165,7 @@ def outbox_sweep_task(self):
         AgentTaskResumeSubscriber,
         recover_stale_waiting_tasks,
     )
+    from apps.backend.worker.agent_tasks import AgentRunSubscriber
 
     try:
         with SessionLocal() as db:
@@ -176,6 +177,7 @@ def outbox_sweep_task(self):
                     EvaluationSubscriber(),
                     SnapshotSubscriber(),
                     AgentTaskResumeSubscriber(),
+                    AgentRunSubscriber(),
                 ],
             )
             dispatcher = OutboxDispatcher(session=db, publisher=publisher)

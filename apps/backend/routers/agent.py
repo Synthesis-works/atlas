@@ -150,25 +150,67 @@ def _serialize_agent_task(task: AgentTask) -> dict[str, Any]:
     }
 
 
+def _enqueue_agent_run(
+    db: Session, task_id: UUID, provider_type: str, model_override: Optional[str]
+) -> None:
+    """Write an AgentRunRequestedEvent transactional-outbox row.
+
+    The serverless API has no Celery broker, so the run is never enqueued
+    directly. The Render worker's outbox sweep deserializes this row,
+    ``AgentRunSubscriber`` enqueues ``run_agent_task`` on the worker's own
+    broker, and the loop executes there with checkpoints to the DB.
+    """
+    from uuid import uuid4
+
+    from atlas_db.models.outbox import OutboxMessage
+    from apps.backend.core.telemetry import get_correlation_id, get_trace_id
+    from apps.backend.worker.wake_client import notify_worker_wake
+    from packages.execution_engine.domain.events import AgentRunRequestedEvent
+
+    event = AgentRunRequestedEvent(
+        timestamp=datetime.now(UTC),
+        task_id=task_id,
+        provider_type=provider_type,
+        model_override=model_override,
+    )
+    db.add(
+        OutboxMessage(
+            event_id=uuid4(),
+            aggregate_id=task_id,
+            aggregate_type="AgentTask",
+            event_type=event.event_type,
+            event_version=event.event_version,
+            schema_version=1,
+            payload=event.to_dict(),
+            trace_context={
+                "correlation_id": get_correlation_id(),
+                "trace_id": get_trace_id(),
+            },
+            occurred_at=event.timestamp,
+        )
+    )
+    db.commit()
+    notify_worker_wake()
+
+
 def _dispatch_agent_run(
     background_tasks: BackgroundTasks,
+    db: Session,
     task_id: UUID,
     provider_type: str,
     model_override: Optional[str],
 ) -> None:
-    """Run one agent loop, either on Celery (durable worker) or in-process.
+    """Run one agent loop, either via the outbox->worker or in-process.
 
-    ``AGENT_TASKS_CELERY_EXECUTION=true`` enqueues to the broker; the Render
-    worker executes the loop and checkpoints state back to the DB. Otherwise
+    ``AGENT_TASKS_CELERY_EXECUTION=true`` writes an ``AgentRunRequestedEvent``
+    outbox row (worker-side enqueue; no broker needed on the API). Otherwise
     (local dev / unit tests) the loop runs via FastAPI BackgroundTasks on the
     same instance that created the task.
     """
     from apps.backend.config import settings
 
     if settings.agent_tasks_celery_execution:
-        from apps.backend.worker.agent_tasks import run_agent_task
-
-        run_agent_task.delay(str(task_id), provider_type, model_override)
+        _enqueue_agent_run(db, task_id, provider_type, model_override)
         return
     background_tasks.add_task(
         _run_agent_task_background, task_id, SessionLocal, provider_type, model_override
@@ -220,7 +262,7 @@ def create_agent_task(
         agent.run_task(task, db)
         _persist_task(db, task)
     else:
-        _dispatch_agent_run(background_tasks, task.task_id, payload.provider, payload.model)
+        _dispatch_agent_run(background_tasks, db, task.task_id, payload.provider, payload.model)
 
     return _serialize_agent_task(task)
 
@@ -366,7 +408,7 @@ def approve_agent_task(
         agent.run_task(task, db)
         _persist_task(db, task)
     else:
-        _dispatch_agent_run(background_tasks, task.task_id, task.primary_provider, task.model)
+        _dispatch_agent_run(background_tasks, db, task.task_id, task.primary_provider, task.model)
 
     return {
         "task_id": str(task.task_id),
@@ -482,7 +524,7 @@ def clarify_agent_task(
         agent.run_task(task, db)
         _persist_task(db, task)
     else:
-        _dispatch_agent_run(background_tasks, task.task_id, task.primary_provider, task.model)
+        _dispatch_agent_run(background_tasks, db, task.task_id, task.primary_provider, task.model)
 
     return {
         "task_id": str(task.task_id),
@@ -544,7 +586,7 @@ def run_agent_task_again(
         _persist_task(db, new_task)
     else:
         _dispatch_agent_run(
-            background_tasks, new_task.task_id, new_task.primary_provider, new_task.model
+            background_tasks, db, new_task.task_id, new_task.primary_provider, new_task.model
         )
 
     return {

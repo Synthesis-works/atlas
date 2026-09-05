@@ -234,3 +234,89 @@ def test_run_agent_task_core_persists_owner_and_heartbeat():
     finally:
         assert task_id not in _agent_tasks_db, "worker core must clean up the registry"
         db.close()
+
+
+def test_dispatch_writes_outbox_when_celery_enabled(monkeypatch):
+    """With AGENT_TASKS_CELERY_EXECUTION=true the router must NOT enqueue to
+    Redis directly (the serverless API has no broker); it persists an
+    ``AgentRunRequestedEvent`` transactional-outbox row for the worker sweep."""
+    from unittest.mock import Mock
+
+    from apps.backend.config import settings
+
+    monkeypatch.setattr(settings, "agent_tasks_celery_execution", True)
+
+    from apps.backend.routers.agent import SessionLocal, _enqueue_agent_run
+    from apps.backend.worker import agent_tasks
+
+    chain = Mock()
+    monkeypatch.setattr(agent_tasks.run_agent_task, "delay", chain.delay)
+
+    payload = {
+        "goal": "Trolley problem benchmark",
+        "provider": "gemini",
+        "permissions": ["READ", "WRITE", "EXECUTE", "PUBLISH"],
+    }
+    response = client.post("/api/v1/agent/tasks", json=payload)
+    assert response.status_code == 201
+    assert response.json()["primary_provider"] == "gemini"
+
+    chain.delay.assert_not_called(), "serverless dispatch must not call .delay()"
+
+    from uuid import UUID
+
+    from atlas_db.models.outbox import OutboxMessage
+    from packages.execution_engine.domain.events import AgentRunRequestedEvent
+
+    db = SessionLocal()
+    try:
+        row = (
+            db.query(OutboxMessage)
+            .filter(OutboxMessage.event_type == "AgentRunRequestedEvent")
+            .order_by(OutboxMessage.created_at.desc())
+            .first()
+        )
+        assert row is not None, "expected an AgentRunRequestedEvent outbox row"
+        assert row.aggregate_id == UUID(response.json()["task_id"])
+        assert row.aggregate_type == "AgentTask"
+        assert row.payload["provider_type"] == "gemini"
+        assert "task_id" in row.payload
+    finally:
+        db.close()
+
+    # Guard against regressing to a direct broker enqueue replacement.
+    assert _enqueue_agent_run.__name__ == "_enqueue_agent_run"
+    assert AgentRunRequestedEvent.__name__ == "AgentRunRequestedEvent"
+
+
+def test_agent_run_subscriber_enqueues_on_worker_side(monkeypatch):
+    """The outbox sweep subscriber must forward AgentRunRequestedEvent to the
+    local run_agent_task Celery task (executed on the worker's broker)."""
+    from datetime import UTC, datetime
+    from unittest.mock import Mock
+    from uuid import uuid4
+
+    from apps.backend.worker.agent_tasks import AgentRunSubscriber, run_agent_task
+    from packages.execution_engine.application.outbox_dispatcher import OutboxDispatcher
+    from packages.execution_engine.domain.events import AgentRunRequestedEvent
+
+    task_id = uuid4()
+    event = AgentRunRequestedEvent(
+        timestamp=datetime.now(UTC),
+        task_id=task_id,
+        provider_type="groq",
+        model_override="llama-3.3-70b-versatile",
+    )
+
+    # Registry round-trip: an outbox message must deserialize to the event.
+    deserialized = OutboxDispatcher(session=None, publisher=None)._deserialize_event(
+        "AgentRunRequestedEvent", event.to_dict(), event.timestamp
+    )
+    assert deserialized.task_id == task_id
+    assert deserialized.provider_type == "groq"
+
+    chain = Mock()
+    monkeypatch.setattr(run_agent_task, "delay", chain.delay)
+
+    AgentRunSubscriber().handle(event)
+    chain.delay.assert_called_once_with(str(task_id), "groq", "llama-3.3-70b-versatile")
