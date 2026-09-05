@@ -75,6 +75,29 @@ Render worker: outbox_sweep_task
       └─ recover_stale_waiting_tasks(db)   # safety net every sweep
 ```
 
+## Initial-run durability and cross-instance routing
+
+The pre-park phase (create → plan → run_benchmark dispatch) can also take many
+LLM cycles. Two hardening layers ship with the persisted store:
+
+- **Cross-instance reads/mutations**: every agent route (`GET`, `cancel`,
+  `approve`, `clarify`, `run-again`, `delete`) resolves the task from the
+  `agent_task_records` snapshot when the process-local registry has no live
+  object (`_load_agent_task`). A task created or parked on instance A can be
+  mutated and read from instance B — eliminating the cross-instance 404s seen
+  before this change. The persisted row is the source of truth; the registry
+  is only working memory.
+- **Durable loop execution**: `AGENT_TASKS_CELERY_EXECUTION=true` (prod
+  recommendation) re-routes the initial/clarify/approve/run-again loops to
+  `run_agent_task` (`apps/backend/worker/agent_tasks.py`) on the Render
+  worker, instead of a FastAPI `BackgroundTasks` thread that a serverless
+  instance may freeze once the response is sent. The worker checkpoints
+  `instance_id` + `heartbeat_at` onto `agent_task_records` with every persist
+  (migration `add_agent_task_execution_tracking`). Default remains
+  `false` so local dev and unit tests keep the in-process path. The
+  event-driven resume half (`resume_agent_task`) has always run on Celery, so
+  both halves are now co-located on the durable worker.
+
 ## Deployment prerequisites
 
 - Render `atlas-worker` env must include the reasoning provider keys used by
@@ -83,6 +106,9 @@ Render worker: outbox_sweep_task
   ends `FAILED` after retries.
 - Optional tuning: `AGENT_STALE_WAITING_MINUTES` (default 15),
   `AGENT_EXECUTION_WAIT_DEADLINE_SECONDS` (default 480, unchanged).
+- Optional (prod recommends): `AGENT_TASKS_CELERY_EXECUTION=true` on the Vercel
+  API env so initial runs execute on the Render worker instead of the
+  serverless request thread.
 
 ## Guarantees
 

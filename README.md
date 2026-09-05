@@ -212,7 +212,7 @@ Deployment notes:
 
 - **API**: Vercel project auto-deploys from `main`. Requires `ENVIRONMENT=production` (the app refuses to boot with the dev `JWT_SECRET`), `CORS_ORIGINS` (JSON list including the web origin), `DATABASE_URL` = Supabase pooler (transaction mode), `DATABASE_POOL_CLASS=null`, and `WORKER_WAKE_URL` + `WORKER_AUTH_TOKEN` for the wake mechanism.
 - **Worker**: Render service from branch `main`, command `python -m apps.backend.worker.http_entry`, port from `$PORT`. Set `CELERY_TASK_ALWAYS_EAGER=true`, `WORKER_AUTH_TOKEN` (same value as the API), `WORKER_PUBLIC_URL`, and the LLM keys. Configure a health check path of `/health`. Full checklist in [deploy/worker/README.md](deploy/worker/README.md).
-- **Database**: apply migrations with `PYTHONPATH=packages/database python -m alembic -c packages/database/alembic.ini upgrade head` against the direct Supabase endpoint; run `scripts/prod_seed.py` once to seed the demo user and benchmarks.
+- **Database**: migrations now auto-apply to production via `.github/workflows/migrate-db.yml` (runs `alembic upgrade head` against `secrets.PROD_DATABASE_URL` on every `main` merge). Manual one-off work still uses `PYTHONPATH=packages/database python -m alembic -c packages/database/alembic.ini upgrade head` against the direct Supabase endpoint; run `scripts/prod_seed.py` once to seed the demo user and benchmarks.
 
 ## 9. Environment variables
 

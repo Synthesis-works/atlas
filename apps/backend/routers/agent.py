@@ -1,3 +1,5 @@
+import os
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
@@ -21,8 +23,13 @@ from atlas_db.core.session import SessionLocal
 router = APIRouter(prefix="/agent", tags=["Atlas Agent"])
 
 
-def _persist_task(db: Session, task: "AgentTask") -> None:
-    """Persist (or refresh) the AgentTask snapshot so it survives backend restarts."""
+def _persist_task(db: Session, task: "AgentTask", instance_id: Optional[str] = None) -> None:
+    """Persist (or refresh) the AgentTask snapshot so it survives backend restarts.
+
+    ``instance_id`` records which process currently owns the live loop, together
+    with a ``heartbeat_at`` liveness stamp. Both are written only while the task
+    is actively executing; parked and terminal tasks carry no owner.
+    """
     from atlas_db.models.agent import AgentTaskRecord
 
     snapshot = task.model_dump(mode="json")
@@ -39,7 +46,36 @@ def _persist_task(db: Session, task: "AgentTask") -> None:
         record.goal = task.goal
         record.status = task.status.value
         record.snapshot = snapshot
+    if instance_id is not None:
+        record.instance_id = instance_id
+        record.heartbeat_at = datetime.now(UTC)
     db.commit()
+
+
+def _instance_handle() -> str:
+    """Stable-ish short id for the current process ownership claims."""
+    import socket
+
+    return f"{socket.gethostname()}:{os.getpid()}"
+
+
+def _load_agent_task(db: Session, task_id: UUID) -> Optional["AgentTask"]:
+    """Resolve a task from the live registry, falling back to the DB snapshot.
+
+    The live object is preferred when present (same-process loop), but every
+    read and mutation can reconstruct the task from its persisted snapshot on
+    any instance, eliminating cross-instance 404s. The persisted row is the
+    source of truth; the registry is only this process's working memory.
+    """
+    from atlas_db.models.agent import AgentTaskRecord
+
+    live = _agent_tasks_db.get(task_id)
+    if live is not None:
+        return live
+    record = db.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == task_id).first()
+    if record is None:
+        return None
+    return AgentTask.model_validate(record.snapshot)
 
 
 # In-memory storage for active agent tasks (backed by DB models)
@@ -114,6 +150,31 @@ def _serialize_agent_task(task: AgentTask) -> dict[str, Any]:
     }
 
 
+def _dispatch_agent_run(
+    background_tasks: BackgroundTasks,
+    task_id: UUID,
+    provider_type: str,
+    model_override: Optional[str],
+) -> None:
+    """Run one agent loop, either on Celery (durable worker) or in-process.
+
+    ``AGENT_TASKS_CELERY_EXECUTION=true`` enqueues to the broker; the Render
+    worker executes the loop and checkpoints state back to the DB. Otherwise
+    (local dev / unit tests) the loop runs via FastAPI BackgroundTasks on the
+    same instance that created the task.
+    """
+    from apps.backend.config import settings
+
+    if settings.agent_tasks_celery_execution:
+        from apps.backend.worker.agent_tasks import run_agent_task
+
+        run_agent_task.delay(str(task_id), provider_type, model_override)
+        return
+    background_tasks.add_task(
+        _run_agent_task_background, task_id, SessionLocal, provider_type, model_override
+    )
+
+
 def _run_agent_task_background(
     task_id: UUID, db_session_factory, provider_type: str, model_override: Optional[str]
 ):
@@ -134,7 +195,7 @@ def _run_agent_task_background(
         agent.run_task(task, db)
     finally:
         if task is not None:
-            _persist_task(db, task)
+            _persist_task(db, task, instance_id=_instance_handle())
         db.close()
 
 
@@ -159,25 +220,18 @@ def create_agent_task(
         agent.run_task(task, db)
         _persist_task(db, task)
     else:
-        background_tasks.add_task(
-            _run_agent_task_background, task.task_id, SessionLocal, payload.provider, payload.model
-        )
+        _dispatch_agent_run(background_tasks, task.task_id, payload.provider, payload.model)
 
     return _serialize_agent_task(task)
 
 
 @router.get("/tasks/{task_id}", response_model=dict[str, Any])
 def get_agent_task(task_id: UUID, db: Session = Depends(get_db_session)):
-    task = _agent_tasks_db.get(task_id)
+    task = _load_agent_task(db, task_id)
     if not task:
-        from atlas_db.models.agent import AgentTaskRecord
-
-        record = db.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == task_id).first()
-        if not record:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
-            )
-        task = AgentTask.model_validate(record.snapshot)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
+        )
 
     return _serialize_agent_task(task)
 
@@ -273,9 +327,12 @@ def delete_agent_task(task_id: UUID, db: Session = Depends(get_db_session)):
 
 @router.post("/tasks/{task_id}/approve", response_model=dict[str, Any])
 def approve_agent_task(
-    task_id: UUID, payload: TaskApprovalRequest, db: Session = Depends(get_db_session)
+    task_id: UUID,
+    payload: TaskApprovalRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db_session),
 ):
-    task = _agent_tasks_db.get(task_id)
+    task = _load_agent_task(db, task_id)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
@@ -302,10 +359,14 @@ def approve_agent_task(
     task.pending_tool_call = None
     task.approval_token = None
     task.status = AgentTaskStatus.EXECUTING
-
-    agent = AtlasAgent(provider=MockAgentProvider(), registry=_tool_registry)
-    agent.run_task(task, db)
     _persist_task(db, task)
+
+    if task.primary_provider == "mock":
+        agent = AtlasAgent(provider=MockAgentProvider(), registry=_tool_registry)
+        agent.run_task(task, db)
+        _persist_task(db, task)
+    else:
+        _dispatch_agent_run(background_tasks, task.task_id, task.primary_provider, task.model)
 
     return {
         "task_id": str(task.task_id),
@@ -315,8 +376,8 @@ def approve_agent_task(
 
 
 @router.post("/tasks/{task_id}/cancel", response_model=dict[str, Any])
-def cancel_agent_task(task_id: UUID):
-    task = _agent_tasks_db.get(task_id)
+def cancel_agent_task(task_id: UUID, db: Session = Depends(get_db_session)):
+    task = _load_agent_task(db, task_id)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
@@ -324,6 +385,7 @@ def cancel_agent_task(task_id: UUID):
 
     task.status = AgentTaskStatus.CANCELLED
     task.add_trace("TASK_CANCELLED", {"reason": "User manual cancellation"})
+    _persist_task(db, task)
 
     return {
         "task_id": str(task.task_id),
@@ -351,7 +413,7 @@ def clarify_agent_task(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db_session),
 ):
-    task = _agent_tasks_db.get(task_id)
+    task = _load_agent_task(db, task_id)
     if not task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
@@ -420,13 +482,7 @@ def clarify_agent_task(
         agent.run_task(task, db)
         _persist_task(db, task)
     else:
-        background_tasks.add_task(
-            _run_agent_task_background,
-            task.task_id,
-            SessionLocal,
-            task.primary_provider,
-            task.model,
-        )
+        _dispatch_agent_run(background_tasks, task.task_id, task.primary_provider, task.model)
 
     return {
         "task_id": str(task.task_id),
@@ -441,7 +497,7 @@ def run_agent_task_again(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db_session),
 ):
-    old_task = _agent_tasks_db.get(task_id)
+    old_task = _load_agent_task(db, task_id)
     if not old_task:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
@@ -487,12 +543,8 @@ def run_agent_task_again(
         agent.run_task(new_task, db)
         _persist_task(db, new_task)
     else:
-        background_tasks.add_task(
-            _run_agent_task_background,
-            new_task.task_id,
-            SessionLocal,
-            new_task.primary_provider,
-            new_task.model,
+        _dispatch_agent_run(
+            background_tasks, new_task.task_id, new_task.primary_provider, new_task.model
         )
 
     return {
