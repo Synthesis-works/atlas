@@ -111,7 +111,9 @@ async function runAudit() {
   // 4. Test Live Polling Sync: Create a new benchmark and prove store synchronization
   console.log('[STEP 4] Testing Live Benchmark Creation & Polling Synchronization...');
   const syncTestName = `Live Polling Proof ${Date.now()}`;
-  const createRes = await fetch(`${BACKEND_URL}/api/v1/benchmarks`, {
+  const createRes = await fetch(
+    `${BACKEND_URL}/api/v1/benchmarks?project_id=${smoke.project_id}`,
+    {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
