@@ -18,7 +18,7 @@ export const AtlasRuntimeWidget: React.FC = () => {
 
     async function checkHealth() {
       try {
-        const res = await apiClient.get<any>('/api/v1/health');
+        const res = await apiClient.get<any>('/health');
         const data = res?.data || res;
         if (mounted) {
           if (data && (data.status === 'ok' || data.status === 'healthy')) {
