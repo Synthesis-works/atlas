@@ -5,15 +5,15 @@ name: Migrate Production Database
 # `executions.idempotency_key` (and future columns) drift out of sync with the
 # deployed API until a runtime error surfaced it. This workflow runs the same
 # operator command documented in docs/PRODUCTION_READINESS_PLAN.md against the
-# direct (non-pooled) production URL. `alembic upgrade head` is idempotent, so
+# production connection string. `alembic upgrade head` is idempotent, so
 # repeated runs are cheap no-ops when nothing is pending.
 #
 # Safety:
 # - Runs only when PROD_DATABASE_URL is configured as a repo secret.
 # - Serialized by a concurrency group so two pushes cannot race each other.
-# - Uses the direct Supabase URL (transaction poolers break DDL). Configure
-#   the secret with the IPv4 direct endpoint, exactly like the GHA execution
-#   backends already require.
+# - Configure PROD_DATABASE_URL with the Supabase SESSION-mode pooler (port
+#   5432, IPv4, free plan) or the IPv4 direct URL (paid plans); never the
+#   transaction-mode pooler (port 6543), which breaks Alembic DDL.
 
 on:
   push:
