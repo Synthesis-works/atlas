@@ -320,3 +320,46 @@ def test_agent_run_subscriber_enqueues_on_worker_side(monkeypatch):
 
     AgentRunSubscriber().handle(event)
     chain.delay.assert_called_once_with(str(task_id), "groq", "llama-3.3-70b-versatile")
+
+
+def test_get_and_list_reflect_worker_side_state_change():
+    """A read on the *same* instance must not return a stale in-memory copy.
+
+    The worker parks/runs tasks in another process and checkpoints every state
+    transition to the DB; the creating lambda's ``_agent_tasks_db`` working
+    copy stays frozen (e.g. PENDING) for the lifetime of that warm instance.
+    GET /tasks/{id} and GET /tasks must converge on the persisted snapshot.
+    """
+    payload = {
+        "goal": "Stale copy test",
+        "provider": "mock",
+        "permissions": ["READ"],
+    }
+    response = client.post("/api/v1/agent/tasks", json=payload)
+    assert response.status_code == 201
+    task_id = response.json()["task_id"]
+
+    from atlas_db.models.agent import AgentTaskRecord
+    from apps.backend.routers.agent import SessionLocal
+
+    db = SessionLocal()
+    try:
+        record = db.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == task_id).first()
+        assert record is not None
+        snap = dict(record.snapshot)
+        snap["status"] = "CANCELLED"
+        record.status = "CANCELLED"
+        record.snapshot = snap
+        db.commit()
+    finally:
+        db.close()
+
+    got = client.get(f"/api/v1/agent/tasks/{task_id}")
+    assert got.status_code == 200
+    assert got.json()["status"] == "CANCELLED"
+
+    listed = client.get("/api/v1/agent/tasks")
+    assert listed.status_code == 200
+    assert any(
+        t["task_id"] == task_id and t["status"] == "CANCELLED" for t in listed.json()
+    )
