@@ -8,6 +8,7 @@ import { apiClient } from '@/core/api/client';
 import type { ServiceResult } from '@/core/types/service';
 import type { EvaluationRun } from '@/domain/evaluations/types';
 import { ensureAuthenticatedSession } from '@/features/auth/services/authService';
+import { getDashboardSummary } from '@/features/dashboard/services/dashboardService';
 import { getReportRuns } from '@/features/reporting/services/reportingService';
 
 export interface BackendExecutionCreatePayload {
@@ -169,9 +170,20 @@ export async function getEvaluations(): Promise<ServiceResult<EvaluationRun[]>> 
       dtos = rawRes.data;
     }
 
-    // Resolve real benchmark/version labels from dispatch targets (by benchmark_version_id)
-    // and real persisted scores from the reporting service (by execution run id).
-    const [targetsRes, reportRes] = await Promise.all([getDispatchTargets(), getReportRuns()]);
+    // Resolve real benchmark/version labels from dispatch targets (by benchmark_version_id),
+    // real persisted scores from the reporting service (by execution run id), and real
+    // provenance (source / is_verified) from the dashboard's execution configs. The live
+    // /executions DTO omits execution_config, so the dashboard is the authoritative source.
+    const [targetsRes, reportRes, dashboardRes] = await Promise.all([
+      getDispatchTargets(),
+      getReportRuns(),
+      getDashboardSummary(),
+    ]);
+
+    const provById = new Map<string, { source: string; is_verified: boolean }>();
+    (dashboardRes?.active_executions ?? []).forEach((exec) => {
+      provById.set(exec.id, { source: exec.source, is_verified: exec.is_verified });
+    });
 
     const targetByBv = new Map<
       string,
@@ -251,8 +263,19 @@ export async function getEvaluations(): Promise<ServiceResult<EvaluationRun[]>> 
       }
       if (latencyMs !== undefined) metrics.latencyMs = latencyMs;
 
-      const isVerified = config.is_verified ?? false;
-      const source = config.source ?? 'real';
+      // Provenance is only populated when the backend explicitly reports it; an absent
+      // report stays unknown (no badge) rather than being defaulted to a fabricated value.
+      const reported = provById.get(dto.id);
+      const isVerified = reported
+        ? reported.is_verified
+        : typeof config.is_verified === 'boolean'
+          ? config.is_verified
+          : undefined;
+      const source = reported
+        ? reported.source
+        : typeof config.source === 'string'
+          ? config.source
+          : undefined;
 
       return {
         id: dto.id || `eval-${i}`,
@@ -280,7 +303,7 @@ export async function getEvaluations(): Promise<ServiceResult<EvaluationRun[]>> 
         stages: [],
         logs: [],
         artifacts: [],
-        tags: [source],
+        tags: source ? [source] : [],
         isVerified,
         source,
       };

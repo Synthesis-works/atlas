@@ -3,10 +3,20 @@ import type { BenchmarkFilterState, BenchmarkSortState } from '../selectors/cata
 import { selectBenchmarkCatalog, selectBenchmarkPreview, selectBenchmarkComparisons } from '../selectors/catalog';
 import { useWorkspaceInteractionStore } from '@/store/workspace/interaction/store';
 import { useBenchmarkStore } from '../store/benchmarkStore';
+import { useWorkspaceStore } from '@/store/workspaceStore';
 
 export function useBenchmarkCatalog() {
   const store = useBenchmarkStore();
   const rawBenchmarks = store.benchmarks;
+
+  // Optional workspace store consumption for provenance labels
+  let benchmarkProvenance: Record<string, { hasDemo: boolean; hasUnverified: boolean }> = {};
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    benchmarkProvenance = useWorkspaceStore().benchmarkProvenance;
+  } catch (_) {
+    // Fallback gracefully if used outside WorkspaceStoreProvider
+  }
 
   // Coordinator State
   const [filters, setFilters] = useState<BenchmarkFilterState>({
@@ -133,6 +143,7 @@ export function useBenchmarkCatalog() {
 
   return {
     ...catalog,
+    benchmarkProvenance,
     filters,
     sort,
     page,

@@ -2,6 +2,7 @@ import React, { useState, memo } from 'react';
 import { Terminal } from '@/shared/components';
 import { Sparkles, AlertTriangle, Play, CheckCircle, Clock, Terminal as TerminalIcon } from 'lucide-react';
 import type { QueueItem } from '@/store/workspaceStore';
+import { ProvenanceBadge } from './ProvenanceBadge';
 import { cn } from '@/lib/utils';
 
 interface BenchmarkConsoleProps {
@@ -118,8 +119,11 @@ export const BenchmarkConsoleComponent: React.FC<BenchmarkConsoleProps> = ({ log
                       <span className="text-white/30">•</span>
                       <span className="text-white/60">{item.benchmarkName}</span>
                     </div>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-white/40">
-                      {item.status}
+                    <span className="flex items-center gap-1.5">
+                      <ProvenanceBadge source={item.source} isVerified={item.isVerified} />
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-white/40">
+                        {item.status}
+                      </span>
                     </span>
                   </div>
 
