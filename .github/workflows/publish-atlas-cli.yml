@@ -1,0 +1,82 @@
+name: Publish atlas-cli to PyPI
+
+# FUTURE PUBLISHING WORKFLOW (not yet enabled / no PyPI project configured).
+#
+# This workflow CANNOT run from ordinary CI: it only triggers on exactly two
+# explicit, human-invoked channels:
+#   1. a git tag of the form atlas-cli-v* pushed to the repository, OR
+#   2. an explicit manual workflow_dispatch run on a tag.
+# The publish job additionally requires the tag AND refuses to run on the
+# default branch, and it needs a GitHub Environment named "pypi-publish"
+# (which must be created with protection rules in repo Settings) plus a PyPI
+# trusted publisher on the atlas-cli project. Until those exist, the publish
+# step has nothing to publish to and will fail closed.
+#
+# Security model:
+# - OIDC trusted publishing: pypa/gh-action-pypi-publish is granted a short-
+#   lived PyPI token via the `id-token: write` permission; no long-lived
+#   secret is stored in GitHub Actions secrets.
+# - The upload uses `skip-existing`, so an already-uploaded version is a no-op
+#   rather than a failure.
+
+on:
+  push:
+    tags:
+      - "atlas-cli-v*"
+  workflow_dispatch:
+    # Manual invocation only ever runs the `build` job: the `publish` job
+    # additionally requires github.event_name == 'push' with a tag ref, so a
+    # manual run can never upload.
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v5
+
+    - name: Build wheel + sdist via staging
+      run: python scripts/build_cli_dist.py --out-dir dist/artifacts
+
+    - name: Validate wheel + sdist in fresh venvs
+      run: python scripts/validate_cli_dist.py --dist-dir dist/artifacts
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: atlas-cli-dist
+        path: dist/artifacts/*
+        if-no-files-found: error
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: build
+    if: >
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/tags/atlas-cli-v') &&
+      github.ref_type == 'tag'
+    environment: pypi-publish
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: atlas-cli-dist
+        path: dist/artifacts
+
+    - name: Publish to PyPI (trusted publishing)
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        packages-dir: dist/artifacts
+        skip-existing: true

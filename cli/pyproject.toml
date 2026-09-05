@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atlas-cli"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Atlas CLI — first-class programmatic interface to the Atlas control plane."
 requires-python = ">=3.11"
 license = "MIT"
@@ -44,6 +44,9 @@ packages = [
 cli = "cli"
 atlas_sdk = "../sdk/python/atlas_sdk"
 packages = "../packages"
+
+[tool.setuptools.dynamic]
+version = {attr = "cli.__version__"}
 
 [tool.ruff]
 line-length = 100

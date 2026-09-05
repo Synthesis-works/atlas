@@ -63,6 +63,12 @@ pip install -e ./sdk/python -e ./cli   # editable install from the monorepo
 This installs the CLI and SDK as editable packages; `packages.llm` resolves to
 the bundled copy inside the CLI layout (see `pyproject.toml`).
 
+The CLI version is defined once in `cli/cli/__init__.py` (`__version__`) and is
+picked up dynamically by `pyproject.toml`. See
+[docs/guides/atlas-cli-release.md](../docs/guides/atlas-cli-release.md) for the
+release-time staging build, offline artifact validation, and the (not yet enabled)
+PyPI publishing workflow.
+
 ## License
 
 Copyright (c) 2026. All rights reserved.
