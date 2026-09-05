@@ -5,20 +5,25 @@ name: Migrate Production Database
 # `executions.idempotency_key` (and future columns) drift out of sync with the
 # deployed API until a runtime error surfaced it. This workflow runs the same
 # operator command documented in docs/PRODUCTION_READINESS_PLAN.md against the
-# direct (non-pooled) production URL. `alembic upgrade head` is idempotent, so
+# production connection string. `alembic upgrade head` is idempotent, so
 # repeated runs are cheap no-ops when nothing is pending.
 #
 # Safety:
-# - Runs only when PROD_DATABASE_URL is configured as a repo secret.
+# - Runs only when PROD_DATABASE_URL is configured as a repo secret. Secrets
+#   cannot be referenced inside `if:` conditions, so the value is mapped into
+#   the workflow-level `env` first and the job/step conditions inspect that.
 # - Serialized by a concurrency group so two pushes cannot race each other.
-# - Uses the direct Supabase URL (transaction poolers break DDL). Configure
-#   the secret with the IPv4 direct endpoint, exactly like the GHA execution
-#   backends already require.
+# - Configure PROD_DATABASE_URL with the Supabase SESSION-mode pooler (port
+#   5432, IPv4, free plan) or the IPv4 direct URL (paid plans); never the
+#   transaction-mode pooler (port 6543), which breaks Alembic DDL.
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
+env:
+  PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
 
 concurrency:
   group: migrate-db
@@ -26,7 +31,7 @@ concurrency:
 
 jobs:
   migrate:
-    if: ${{ secrets.PROD_DATABASE_URL != '' }}
+    if: ${{ env.PROD_DATABASE_URL != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -43,12 +48,12 @@ jobs:
 
       - name: Apply pending migrations
         env:
-          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          DATABASE_URL: ${{ env.PROD_DATABASE_URL }}
         run: |
           uv run alembic -c packages/database/alembic.ini upgrade head
 
       - name: Report revision
         env:
-          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          DATABASE_URL: ${{ env.PROD_DATABASE_URL }}
         run: |
           uv run alembic -c packages/database/alembic.ini current
