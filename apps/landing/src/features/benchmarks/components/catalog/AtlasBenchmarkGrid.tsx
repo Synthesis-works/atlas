@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useId, useRef, useEffect } from "react";
 import { useOutsideClick } from "@/hooks/use-outside-click";
 import { useBenchmarkCatalog } from '../../hooks/useBenchmarkCatalog';
+import { ProvenanceBadge } from '../ProvenanceBadge';
 
 export const CloseIcon = () => {
   return (
@@ -134,7 +135,7 @@ export function AtlasBenchmarkGrid({ catalog }: { catalog: ReturnType<typeof use
                       </div>
                       <div className="flex flex-col gap-1">
                         <span className="text-xs uppercase tracking-wider text-white/40">Score</span>
-                        <span className="text-white">{activeCard.verificationScore}%</span>
+                        <span className="text-white">{activeCard.verificationScore != null ? `${activeCard.verificationScore}%` : '—'}</span>
                       </div>
                       <div className="flex flex-col gap-1">
                         <span className="text-xs uppercase tracking-wider text-white/40">Runtime</span>
@@ -152,6 +153,8 @@ export function AtlasBenchmarkGrid({ catalog }: { catalog: ReturnType<typeof use
       <ul className="w-full grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] items-start gap-6">
         {cards.map((card) => {
           const isSelected = selectedIds.includes(card.id);
+          const prov = catalog.benchmarkProvenance[card.name];
+          const provBadge = prov?.hasDemo ? 'demo' : prov?.hasUnverified ? 'unverified' : null;
           const handleClick = (e: React.MouseEvent) => {
             if (e.detail === 2) {
               catalog.handleOpenPreview(card.id);
@@ -202,9 +205,17 @@ export function AtlasBenchmarkGrid({ catalog }: { catalog: ReturnType<typeof use
                   className="text-white/50 text-sm flex items-center justify-between"
                 >
                   <span className="capitalize">{card.category} • {card.difficulty}</span>
-                  <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${card.status === 'Ready' || card.status === 'Running' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
-                    {card.status}
-                  </span>
+                  <span className="flex items-center gap-1.5">
+                      {provBadge === 'demo' && (
+                        <ProvenanceBadge source="demo" label="Demo data" />
+                      )}
+                      {provBadge === 'unverified' && (
+                        <ProvenanceBadge isVerified={false} label="Unverified data" />
+                      )}
+                      <span className={`px-2 py-0.5 rounded-md text-xs font-medium ${card.status === 'Ready' || card.status === 'Running' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                        {card.status}
+                      </span>
+                    </span>
                 </motion.p>
               </div>
             </motion.div>

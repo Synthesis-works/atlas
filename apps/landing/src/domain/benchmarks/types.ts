@@ -92,7 +92,7 @@ export interface Benchmark {
   estimatedRuntime: string;
   license: string;
   author: string;
-  verificationScore: number; // Percentage (e.g. 100 for 9/9)
+  verificationScore: number | null; // Percentage (e.g. 100 for 9/9); null when no telemetry exists
   verification: VerificationChecklist;
   tags: string[];
   metrics: MetricCardItem[];

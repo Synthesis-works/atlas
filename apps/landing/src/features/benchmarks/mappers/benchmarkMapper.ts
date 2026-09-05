@@ -67,10 +67,10 @@ export class BenchmarkMapper {
 
     const verificationScore =
       dto.latest_score != null
-        ? Math.round(dto.latest_score)
+        ? this.toPercentage(dto.latest_score)
         : dto.average_score != null
-        ? Math.round(dto.average_score)
-        : 0;
+        ? this.toPercentage(dto.average_score)
+        : null;
 
     return {
       id: dto.id,
@@ -164,6 +164,16 @@ export class BenchmarkMapper {
     if (lower === 'advanced' || lower === 'hard') return 'advanced';
     if (lower === 'expert') return 'expert';
     return 'intermediate';
+  }
+
+  /**
+   * Converts a canonical 0-1 score to a display percentage (0-100).
+   * Defensively preserves legacy 0-100 values so older telemetry renders
+   * honestly instead of inflating by 100x.
+   */
+  private static toPercentage(score: number): number {
+    if (score > 1) return Math.round(score);
+    return Math.round(score * 100);
   }
 }
 

@@ -26,7 +26,7 @@ export const VerificationSection: React.FC<Props> = ({ benchmark }) => {
       <div className="flex items-center justify-between">
         <h4 className="text-xs font-semibold text-white">9-Point Verification Checklist</h4>
         <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-          {verifiedCount} / 9 Verified ({benchmark.verificationScore}%)
+          {benchmark.verificationScore != null ? `${verifiedCount} / 9 Verified (${benchmark.verificationScore}%)` : `${verifiedCount} / 9 Verified (—)`}
         </span>
       </div>
 
