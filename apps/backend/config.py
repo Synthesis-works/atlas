@@ -123,7 +123,6 @@ class Settings(BaseSettings):
     )
     ollama_timeout: int = Field(default=60, validation_alias="OLLAMA_TIMEOUT")
 
-
     # Billing Configuration (Stripe & Razorpay)
     stripe_api_key: str = Field(default="")
     stripe_webhook_secret: str = Field(default="")

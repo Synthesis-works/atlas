@@ -100,4 +100,3 @@ class BenchmarkVersionRead(BaseModel):
 
     class Config:
         from_attributes = True
-
