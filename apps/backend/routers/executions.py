@@ -67,6 +67,24 @@ def map_to_response(execution: Execution) -> ExecutionResponse:
     )
 
 
+def map_db_execution_to_response(db_item) -> ExecutionResponse:
+    return ExecutionResponse(
+        id=db_item.id,
+        benchmark_version_id=db_item.benchmark_version_id,
+        status=db_item.status,
+        target_model=db_item.target_model or "gemini-2.5-flash",
+        completed_items=db_item.completed_items or 0,
+        total_items=db_item.total_items or 1,
+        started_at=db_item.started_at,
+        completed_at=db_item.completed_at,
+        created_at=db_item.created_at,
+        updated_at=db_item.updated_at,
+        created_by=db_item.submitted_by_id or uuid.uuid4(),
+        max_retries=getattr(db_item, "max_retries", 3) or 3,
+        attempts=[],
+    )
+
+
 @benchmark_executions_router.post(
     "/benchmarks/{benchmark_version_id}/executions",
     response_model=ExecutionResponse,
@@ -150,12 +168,27 @@ def create_execution(
             ),
         )
 
+    idempotency_key = getattr(payload, "idempotency_key", None)
+    if idempotency_key:
+        from atlas_db.models.execution import Execution as DBExecution
+
+        existing = (
+            db.query(DBExecution)
+            .filter(DBExecution.idempotency_key == idempotency_key)
+            .first()
+        )
+        if existing:
+            # A matching submission was already accepted; resolve to that
+            # execution record instead of queuing a duplicate.
+            return map_db_execution_to_response(existing)
+
     execution = service.submit_execution(
         benchmark_version_id=bv_uuid,
         dataset_version_id=dataset_version_id,
 
         submitted_by=user_id,
         target_model=target_model,
+        idempotency_key=idempotency_key,
     )
     if hasattr(service, "execution_repo") and hasattr(service.execution_repo, "session"):
         service.execution_repo.session.commit()
@@ -259,23 +292,6 @@ def list_executions(
     total = query.count()
     db_items = query.order_by(DBExecution.created_at.desc()).offset(offset).limit(limit).all()
 
-    mapped_items = []
-    for db_item in db_items:
-        resp = ExecutionResponse(
-            id=db_item.id,
-            benchmark_version_id=db_item.benchmark_version_id,
-            status=db_item.status,
-            target_model=db_item.target_model or "gemini-2.5-flash",
-            completed_items=db_item.completed_items or 0,
-            total_items=db_item.total_items or 1,
-            started_at=db_item.started_at,
-            completed_at=db_item.completed_at,
-            created_at=db_item.created_at,
-            updated_at=db_item.updated_at,
-            created_by=db_item.submitted_by_id or uuid.uuid4(),
-            max_retries=getattr(db_item, "max_retries", 3) or 3,
-            attempts=[],
-        )
-        mapped_items.append(resp)
+    mapped_items = [map_db_execution_to_response(db_item) for db_item in db_items]
 
     return ExecutionListResponse(items=mapped_items, total=total)
