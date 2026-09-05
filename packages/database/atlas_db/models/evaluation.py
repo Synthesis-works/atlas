@@ -105,7 +105,10 @@ class EvaluationResult(Base, BaseMixin):
     )
     judge: Mapped["Judge | None"] = relationship("Judge")
     details: Mapped["EvaluationResultDetail | None"] = relationship(
-        "EvaluationResultDetail", back_populates="evaluation_result", uselist=False, cascade="all, delete-orphan"
+        "EvaluationResultDetail",
+        back_populates="evaluation_result",
+        uselist=False,
+        cascade="all, delete-orphan",
     )
     artifacts: Mapped[list["EvaluationArtifact"]] = relationship(
         "EvaluationArtifact", back_populates="evaluation_result", cascade="all, delete-orphan"

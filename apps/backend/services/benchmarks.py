@@ -72,7 +72,7 @@ def _map_benchmark_to_read(b, db=None) -> BenchmarkRead:
                 dataset_version_ids = [dv.id for dv in v.dataset_versions if hasattr(dv, "id")]
             elif hasattr(v, "primary_dataset_version_id") and v.primary_dataset_version_id:
                 dataset_version_ids = [v.primary_dataset_version_id]
-            
+
             if not primary_dataset_version_id and dataset_version_ids:
                 primary_dataset_version_id = dataset_version_ids[0]
 
@@ -107,13 +107,23 @@ def _map_benchmark_to_read(b, db=None) -> BenchmarkRead:
             from sqlalchemy import func
 
             # Execution metrics
-            executions = db.query(Execution).filter(Execution.benchmark_version_id.in_(version_ids)).all()
+            executions = (
+                db.query(Execution).filter(Execution.benchmark_version_id.in_(version_ids)).all()
+            )
             if executions:
                 execution_count = len(executions)
-                completed_execution_count = sum(1 for e in executions if e.status == ExecutionStatus.COMPLETED)
-                failed_execution_count = sum(1 for e in executions if e.status in (ExecutionStatus.FAILED, ExecutionStatus.TIMED_OUT))
+                completed_execution_count = sum(
+                    1 for e in executions if e.status == ExecutionStatus.COMPLETED
+                )
+                failed_execution_count = sum(
+                    1
+                    for e in executions
+                    if e.status in (ExecutionStatus.FAILED, ExecutionStatus.TIMED_OUT)
+                )
 
-                sorted_execs = sorted(executions, key=lambda e: e.created_at or datetime.min, reverse=True)
+                sorted_execs = sorted(
+                    executions, key=lambda e: e.created_at or datetime.min, reverse=True
+                )
                 latest_exec = sorted_execs[0]
                 latest_execution_at = latest_exec.created_at
 
@@ -130,17 +140,12 @@ def _map_benchmark_to_read(b, db=None) -> BenchmarkRead:
                     evaluation_count = len(eval_results)
                     passed_evaluation_count = sum(1 for r in eval_results if r.passed)
                     # Deterministic chronological order; the last result is the latest.
-                    eval_results.sort(
-                        key=lambda r: r.created_at or datetime.min, reverse=False
-                    )
+                    eval_results.sort(key=lambda r: r.created_at or datetime.min, reverse=False)
                     scores = []
                     for r in eval_results:
                         raw_score = None
                         raw_measurements = r.raw_measurements
-                        if (
-                            isinstance(raw_measurements, dict)
-                            and "score" in raw_measurements
-                        ):
+                        if isinstance(raw_measurements, dict) and "score" in raw_measurements:
                             try:
                                 raw_score = float(raw_measurements["score"])
                             except (ValueError, TypeError):
@@ -167,7 +172,9 @@ def _map_benchmark_to_read(b, db=None) -> BenchmarkRead:
                 latencies = [
                     mo[0]
                     for mo in db.query(ModelOutput.duration_ms)
-                    .filter(ModelOutput.execution_id.in_(exec_ids), ModelOutput.duration_ms.isnot(None))
+                    .filter(
+                        ModelOutput.execution_id.in_(exec_ids), ModelOutput.duration_ms.isnot(None)
+                    )
                     .all()
                     if mo[0] is not None
                 ]
@@ -189,7 +196,11 @@ def _map_benchmark_to_read(b, db=None) -> BenchmarkRead:
 
             # Primary dataset id
             if primary_dataset_version_id:
-                dv = db.query(DatasetVersion).filter(DatasetVersion.id == primary_dataset_version_id).first()
+                dv = (
+                    db.query(DatasetVersion)
+                    .filter(DatasetVersion.id == primary_dataset_version_id)
+                    .first()
+                )
                 if dv:
                     primary_dataset_id = dv.dataset_id
         except Exception:
@@ -222,7 +233,6 @@ def _map_benchmark_to_read(b, db=None) -> BenchmarkRead:
         latest_execution_at=latest_execution_at,
         average_latency_ms=average_latency_ms,
     )
-
 
 
 class BenchmarkApplicationService:

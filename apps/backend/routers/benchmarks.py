@@ -5,7 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from apps.backend.authz import ProjectAuthorizationService, get_project_authz_service
-from apps.backend.dependencies import TokenClaims, get_benchmark_app_service, get_db_session, require_authenticated
+from apps.backend.dependencies import (
+    TokenClaims,
+    get_benchmark_app_service,
+    get_db_session,
+    require_authenticated,
+)
 from apps.backend.schemas.benchmarks import (
     BenchmarkCreate,
     BenchmarkFilterRequest,
@@ -24,7 +29,6 @@ project_benchmarks_router = APIRouter(
 
 # Router for root-level endpoints
 benchmarks_router = APIRouter(prefix="/benchmarks", tags=["Benchmarks"])
-
 
 
 def map_member_role_to_string(role: OrganizationRole) -> str:
@@ -128,7 +132,6 @@ def create_global_benchmark(
 
 @benchmarks_router.get("/{benchmark_id}", response_model=APIResponse[BenchmarkRead])
 def get_benchmark(
-
     benchmark_id: UUID,
     claims: TokenClaims = Depends(require_authenticated),
     project_authz: ProjectAuthorizationService = Depends(get_project_authz_service),

@@ -48,9 +48,7 @@ def test_explicit_ollama_prefix_always_resolves(adapter, patch_registry):
     assert model == "qwen2.5-coder:7b"
 
 
-def test_registry_registered_model_resolves_to_its_declared_provider(
-    adapter, patch_registry
-):
+def test_registry_registered_model_resolves_to_its_declared_provider(adapter, patch_registry):
     """Models present in the ModelRegistry resolve to their declared provider."""
     patch_registry(
         [

@@ -433,7 +433,9 @@ def seed_demo(session, user, project):
                         "source": "demo",
                         "is_verified": False,
                         "generated": True,
-                        "pass_at_1": round(0.85 + idx / 100.0, 4) if st == ExecutionStatus.COMPLETED else None,
+                        "pass_at_1": round(0.85 + idx / 100.0, 4)
+                        if st == ExecutionStatus.COMPLETED
+                        else None,
                     },
                 )
                 session.add(ex)

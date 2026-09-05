@@ -59,9 +59,7 @@ def global_create_env():
         )
 
     fake_authz = FakeAuthz()
-    mock_service = type(
-        "Service", (), {"create_benchmark": staticmethod(mock_create_benchmark)}
-    )()
+    mock_service = type("Service", (), {"create_benchmark": staticmethod(mock_create_benchmark)})()
 
     app.dependency_overrides[require_authenticated] = lambda: mock_claims
     app.dependency_overrides[get_project_authz_service] = lambda: fake_authz
@@ -93,9 +91,7 @@ def test_global_create_rejects_unauthorized_project(global_create_env):
         "You are not an active member of the project's organization",
     )
 
-    res = client.post(
-        f"/api/v1/benchmarks?project_id={project_id}", json={"name": "Sneaky"}
-    )
+    res = client.post(f"/api/v1/benchmarks?project_id={project_id}", json={"name": "Sneaky"})
     assert res.status_code == 403
     assert not global_create_env["calls"]
 
@@ -104,9 +100,7 @@ def test_global_create_rejects_unknown_project(global_create_env):
     project_id = global_create_env["project_id"]
     global_create_env["authz"].fail = (404, "Project not found")
 
-    res = client.post(
-        f"/api/v1/benchmarks?project_id={project_id}", json={"name": "Ghost"}
-    )
+    res = client.post(f"/api/v1/benchmarks?project_id={project_id}", json={"name": "Ghost"})
     assert res.status_code == 404
     assert not global_create_env["calls"]
 
@@ -114,9 +108,7 @@ def test_global_create_rejects_unknown_project(global_create_env):
 def test_global_create_authorized_project_succeeds(global_create_env):
     project_id = global_create_env["project_id"]
 
-    res = client.post(
-        f"/api/v1/benchmarks?project_id={project_id}", json={"name": "Attached"}
-    )
+    res = client.post(f"/api/v1/benchmarks?project_id={project_id}", json={"name": "Attached"})
     assert res.status_code == 201
     body = res.json()
     assert body.get("success", True) is True

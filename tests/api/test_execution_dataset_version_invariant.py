@@ -108,9 +108,7 @@ def test_dispatch_without_any_dataset_version_is_rejected(dispatch_env):
     bv = make_version(primary=None, linked=[])
     dispatch_env["set_query_result"](bv)
 
-    res = client.post(
-        f"/api/v1/benchmarks/{bv.id}/executions", json={"target_model": "mock"}
-    )
+    res = client.post(f"/api/v1/benchmarks/{bv.id}/executions", json={"target_model": "mock"})
     assert res.status_code == 422
     assert "dataset_version_id" in res.json()["error"]["message"]
 
@@ -195,7 +193,5 @@ def test_dispatch_targets_leave_unconfigured_dataset_empty(dispatch_env):
     configured = next(t for t in targets if t["benchmark_version_id"] == str(bv_with_dv))
     assert configured["dataset_version_id"] == str(dv_id)
 
-    unconfigured = next(
-        t for t in targets if t["benchmark_version_id"] == str(bv_without_dv)
-    )
+    unconfigured = next(t for t in targets if t["benchmark_version_id"] == str(bv_without_dv))
     assert unconfigured["dataset_version_id"] is None

@@ -116,9 +116,7 @@ def create_execution(
     try:
         user_id = uuid.UUID(str(sub))
     except (ValueError, TypeError):
-        raise HTTPException(
-            status_code=401, detail="Token subject is not a valid UUID."
-        )
+        raise HTTPException(status_code=401, detail="Token subject is not a valid UUID.")
 
     target_model = (
         payload.target_model if payload and payload.target_model else "groq/llama-3.1-8b-instant"
@@ -173,9 +171,7 @@ def create_execution(
         from atlas_db.models.execution import Execution as DBExecution
 
         existing = (
-            db.query(DBExecution)
-            .filter(DBExecution.idempotency_key == idempotency_key)
-            .first()
+            db.query(DBExecution).filter(DBExecution.idempotency_key == idempotency_key).first()
         )
         if existing:
             # A matching submission was already accepted; resolve to that
@@ -185,7 +181,6 @@ def create_execution(
     execution = service.submit_execution(
         benchmark_version_id=bv_uuid,
         dataset_version_id=dataset_version_id,
-
         submitted_by=user_id,
         target_model=target_model,
         idempotency_key=idempotency_key,

@@ -65,7 +65,6 @@ def test_evaluation_app_service_evaluate_execution():
 
     mock_session.query.side_effect = mock_query_side_effect
 
-
     mock_publisher = Mock()
 
     service = EvaluationAppService(
