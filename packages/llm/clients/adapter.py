@@ -154,10 +154,7 @@ class ProviderAdapter:
         if lower.startswith("grok") or lower.startswith("xai"):
             return "grok", target
         if lower.startswith("mistral"):
-            # Check if it's mistral-small-latest (cloud) or a local mistral model in Ollama
-            if "mistral" in self.clients and self.clients["mistral"].health():
-                return "mistral", target
-            return "ollama", target
+            return "mistral", target
         if lower.startswith("groq"):
             return "groq", target
         if lower.startswith("nvidia"):
@@ -175,10 +172,11 @@ class ProviderAdapter:
         except Exception:
             pass
 
-        # If Ollama client is healthy and target looks like a local model (e.g. qwen, llama, dolphin, glm)
-        if "ollama" in self.clients and self.clients["ollama"].health():
-            return "ollama", target
-
+        # Resolution is strictly explicit: a model must carry a provider prefix
+        # (e.g. 'ollama/...') or be registered in the ModelRegistry. Never silently
+        # fall back to a local Ollama instance for an unconfigured model: an
+        # unrequested model may not exist there, and the request would then be
+        # processed by the wrong architecture (or fail with a confusing 404).
         raise ValueError(
             f"Unsupported target model '{target_model}'. Unable to resolve to a known provider."
         )
