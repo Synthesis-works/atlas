@@ -10,8 +10,9 @@ name: Migrate Production Database
 #
 # Safety:
 # - Runs only when PROD_DATABASE_URL is configured as a repo secret. Secrets
-#   cannot be referenced inside `if:` conditions, so the value is mapped into
-#   the workflow-level `env` first and the job/step conditions inspect that.
+#   are mapped into the job-level `env` (allowed) because they cannot be
+#   referenced directly inside `if:` conditions; each step then guards on that
+#   env var, so a missing secret produces a clean, green skip.
 # - Serialized by a concurrency group so two pushes cannot race each other.
 # - Configure PROD_DATABASE_URL with the Supabase SESSION-mode pooler (port
 #   5432, IPv4, free plan) or the IPv4 direct URL (paid plans); never the
@@ -22,38 +23,39 @@ on:
     branches: [main]
   workflow_dispatch:
 
-env:
-  PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
-
 concurrency:
   group: migrate-db
   cancel-in-progress: false
 
 jobs:
   migrate:
-    if: ${{ env.PROD_DATABASE_URL != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
     steps:
       - name: Checkout
+        if: ${{ env.PROD_DATABASE_URL != '' }}
         uses: actions/checkout@v4
 
       - name: Install uv
+        if: ${{ env.PROD_DATABASE_URL != '' }}
         uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.12"
 
       - name: Sync dependencies
+        if: ${{ env.PROD_DATABASE_URL != '' }}
         run: uv sync --frozen
 
       - name: Apply pending migrations
+        if: ${{ env.PROD_DATABASE_URL != '' }}
         env:
           DATABASE_URL: ${{ env.PROD_DATABASE_URL }}
-        run: |
-          uv run alembic -c packages/database/alembic.ini upgrade head
+        run: uv run alembic -c packages/database/alembic.ini upgrade head
 
       - name: Report revision
+        if: ${{ env.PROD_DATABASE_URL != '' }}
         env:
           DATABASE_URL: ${{ env.PROD_DATABASE_URL }}
-        run: |
-          uv run alembic -c packages/database/alembic.ini current
+        run: uv run alembic -c packages/database/alembic.ini current
