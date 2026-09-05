@@ -7,8 +7,8 @@ from packages.evaluation_engine.domain.evaluator import RawMeasurements
 class CapabilityProfile:
     def __init__(self, scores: dict[str, float], overall_score: float, explanation: dict[str, Any]):
         """
-        :param scores: Vector mapping capability name (e.g. "Python", "Reasoning") to normalized score 0-100.
-        :param overall_score: The derived overall score.
+        :param scores: Vector mapping capability name (e.g. "Python", "Reasoning") to normalized score 0-1.
+        :param overall_score: The derived overall score in the canonical 0-1 range.
         :param explanation: Detailed breakdown and weights.
         """
         self.scores = scores

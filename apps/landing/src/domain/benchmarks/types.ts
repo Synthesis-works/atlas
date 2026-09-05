@@ -92,7 +92,7 @@ export interface Benchmark {
   estimatedRuntime: string;
   license: string;
   author: string;
-  verificationScore: number; // Percentage (e.g. 100 for 9/9)
+  verificationScore: number | null; // Percentage (e.g. 100 for 9/9); null when no telemetry exists
   verification: VerificationChecklist;
   tags: string[];
   metrics: MetricCardItem[];
@@ -104,4 +104,21 @@ export interface Benchmark {
   artifacts: ArtifactItem[];
   relatedIds: string[];
   updatedAt: string;
+
+  // Real backend telemetry (strictly nullable when no runs exist)
+  versionId?: string;
+  datasetId?: string | null;
+  datasetVersionId?: string | null;
+  evaluationCaseCount?: number | null;
+  executionCount?: number | null;
+  completedExecutionCount?: number | null;
+  failedExecutionCount?: number | null;
+  evaluationCount?: number | null;
+  passedEvaluationCount?: number | null;
+  averageScore?: number | null;
+  latestScore?: number | null;
+  latestExecutionAt?: string | null;
+  averageLatencyMs?: number | null;
+  versions?: Array<{ id: string; version_string: string; state: string }>;
 }
+

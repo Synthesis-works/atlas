@@ -13,6 +13,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.dialects.postgresql import ENUM, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -99,6 +100,12 @@ class Execution(Base, BaseMixin):
     __tablename__ = "executions"
     __table_args__ = (
         Index("ix_executions_status_created_at", "status", "created_at"),
+        Index(
+            "uq_executions_idempotency_key",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
+        ),
         {"extend_existing": True},
     )
 
@@ -124,6 +131,7 @@ class Execution(Base, BaseMixin):
     target_model: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     execution_config: Mapped[dict | list | None] = mapped_column(JSONB, nullable=True)
     benchmark_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Worker Tracking
     celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True)

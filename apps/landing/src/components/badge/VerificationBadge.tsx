@@ -3,16 +3,16 @@ import { ShieldCheck, Sparkles } from 'lucide-react';
 
 interface VerificationBadgeProps {
   isVerified?: boolean;
-  source?: 'real' | 'demo' | string;
+  source?: string;
   className?: string;
 }
 
 export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
-  isVerified = false,
-  source = 'demo',
+  isVerified,
+  source,
   className = '',
 }) => {
-  if (isVerified || source === 'real') {
+  if (isVerified === true) {
     return (
       <span
         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 ${className}`}
@@ -24,13 +24,27 @@ export const VerificationBadge: React.FC<VerificationBadgeProps> = ({
     );
   }
 
+  if (source === 'demo') {
+    return (
+      <span
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 ${className}`}
+        title="Synthetic demo evaluation record"
+      >
+        <Sparkles className="w-3 h-3 text-amber-400" />
+        Demo Data
+      </span>
+    );
+  }
+
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20 ${className}`}
-      title="Synthetic demo evaluation record"
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20 ${className}`}
+      title="Execution not yet independently verified"
     >
-      <Sparkles className="w-3 h-3 text-amber-400" />
-      Demo Data
+      <ShieldCheck className="w-3 h-3 text-orange-400" />
+      Unverified
     </span>
   );
 };
+
+export default VerificationBadge;

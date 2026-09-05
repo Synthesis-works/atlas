@@ -162,6 +162,21 @@ class ProviderAdapter:
         if lower.startswith("ollama"):
             return "ollama", target
 
+        # Check if model is discovered in Ollama / ModelRegistry
+        try:
+            from packages.llm.registry import ModelRegistry
+
+            for m in ModelRegistry.get_all_models():
+                if m.get("model") == target or m.get("model") == lower:
+                    return m.get("provider", "ollama"), target
+        except Exception:
+            pass
+
+        # Resolution is strictly explicit: a model must carry a provider prefix
+        # (e.g. 'ollama/...') or be registered in the ModelRegistry. Never silently
+        # fall back to a local Ollama instance for an unconfigured model: an
+        # unrequested model may not exist there, and the request would then be
+        # processed by the wrong architecture (or fail with a confusing 404).
         raise ValueError(
             f"Unsupported target model '{target_model}'. Unable to resolve to a known provider."
         )

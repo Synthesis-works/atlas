@@ -90,7 +90,7 @@ def test_evaluation_pipeline():
         )
         if profile:
             print(f"Found CapabilityProfile: overall={profile.overall_score}")
-            assert profile.overall_score == 100.0
+            assert profile.overall_score == 1.0
             assert "Reasoning" in profile.score_explanation["breakdown"]
 
         # Check Artifacts

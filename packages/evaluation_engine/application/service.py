@@ -93,6 +93,37 @@ class EvaluationAppService:
                 )
                 return
 
+            # Idempotency check: if CapabilityProfile or EvaluationResults exist, skip duplicate evaluation
+            from atlas_db.models.evaluation import (
+                CapabilityProfile as DBCapabilityProfile,
+                EvaluationResult as DBEvaluationResult,
+            )
+
+            existing_profile = (
+                self.session.query(DBCapabilityProfile)
+                .filter(DBCapabilityProfile.execution_id == execution_id)
+                .first()
+            )
+            if existing_profile:
+                logger.info(
+                    "Execution already evaluated (idempotent)", execution_id=str(execution_id)
+                )
+                return
+
+            output_ids = [mo.id for mo in execution.model_outputs]
+            if output_ids:
+                existing_res = (
+                    self.session.query(DBEvaluationResult)
+                    .filter(DBEvaluationResult.model_output_id.in_(output_ids))
+                    .first()
+                )
+                if existing_res:
+                    logger.info(
+                        "Evaluation results already exist (idempotent)",
+                        execution_id=str(execution_id),
+                    )
+                    return
+
             # 3. Measurement & Scoring Phase
             context = EvaluatorContext(
                 execution_id=execution_id,
@@ -124,7 +155,9 @@ class EvaluationAppService:
                     model_output_id=output.id,
                     strategy_version_id=strategy_version_id,
                     status=EvaluationStatus.COMPLETED,
-                    passed=True if profile.overall_score and profile.overall_score >= 80 else False,
+                    passed=True
+                    if profile.overall_score and profile.overall_score >= 0.8
+                    else False,
                     raw_measurements=raw_measurements.raw_data,
                     evaluation_context={
                         "benchmark_version": context.benchmark_version,

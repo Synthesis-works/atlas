@@ -2,6 +2,8 @@ import uuid
 from typing import List, Optional
 import logging
 
+from sqlalchemy.exc import IntegrityError
+
 from packages.execution_engine.domain.services import ExecutionService
 from packages.execution_engine.persistence.interfaces import ExecutionRepository
 from packages.execution_engine.domain.models import Execution
@@ -39,9 +41,15 @@ class ExecutionApplicationService:
         dataset_version_id: uuid.UUID,
         submitted_by: uuid.UUID,
         target_model: str = "gemini-2.5-flash",
+        idempotency_key: str | None = None,
     ) -> Execution:
         """
         Creates and queues a new execution for a benchmark version.
+
+        When `idempotency_key` is provided and a matching execution already
+        exists (either previously committed or committed concurrently by
+        another request), the existing execution is returned instead of
+        queueing a duplicate.
         """
         bv = self.benchmark_repo.db.query(BenchmarkVersion).get(benchmark_version_id)
         if not bv:
@@ -67,18 +75,40 @@ class ExecutionApplicationService:
 
             db_exec = DBExecution(
                 id=execution.id,
-                project_id=uuid.UUID("00000000-0000-0000-0000-000000000003"),
+                project_id=project_id,
                 benchmark_version_id=benchmark_version_id,
                 dataset_version_id=dataset_version_id,
                 submitted_by_id=submitted_by,
                 target_model=target_model,
                 status=ExecutionStatus.QUEUED,
                 queued_at=datetime.now(UTC),
+                idempotency_key=idempotency_key,
             )
             session = getattr(self.execution_repo, "session", None)
             if session:
                 session.add(db_exec)
                 session.commit()
+        except IntegrityError as err:
+            if idempotency_key is None:
+                raise
+            logger.warning(
+                f"Idempotency collision for key {idempotency_key}, resolving to existing execution"
+            )
+            session = getattr(self.execution_repo, "session", None)
+            if session is not None:
+                session.rollback()
+                from atlas_db.models.execution import Execution as DBExecution
+
+                existing = (
+                    session.query(DBExecution)
+                    .filter(DBExecution.idempotency_key == idempotency_key)
+                    .first()
+                )
+                if existing is not None:
+                    existing_execution = self.execution_repo.get(existing.id)
+                    if existing_execution is not None:
+                        return existing_execution
+            raise
         except Exception as err:
             logger.warning(f"DBExecution creation warning: {err}")
 

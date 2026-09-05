@@ -19,3 +19,13 @@ class AdapterFactory:
             return MockModelAdapter()
 
         return RealModelAdapter(target_model=target_model)
+
+    @staticmethod
+    def get_available_models() -> list[dict]:
+        """
+        Enumerates the configured execution models (cloud + local) from the
+        canonical ModelRegistry, including their availability status.
+        """
+        from packages.llm.registry import ModelRegistry
+
+        return ModelRegistry.get_all_models()

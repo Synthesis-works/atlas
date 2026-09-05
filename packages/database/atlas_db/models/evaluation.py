@@ -105,10 +105,13 @@ class EvaluationResult(Base, BaseMixin):
     )
     judge: Mapped["Judge | None"] = relationship("Judge")
     details: Mapped["EvaluationResultDetail | None"] = relationship(
-        "EvaluationResultDetail", back_populates="evaluation_result", uselist=False
+        "EvaluationResultDetail",
+        back_populates="evaluation_result",
+        uselist=False,
+        cascade="all, delete-orphan",
     )
     artifacts: Mapped[list["EvaluationArtifact"]] = relationship(
-        "EvaluationArtifact", back_populates="evaluation_result"
+        "EvaluationArtifact", back_populates="evaluation_result", cascade="all, delete-orphan"
     )
 
 
@@ -134,7 +137,7 @@ class CapabilityProfile(Base, BaseMixin):
         "EvaluationStrategyVersion"
     )
     scores: Mapped[list["CapabilityScore"]] = relationship(
-        "CapabilityScore", back_populates="profile"
+        "CapabilityScore", back_populates="profile", cascade="all, delete-orphan"
     )
 
     __table_args__ = (

@@ -133,6 +133,10 @@ def test_execution_submission_wake_independent_of_login_warmup(monkeypatch):
     mock_db.query.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
     mock_db.query.return_value.filter.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
 
+    benchmark_version = Mock()
+    benchmark_version.dataset_versions = []
+    mock_db.query.return_value.filter.return_value.first.return_value = benchmark_version
+
     app.dependency_overrides[get_execution_service] = lambda: mock_execution_service
     app.dependency_overrides[get_db_session] = lambda: mock_db
     app.dependency_overrides[require_authenticated] = lambda: TokenClaims(

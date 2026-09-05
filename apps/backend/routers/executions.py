@@ -67,13 +67,31 @@ def map_to_response(execution: Execution) -> ExecutionResponse:
     )
 
 
+def map_db_execution_to_response(db_item) -> ExecutionResponse:
+    return ExecutionResponse(
+        id=db_item.id,
+        benchmark_version_id=db_item.benchmark_version_id,
+        status=db_item.status,
+        target_model=db_item.target_model or "gemini-2.5-flash",
+        completed_items=db_item.completed_items or 0,
+        total_items=db_item.total_items or 1,
+        started_at=db_item.started_at,
+        completed_at=db_item.completed_at,
+        created_at=db_item.created_at,
+        updated_at=db_item.updated_at,
+        created_by=db_item.submitted_by_id or uuid.uuid4(),
+        max_retries=getattr(db_item, "max_retries", 3) or 3,
+        attempts=[],
+    )
+
+
 @benchmark_executions_router.post(
     "/benchmarks/{benchmark_version_id}/executions",
     response_model=ExecutionResponse,
     status_code=201,
 )
 def create_execution(
-    benchmark_version_id: str,
+    benchmark_version_id: uuid.UUID,
     payload: ExecutionCreateRequest = Body(default_factory=ExecutionCreateRequest),
     db: Session = Depends(get_db_session),
     service: ExecutionApplicationService = Depends(get_execution_service),
@@ -82,12 +100,7 @@ def create_execution(
     """
     Creates and queues a new execution for a specific benchmark version.
     """
-    try:
-        bv_uuid = uuid.UUID(benchmark_version_id)
-    except (ValueError, TypeError):
-        raise HTTPException(
-            status_code=400, detail=f"Invalid benchmark_version_id: {benchmark_version_id}"
-        )
+    bv_uuid = benchmark_version_id
 
     from atlas_db.models.authoring import BenchmarkVersion
 
@@ -97,49 +110,80 @@ def create_execution(
             status_code=404, detail=f"BenchmarkVersion {benchmark_version_id} not found"
         )
 
-    sub = current_user.get("sub", str(uuid.uuid4()))
+    sub = current_user.get("sub")
+    if not sub:
+        raise HTTPException(status_code=401, detail="Token subject is missing.")
     try:
-        user_id = uuid.UUID(sub)
+        user_id = uuid.UUID(str(sub))
     except (ValueError, TypeError):
-        user_id = uuid.uuid4()
+        raise HTTPException(status_code=401, detail="Token subject is not a valid UUID.")
 
     target_model = (
         payload.target_model if payload and payload.target_model else "groq/llama-3.1-8b-instant"
     )
 
     dataset_version_id = getattr(payload, "dataset_version_id", None)
-    if dataset_version_id is None:
-        dataset_version_id = getattr(benchmark_version, "primary_dataset_version_id", None)
-    if dataset_version_id is None:
-        from atlas_db.models.tasks import TestCase
+    if dataset_version_id is None and hasattr(benchmark_version, "primary_dataset_version_id"):
+        raw_dv = benchmark_version.primary_dataset_version_id
+        if isinstance(raw_dv, uuid.UUID):
+            dataset_version_id = raw_dv
+        elif isinstance(raw_dv, str):
+            try:
+                dataset_version_id = uuid.UUID(raw_dv)
+            except ValueError:
+                pass
 
-        row = (
-            db.query(TestCase.dataset_version_id)
-            .filter(TestCase.dataset_version_id.isnot(None))
-            .first()
-        )
-        if row:
-            dataset_version_id = row[0]
-
+    # Executions target a concrete, reproducible dataset version. Fabricating a
+    # value (e.g. an arbitrary TestCase row or a random UUID) would silently run
+    # against the wrong data or a non-existent version, so an unknown or missing
+    # dataset version is rejected explicitly instead.
     if dataset_version_id is None:
         raise HTTPException(
-            status_code=400,
-            detail="A dataset_version_id could not be resolved for this execution",
+            status_code=422,
+            detail=(
+                f"No dataset version is configured for benchmark_version "
+                f"{benchmark_version_id}; provide or attach a dataset_version_id."
+            ),
         )
 
     try:
         dataset_version_id = uuid.UUID(str(dataset_version_id))
     except (ValueError, TypeError):
         raise HTTPException(
-            status_code=400,
+            status_code=422,
             detail=f"Invalid dataset_version_id: {dataset_version_id}",
         )
+
+    linked_dataset_versions = {
+        dv.id for dv in (benchmark_version.dataset_versions or []) if dv is not None
+    }
+    if linked_dataset_versions and dataset_version_id not in linked_dataset_versions:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"dataset_version_id {dataset_version_id} is not associated with "
+                f"benchmark_version {benchmark_version_id}."
+            ),
+        )
+
+    idempotency_key = getattr(payload, "idempotency_key", None)
+    if idempotency_key:
+        from atlas_db.models.execution import Execution as DBExecution
+
+        existing = (
+            db.query(DBExecution).filter(DBExecution.idempotency_key == idempotency_key).first()
+        )
+        if existing:
+            # A matching submission was already accepted; resolve to that
+            # execution record instead of queuing a duplicate.
+            return map_db_execution_to_response(existing)
 
     execution = service.submit_execution(
         benchmark_version_id=bv_uuid,
         dataset_version_id=dataset_version_id,
         submitted_by=user_id,
         target_model=target_model,
+        idempotency_key=idempotency_key,
     )
     if hasattr(service, "execution_repo") and hasattr(service.execution_repo, "session"):
         service.execution_repo.session.commit()
@@ -160,7 +204,6 @@ def list_dispatch_targets(
     Lists benchmark versions that can be dispatched, each with a resolved dataset version.
     """
     from atlas_db.models.authoring import Benchmark, BenchmarkVersion
-    from atlas_db.models.tasks import TestCase
 
     rows = (
         db.query(
@@ -176,21 +219,15 @@ def list_dispatch_targets(
 
     targets = []
     for bv_id, name, version_string, primary_dv in rows:
-        dataset_version_id = primary_dv
-        if dataset_version_id is None:
-            row = (
-                db.query(TestCase.dataset_version_id)
-                .filter(TestCase.dataset_version_id.isnot(None))
-                .first()
-            )
-            if row:
-                dataset_version_id = row[0]
+        # dataset_version_id is left unsatisfied (None) when the benchmark version
+        # declares no primary dataset version, so an empty target surfaces the
+        # misconfiguration instead of attaching an arbitrary unrelated dataset.
         targets.append(
             DispatchTargetResponse(
                 benchmark_version_id=bv_id,
                 benchmark_name=name,
                 version_string=version_string,
-                dataset_version_id=dataset_version_id,
+                dataset_version_id=primary_dv,
             )
         )
     return targets
@@ -250,23 +287,6 @@ def list_executions(
     total = query.count()
     db_items = query.order_by(DBExecution.created_at.desc()).offset(offset).limit(limit).all()
 
-    mapped_items = []
-    for db_item in db_items:
-        resp = ExecutionResponse(
-            id=db_item.id,
-            benchmark_version_id=db_item.benchmark_version_id,
-            status=db_item.status,
-            target_model=db_item.target_model or "gemini-2.5-flash",
-            completed_items=db_item.completed_items or 0,
-            total_items=db_item.total_items or 1,
-            started_at=db_item.started_at,
-            completed_at=db_item.completed_at,
-            created_at=db_item.created_at,
-            updated_at=db_item.updated_at,
-            created_by=db_item.submitted_by_id or uuid.uuid4(),
-            max_retries=getattr(db_item, "max_retries", 3) or 3,
-            attempts=[],
-        )
-        mapped_items.append(resp)
+    mapped_items = [map_db_execution_to_response(db_item) for db_item in db_items]
 
     return ExecutionListResponse(items=mapped_items, total=total)

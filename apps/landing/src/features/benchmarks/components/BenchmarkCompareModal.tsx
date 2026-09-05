@@ -93,7 +93,7 @@ export const BenchmarkCompareModal: React.FC<BenchmarkCompareModalProps> = ({
               {benchmarks.map((bm) => (
                 <div key={bm.id} className="py-2 flex items-center gap-1.5 text-emerald-400 font-bold">
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>{bm.verificationScore}%</span>
+                  <span>{bm.verificationScore != null ? `${bm.verificationScore}%` : '—'}</span>
                 </div>
               ))}
 

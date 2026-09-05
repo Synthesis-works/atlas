@@ -19,7 +19,7 @@ export function normalizeBenchmarkPayload(raw: any): Benchmark {
     estimatedRuntime: raw.estimatedRuntime || '~5 min',
     license: raw.license || 'MIT',
     author: raw.author || 'Atlas Community',
-    verificationScore: Number(raw.verificationScore || 100),
+    verificationScore: raw.verificationScore == null ? null : Number(raw.verificationScore),
     verification: raw.verification || {
       datasetLicense: true,
       metadata: true,

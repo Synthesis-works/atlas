@@ -54,6 +54,7 @@ def test_evaluation_app_service_evaluate_execution():
 
     def mock_query_side_effect(model):
         qs = Mock()
+        qs.filter.return_value.first.return_value = None
         if model == Execution:
             qs.filter.return_value.first.return_value = mock_execution
         elif model == BenchmarkVersion:
@@ -81,7 +82,7 @@ def test_evaluation_app_service_evaluate_execution():
     # configure Mocks
     mock_evaluator.evaluate.return_value = RawMeasurements({"exact_match": True, "latency": 150})
     mock_scorer.score.return_value = DomainCapabilityProfile(
-        scores={"Reasoning": 100.0}, overall_score=100.0, explanation={"overall": 100}
+        scores={"Reasoning": 1.0}, overall_score=1.0, explanation={"overall": 1.0}
     )
 
     service.evaluate_execution(mock_execution.id)

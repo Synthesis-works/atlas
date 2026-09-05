@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from packages.execution_engine.domain.models import ArtifactType, AttemptStatus, ExecutionState
 
@@ -45,6 +45,7 @@ class ExecutionCreateRequest(BaseModel):
     target_model: str = "gemini-2.5-flash"
     dataset_version_id: uuid.UUID | None = None
     execution_config: dict | None = None
+    idempotency_key: str | None = Field(default=None, max_length=255)
 
 
 class DispatchTargetResponse(BaseModel):

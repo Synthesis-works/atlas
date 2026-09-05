@@ -1,4 +1,5 @@
 import { useBenchmarkCatalog } from '../../hooks/useBenchmarkCatalog';
+import { ProvenanceBadge } from '../ProvenanceBadge';
 
 export function AtlasBenchmarkTable({ catalog }: { catalog: ReturnType<typeof useBenchmarkCatalog> }) {
   const { rows, selectedIds, handleSelect, handleSelectAll, sort, setSort, rawVisibleIds } = catalog;
@@ -54,6 +55,8 @@ export function AtlasBenchmarkTable({ catalog }: { catalog: ReturnType<typeof us
           <tbody className="divide-y divide-white/5">
             {rows.map(row => {
               const isSelected = selectedIds.includes(row.id);
+              const prov = catalog.benchmarkProvenance[row.name];
+              const provBadge = prov?.hasDemo ? 'demo' : prov?.hasUnverified ? 'unverified' : null;
               const handleClick = (e: React.MouseEvent) => {
                 if (e.detail === 2) {
                   catalog.handleOpenPreview(row.id);
@@ -79,9 +82,17 @@ export function AtlasBenchmarkTable({ catalog }: { catalog: ReturnType<typeof us
                     />
                   </td>
                   <td className="p-4">
-                    <span className="text-white font-medium">{row.name}</span>
+                    <span className="flex items-center gap-2">
+                      <span className="text-white font-medium">{row.name}</span>
+                      {provBadge === 'demo' && (
+                        <ProvenanceBadge source="demo" label="Demo data" />
+                      )}
+                      {provBadge === 'unverified' && (
+                        <ProvenanceBadge isVerified={false} label="Unverified data" />
+                      )}
+                    </span>
                   </td>
-                  <td className="p-4 whitespace-nowrap">{row.verificationScore}%</td>
+                  <td className="p-4 whitespace-nowrap">{row.verificationScore != null ? `${row.verificationScore}%` : '—'}</td>
                   <td className="p-4 whitespace-nowrap">{row.tasksCountFormatted}</td>
                   <td className="p-4 whitespace-nowrap">{row.updatedAt}</td>
                   <td className="p-4 capitalize">{row.category}</td>

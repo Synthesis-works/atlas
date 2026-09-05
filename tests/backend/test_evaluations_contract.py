@@ -17,6 +17,10 @@ def test_client():
     mock_db.query.return_value.filter.return_value.count.return_value = 0
     mock_db.query.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
 
+    benchmark_version = Mock()
+    benchmark_version.dataset_versions = []
+    mock_db.query.return_value.filter.return_value.first.return_value = benchmark_version
+
     mock_service = Mock()
     mock_service.submit_execution.return_value = Execution(
         id=uuid.uuid4(),
