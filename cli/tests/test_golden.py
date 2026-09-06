@@ -24,12 +24,13 @@ def _load_golden(name: str) -> dict | list:
     path = GOLDEN_DIR / name
     if not path.exists():
         pytest.skip(f"golden file {name} not yet created")
-    return json.loads(path.read_text())
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _write_golden(name: str, data: dict | list) -> None:
     GOLDEN_DIR.mkdir(parents=True, exist_ok=True)
-    (GOLDEN_DIR / name).write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    content = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+    (GOLDEN_DIR / name).write_text(content, encoding="utf-8", newline="\n")
 
 
 def _mock_all_fail():

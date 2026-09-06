@@ -2,6 +2,6 @@
   "error": {
     "status": 401,
     "code": "UNAUTHORIZED",
-    "message": "Not authenticated — run `atlas login` or set ATLAS_TOKEN."
+    "message": "Not authenticated â€” run `atlas login` or set ATLAS_TOKEN."
   }
 }
