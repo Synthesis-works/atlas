@@ -1,6 +1,6 @@
 # Atlas — LLM Execution & Evaluation Platform
 
-Atlas is a distributed platform for benchmarking large language models. You author versioned datasets and benchmarks, execute them against real LLM providers, evaluate the responses against reference solutions, and get reports and leaderboards — all through a clean web UI and a REST API, with a production stack that runs unattended on free cloud tiers.
+Atlas is a distributed platform for benchmarking large language models. You author versioned datasets and benchmarks, execute them against real LLM providers, evaluate the responses against reference solutions, and get reports and leaderboards — all through a clean web UI, a REST API, and a command-line interface (`atlas-cli`), with a production stack that runs unattended on free cloud tiers.
 
 It is currently deployed as **Atlas v1** on Vercel (web + API), Supabase (PostgreSQL), and Render (worker) — and the full loop (web → API → database → outbox → worker → real LLM → evaluation → reports → leaderboard) has been verified end-to-end against live production.
 
@@ -42,6 +42,8 @@ Atlas gives you a single, reproducible pipeline:
 | Reports | Auto-generated reports on completion (HTML/Markdown export available). |
 | Leaderboards | Snapshot-based leaderboards rebuilt on every completed run. |
 | Agent | An agentic assistant layer (tools for datasets, benchmarks, execution, evaluation) with Gemini / Groq / Mistral backends and provider failover. |
+| Command-line interface | `atlas-cli` — deterministic commands (health, dashboard, activity, leaderboard, benchmark, model, report, run) with human/JSON/quiet output. |
+| CLI agent | A tool-calling agent in the terminal — interactive `atlas` REPL and one-shot `atlas agent "..."` — covering the same Atlas capabilities, with Gemini / Groq providers and automatic failover. |
 | Authentication / RBAC | JWT authentication, permission-scoped endpoints, admin/user roles. |
 | Multi-tenant orgs & projects | Full RBAC isolation across organizations and projects. |
 | Real LLM providers | Gemini, Groq, Mistral, NVIDIA NIM, Ollama (local); see [Providers](#llm-providers). |
@@ -100,6 +102,7 @@ All three share the identical outbox → execution → evaluation → reporting 
 - **Frontend**: Vite + React + TypeScript, oxlint, visx charts, SPA rewrites
 - **LLM providers** (execution engine, `packages/llm`): Gemini (`GEMINI_API_KEY`), Groq (`GROQ_API_KEY`), Mistral (`MISTRAL_API_KEY`), NVIDIA NIM (`NVIDIA_API_KEY`), Ollama (local, `OLLAMA_HOST`); Grok (`XAI_API_KEY`) available but disabled until models are re-validated
 - **Agent providers**: Gemini / Groq / Mistral with mock fallback (`apps/backend/agent`)
+- **CLI**: `atlas-cli` (`cli/`) — click-based deterministic commands + a client-side tool-calling agent; the wheel/sdist bundles `atlas_sdk` and `packages/llm`
 - **Quality**: ruff (lint + format), mypy (strict), pytest (Postgres-backed CI)
 
 ## 6. Repository structure
@@ -109,6 +112,9 @@ apps/
   backend/            FastAPI application: routers/, agent/, worker/
     worker/           celery_app, tasks, outbox_sweep_loop, http_entry (Render), wake_client
   landing/            Vite + React + TypeScript frontend (deployed as atlas-web)
+cli/
+  cli/                atlas-cli package: click commands + client-side agent (bundles SDK + packages/llm)
+  scripts/            build_cli_dist.py, validate_cli_dist.py (staged wheel/sdist + offline validation)
 packages/
   database/           SQLAlchemy models, session/engine, Alembic migrations (alembic/)
   execution_engine/   execution pipeline (dispatch, runners, adapters)
@@ -294,7 +300,43 @@ Names only — values are secrets or per-deployment and are never committed.
 - **Improved artifact storage** — move artifacts from the worker disk to Supabase Storage/S3.
 - **Multi-worker scale-out**, queue priorities, and richer leaderboard UI.
 
-## 13. Quick start / demo
+## 13. Atlas CLI
+
+`atlas-cli` is the terminal interface for Atlas — deterministic commands plus a tool-calling agent, developed in Python 3.11+ with `click` under `cli/`. The distributed wheel/sdist bundles the Atlas SDK (`atlas_sdk`) and the internal LLM layer (`packages/llm`), so `pip install atlas-cli` is fully self-contained.
+
+Install and verify:
+
+```bash
+pip install atlas-cli            # Python 3.11+
+
+atlas --version                  # atlas-cli 0.1.0
+atlas --help
+```
+
+Authentication: `atlas login` stores the access token in `%APPDATA%\Atlas\config.toml` (per-user, never in the repo); `atlas logout` removes it; `atlas whoami` shows the authenticated identity. `ATLAS_BASE_URL`, `ATLAS_PROFILE`, `ATLAS_OUTPUT`, and `ATLAS_TOKEN` are honored, with precedence CLI flags > environment variables > saved profile > built-in defaults.
+
+**Deterministic commands** (each supports human/JSON/quiet output via `--output`, plus `--base-url`, `--profile`, `--timeout`, `--retries`):
+
+| Command | Purpose |
+|---|---|
+| `atlas health` | API health (liveness/readiness) |
+| `atlas dashboard` | Dashboard summary |
+| `atlas activity` | Recent platform activity |
+| `atlas leaderboard` | Leaderboards (`benchmark` / `model`, with `--history`) |
+| `atlas benchmark` | Benchmarks (`list` / `get` / `versions`) |
+| `atlas model` | Models (`list`) |
+| `atlas report` | Reports (`list` / `get` / `export`) |
+| `atlas run` | Executions (`submit` / `get` / `list` / `watch` / `cancel`) |
+
+**Agent** — the CLI embeds the Atlas agent for terminal workflows:
+
+- Bare `atlas` in an interactive TTY starts the agent REPL; `atlas agent "your task"` runs one-shot, non-interactively.
+- The agent exposes Atlas capabilities as tools (benchmarks, benchmark versions, models, evaluations, datasets, runs, reports, leaderboards, search, activity, dashboard, health) through the existing SDK client — never raw HTTP, shell, or filesystem.
+- `--provider [auto|groq|gemini]` selects the brain: `auto` falls back across configured providers (Groq, Gemini) on availability failures, while `gemini`/`groq` pin a provider. Set `GROQ_API_KEY` or `GEMINI_API_KEY` on the machine; without any key the agent exits gracefully and points at the missing variable.
+
+**Packaging** — `scripts/build_cli_dist.py` stages a self-contained tree and builds a wheel + sdist into `cli/dist` (gitignored); `scripts/validate_cli_dist.py` validates them offline in a fresh venv (imports, `--help`/`--version`, graceful no-key agent exit, metadata with no `atlas-sdk`/`atlas-llm` dependency). CI runs both via `atlas-cli CI` (`.github/workflows/cli.yml`). See [docs/guides/atlas-cli-release.md](docs/guides/atlas-cli-release.md) and [docs/guides/atlas-cli-v3-agent-architecture.md](docs/guides/atlas-cli-v3-agent-architecture.md).
+
+## 14. Quick start / demo
 
 Live demo (public, free tier — allow for cold starts):
 
@@ -321,7 +363,7 @@ atlas leaderboard model mock                # or: atlas leaderboard benchmark <i
 
 `atlas login` stores the token in `%APPDATA%\Atlas\config.toml` (never in the repo); `atlas logout` removes it.
 
-## 14. Project status
+## 15. Project status
 
 Atlas is at **v1** — feature-complete for the core loop above. The current production deployment (Vercel + Supabase + Render) has passed a real end-to-end test: a single execution submitted through the public API was processed through the outbox, executed against a real LLM provider, evaluated, reported, and snapshot to the leaderboard — with exactly one execution record, no duplicates, and all outbox events processed.
 
