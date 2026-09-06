@@ -55,13 +55,9 @@ def test_login_success_persists_token(runner: CliRunner, tmp_path: Path) -> None
     assert cfg.base_url == "http://localhost:8000"
 
 
-def test_login_email_flag_prompts_only_for_password(
-    runner: CliRunner, tmp_path: Path
-) -> None:
+def test_login_email_flag_prompts_only_for_password(runner: CliRunner, tmp_path: Path) -> None:
     with patch("cli.client.AtlasClient", return_value=_mock_login_client()):
-        result = runner.invoke(
-            main, ["login", "--email", "demo@atlas.val"], input="password123\n"
-        )
+        result = runner.invoke(main, ["login", "--email", "demo@atlas.val"], input="password123\n")
     assert result.exit_code == 0
     assert "Email:" not in result.output
     cfg = load_config(config_path=_profile_path(tmp_path))
@@ -80,9 +76,7 @@ def test_login_password_stdin_success(runner: CliRunner, tmp_path: Path) -> None
     assert cfg.token == "expected-token"
 
 
-def test_login_password_stdin_empty_is_validation_error(
-    runner: CliRunner, tmp_path: Path
-) -> None:
+def test_login_password_stdin_empty_is_validation_error(runner: CliRunner, tmp_path: Path) -> None:
     with patch("cli.client.AtlasClient", return_value=_mock_login_client()):
         result = runner.invoke(
             main,
@@ -94,9 +88,7 @@ def test_login_password_stdin_empty_is_validation_error(
     assert cfg.token is None
 
 
-def test_login_json_payload_never_contains_token(
-    runner: CliRunner, tmp_path: Path
-) -> None:
+def test_login_json_payload_never_contains_token(runner: CliRunner, tmp_path: Path) -> None:
     with patch("cli.client.AtlasClient", return_value=_mock_login_client("secret-token")):
         result = runner.invoke(
             main,
@@ -131,9 +123,7 @@ def test_login_quiet_emits_no_stdout(runner: CliRunner, tmp_path: Path) -> None:
     assert load_config(config_path=_profile_path(tmp_path)).token == "expected-token"
 
 
-def test_login_invalid_credentials_exits_auth_code(
-    runner: CliRunner, tmp_path: Path
-) -> None:
+def test_login_invalid_credentials_exits_auth_code(runner: CliRunner, tmp_path: Path) -> None:
     err = AuthError(status=401, message="Invalid credentials")
     with patch("cli.client.AtlasClient", return_value=_mock_login_client_error(err)):
         result = runner.invoke(main, ["login"], input="demo@atlas.val\nwrongpass\n")
@@ -184,9 +174,7 @@ def test_logout_removes_saved_token(runner: CliRunner, tmp_path: Path) -> None:
     assert cfg.base_url == "http://localhost:8000"
 
 
-def test_logout_succeeds_when_no_saved_token_exists(
-    runner: CliRunner, tmp_path: Path
-) -> None:
+def test_logout_succeeds_when_no_saved_token_exists(runner: CliRunner, tmp_path: Path) -> None:
     result = runner.invoke(main, ["logout"])
     assert result.exit_code == 0
     assert "Logged out" in result.output

@@ -90,10 +90,7 @@ def list_cmd(ctx: Context, json_schema: bool) -> None:
             click.echo("  (no benchmarks)")
             return
         headers = ["Name", "ID", "State"]
-        rows = [
-            [b.name, str(b.id), b.state]
-            for b in page.items
-        ]
+        rows = [[b.name, str(b.id), b.state] for b in page.items]
         render_table(headers, rows, title="Benchmarks")
         if page.total > len(page.items):
             shown = len(page.items)
@@ -178,8 +175,5 @@ def versions_cmd(ctx: Context, benchmark_id: str) -> None:
             click.echo("  (no versions)")
             return
         headers = ["Version", "ID", "State"]
-        rows = [
-            [v.version_string, str(v.id), v.state]
-            for v in versions
-        ]
+        rows = [[v.version_string, str(v.id), v.state] for v in versions]
         render_table(headers, rows, title="Benchmark Versions")

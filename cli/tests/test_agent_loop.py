@@ -42,16 +42,12 @@ class FakeProvider:
     def decide(self, task: str, prompt_context: str, available_tools: list[dict]) -> AgentDecision:
         self.contexts.append(prompt_context)
         if not self._decisions:
-            return AgentDecision(
-                type=AgentDecisionType.FINAL_RESPONSE, response="done (fallback)"
-            )
+            return AgentDecision(type=AgentDecisionType.FINAL_RESPONSE, response="done (fallback)")
         return self._decisions.pop(0)
 
 
 def _tool(name: str, **args: Any) -> AgentDecision:
-    return AgentDecision(
-        type=AgentDecisionType.TOOL_CALL, tool_name=name, arguments=args
-    )
+    return AgentDecision(type=AgentDecisionType.TOOL_CALL, tool_name=name, arguments=args)
 
 
 def _final(text: str) -> AgentDecision:
@@ -81,25 +77,31 @@ class MockAtlasClient:
             return uuid.UUID(f"00000000-0000-0000-0000-00000000000{n}")
 
         bv = BenchmarkVersionRead(
-            id=u(2), benchmark_id=u(1), version_string="1.0.0",
+            id=u(2),
+            benchmark_id=u(1),
+            version_string="1.0.0",
             state="published",
         )
         self.list_benchmarks = lambda limit=50: PageResponse(
-            items=[
-                BenchmarkRead(id=u(1), project_id=u(9), name="B1", state="published")
-            ],
-            total=1, limit=limit, offset=0,
+            items=[BenchmarkRead(id=u(1), project_id=u(9), name="B1", state="published")],
+            total=1,
+            limit=limit,
+            offset=0,
         )
         self.list_benchmark_versions = lambda benchmark_id: [bv]
         self.list_models = lambda: [
             ModelRead(
-                id="mock", provider="test", display_name="Mock",
+                id="mock",
+                provider="test",
+                display_name="Mock",
                 status=ModelStatus.AVAILABLE,
             )
         ]
-        self.submit_execution = (
-            lambda bv_id, target_model="mock", dataset_version_id=None: ExecutionResponse(
-                id=u(4), benchmark_version_id=uuid.UUID(str(bv_id)), status="QUEUED",
+        self.submit_execution = lambda bv_id, target_model="mock", dataset_version_id=None: (
+            ExecutionResponse(
+                id=u(4),
+                benchmark_version_id=uuid.UUID(str(bv_id)),
+                status="QUEUED",
                 target_model=target_model,
                 created_at=datetime(2026, 1, 1, tzinfo=UTC),
                 updated_at=datetime(2026, 1, 1, tzinfo=UTC),
@@ -116,9 +118,13 @@ class MockAtlasClient:
             created_by=u(9),
         )
         self.get_report_run = lambda run_id: ReportSummaryRead(
-            run_id=uuid.UUID(str(run_id)), benchmark_id=u(1), benchmark_name="B1",
-            benchmark_version="1.0.0", target_model="mock",
-            evaluation_status="COMPLETED", overall_score=92.5,
+            run_id=uuid.UUID(str(run_id)),
+            benchmark_id=u(1),
+            benchmark_name="B1",
+            benchmark_version="1.0.0",
+            target_model="mock",
+            evaluation_status="COMPLETED",
+            overall_score=92.5,
         )
 
 
@@ -184,9 +190,7 @@ class TestMultiStepChain:
         assert loop.context.completed_at is not None
 
     def test_context_transcript_accumulates(self) -> None:
-        provider = FakeProvider(
-            [_tool("list_benchmarks"), _final("done")]
-        )
+        provider = FakeProvider([_tool("list_benchmarks"), _final("done")])
         loop = _make_loop(provider)
         loop.run("list benchmarks")
         first = provider.contexts[0]
@@ -273,7 +277,8 @@ class TestToolCallLimit:
     def test_tool_call_limit_raises_when_seeded_near_boundary(self) -> None:
         ctx = AgentContext(
             goal="seed",
-            tool_calls=[], observations=[],
+            tool_calls=[],
+            observations=[],
         )
         # seed the counter AT the tool-call ceiling without spending steps
         for _ in range(MAX_AGENT_TOOL_CALLS):

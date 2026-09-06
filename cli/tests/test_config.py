@@ -39,6 +39,7 @@ def test_cli_flags_override() -> None:
 
 def test_env_vars(monkeypatch: object) -> None:
     import pytest
+
     mp = pytest.MonkeyPatch()
     mp.setenv("ATLAS_BASE_URL", "http://env-host:7000")
     mp.setenv("ATLAS_TIMEOUT", "120")
@@ -56,6 +57,7 @@ def test_env_vars(monkeypatch: object) -> None:
 
 def test_cli_over_env(monkeypatch: object) -> None:
     import pytest
+
     mp = pytest.MonkeyPatch()
     mp.setenv("ATLAS_BASE_URL", "http://env-host:7000")
     try:
@@ -67,6 +69,7 @@ def test_cli_over_env(monkeypatch: object) -> None:
 
 def test_invalid_timeout_falls_back_to_default(monkeypatch: object) -> None:
     import pytest
+
     mp = pytest.MonkeyPatch()
     mp.setenv("ATLAS_TIMEOUT", "not-a-number")
     try:
@@ -149,8 +152,6 @@ def test_clear_saved_token_preserves_base_url(tmp_path: Path) -> None:
     assert cfg.base_url == "http://localhost:8000"
 
 
-def test_default_config_path_under_appdata(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_default_config_path_under_appdata(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("APPDATA", str(tmp_path))
     assert default_config_path() == tmp_path / "Atlas" / "config.toml"

@@ -118,12 +118,14 @@ def login_cmd(ctx: Context, email: str | None, password_stdin: bool) -> None:
     save_profile(token=token, base_url=cfg.base_url, profile=cfg.profile)
 
     if output_mode == "json":
-        render_json({
-            "success": True,
-            "email": email,
-            "base_url": cfg.base_url,
-            "profile": cfg.profile,
-        })
+        render_json(
+            {
+                "success": True,
+                "email": email,
+                "base_url": cfg.base_url,
+                "profile": cfg.profile,
+            }
+        )
     elif output_mode == "quiet":
         pass
     else:

@@ -279,7 +279,5 @@ class TestDatasetWriteConfirms:
             confirm=None,
             echo=lambda s: None,
         )
-        assert (
-            repl._prompt_confirm("create_dataset", {"project_id": PROJECT, "name": "X"}) is True
-        )
+        assert repl._prompt_confirm("create_dataset", {"project_id": PROJECT, "name": "X"}) is True
         assert len(calls) == 1

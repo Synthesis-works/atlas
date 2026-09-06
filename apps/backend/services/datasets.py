@@ -113,7 +113,9 @@ class DatasetService:
             )
             self.version_repo.create(version, commit=False)
             self.session.flush()
-            self._seed_tasks(dataset=dataset, version=version, member_id=member_id, tasks=data.tasks)
+            self._seed_tasks(
+                dataset=dataset, version=version, member_id=member_id, tasks=data.tasks
+            )
 
         self.session.commit()
         self.session.refresh(dataset)

@@ -134,8 +134,12 @@ def test_entrypoint_watch_timeout_zero_exits_2(
     monkeypatch.setattr(
         "sys.argv",
         [
-            "atlas", "run", "watch", "11111111-1111-1111-1111-111111111111",
-            "--timeout", "0",
+            "atlas",
+            "run",
+            "watch",
+            "11111111-1111-1111-1111-111111111111",
+            "--timeout",
+            "0",
         ],
     )
     with pytest.raises(SystemExit) as exc_info:

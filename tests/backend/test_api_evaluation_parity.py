@@ -54,9 +54,7 @@ def _override(client, mock_service, mock_authz_service, mock_token_claims):
     app.dependency_overrides.clear()
 
 
-def test_get_evaluation_results(
-    client, mock_service, mock_authz_service, mock_token_claims
-):
+def test_get_evaluation_results(client, mock_service, mock_authz_service, mock_token_claims):
     project_id = uuid.uuid4()
     execution_id = uuid.uuid4()
 
@@ -99,9 +97,7 @@ def test_get_evaluation_results_not_found(
     assert resp.status_code == 404
 
 
-def test_create_evaluation_cases(
-    client, mock_service, mock_authz_service, mock_token_claims
-):
+def test_create_evaluation_cases(client, mock_service, mock_authz_service, mock_token_claims):
     from apps.backend.schemas.evaluation_cases import (
         EvaluationCaseWriteResponse,
         EvaluationCaseWritten,
@@ -160,12 +156,22 @@ def test_compare_executions(client, mock_service, mock_authz_service, mock_token
     mock_service.compare_executions.return_value = ExecutionCompareResponse(
         leaderboard=[
             ExecutionCompareItemRead(
-                execution_id=e1, target_model="gpt", overall_score=0.9, passed_outputs=9,
-                total_outputs=10, evaluated_outputs=10, rank=1,
+                execution_id=e1,
+                target_model="gpt",
+                overall_score=0.9,
+                passed_outputs=9,
+                total_outputs=10,
+                evaluated_outputs=10,
+                rank=1,
             ),
             ExecutionCompareItemRead(
-                execution_id=e2, target_model="claude", overall_score=0.8,
-                passed_outputs=8, total_outputs=10, evaluated_outputs=10, rank=2,
+                execution_id=e2,
+                target_model="claude",
+                overall_score=0.8,
+                passed_outputs=8,
+                total_outputs=10,
+                evaluated_outputs=10,
+                rank=2,
             ),
         ]
     )
@@ -212,9 +218,7 @@ def test_generate_report_execution_not_found(
     mock_service.generate_report.return_value = None
 
     with _override(client, mock_service, mock_authz_service, mock_token_claims):
-        resp = client.post(
-            f"/api/v1/projects/{project_id}/reports", json={"title": "X"}
-        )
+        resp = client.post(f"/api/v1/projects/{project_id}/reports", json={"title": "X"})
 
     assert resp.status_code == 404
 

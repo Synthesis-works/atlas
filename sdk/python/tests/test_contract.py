@@ -121,9 +121,7 @@ class TestContractBaseline:
             ("ModelRead", ModelRead),
         ],
     )
-    def test_dto_matches_schema(
-        self, schema_name: str, model: type
-    ) -> None:
+    def test_dto_matches_schema(self, schema_name: str, model: type) -> None:
         expected = _EXPECTED_SCHEMAS[schema_name]
         expected_fields = _schema_fields(expected)
         actual_fields = _dto_fields(model)

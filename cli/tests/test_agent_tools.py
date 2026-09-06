@@ -38,7 +38,9 @@ def _mock_client() -> MagicMock:
     )
     mock.list_benchmark_versions.return_value = [
         BenchmarkVersionRead(
-            id=_id(2), benchmark_id=_id(1), version_string="1.0.0",
+            id=_id(2),
+            benchmark_id=_id(1),
+            version_string="1.0.0",
             state="published",
         )
     ]
@@ -79,7 +81,9 @@ def _mock_client() -> MagicMock:
         entries=PageResponse(
             items=[
                 LeaderboardEntryRead(
-                    rank=1, model_name="mock", overall_score=92.5,
+                    rank=1,
+                    model_name="mock",
+                    overall_score=92.5,
                     benchmark_count=3,
                     last_updated=datetime(2026, 1, 1, tzinfo=UTC),
                 )
@@ -315,9 +319,7 @@ class TestLeaderboard:
         reg = ToolRegistry()
         client = _mock_client()
         result = reg.execute("get_leaderboard", client, {"benchmark_version_id": str(_id(2))})
-        client.get_benchmark_leaderboard.assert_called_once_with(
-            str(_id(2)), limit=20, offset=0
-        )
+        client.get_benchmark_leaderboard.assert_called_once_with(str(_id(2)), limit=20, offset=0)
         assert result.ok is True
         assert "mock" in result.summary
 

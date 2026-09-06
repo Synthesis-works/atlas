@@ -106,8 +106,11 @@ class TestCreateBenchmarkTool:
             "create_benchmark", client, {"project_id": PROJECT, "name": "New Bench"}
         )
         client.create_benchmark.assert_called_once_with(
-            PROJECT, name="New Bench", objective=None,
-            category_ids=None, capability_ids=None,
+            PROJECT,
+            name="New Bench",
+            objective=None,
+            category_ids=None,
+            capability_ids=None,
         )
         assert result.ok is True
         assert BENCH in result.summary
@@ -123,9 +126,7 @@ class TestUpdateBenchmarkTool:
     def test_delegates(self) -> None:
         reg = ToolRegistry()
         client = _mock_client()
-        result = reg.execute(
-            "update_benchmark", client, {"benchmark_id": BENCH, "name": "Renamed"}
-        )
+        result = reg.execute("update_benchmark", client, {"benchmark_id": BENCH, "name": "Renamed"})
         client.update_benchmark.assert_called_once()
         assert result.ok is True
         assert "Renamed" in result.summary
@@ -153,8 +154,10 @@ class TestCreateBenchmarkVersionTool:
             {"benchmark_id": BENCH, "version_string": "1.0.0"},
         )
         client.create_benchmark_version.assert_called_once_with(
-            BENCH, version_string="1.0.0",
-            dataset_version_ids=None, evaluation_strategy_id=None,
+            BENCH,
+            version_string="1.0.0",
+            dataset_version_ids=None,
+            evaluation_strategy_id=None,
         )
         assert result.ok is True
         assert VERSION in result.summary
@@ -241,8 +244,7 @@ class TestDestructiveDoubleConfirm:
             echo=lambda s: None,
         )
         assert (
-            repl._prompt_confirm("create_benchmark", {"project_id": PROJECT, "name": "X"})
-            is True
+            repl._prompt_confirm("create_benchmark", {"project_id": PROJECT, "name": "X"}) is True
         )
         assert len(calls) == 1
 

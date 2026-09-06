@@ -59,9 +59,7 @@ def _result(i: int, entity: str = "benchmark") -> SearchResult:
 
 
 @contextmanager
-def _override_project(
-    mock_search_service, mock_authz_service, mock_token_claims
-):
+def _override_project(mock_search_service, mock_authz_service, mock_token_claims):
     app.dependency_overrides[get_search_service] = lambda: mock_search_service
     app.dependency_overrides[get_project_authz_service] = lambda: mock_authz_service
     app.dependency_overrides[require_authenticated] = lambda: mock_token_claims
@@ -70,7 +68,9 @@ def _override_project(
 
 
 class TestProjectScopedSearch:
-    def test_returns_scoped_results(self, client, mock_search_service, mock_authz_service, mock_token_claims):
+    def test_returns_scoped_results(
+        self, client, mock_search_service, mock_authz_service, mock_token_claims
+    ):
         project_id = uuid.uuid4()
         mock_search_service.search_all.return_value = [_result(1), _result(2, "execution")]
 
@@ -88,16 +88,16 @@ class TestProjectScopedSearch:
         args = mock_search_service.search_all.call_args
         assert args.kwargs["project_ids"] == [project_id]
 
-    def test_authz_enforced(self, client, mock_search_service, mock_authz_service, mock_token_claims):
+    def test_authz_enforced(
+        self, client, mock_search_service, mock_authz_service, mock_token_claims
+    ):
         project_id = uuid.uuid4()
         mock_authz_service.authorize_project_access.side_effect = HTTPException(
             status_code=404, detail="Project not found"
         )
 
         with _override_project(mock_search_service, mock_authz_service, mock_token_claims):
-            resp = client.get(
-                f"/api/v1/projects/{project_id}/search", params={"q": "x"}
-            )
+            resp = client.get(f"/api/v1/projects/{project_id}/search", params={"q": "x"})
 
         assert resp.status_code == 404
         mock_authz_service.authorize_project_access.assert_called_once()
@@ -147,9 +147,7 @@ class TestGlobalSearchHardened:
     ):
         from apps.backend.routers import search as search_router
 
-        monkeypatch.setattr(
-            search_router, "resolve_accessible_project_ids", lambda db, user_id: []
-        )
+        monkeypatch.setattr(search_router, "resolve_accessible_project_ids", lambda db, user_id: [])
         mock_search_service.search_all.return_value = []
 
         app.dependency_overrides[get_search_service] = lambda: mock_search_service

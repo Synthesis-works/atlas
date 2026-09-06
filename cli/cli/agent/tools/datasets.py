@@ -137,8 +137,7 @@ class GetDatasetTool(BaseTool):
             for v in (ds.versions or [])
         ]
         return _ok(
-            f"Dataset {ds.name} ({ds.id}): {ds.total_tasks} task(s), "
-            f"{len(versions)} version(s)",
+            f"Dataset {ds.name} ({ds.id}): {ds.total_tasks} task(s), {len(versions)} version(s)",
             {
                 "id": str(ds.id),
                 "name": ds.name,

@@ -170,13 +170,9 @@ class TestSearch:
             client.search(PROJECT, "x")
         client.close()
 
-    def test_connect_error_raises_network_error(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_connect_error_raises_network_error(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_exception(httpx.ConnectError("connection refused"))
         client = AtlasClient("http://localhost:8000", max_retries=0)
         with pytest.raises(NetworkError):
             client.search(PROJECT, "x")
         client.close()
-
-

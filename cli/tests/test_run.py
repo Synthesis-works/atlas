@@ -67,14 +67,15 @@ def _mock_client(
         )
     else:
         mock.list_executions.return_value = ExecutionPage(
-            items=[], total=0, limit=20, offset=0,
+            items=[],
+            total=0,
+            limit=20,
+            offset=0,
         )
     return mock
 
 
-def _mock_client_error(
-    exc: Exception, *, method: str = "submit"
-) -> MagicMock:
+def _mock_client_error(exc: Exception, *, method: str = "submit") -> MagicMock:
     mock = MagicMock()
     mock.__enter__ = MagicMock(return_value=mock)
     mock.__exit__ = MagicMock(return_value=False)
@@ -98,9 +99,7 @@ def _dispatch_target(
         benchmark_version_id=uuid.UUID(benchmark_version_id),
         benchmark_name=benchmark_name,
         version_string=version_string,
-        dataset_version_id=(
-            uuid.UUID(dataset_version_id) if dataset_version_id else None
-        ),
+        dataset_version_id=(uuid.UUID(dataset_version_id) if dataset_version_id else None),
     )
 
 
@@ -144,9 +143,7 @@ def test_submit_human(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client(),
     ):
-        result = runner.invoke(
-            main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"]
-        )
+        result = runner.invoke(main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"])
     assert result.exit_code == 0
     assert "11111111-1111-1111-1111-111111111111" in result.output
     assert "QUEUED" in result.output
@@ -177,8 +174,7 @@ def test_submit_json(runner: CliRunner) -> None:
     ):
         result = runner.invoke(
             main,
-            ["--output", "json", "run", "submit", BENCH_VERSION_ID,
-                "--target-model", "mock"],
+            ["--output", "json", "run", "submit", BENCH_VERSION_ID, "--target-model", "mock"],
         )
     assert result.exit_code == 0
     parsed = json.loads(result.output)
@@ -216,9 +212,7 @@ def test_submit_no_token(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
-        result = runner.invoke(
-            main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"]
-        )
+        result = runner.invoke(main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"])
     assert result.exit_code == 3
 
 
@@ -232,8 +226,7 @@ def test_submit_no_token_json(runner: CliRunner) -> None:
     ):
         result = runner.invoke(
             main,
-            ["--output", "json", "run", "submit", BENCH_VERSION_ID,
-                "--target-model", "mock"],
+            ["--output", "json", "run", "submit", BENCH_VERSION_ID, "--target-model", "mock"],
         )
     assert result.exit_code == 3
     parsed = json.loads(result.output)
@@ -252,9 +245,7 @@ def test_submit_forbidden(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
-        result = runner.invoke(
-            main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"]
-        )
+        result = runner.invoke(main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"])
     assert result.exit_code == 4
 
 
@@ -268,8 +259,7 @@ def test_submit_forbidden_json(runner: CliRunner) -> None:
     ):
         result = runner.invoke(
             main,
-            ["--output", "json", "run", "submit", BENCH_VERSION_ID,
-                "--target-model", "mock"],
+            ["--output", "json", "run", "submit", BENCH_VERSION_ID, "--target-model", "mock"],
         )
     assert result.exit_code == 4
     parsed = json.loads(result.output)
@@ -289,8 +279,8 @@ def test_submit_not_found(runner: CliRunner) -> None:
         return_value=_mock_client_error(err),
     ):
         result = runner.invoke(
-            main, ["run", "submit", "00000000-0000-0000-0000-000000000000",
-     "--target-model", "mock"]
+            main,
+            ["run", "submit", "00000000-0000-0000-0000-000000000000", "--target-model", "mock"],
         )
     assert result.exit_code == 5
 
@@ -306,9 +296,13 @@ def test_submit_not_found_json(runner: CliRunner) -> None:
         result = runner.invoke(
             main,
             [
-                "--output", "json", "run", "submit",
+                "--output",
+                "json",
+                "run",
+                "submit",
                 "00000000-0000-0000-0000-000000000000",
-                "--target-model", "mock",
+                "--target-model",
+                "mock",
             ],
         )
     assert result.exit_code == 5
@@ -328,9 +322,7 @@ def test_submit_validation_error(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
-        result = runner.invoke(
-            main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"]
-        )
+        result = runner.invoke(main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"])
     assert result.exit_code == 7
 
 
@@ -345,9 +337,7 @@ def test_submit_network_error(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
-        result = runner.invoke(
-            main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"]
-        )
+        result = runner.invoke(main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"])
     assert result.exit_code == 6
 
 
@@ -361,8 +351,7 @@ def test_submit_network_error_json(runner: CliRunner) -> None:
     ):
         result = runner.invoke(
             main,
-            ["--output", "json", "run", "submit", BENCH_VERSION_ID,
-                "--target-model", "mock"],
+            ["--output", "json", "run", "submit", BENCH_VERSION_ID, "--target-model", "mock"],
         )
     assert result.exit_code == 6
     parsed = json.loads(result.output)
@@ -380,9 +369,7 @@ def test_submit_server_error(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
-        result = runner.invoke(
-            main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"]
-        )
+        result = runner.invoke(main, ["run", "submit", BENCH_VERSION_ID, "--target-model", "mock"])
     assert result.exit_code == 1
 
 
@@ -407,9 +394,7 @@ def test_submit_preview_requires_target_model(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_preview_client(),
     ):
-        result = runner.invoke(
-            main, ["run", "submit", BENCH_VERSION_ID, "--preview"]
-        )
+        result = runner.invoke(main, ["run", "submit", BENCH_VERSION_ID, "--preview"])
     assert result.exit_code == 2
     assert "Missing option" in result.output
     assert "--target-model" in result.output
@@ -425,8 +410,14 @@ def test_preview_json(runner: CliRunner) -> None:
         result = runner.invoke(
             main,
             [
-                "--output", "json", "run", "submit", BENCH_VERSION_ID,
-                "--target-model", "mock", "--preview",
+                "--output",
+                "json",
+                "run",
+                "submit",
+                BENCH_VERSION_ID,
+                "--target-model",
+                "mock",
+                "--preview",
             ],
         )
     assert result.exit_code == 0
@@ -449,8 +440,12 @@ def test_preview_human(runner: CliRunner) -> None:
         result = runner.invoke(
             main,
             [
-                "run", "submit", BENCH_VERSION_ID,
-                "--target-model", "mock", "--preview",
+                "run",
+                "submit",
+                BENCH_VERSION_ID,
+                "--target-model",
+                "mock",
+                "--preview",
             ],
         )
     assert result.exit_code == 0
@@ -468,8 +463,13 @@ def test_preview_quiet(runner: CliRunner) -> None:
         result = runner.invoke(
             main,
             [
-                "--quiet", "run", "submit", BENCH_VERSION_ID,
-                "--target-model", "mock", "--preview",
+                "--quiet",
+                "run",
+                "submit",
+                BENCH_VERSION_ID,
+                "--target-model",
+                "mock",
+                "--preview",
             ],
         )
     assert result.exit_code == 0
@@ -484,8 +484,12 @@ def test_preview_never_posts(runner: CliRunner) -> None:
         result = runner.invoke(
             main,
             [
-                "run", "submit", BENCH_VERSION_ID,
-                "--target-model", "mock", "--preview",
+                "run",
+                "submit",
+                BENCH_VERSION_ID,
+                "--target-model",
+                "mock",
+                "--preview",
             ],
         )
     assert result.exit_code == 0
@@ -500,8 +504,14 @@ def test_preview_real_adapter(runner: CliRunner) -> None:
         result = runner.invoke(
             main,
             [
-                "--output", "json", "run", "submit", BENCH_VERSION_ID,
-                "--target-model", "gemini-2.5-flash", "--preview",
+                "--output",
+                "json",
+                "run",
+                "submit",
+                BENCH_VERSION_ID,
+                "--target-model",
+                "gemini-2.5-flash",
+                "--preview",
             ],
         )
     assert result.exit_code == 0
@@ -517,8 +527,14 @@ def test_preview_mocked_alias_adapter(runner: CliRunner) -> None:
         result = runner.invoke(
             main,
             [
-                "--output", "json", "run", "submit", BENCH_VERSION_ID,
-                "--target-model", "mocked", "--preview",
+                "--output",
+                "json",
+                "run",
+                "submit",
+                BENCH_VERSION_ID,
+                "--target-model",
+                "mocked",
+                "--preview",
             ],
         )
     assert result.exit_code == 0
@@ -533,9 +549,16 @@ def test_preview_dataset_override_respected(runner: CliRunner) -> None:
         result = runner.invoke(
             main,
             [
-                "--output", "json", "run", "submit", BENCH_VERSION_ID,
-                "--target-model", "mock", "--preview",
-                "--dataset-version-id", "99999999-9999-9999-9999-999999999999",
+                "--output",
+                "json",
+                "run",
+                "submit",
+                BENCH_VERSION_ID,
+                "--target-model",
+                "mock",
+                "--preview",
+                "--dataset-version-id",
+                "99999999-9999-9999-9999-999999999999",
             ],
         )
     assert result.exit_code == 0
@@ -551,8 +574,14 @@ def test_preview_unknown_version_exit_5(runner: CliRunner) -> None:
         result = runner.invoke(
             main,
             [
-                "--output", "json", "run", "submit", BENCH_VERSION_ID,
-                "--target-model", "mock", "--preview",
+                "--output",
+                "json",
+                "run",
+                "submit",
+                BENCH_VERSION_ID,
+                "--target-model",
+                "mock",
+                "--preview",
             ],
         )
     assert result.exit_code == 5
@@ -570,8 +599,12 @@ def test_preview_auth_error_exit_3(runner: CliRunner) -> None:
         result = runner.invoke(
             main,
             [
-                "run", "submit", BENCH_VERSION_ID,
-                "--target-model", "mock", "--preview",
+                "run",
+                "submit",
+                BENCH_VERSION_ID,
+                "--target-model",
+                "mock",
+                "--preview",
             ],
         )
     assert result.exit_code == 3
@@ -587,8 +620,12 @@ def test_preview_forbidden_exit_4(runner: CliRunner) -> None:
         result = runner.invoke(
             main,
             [
-                "run", "submit", BENCH_VERSION_ID,
-                "--target-model", "mock", "--preview",
+                "run",
+                "submit",
+                BENCH_VERSION_ID,
+                "--target-model",
+                "mock",
+                "--preview",
             ],
         )
     assert result.exit_code == 4
@@ -603,8 +640,12 @@ def test_preview_network_error_exit_6(runner: CliRunner) -> None:
         result = runner.invoke(
             main,
             [
-                "run", "submit", BENCH_VERSION_ID,
-                "--target-model", "mock", "--preview",
+                "run",
+                "submit",
+                BENCH_VERSION_ID,
+                "--target-model",
+                "mock",
+                "--preview",
             ],
         )
     assert result.exit_code == 6
@@ -668,9 +709,7 @@ def test_get_json(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client(get_execution=_exec_response_running()),
     ):
-        result = runner.invoke(
-            main, ["--output", "json", "run", "get", EXEC_ID]
-        )
+        result = runner.invoke(main, ["--output", "json", "run", "get", EXEC_ID])
     assert result.exit_code == 0
     parsed = json.loads(result.output)
     assert parsed["id"] == EXEC_ID
@@ -687,9 +726,7 @@ def test_get_quiet(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client(get_execution=_exec_response_running()),
     ):
-        result = runner.invoke(
-            main, ["--quiet", "run", "get", EXEC_ID]
-        )
+        result = runner.invoke(main, ["--quiet", "run", "get", EXEC_ID])
     assert result.exit_code == 0
     assert result.output == ""
 
@@ -717,9 +754,7 @@ def test_get_no_token_json(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_error(err, method="get"),
     ):
-        result = runner.invoke(
-            main, ["--output", "json", "run", "get", EXEC_ID]
-        )
+        result = runner.invoke(main, ["--output", "json", "run", "get", EXEC_ID])
     assert result.exit_code == 3
     parsed = json.loads(result.output)
     assert "error" in parsed
@@ -752,9 +787,7 @@ def test_get_not_found(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_error(err, method="get"),
     ):
-        result = runner.invoke(
-            main, ["run", "get", "00000000-0000-0000-0000-000000000000"]
-        )
+        result = runner.invoke(main, ["run", "get", "00000000-0000-0000-0000-000000000000"])
     assert result.exit_code == 5
 
 
@@ -951,11 +984,16 @@ def test_list_passes_filters(runner: CliRunner) -> None:
         runner.invoke(
             main,
             [
-                "run", "list",
-                "--benchmark-version-id", BENCH_VERSION_ID,
-                "--status", "RUNNING",
-                "--limit", "5",
-                "--offset", "10",
+                "run",
+                "list",
+                "--benchmark-version-id",
+                BENCH_VERSION_ID,
+                "--status",
+                "RUNNING",
+                "--limit",
+                "5",
+                "--offset",
+                "10",
             ],
         )
     mock.list_executions.assert_called_once_with(
@@ -989,9 +1027,7 @@ def test_list_no_token_json(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_error(err, method="list"),
     ):
-        result = runner.invoke(
-            main, ["--output", "json", "run", "list"]
-        )
+        result = runner.invoke(main, ["--output", "json", "run", "list"])
     assert result.exit_code == 3
     parsed = json.loads(result.output)
     assert "error" in parsed
@@ -1209,9 +1245,7 @@ def test_watch_json_final_state_only(runner: CliRunner) -> None:
         patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep"),
     ):
-        result = runner.invoke(
-            main, ["--output", "json", "run", "watch", EXEC_ID_WATCH]
-        )
+        result = runner.invoke(main, ["--output", "json", "run", "watch", EXEC_ID_WATCH])
     assert result.exit_code == 0
     parsed = json.loads(result.output)
     assert parsed["id"] == EXEC_ID_WATCH
@@ -1229,9 +1263,7 @@ def test_watch_quiet(runner: CliRunner) -> None:
         patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep"),
     ):
-        result = runner.invoke(
-            main, ["--quiet", "run", "watch", EXEC_ID_WATCH]
-        )
+        result = runner.invoke(main, ["--quiet", "run", "watch", EXEC_ID_WATCH])
     assert result.exit_code == 0
     assert result.output == ""
 
@@ -1314,9 +1346,7 @@ def test_watch_consecutive_network_failures_json(runner: CliRunner) -> None:
         patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep"),
     ):
-        result = runner.invoke(
-            main, ["--output", "json", "run", "watch", EXEC_ID_WATCH]
-        )
+        result = runner.invoke(main, ["--output", "json", "run", "watch", EXEC_ID_WATCH])
     assert result.exit_code == 1
     parsed = json.loads(result.output)
     assert parsed["status"] == "RUNNING"
@@ -1367,9 +1397,7 @@ def test_watch_custom_interval(runner: CliRunner) -> None:
         patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep") as mock_sleep,
     ):
-        result = runner.invoke(
-            main, ["run", "watch", EXEC_ID_WATCH, "--interval", "5"]
-        )
+        result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH, "--interval", "5"])
     assert result.exit_code == 0
     mock_sleep.assert_not_called()  # already terminal
 
@@ -1386,9 +1414,7 @@ def test_watch_interval_used_between_polls(runner: CliRunner) -> None:
         patch("cli.client.AtlasClient", return_value=mock),
         patch("cli.commands.run.time.sleep") as mock_sleep,
     ):
-        result = runner.invoke(
-            main, ["run", "watch", EXEC_ID_WATCH, "--interval", "7"]
-        )
+        result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH, "--interval", "7"])
     assert result.exit_code == 0
     mock_sleep.assert_called_once_with(7)
 
@@ -1431,8 +1457,15 @@ def test_watch_timeout_json_emits_last_non_terminal(runner: CliRunner) -> None:
         result = runner.invoke(
             main,
             [
-                "--output", "json", "run", "watch", EXEC_ID_WATCH,
-                "--timeout", "6", "--interval", "2",
+                "--output",
+                "json",
+                "run",
+                "watch",
+                EXEC_ID_WATCH,
+                "--timeout",
+                "6",
+                "--interval",
+                "2",
             ],
         )
     assert result.exit_code == 9
@@ -1473,8 +1506,14 @@ def test_watch_timeout_quiet_silent(runner: CliRunner) -> None:
         result = runner.invoke(
             main,
             [
-                "--quiet", "run", "watch", EXEC_ID_WATCH,
-                "--timeout", "6", "--interval", "2",
+                "--quiet",
+                "run",
+                "watch",
+                EXEC_ID_WATCH,
+                "--timeout",
+                "6",
+                "--interval",
+                "2",
             ],
         )
     assert result.exit_code == 9
@@ -1495,8 +1534,15 @@ def test_watch_timeout_no_state_observed_json_empty(runner: CliRunner) -> None:
         result = runner.invoke(
             main,
             [
-                "--output", "json", "run", "watch", EXEC_ID_WATCH,
-                "--timeout", "0.4", "--interval", "60",
+                "--output",
+                "json",
+                "run",
+                "watch",
+                EXEC_ID_WATCH,
+                "--timeout",
+                "0.4",
+                "--interval",
+                "60",
             ],
         )
     assert result.exit_code == 9
@@ -1571,27 +1617,21 @@ def test_watch_timeout_capped_sleep_wall_clock(runner: CliRunner) -> None:
 
 def test_watch_timeout_zero_rejected(runner: CliRunner) -> None:
     """--timeout 0 is invalid (explicit zero is never a valid bound)."""
-    result = runner.invoke(
-        main, ["run", "watch", EXEC_ID_WATCH, "--timeout", "0"]
-    )
+    result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH, "--timeout", "0"])
     assert result.exit_code != 0
     assert "greater than 0" in result.output
 
 
 def test_watch_timeout_negative_rejected(runner: CliRunner) -> None:
     """--timeout -5 is invalid."""
-    result = runner.invoke(
-        main, ["run", "watch", EXEC_ID_WATCH, "--timeout", "-5"]
-    )
+    result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH, "--timeout", "-5"])
     assert result.exit_code != 0
     assert "greater than 0" in result.output
 
 
 def test_watch_timeout_non_numeric_rejected(runner: CliRunner) -> None:
     """--timeout abc is a usage error."""
-    result = runner.invoke(
-        main, ["run", "watch", EXEC_ID_WATCH, "--timeout", "abc"]
-    )
+    result = runner.invoke(main, ["run", "watch", EXEC_ID_WATCH, "--timeout", "abc"])
     assert result.exit_code == 2
 
 
@@ -1705,9 +1745,7 @@ def test_cancel_json(runner: CliRunner) -> None:
     resp = _cancel_exec_response("CANCELLING")
     mock = _mock_cancel_client(cancel_return=resp)
     with patch("cli.client.AtlasClient", return_value=mock):
-        result = runner.invoke(
-            main, ["--output", "json", "run", "cancel", EXEC_ID_CANCEL]
-        )
+        result = runner.invoke(main, ["--output", "json", "run", "cancel", EXEC_ID_CANCEL])
     assert result.exit_code == 0
     parsed = json.loads(result.output)
     assert parsed["id"] == EXEC_ID_CANCEL
@@ -1720,9 +1758,7 @@ def test_cancel_quiet(runner: CliRunner) -> None:
         cancel_return=_cancel_exec_response("CANCELLING"),
     )
     with patch("cli.client.AtlasClient", return_value=mock):
-        result = runner.invoke(
-            main, ["--quiet", "run", "cancel", EXEC_ID_CANCEL]
-        )
+        result = runner.invoke(main, ["--quiet", "run", "cancel", EXEC_ID_CANCEL])
     assert result.exit_code == 0
     assert result.output == ""
 

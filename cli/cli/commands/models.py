@@ -83,7 +83,6 @@ def list_cmd(ctx: Context, json_schema: bool) -> None:
             return
         headers = ["Model", "Provider", "Status", "Test Only"]
         rows = [
-            [m.id, m.provider, m.status.value, "yes" if m.is_test_only else "no"]
-            for m in models
+            [m.id, m.provider, m.status.value, "yes" if m.is_test_only else "no"] for m in models
         ]
         render_table(headers, rows, title="Available Models")

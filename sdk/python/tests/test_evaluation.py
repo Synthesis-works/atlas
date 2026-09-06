@@ -82,10 +82,7 @@ def _compare_url() -> str:
 
 
 def _results_url() -> str:
-    return (
-        f"http://localhost:8000/api/v1/projects/{PROJECT}"
-        f"/executions/{EXEC1}/evaluation-results"
-    )
+    return f"http://localhost:8000/api/v1/projects/{PROJECT}/executions/{EXEC1}/evaluation-results"
 
 
 class TestEvaluationDtos:
@@ -108,10 +105,7 @@ class TestEnqueueEvaluation:
     def test_success(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_response(
             method="POST",
-            url=(
-                f"http://localhost:8000/api/v1/projects/{PROJECT}"
-                f"/executions/{EXEC1}/evaluate"
-            ),
+            url=(f"http://localhost:8000/api/v1/projects/{PROJECT}/executions/{EXEC1}/evaluate"),
             status_code=202,
             json=_enqueued_payload(),
         )
@@ -124,10 +118,7 @@ class TestEnqueueEvaluation:
     def test_403_raises_forbidden(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_response(
             method="POST",
-            url=(
-                f"http://localhost:8000/api/v1/projects/{PROJECT}"
-                f"/executions/{EXEC1}/evaluate"
-            ),
+            url=(f"http://localhost:8000/api/v1/projects/{PROJECT}/executions/{EXEC1}/evaluate"),
             status_code=403,
             json=_err(403, "FORBIDDEN", "Insufficient permissions"),
         )
@@ -139,9 +130,7 @@ class TestEnqueueEvaluation:
 
 class TestGetEvaluationResults:
     def test_success(self, httpx_mock: pytest.MockTransport) -> None:
-        httpx_mock.add_response(
-            method="GET", url=_results_url(), json=_results_payload()
-        )
+        httpx_mock.add_response(method="GET", url=_results_url(), json=_results_payload())
         client = AtlasClient("http://localhost:8000")
         result = client.get_evaluation_results(PROJECT, EXEC1)
         assert isinstance(result, EvaluationResultsRead)
@@ -328,9 +317,7 @@ class TestNetworkError:
             client.get_evaluation_results(PROJECT, EXEC1)
         client.close()
 
-    def test_connect_error_raises_network_error(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_connect_error_raises_network_error(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_exception(httpx.ConnectError("connection refused"))
         client = AtlasClient("http://localhost:8000", max_retries=0)
         with pytest.raises(NetworkError):

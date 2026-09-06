@@ -61,9 +61,13 @@ def _configure_db_for_row(db: MagicMock, row: DBExecution) -> None:
     """Wire the db mock so the route's get path and list path resolve ``row``."""
     db.query.return_value.filter.return_value.first.return_value = row
     db.query.return_value.filter.return_value.count.return_value = 1
-    db.query.return_value.filter.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = [row]
+    db.query.return_value.filter.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = [
+        row
+    ]
     db.query.return_value.count.return_value = 1
-    db.query.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = [row]
+    db.query.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = [
+        row
+    ]
 
 
 @pytest.fixture

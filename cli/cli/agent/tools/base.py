@@ -78,9 +78,7 @@ class BaseTool(ABC):
                 prop_dict["type"] = "ARRAY"
                 items_spec = prop_spec.get("items")
                 if isinstance(items_spec, dict):
-                    prop_dict["items"] = {
-                        "type": str(items_spec.get("type", "string")).upper()
-                    }
+                    prop_dict["items"] = {"type": str(items_spec.get("type", "string")).upper()}
             elif raw_type in {"OBJECT", "INTEGER", "BOOLEAN", "NUMBER"}:
                 prop_dict["type"] = raw_type
             else:

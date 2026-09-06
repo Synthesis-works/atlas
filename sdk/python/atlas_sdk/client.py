@@ -274,9 +274,7 @@ class AtlasClient:
             ) from exc
         return envelope.data
 
-    def _parse_bare(
-        self, response: httpx.Response, builder: Callable[[Any], T]
-    ) -> T:
+    def _parse_bare(self, response: httpx.Response, builder: Callable[[Any], T]) -> T:
         """Validate and build a bare (non-enveloped) response payload.
 
         Used for endpoints that return the model directly instead of
@@ -486,9 +484,7 @@ class AtlasClient:
             body["category_ids"] = [str(c) for c in category_ids]
         if capability_ids:
             body["capability_ids"] = [str(c) for c in capability_ids]
-        response = self._post(
-            f"/api/v1/projects/{project_id}/benchmarks", json=body
-        )
+        response = self._post(f"/api/v1/projects/{project_id}/benchmarks", json=body)
         return self._unwrap(response, BenchmarkRead)
 
     def update_benchmark(
@@ -547,9 +543,7 @@ class AtlasClient:
             body["dataset_version_ids"] = [str(d) for d in dataset_version_ids]
         if evaluation_strategy_id is not None:
             body["evaluation_strategy_id"] = str(evaluation_strategy_id)
-        response = self._post(
-            f"/api/v1/benchmarks/{benchmark_id}/versions", json=body
-        )
+        response = self._post(f"/api/v1/benchmarks/{benchmark_id}/versions", json=body)
         return self._unwrap(response, BenchmarkVersionRead)
 
     def publish_benchmark_version(self, version_id: str) -> None:
@@ -557,31 +551,23 @@ class AtlasClient:
 
         ``POST /api/v1/benchmark-versions/{version_id}/publish``
         """
-        self._raise_for_status(
-            self._post(f"/api/v1/benchmark-versions/{version_id}/publish")
-        )
+        self._raise_for_status(self._post(f"/api/v1/benchmark-versions/{version_id}/publish"))
 
     def archive_benchmark_version(self, version_id: str) -> None:
         """Archive a benchmark version (requires ADMIN/OWNER).
 
         ``POST /api/v1/benchmark-versions/{version_id}/archive``
         """
-        self._raise_for_status(
-            self._post(f"/api/v1/benchmark-versions/{version_id}/archive")
-        )
+        self._raise_for_status(self._post(f"/api/v1/benchmark-versions/{version_id}/archive"))
 
-    def list_benchmark_versions(
-        self, benchmark_id: str
-    ) -> list[BenchmarkVersionRead]:
+    def list_benchmark_versions(self, benchmark_id: str) -> list[BenchmarkVersionRead]:
         """List versions for a benchmark.
 
         ``GET /api/v1/benchmarks/{benchmark_id}/versions``
 
         Returns all versions (not paginated).
         """
-        response = self._get(
-            f"/api/v1/benchmarks/{benchmark_id}/versions"
-        )
+        response = self._get(f"/api/v1/benchmarks/{benchmark_id}/versions")
         return self._unwrap(response, list[BenchmarkVersionRead])
 
     # -- datasets (v3.3) --
@@ -607,9 +593,7 @@ class AtlasClient:
 
         Returns a bare ``DatasetRead`` (not wrapped in ``APIResponse``).
         """
-        response = self._get_raw(
-            f"/api/v1/projects/{project_id}/datasets/{dataset_id}"
-        )
+        response = self._get_raw(f"/api/v1/projects/{project_id}/datasets/{dataset_id}")
         return DatasetRead.model_validate(response.json())
 
     def create_dataset(
@@ -635,9 +619,7 @@ class AtlasClient:
             body["description"] = description
         if tasks:
             body["tasks"] = tasks
-        response = self._post_raw(
-            f"/api/v1/projects/{project_id}/datasets", json=body
-        )
+        response = self._post_raw(f"/api/v1/projects/{project_id}/datasets", json=body)
         return DatasetRead.model_validate(response.json())
 
     def update_dataset(
@@ -659,9 +641,7 @@ class AtlasClient:
             body["name"] = name
         if description is not None:
             body["description"] = description
-        response = self._put(
-            f"/api/v1/projects/{project_id}/datasets/{dataset_id}", json=body
-        )
+        response = self._put(f"/api/v1/projects/{project_id}/datasets/{dataset_id}", json=body)
         self._raise_for_status(response)
         return DatasetRead.model_validate(response.json())
 
@@ -690,9 +670,7 @@ class AtlasClient:
         )
         return DatasetVersionRead.model_validate(response.json())
 
-    def validate_dataset(
-        self, project_id: str, dataset_id: str
-    ) -> DatasetValidationResult:
+    def validate_dataset(self, project_id: str, dataset_id: str) -> DatasetValidationResult:
         """Validate a dataset's latest version.
 
         ``POST /api/v1/projects/{project_id}/datasets/{dataset_id}/validate``
@@ -700,9 +678,7 @@ class AtlasClient:
         Returns ``DatasetValidationResult`` with lifecycle + per-version
         messages.
         """
-        response = self._post_raw(
-            f"/api/v1/projects/{project_id}/datasets/{dataset_id}/validate"
-        )
+        response = self._post_raw(f"/api/v1/projects/{project_id}/datasets/{dataset_id}/validate")
         return DatasetValidationResult.model_validate(response.json())
 
     # -- executions --
@@ -823,9 +799,7 @@ class AtlasClient:
         )
         return EvaluationEnqueuedRead.model_validate(response.json())
 
-    def get_evaluation_results(
-        self, project_id: str, execution_id: str
-    ) -> EvaluationResultsRead:
+    def get_evaluation_results(self, project_id: str, execution_id: str) -> EvaluationResultsRead:
         """Read the evaluation results for an execution.
 
         ``GET /api/v1/projects/{project_id}/executions/{execution_id}/evaluation-results``
@@ -853,9 +827,7 @@ class AtlasClient:
         case's ``expected_output``.  Returns ``EvaluationCaseWriteResponse``.
         """
         body: dict[str, Any] = {
-            "evaluation_cases": [
-                case.model_dump(mode="json", exclude_none=True) for case in cases
-            ]
+            "evaluation_cases": [case.model_dump(mode="json", exclude_none=True) for case in cases]
         }
         response = self._post_raw(
             f"/api/v1/projects/{project_id}/datasets/{dataset_id}/evaluation-cases",
@@ -902,9 +874,7 @@ class AtlasClient:
             body["execution_id"] = execution_id
         if version_string is not None:
             body["version_string"] = version_string
-        response = self._post_raw(
-            f"/api/v1/projects/{project_id}/reports", json=body
-        )
+        response = self._post_raw(f"/api/v1/projects/{project_id}/reports", json=body)
         return ReportRead.model_validate(response.json())
 
     def list_reports(self, project_id: str) -> ReportListRead:
@@ -945,11 +915,8 @@ class AtlasClient:
         params: dict[str, Any] = {"q": q, "limit": limit}
         if entity_types:
             params["entity_types"] = ",".join(entity_types)
-        response = self._get_raw(
-            f"/api/v1/projects/{project_id}/search", params=params
-        )
+        response = self._get_raw(f"/api/v1/projects/{project_id}/search", params=params)
         return PageResponse[SearchResult].model_validate(response.json())
-
 
     # -- leaderboard --
 
@@ -1009,9 +976,7 @@ class AtlasClient:
             lambda raw: [TrendPoint.model_validate(item) for item in raw],
         )
 
-    def get_model_benchmarks(
-        self, model_name: str
-    ) -> list[ModelBenchmarkHistory]:
+    def get_model_benchmarks(self, model_name: str) -> list[ModelBenchmarkHistory]:
         """Fetch a model's performance history grouped by benchmark.
 
         ``GET /api/v1/models/{model_name}/benchmarks``
@@ -1028,9 +993,7 @@ class AtlasClient:
         response = self._get_raw(f"/api/v1/models/{model_name}/benchmarks")
         return self._parse_bare(
             response,
-            lambda raw: [
-                ModelBenchmarkHistory.model_validate(item) for item in raw
-            ],
+            lambda raw: [ModelBenchmarkHistory.model_validate(item) for item in raw],
         )
 
     # -- models --
@@ -1072,21 +1035,15 @@ class AtlasClient:
 
         ``GET /api/v1/history/benchmarks/recent``
         """
-        response = self._get(
-            "/api/v1/history/benchmarks/recent", params={"limit": limit}
-        )
+        response = self._get("/api/v1/history/benchmarks/recent", params={"limit": limit})
         return self._unwrap(response, list[BenchmarkRead])
 
-    def get_recent_executions(
-        self, *, limit: int = 10
-    ) -> list[ExecutionHistoryRead]:
+    def get_recent_executions(self, *, limit: int = 10) -> list[ExecutionHistoryRead]:
         """Fetch the most recent executions globally.
 
         ``GET /api/v1/history/executions/recent``
         """
-        response = self._get(
-            "/api/v1/history/executions/recent", params={"limit": limit}
-        )
+        response = self._get("/api/v1/history/executions/recent", params={"limit": limit})
         return self._unwrap(response, list[ExecutionHistoryRead])
 
     def get_recent_models(self, *, limit: int = 10) -> list[ModelActivityRead]:
@@ -1094,9 +1051,7 @@ class AtlasClient:
 
         ``GET /api/v1/history/models/recent``
         """
-        response = self._get(
-            "/api/v1/history/models/recent", params={"limit": limit}
-        )
+        response = self._get("/api/v1/history/models/recent", params={"limit": limit})
         return self._unwrap(response, list[ModelActivityRead])
 
     # -- reports --

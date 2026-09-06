@@ -57,11 +57,7 @@ def health_cmd(ctx: Context) -> None:
     except Exception as exc:
         error_exit(exc, output_mode)
 
-    all_ok = (
-        health_data is not None
-        and live is not None
-        and ready is not None
-    )
+    all_ok = health_data is not None and live is not None and ready is not None
 
     if output_mode == "json":
         result: dict[str, Any] = {

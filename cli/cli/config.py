@@ -61,33 +61,18 @@ def load_config(
 
     Precedence: CLI flags (if provided) > env vars > saved profile > defaults.
     """
-    resolved_profile = (
-        profile
-        or os.environ.get("ATLAS_PROFILE")
-        or "default"
-    )
+    resolved_profile = profile or os.environ.get("ATLAS_PROFILE") or "default"
     saved = _read_profiles(config_path).get(resolved_profile, {})
 
     resolved_base_url = (
-        base_url
-        or os.environ.get("ATLAS_BASE_URL")
-        or saved.get("base_url")
-        or _DEFAULT_BASE_URL
+        base_url or os.environ.get("ATLAS_BASE_URL") or saved.get("base_url") or _DEFAULT_BASE_URL
     )
     resolved_timeout = (
-        timeout
-        if timeout is not None
-        else _env_float("ATLAS_TIMEOUT", _DEFAULT_TIMEOUT)
+        timeout if timeout is not None else _env_float("ATLAS_TIMEOUT", _DEFAULT_TIMEOUT)
     )
-    resolved_output = (
-        output
-        or os.environ.get("ATLAS_OUTPUT")
-        or _DEFAULT_OUTPUT
-    )
+    resolved_output = output or os.environ.get("ATLAS_OUTPUT") or _DEFAULT_OUTPUT
     resolved_retries = (
-        retries
-        if retries is not None
-        else _env_int("ATLAS_RETRIES", _DEFAULT_RETRIES)
+        retries if retries is not None else _env_int("ATLAS_RETRIES", _DEFAULT_RETRIES)
     )
 
     return AtlasConfig(

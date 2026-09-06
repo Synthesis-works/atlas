@@ -141,6 +141,4 @@ def list_reports(
         project_id=project_id, user_id=claims.sub, allowed_roles=READ_ROLES
     )
     reports = service.list_reports(project_id)
-    return ReportListRead(
-        project_id=project_id, reports=reports, total=len(reports)
-    )
+    return ReportListRead(project_id=project_id, reports=reports, total=len(reports))

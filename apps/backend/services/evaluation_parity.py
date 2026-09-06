@@ -191,9 +191,7 @@ class EvaluationParityService:
             )
 
         self.db.flush()
-        return EvaluationCaseWriteResponse(
-            dataset_id=dataset_id, written=written, skipped=skipped
-        )
+        return EvaluationCaseWriteResponse(dataset_id=dataset_id, written=written, skipped=skipped)
 
     # ------------------------------------------------------------------ #
     # Compare executions
@@ -284,7 +282,9 @@ class EvaluationParityService:
                     summary = f"Overall score: {profile.overall_score:.4f}"
 
         report = (
-            self.db.query(Report).filter(Report.project_id == project_id, Report.name == title).first()
+            self.db.query(Report)
+            .filter(Report.project_id == project_id, Report.name == title)
+            .first()
         )
         if report is None:
             report = self.report_repo.create(project_id=project_id, name=title, commit=False)
@@ -312,9 +312,7 @@ class EvaluationParityService:
         return report
 
     def list_reports(self, project_id: uuid.UUID) -> list[Report]:
-        reports: list[Report] = (
-            self.db.query(Report).filter(Report.project_id == project_id).all()
-        )
+        reports: list[Report] = self.db.query(Report).filter(Report.project_id == project_id).all()
         for report in reports:
             for version in report.versions:
                 _ = version.metrics  # eager-load for serialization

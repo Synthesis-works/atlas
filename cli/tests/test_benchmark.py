@@ -139,9 +139,7 @@ def test_benchmark_list_json(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client(),
     ):
-        result = runner.invoke(
-            main, ["--output", "json", "benchmark", "list"]
-        )
+        result = runner.invoke(main, ["--output", "json", "benchmark", "list"])
     assert result.exit_code == 0
     parsed = json.loads(result.output)
     assert "items" in parsed
@@ -155,9 +153,7 @@ def test_benchmark_list_json_empty(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_empty(),
     ):
-        result = runner.invoke(
-            main, ["--output", "json", "benchmark", "list"]
-        )
+        result = runner.invoke(main, ["--output", "json", "benchmark", "list"])
     assert result.exit_code == 0
     parsed = json.loads(result.output)
     assert parsed["items"] == []
@@ -201,9 +197,7 @@ def test_benchmark_list_no_token_json(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
-        result = runner.invoke(
-            main, ["--output", "json", "benchmark", "list"]
-        )
+        result = runner.invoke(main, ["--output", "json", "benchmark", "list"])
     assert result.exit_code == 3
     parsed = json.loads(result.output)
     assert "error" in parsed
@@ -221,9 +215,7 @@ def test_benchmark_list_sdk_error(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_error(err),
     ):
-        result = runner.invoke(
-            main, ["--output", "json", "benchmark", "list"]
-        )
+        result = runner.invoke(main, ["--output", "json", "benchmark", "list"])
     assert result.exit_code == 6
     parsed = json.loads(result.output)
     assert "error" in parsed
@@ -247,9 +239,7 @@ def test_benchmark_get_human(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_get(bench),
     ):
-        result = runner.invoke(
-            main, ["benchmark", "get", str(bench.id)]
-        )
+        result = runner.invoke(main, ["benchmark", "get", str(bench.id)])
     assert result.exit_code == 0
     assert "My Benchmark" in result.output
     assert str(bench.id) in result.output
@@ -264,9 +254,7 @@ def test_benchmark_get_json(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_get(bench),
     ):
-        result = runner.invoke(
-            main, ["--output", "json", "benchmark", "get", str(bench.id)]
-        )
+        result = runner.invoke(main, ["--output", "json", "benchmark", "get", str(bench.id)])
     assert result.exit_code == 0
     parsed = json.loads(result.output)
     assert parsed["name"] == "JSON Bench"
@@ -283,9 +271,7 @@ def test_benchmark_get_quiet(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_get(bench),
     ):
-        result = runner.invoke(
-            main, ["--quiet", "benchmark", "get", str(bench.id)]
-        )
+        result = runner.invoke(main, ["--quiet", "benchmark", "get", str(bench.id)])
     assert result.exit_code == 0
     assert result.output == ""
 
@@ -301,9 +287,7 @@ def test_benchmark_get_not_found(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_get_error(err),
     ):
-        result = runner.invoke(
-            main, ["benchmark", "get", "00000000-0000-0000-0000-000000000042"]
-        )
+        result = runner.invoke(main, ["benchmark", "get", "00000000-0000-0000-0000-000000000042"])
     assert result.exit_code == 5
 
 
@@ -317,8 +301,7 @@ def test_benchmark_get_not_found_json(runner: CliRunner) -> None:
     ):
         result = runner.invoke(
             main,
-            ["--output", "json", "benchmark", "get",
-             "00000000-0000-0000-0000-000000000042"],
+            ["--output", "json", "benchmark", "get", "00000000-0000-0000-0000-000000000042"],
         )
     assert result.exit_code == 5
     parsed = json.loads(result.output)
@@ -337,9 +320,7 @@ def test_benchmark_get_no_token(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_get_error(err),
     ):
-        result = runner.invoke(
-            main, ["benchmark", "get", "00000000-0000-0000-0000-000000000001"]
-        )
+        result = runner.invoke(main, ["benchmark", "get", "00000000-0000-0000-0000-000000000001"])
     assert result.exit_code == 3
 
 
@@ -354,9 +335,7 @@ def test_benchmark_get_network_error(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_get_error(err),
     ):
-        result = runner.invoke(
-            main, ["benchmark", "get", "00000000-0000-0000-0000-000000000001"]
-        )
+        result = runner.invoke(main, ["benchmark", "get", "00000000-0000-0000-0000-000000000001"])
     assert result.exit_code == 6
 
 
@@ -370,8 +349,7 @@ def test_benchmark_get_network_error_json(runner: CliRunner) -> None:
     ):
         result = runner.invoke(
             main,
-            ["--output", "json", "benchmark", "get",
-             "00000000-0000-0000-0000-000000000001"],
+            ["--output", "json", "benchmark", "get", "00000000-0000-0000-0000-000000000001"],
         )
     assert result.exit_code == 6
     parsed = json.loads(result.output)
@@ -441,9 +419,7 @@ def test_benchmark_versions_human(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_versions(),
     ):
-        result = runner.invoke(
-            main, ["benchmark", "versions", BENCH_ID]
-        )
+        result = runner.invoke(main, ["benchmark", "versions", BENCH_ID])
     assert result.exit_code == 0
     assert "1.0.0" in result.output
     assert "2.0.0" in result.output
@@ -454,9 +430,7 @@ def test_benchmark_versions_human_empty(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_versions_empty(),
     ):
-        result = runner.invoke(
-            main, ["benchmark", "versions", BENCH_ID]
-        )
+        result = runner.invoke(main, ["benchmark", "versions", BENCH_ID])
     assert result.exit_code == 0
     assert "no versions" in result.output.lower()
 
@@ -504,9 +478,7 @@ def test_benchmark_versions_quiet(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_versions(),
     ):
-        result = runner.invoke(
-            main, ["--quiet", "benchmark", "versions", BENCH_ID]
-        )
+        result = runner.invoke(main, ["--quiet", "benchmark", "versions", BENCH_ID])
     assert result.exit_code == 0
     assert result.output == ""
 
@@ -522,9 +494,7 @@ def test_benchmark_versions_not_found(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_versions_error(err),
     ):
-        result = runner.invoke(
-            main, ["benchmark", "versions", BENCH_ID]
-        )
+        result = runner.invoke(main, ["benchmark", "versions", BENCH_ID])
     assert result.exit_code == 5
 
 
@@ -557,9 +527,7 @@ def test_benchmark_versions_no_token(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_versions_error(err),
     ):
-        result = runner.invoke(
-            main, ["benchmark", "versions", BENCH_ID]
-        )
+        result = runner.invoke(main, ["benchmark", "versions", BENCH_ID])
     assert result.exit_code == 3
 
 
@@ -574,9 +542,7 @@ def test_benchmark_versions_network_error(runner: CliRunner) -> None:
         "cli.client.AtlasClient",
         return_value=_mock_client_versions_error(err),
     ):
-        result = runner.invoke(
-            main, ["benchmark", "versions", BENCH_ID]
-        )
+        result = runner.invoke(main, ["benchmark", "versions", BENCH_ID])
     assert result.exit_code == 6
 
 

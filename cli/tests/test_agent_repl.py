@@ -38,16 +38,12 @@ class FakeProvider:
     def decide(self, task: str, prompt_context: str, available_tools: list[dict]) -> AgentDecision:
         self.contexts.append(prompt_context)
         if not self._decisions:
-            return AgentDecision(
-                type=AgentDecisionType.FINAL_RESPONSE, response="done"
-            )
+            return AgentDecision(type=AgentDecisionType.FINAL_RESPONSE, response="done")
         return self._decisions.pop(0)
 
 
 def _tool(name: str, **args: Any) -> AgentDecision:
-    return AgentDecision(
-        type=AgentDecisionType.TOOL_CALL, tool_name=name, arguments=args
-    )
+    return AgentDecision(type=AgentDecisionType.TOOL_CALL, tool_name=name, arguments=args)
 
 
 def _final(text: str) -> AgentDecision:
@@ -71,27 +67,25 @@ class MockClient:
         def _list(limit=50):
             self.list_executed += 1
             return PageResponse(
-                items=[
-                    BenchmarkRead(
-                        id=_id(1), project_id=_id(9), name="B1", state="published"
-                    )
-                ],
-                total=1, limit=limit, offset=0,
+                items=[BenchmarkRead(id=_id(1), project_id=_id(9), name="B1", state="published")],
+                total=1,
+                limit=limit,
+                offset=0,
             )
 
         self.list_benchmarks = _list
-        self.submit_execution = (
-            lambda bv_id, target_model="mock", dataset_version_id=None: (
-                self._mark_submit(),
-                ExecutionResponse(
-                    id=_id(4), benchmark_version_id=uuid.UUID(str(bv_id)),
-                    status="QUEUED", target_model=target_model,
-                    created_at=datetime(2026, 1, 1, tzinfo=UTC),
-                    updated_at=datetime(2026, 1, 1, tzinfo=UTC),
-                    created_by=_id(9),
-                ),
-            )[1]
-        )
+        self.submit_execution = lambda bv_id, target_model="mock", dataset_version_id=None: (
+            self._mark_submit(),
+            ExecutionResponse(
+                id=_id(4),
+                benchmark_version_id=uuid.UUID(str(bv_id)),
+                status="QUEUED",
+                target_model=target_model,
+                created_at=datetime(2026, 1, 1, tzinfo=UTC),
+                updated_at=datetime(2026, 1, 1, tzinfo=UTC),
+                created_by=_id(9),
+            ),
+        )[1]
 
     def _mark_submit(self) -> None:
         self.submit_executed = True
@@ -101,8 +95,10 @@ class TestConfirmGating:
     def test_approve_executes_write_tool(self) -> None:
         client = MockClient()
         provider = FakeProvider(
-            [_tool("submit_run", benchmark_version_id=str(_id(2)), target_model="mock"),
-             _final("queued")]
+            [
+                _tool("submit_run", benchmark_version_id=str(_id(2)), target_model="mock"),
+                _final("queued"),
+            ]
         )
         loop = AgentLoop(
             provider=provider,  # type: ignore[arg-type]
@@ -119,8 +115,10 @@ class TestConfirmGating:
     def test_reject_skips_execution_and_records_declined(self) -> None:
         client = MockClient()
         provider = FakeProvider(
-            [_tool("submit_run", benchmark_version_id=str(_id(2)), target_model="mock"),
-             _final("ok, skipped")]
+            [
+                _tool("submit_run", benchmark_version_id=str(_id(2)), target_model="mock"),
+                _final("ok, skipped"),
+            ]
         )
         loop = AgentLoop(
             provider=provider,  # type: ignore[arg-type]
@@ -158,8 +156,10 @@ class TestConfirmGating:
     def test_default_auto_approves_when_confirm_none(self) -> None:
         client = MockClient()
         provider = FakeProvider(
-            [_tool("submit_run", benchmark_version_id=str(_id(2)), target_model="mock"),
-             _final("queued")]
+            [
+                _tool("submit_run", benchmark_version_id=str(_id(2)), target_model="mock"),
+                _final("queued"),
+            ]
         )
         loop = AgentLoop(
             provider=provider,  # type: ignore[arg-type]
@@ -176,8 +176,10 @@ class TestRunOneShot:
     def test_final_response_returns_success(self) -> None:
         out: list[str] = []
         code = run_one_shot(
-            "task", provider=FakeProvider([_final("answer")]),
-            client=MockClient(), echo=out.append,
+            "task",
+            provider=FakeProvider([_final("answer")]),
+            client=MockClient(),
+            echo=out.append,
         )
         assert code == ExitCode.SUCCESS
         assert out == ["answer"]
@@ -185,8 +187,10 @@ class TestRunOneShot:
     def test_fail_returns_unspecified(self) -> None:
         out: list[str] = []
         code = run_one_shot(
-            "task", provider=FakeProvider([_fail("bad")]),
-            client=MockClient(), echo=out.append,
+            "task",
+            provider=FakeProvider([_fail("bad")]),
+            client=MockClient(),
+            echo=out.append,
         )
         assert code == ExitCode.UNSPECIFIED
 
@@ -196,7 +200,8 @@ class TestRunOneShot:
             provider=FakeProvider(
                 [AgentDecision(type=AgentDecisionType.REQUEST_CLARIFICATION, response="Which?")]
             ),
-            client=MockClient(), echo=lambda s: None,
+            client=MockClient(),
+            echo=lambda s: None,
         )
         assert code == ExitCode.SUCCESS
 
@@ -224,8 +229,10 @@ class TestAgentREPLTurn:
         client = MockClient()
         repl = AgentREPL(
             provider=FakeProvider(
-                [_tool("submit_run", benchmark_version_id=str(_id(2)), target_model="mock"),
-                 _final("queued")]
+                [
+                    _tool("submit_run", benchmark_version_id=str(_id(2)), target_model="mock"),
+                    _final("queued"),
+                ]
             ),
             client=client,
             confirm=lambda tool, args: True,
@@ -238,8 +245,10 @@ class TestAgentREPLTurn:
         client = MockClient()
         repl = AgentREPL(
             provider=FakeProvider(
-                [_tool("submit_run", benchmark_version_id=str(_id(2)), target_model="mock"),
-                 _final("ok skipped")]
+                [
+                    _tool("submit_run", benchmark_version_id=str(_id(2)), target_model="mock"),
+                    _final("ok skipped"),
+                ]
             ),
             client=client,
             confirm=lambda tool, args: False,
@@ -255,9 +264,7 @@ class TestExitCode:
 
 
 class TestRouting:
-    def test_bare_atlas_non_tty_shows_help(
-        self, runner: CliRunner
-    ) -> None:
+    def test_bare_atlas_non_tty_shows_help(self, runner: CliRunner) -> None:
         result = runner.invoke(main, [])
         assert result.exit_code == 0
         assert "Atlas CLI" in result.output
@@ -342,9 +349,7 @@ class TestProviderAvailability:
 
 
 class TestProgressGlyphs:
-    def test_cp1252_falls_back_to_ascii(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_cp1252_falls_back_to_ascii(self, monkeypatch: pytest.MonkeyPatch) -> None:
         class Cp1252:
             encoding = "cp1252"
 
@@ -353,9 +358,7 @@ class TestProgressGlyphs:
         assert ok == "[ok]"
         assert fail == "[!]"
 
-    def test_utf8_uses_unicode_glyphs(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_utf8_uses_unicode_glyphs(self, monkeypatch: pytest.MonkeyPatch) -> None:
         class Utf8:
             encoding = "utf-8"
 
@@ -366,9 +369,7 @@ class TestProgressGlyphs:
 
 
 class TestInteract:
-    def test_eof_exits_cleanly(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_eof_exits_cleanly(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def raiser(*_a, **_k):
             raise EOFError
 
@@ -376,9 +377,7 @@ class TestInteract:
         repl = AgentREPL(provider=FakeProvider([]), client=MockClient(), echo=print)
         assert repl.interact() == ExitCode.SUCCESS
 
-    def test_keyboard_interrupt_exits_cleanly(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_keyboard_interrupt_exits_cleanly(self, monkeypatch: pytest.MonkeyPatch) -> None:
         def raiser(*_a, **_k):
             raise KeyboardInterrupt
 

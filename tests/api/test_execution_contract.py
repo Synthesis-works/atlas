@@ -176,7 +176,9 @@ def test_post_execution_cancellation_contract():
         submitted_by_id=uuid.uuid4(),
     )
     app.dependency_overrides[get_db_session] = lambda: FakeDB({DBExecution: [db_item]})
-    app.dependency_overrides[get_project_authz_service] = lambda: Mock(spec=ProjectAuthorizationService)
+    app.dependency_overrides[get_project_authz_service] = lambda: Mock(
+        spec=ProjectAuthorizationService
+    )
 
     response = client.post(f"/api/v1/executions/{exec_id}/cancel")
     assert response.status_code == 200, f"Expected 200, got {response.status_code}"

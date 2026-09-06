@@ -133,12 +133,8 @@ class AgentREPL:
             )
             if not first:
                 return False
-            return click.confirm(
-                f"Really {tool_name}? This cannot be undone.", default=False
-            )
-        return click.confirm(
-            f"Allow {tool_name}({_fmt_args(arguments)})?", default=False
-        )
+            return click.confirm(f"Really {tool_name}? This cannot be undone.", default=False)
+        return click.confirm(f"Allow {tool_name}({_fmt_args(arguments)})?", default=False)
 
     def _render_progress(self, call: Any, obs: Any) -> None:
         ok = obs is not None and bool(getattr(obs, "success", False))
@@ -162,11 +158,7 @@ class AgentREPL:
         elif result.needs_clarification:
             reply = result.response or "I need more information to answer that."
         else:
-            reply = (
-                result.error
-                or result.response
-                or "I couldn't complete that request."
-            )
+            reply = result.error or result.response or "I couldn't complete that request."
         self._history.append((user_text, reply))
         return reply
 

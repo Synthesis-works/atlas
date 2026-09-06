@@ -78,7 +78,10 @@ class TestAgentContext:
     def test_record_observation_appends(self) -> None:
         ctx = AgentContext(goal="g")
         ctx.record_observation(
-            call_id="c1", tool_name="benchmark_list", success=True, output=[],
+            call_id="c1",
+            tool_name="benchmark_list",
+            success=True,
+            output=[],
         )
         assert len(ctx.observations) == 1
         assert ctx.observations[0].success is True

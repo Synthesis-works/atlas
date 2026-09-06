@@ -337,13 +337,15 @@ def list_cmd(
             short_id = str(e.id)[:8]
             progress = f"{e.completed_items}/{e.total_items}"
             created = e.created_at.strftime("%Y-%m-%d %H:%M")
-            rows_data.append([
-                short_id,
-                e.status,
-                e.target_model,
-                progress,
-                created,
-            ])
+            rows_data.append(
+                [
+                    short_id,
+                    e.status,
+                    e.target_model,
+                    progress,
+                    created,
+                ]
+            )
         render_table(headers, rows_data, title="Executions")
         if page.total > len(page.items):
             shown = len(page.items)
@@ -500,8 +502,7 @@ def _exit_watch_timeout(
             )
         else:
             click.echo(
-                f"  timed out after {label}s — no state observed; "
-                f"re-run with a larger --timeout",
+                f"  timed out after {label}s — no state observed; re-run with a larger --timeout",
                 err=True,
             )
     sys.exit(ExitCode.WATCH_TIMEOUT)

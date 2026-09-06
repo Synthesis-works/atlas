@@ -52,7 +52,9 @@ def _user(session) -> User:
     return user
 
 
-def _member(session, user: User, org: Organization, role=OrganizationRole.MEMBER) -> OrganizationMember:
+def _member(
+    session, user: User, org: Organization, role=OrganizationRole.MEMBER
+) -> OrganizationMember:
     member = OrganizationMember(
         user_id=user.id,
         organization_id=org.id,
@@ -300,7 +302,9 @@ def test_submit_draft_benchmark_version_allowed_for_org_member(
     exec_service.submit_execution.assert_called_once()
 
 
-def test_submit_missing_benchmark_version_returns_404(client_context, db_session, exec_service, mock_wake):
+def test_submit_missing_benchmark_version_returns_404(
+    client_context, db_session, exec_service, mock_wake
+):
     unknown = uuid4()
     db_session.commit()
 
@@ -313,7 +317,9 @@ def test_submit_missing_benchmark_version_returns_404(client_context, db_session
     exec_service.submit_execution.assert_not_called()
 
 
-def test_submit_invalid_benchmark_version_id_returns_422(client_context, db_session, exec_service, mock_wake):
+def test_submit_invalid_benchmark_version_id_returns_422(
+    client_context, db_session, exec_service, mock_wake
+):
     response = client_context.client.post(
         "/api/v1/benchmarks/not-a-uuid/executions", json={"target_model": "mock"}
     )
@@ -327,9 +333,7 @@ def test_submit_invalid_benchmark_version_id_returns_422(client_context, db_sess
 # ---------------------------------------------------------------------------
 
 
-def test_dispatch_targets_expose_published_and_own_org_drafts_only(
-    client_context, db_session
-):
+def test_dispatch_targets_expose_published_and_own_org_drafts_only(client_context, db_session):
     me = _user(db_session)
     my_org = _org(db_session, "Mine Org")
     _member(db_session, me, my_org)

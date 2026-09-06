@@ -28,7 +28,9 @@ class ModelRead(BaseModel):
     """
 
     id: str = Field(..., description="Canonical target string for run submit --target-model")
-    provider: str = Field(..., description="Provider key (mock|ollama|gemini|grok|mistral|groq|nvidia)")
+    provider: str = Field(
+        ..., description="Provider key (mock|ollama|gemini|grok|mistral|groq|nvidia)"
+    )
     display_name: str = Field(..., description="Human-friendly model label")
     status: ModelStatus = Field(
         ..., description="AVAILABLE when credentials/host are configured; NOT_CONFIGURED otherwise"

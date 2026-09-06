@@ -73,9 +73,7 @@ class _ModelNameArgs(BaseModel):
 
 
 class _ActivityArgs(BaseModel):
-    activity_type: str = Field(
-        "all", pattern="^(all|benchmarks|executions|models)$"
-    )
+    activity_type: str = Field("all", pattern="^(all|benchmarks|executions|models)$")
     limit: int = Field(10, ge=1, le=50)
 
 
@@ -116,11 +114,9 @@ class ListBenchmarksTool(BaseTool):
         if isinstance(parsed, ValidationError):
             return ToolResult(ok=False, summary="invalid arguments", error=str(parsed))
         page = client.list_benchmarks(limit=parsed.limit)
-        items = [
-            {"id": str(b.id), "name": b.name, "state": b.state} for b in page.items
-        ]
+        items = [{"id": str(b.id), "name": b.name, "state": b.state} for b in page.items]
         summary = " ".join(
-            f"{i+1}. {it['name']} ({it['id']}) [{it['state']}]" for i, it in enumerate(items[:15])
+            f"{i + 1}. {it['name']} ({it['id']}) [{it['state']}]" for i, it in enumerate(items[:15])
         )
         return _ok(
             f"{len(items)} benchmark(s): {summary}",
@@ -360,9 +356,7 @@ class GetReportTool(BaseTool):
             return ToolResult(ok=False, summary="invalid arguments", error=str(parsed))
         summary = client.get_report_run(parsed.run_id)
         score = f"{summary.overall_score:.1f}" if summary.overall_score is not None else "n/a"
-        breakdown = {
-            c.capability_name: round(c.score, 2) for c in summary.scores
-        }
+        breakdown = {c.capability_name: round(c.score, 2) for c in summary.scores}
         return _ok(
             f"Run {summary.run_id}: status {summary.evaluation_status}, overall score "
             f"{score}; {len(summary.scores)} capability score(s)",
@@ -407,8 +401,7 @@ class ExportReportTool(BaseTool):
             include_expected_output=parsed.include_expected_output,
         )
         return _ok(
-            f"Exported report to {result.filename} ({len(result.content)} bytes, "
-            f"{result.format})",
+            f"Exported report to {result.filename} ({len(result.content)} bytes, {result.format})",
             {
                 "filename": result.filename,
                 "bytes": len(result.content),
@@ -447,9 +440,7 @@ class GetLeaderboardTool(BaseTool):
             }
             for e in board.entries.items
         ]
-        summary = "; ".join(
-            f"#{r['rank']} {r['model']} {r['score']:.2f}" for r in rows[:15]
-        )
+        summary = "; ".join(f"#{r['rank']} {r['model']} {r['score']:.2f}" for r in rows[:15])
         return _ok(
             f"{len(rows)} leaderboard entries for {board.title}: {summary}",
             {"rows": rows, "total": board.entries.total},
@@ -484,8 +475,7 @@ class GetModelSummaryTool(BaseTool):
 class GetActivityTool(BaseTool):
     name = "get_activity"
     description = (
-        "Show recent platform activity. activity_type is one of "
-        "all|benchmarks|executions|models."
+        "Show recent platform activity. activity_type is one of all|benchmarks|executions|models."
     )
     parameters_schema = {
         "type": "object",
@@ -521,9 +511,7 @@ class GetActivityTool(BaseTool):
             ]
         if parsed.activity_type in ("all", "models"):
             recent_models = client.get_recent_models(limit=parsed.limit)
-            sections["models"] = [
-                f"{m.name} ({m.execution_count} runs)" for m in recent_models
-            ]
+            sections["models"] = [f"{m.name} ({m.execution_count} runs)" for m in recent_models]
         lines: list[str] = []
         for key in ("benchmarks", "executions", "models"):
             if key in sections:

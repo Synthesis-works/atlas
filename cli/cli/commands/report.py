@@ -140,17 +140,17 @@ def list_cmd(
         for item in page.items:
             short_id = str(item.run_id)[:8]
             score = f"{item.overall_score:.1f}" if item.overall_score is not None else "-"
-            completed = (
-                item.completed_at.strftime("%Y-%m-%d %H:%M") if item.completed_at else "-"
+            completed = item.completed_at.strftime("%Y-%m-%d %H:%M") if item.completed_at else "-"
+            rows_data.append(
+                [
+                    short_id,
+                    item.target_model,
+                    item.benchmark_version,
+                    item.evaluation_status,
+                    score,
+                    completed,
+                ]
             )
-            rows_data.append([
-                short_id,
-                item.target_model,
-                item.benchmark_version,
-                item.evaluation_status,
-                score,
-                completed,
-            ])
         render_table(headers, rows_data, title="Report Runs")
         if page.total > len(page.items):
             shown = len(page.items)
@@ -215,9 +215,7 @@ def get_cmd(ctx: Context, run_id: str, json_schema: bool) -> None:
         )
 
         if summary.scores:
-            rows_data = [
-                [item.capability_name, f"{item.score:.1f}"] for item in summary.scores
-            ]
+            rows_data = [[item.capability_name, f"{item.score:.1f}"] for item in summary.scores]
             render_table(["Capability", "Score"], rows_data, title="Score Breakdown")
 
 

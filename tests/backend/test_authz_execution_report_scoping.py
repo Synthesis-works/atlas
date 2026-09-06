@@ -140,7 +140,11 @@ class TestAuthorizePrimitiveIsolation:
             authz.authorize_project_access(
                 project_id=p1.id,
                 user_id=u1,
-                allowed_roles=[OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER],
+                allowed_roles=[
+                    OrganizationRole.OWNER,
+                    OrganizationRole.ADMIN,
+                    OrganizationRole.MEMBER,
+                ],
             )
         assert exc.value.status_code == 403
 
@@ -178,7 +182,9 @@ def _override(deps: dict, overrides: dict):
 
 
 class TestExecutionReadScoping:
-    def test_same_accessible_project_allowed(self, client, mock_execution_service, mock_authz_service):
+    def test_same_accessible_project_allowed(
+        self, client, mock_execution_service, mock_authz_service
+    ):
         exec_id, project_id = uuid.uuid4(), uuid.uuid4()
         db = _make_db({Exec: [_execution(exec_id, project_id)]})
         claims = _claims()
@@ -274,10 +280,14 @@ class TestExecutionListScoping:
 
 
 class TestExecutionCancelScoping:
-    def test_cancel_scoped_and_write_role_checked(self, client, mock_execution_service, mock_authz_service):
+    def test_cancel_scoped_and_write_role_checked(
+        self, client, mock_execution_service, mock_authz_service
+    ):
         exec_id, project_id = uuid.uuid4(), uuid.uuid4()
         db = _make_db({Exec: [_execution(exec_id, project_id)]})
-        mock_execution_service.cancel_execution.return_value = _domain_exec(exec_id, ExecutionState.CANCELLED)
+        mock_execution_service.cancel_execution.return_value = _domain_exec(
+            exec_id, ExecutionState.CANCELLED
+        )
         with _override(
             app,
             {
@@ -406,7 +416,10 @@ class TestReportExportScoping:
         db = _make_db({Exec: [_execution(run_id, project_id)]})
         mock_reporting_service.build_report_export.return_value = Mock()
         mock_reporting_service.export_run_results.return_value = Mock(
-            filename_stem="r", filename_extension="json", content=b"{}", mime_type="application/json"
+            filename_stem="r",
+            filename_extension="json",
+            content=b"{}",
+            mime_type="application/json",
         )
         with _override(
             app,
@@ -462,9 +475,13 @@ class TestReportListScoping:
             resp = client.get("/api/v1/reports/runs")
         assert resp.status_code == 200
         mock_reporting_service.get_runs_filtered.assert_called_once()
-        assert mock_reporting_service.get_runs_filtered.call_args.kwargs["project_ids"] == accessible
+        assert (
+            mock_reporting_service.get_runs_filtered.call_args.kwargs["project_ids"] == accessible
+        )
 
-    def test_list_empty_membership_yields_no_rows(self, client, mock_reporting_service, monkeypatch):
+    def test_list_empty_membership_yields_no_rows(
+        self, client, mock_reporting_service, monkeypatch
+    ):
         monkeypatch.setattr(
             reporting_router, "resolve_accessible_project_ids", lambda db, user_id: []
         )

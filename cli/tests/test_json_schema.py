@@ -114,9 +114,7 @@ def test_leaderboard_benchmark_json_schema(runner: CliRunner) -> None:
 
 def test_leaderboard_model_json_schema(runner: CliRunner) -> None:
     schema = _schema(runner, ["leaderboard", "model", "mock", "--json-schema"])
-    assert {"model", "benchmarks", "average_score", "best_rank"} <= set(
-        schema["properties"]
-    )
+    assert {"model", "benchmarks", "average_score", "best_rank"} <= set(schema["properties"])
 
 
 def test_leaderboard_model_history_is_array_schema(runner: CliRunner) -> None:
@@ -127,18 +125,14 @@ def test_leaderboard_model_history_is_array_schema(runner: CliRunner) -> None:
 
 
 def test_leaderboard_model_benchmarks_is_array_schema(runner: CliRunner) -> None:
-    schema = _schema(
-        runner, ["leaderboard", "model", "mock", "--benchmarks", "--json-schema"]
-    )
+    schema = _schema(runner, ["leaderboard", "model", "mock", "--benchmarks", "--json-schema"])
     assert schema["type"] == "array"
     assert "benchmark_name" in schema["items"]["properties"]
 
 
 def test_benchmark_list_json_schema(runner: CliRunner) -> None:
     schema = _schema(runner, ["benchmark", "list", "--json-schema"])
-    assert {"items", "total", "limit", "offset", "next_cursor"} <= set(
-        schema["properties"]
-    )
+    assert {"items", "total", "limit", "offset", "next_cursor"} <= set(schema["properties"])
     assert schema["$defs"]["BenchmarkRead"]["properties"]["name"]["type"] == "string"
 
 

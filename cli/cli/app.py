@@ -16,9 +16,7 @@ from cli.errors import ExitCode
 from cli.output.errors import error_exit
 
 
-def _validate_retries(
-    ctx: click.Context, param: click.Parameter, value: int | None
-) -> int | None:
+def _validate_retries(ctx: click.Context, param: click.Parameter, value: int | None) -> int | None:
     """Reject negative retry counts (applies to both flag and env value)."""
     if value is not None and value < 0:
         raise click.BadParameter("must be >= 0")

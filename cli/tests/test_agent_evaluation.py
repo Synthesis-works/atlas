@@ -119,9 +119,7 @@ class TestEvaluateRunTool:
     def test_delegates(self) -> None:
         reg = ToolRegistry()
         client = _mock_client()
-        result = reg.execute(
-            "evaluate_run", client, {"project_id": PROJECT, "execution_id": EXEC1}
-        )
+        result = reg.execute("evaluate_run", client, {"project_id": PROJECT, "execution_id": EXEC1})
         client.enqueue_evaluation.assert_called_once_with(PROJECT, EXEC1)
         assert result.ok is True
         assert "enqueued" in result.summary.lower()

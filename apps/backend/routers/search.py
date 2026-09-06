@@ -53,9 +53,7 @@ def global_search(
     return _to_page(results, request)
 
 
-@router.get(
-    "/projects/{project_id}/search", response_model=PageResponse[SearchResult]
-)
+@router.get("/projects/{project_id}/search", response_model=PageResponse[SearchResult])
 def project_search(
     project_id: uuid.UUID = Path(...),
     request: SearchRequest = Depends(),

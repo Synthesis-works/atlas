@@ -108,10 +108,7 @@ def _render_human(
 
     if benchmarks is not None:
         if benchmarks:
-            rows_data = [
-                [b.name, b.state, str(b.id)[:8]]
-                for b in benchmarks
-            ]
+            rows_data = [[b.name, b.state, str(b.id)[:8]] for b in benchmarks]
             render_table(
                 ["Benchmark", "State", "ID"],
                 rows_data,
@@ -137,8 +134,7 @@ def _render_human(
     if models is not None:
         if models:
             rows_data = [
-                [m.name, _fmt_ts(m.last_executed_at), str(m.execution_count)]
-                for m in models
+                [m.name, _fmt_ts(m.last_executed_at), str(m.execution_count)] for m in models
             ]
             render_table(
                 ["Model", "Last Executed", "Runs"],

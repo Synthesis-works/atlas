@@ -245,14 +245,14 @@ class TestGetBenchmarkLeaderboard:
             client.get_benchmark_leaderboard(self._BV_ID)
         client.close()
 
-    def test_network_error_raises_network_error(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_network_error_raises_network_error(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_exception(httpx.ConnectError("connection refused"))
         client = AtlasClient("http://localhost:8000", max_retries=0)
         with pytest.raises(NetworkError):
             client.get_benchmark_leaderboard(self._BV_ID)
         client.close()
+
+
 # -- ModelSummary --------------------------------------------------------
 
 
@@ -290,15 +290,17 @@ class TestModelSummaryDto:
         assert summary.latest_delta is None
 
     def test_models_parse_unknown_model_payload(self) -> None:
-        raw = json.dumps({
-            "model": "SuchModelDoesNotExist",
-            "benchmarks": 0,
-            "best_rank": None,
-            "average_rank": None,
-            "average_score": None,
-            "last_execution": None,
-            "latest_delta": None,
-        })
+        raw = json.dumps(
+            {
+                "model": "SuchModelDoesNotExist",
+                "benchmarks": 0,
+                "best_rank": None,
+                "average_rank": None,
+                "average_score": None,
+                "last_execution": None,
+                "latest_delta": None,
+            }
+        )
         summary = ModelSummary.model_validate_json(raw)
         assert summary.model == "SuchModelDoesNotExist"
         assert summary.benchmarks == 0
@@ -421,14 +423,14 @@ class TestGetModelSummary:
             client.get_model_summary("mock")
         client.close()
 
-    def test_network_error_raises_network_error(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_network_error_raises_network_error(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_exception(httpx.ConnectError("connection refused"))
         client = AtlasClient("http://localhost:8000", max_retries=0)
         with pytest.raises(NetworkError):
             client.get_model_summary("mock")
         client.close()
+
+
 # -- TrendPoint (model history) -------------------------------------------
 
 
@@ -461,9 +463,7 @@ class TestTrendPointDto:
         assert point.execution_id == "5cad9594-0f35-4e1f-9c60-cdcbd41d2cd0"
 
     def test_models_parse_rank_populated(self) -> None:
-        point = TrendPoint.model_validate(
-            _point_payload(rank=3, benchmark_version=None)
-        )
+        point = TrendPoint.model_validate(_point_payload(rank=3, benchmark_version=None))
         assert point.rank == 3
         assert point.benchmark_version is None
 
@@ -565,21 +565,21 @@ class TestGetModelHistory:
             method="GET",
             url=_history_url("mock"),
             status_code=500,
-json=_err(500, "INTERNAL", "something broke"),
+            json=_err(500, "INTERNAL", "something broke"),
         )
         client = AtlasClient("http://localhost:8000", max_retries=0)
         with pytest.raises(ServerError):
             client.get_model_history("mock")
         client.close()
 
-    def test_network_error_raises_network_error(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_network_error_raises_network_error(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_exception(httpx.ConnectError("connection refused"))
         client = AtlasClient("http://localhost:8000", max_retries=0)
         with pytest.raises(NetworkError):
             client.get_model_history("mock")
         client.close()
+
+
 # -- ModelBenchmarkHistory (model benchmarks) ------------------------------
 
 
@@ -709,9 +709,7 @@ class TestGetModelBenchmarks:
             client.get_model_benchmarks("mock")
         client.close()
 
-    def test_network_error_raises_network_error(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_network_error_raises_network_error(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_exception(httpx.ConnectError("connection refused"))
         client = AtlasClient("http://localhost:8000", max_retries=0)
         with pytest.raises(NetworkError):

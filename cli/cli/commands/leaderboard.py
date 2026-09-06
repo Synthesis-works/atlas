@@ -117,14 +117,16 @@ def benchmark_cmd(
         for item in entries.items:
             updated = item.last_updated.strftime("%Y-%m-%d %H:%M")
             rank_delta = str(item.rank_delta) if item.rank_delta is not None else "-"
-            rows_data.append([
-                str(item.rank),
-                item.model_name,
-                f"{item.overall_score:.2f}",
-                str(item.benchmark_count),
-                updated,
-                rank_delta,
-            ])
+            rows_data.append(
+                [
+                    str(item.rank),
+                    item.model_name,
+                    f"{item.overall_score:.2f}",
+                    str(item.benchmark_count),
+                    updated,
+                    rank_delta,
+                ]
+            )
         render_table(
             ["Rank", "Model", "Score", "# Benchmarks", "Updated", "Rank Delta"],
             rows_data,
@@ -181,9 +183,7 @@ def model_cmd(
       atlas leaderboard model mock --json-schema
     """
     if history and benchmarks:
-        raise click.UsageError(
-            "--history and --benchmarks are mutually exclusive."
-        )
+        raise click.UsageError("--history and --benchmarks are mutually exclusive.")
 
     cfg: AtlasConfig = ctx.config
     output_mode = cfg.effective_output()
@@ -255,13 +255,15 @@ def _render_history(points: list[TrendPoint], model_name: str, output_mode: str)
 
         rows_data: list[list[str]] = []
         for point in points:
-            rows_data.append([
-                point.timestamp.strftime("%Y-%m-%d %H:%M"),
-                f"{point.score:.2f}",
-                str(point.rank) if point.rank is not None else "-",
-                point.benchmark_version if point.benchmark_version is not None else "-",
-                point.execution_id,
-            ])
+            rows_data.append(
+                [
+                    point.timestamp.strftime("%Y-%m-%d %H:%M"),
+                    f"{point.score:.2f}",
+                    str(point.rank) if point.rank is not None else "-",
+                    point.benchmark_version if point.benchmark_version is not None else "-",
+                    point.execution_id,
+                ]
+            )
         render_table(
             ["Timestamp", "Score", "Rank", "Benchmark", "Execution"],
             rows_data,
@@ -293,13 +295,15 @@ def _render_benchmarks(
                 all_points,
                 key=lambda p: (p.timestamp, str(p.execution_id)),
             )
-            rows_data.append([
-                entry.benchmark_name,
-                str(num_versions),
-                str(total_runs),
-                f"{latest.score:.2f}",
-                latest.timestamp.strftime("%Y-%m-%d %H:%M"),
-            ])
+            rows_data.append(
+                [
+                    entry.benchmark_name,
+                    str(num_versions),
+                    str(total_runs),
+                    f"{latest.score:.2f}",
+                    latest.timestamp.strftime("%Y-%m-%d %H:%M"),
+                ]
+            )
 
         rows_data.sort(key=lambda row: row[0])
         render_table(

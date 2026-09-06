@@ -98,12 +98,14 @@ def _render_human(snapshot: DashboardSnapshot) -> None:
         if job.id in seen:
             continue
         seen.add(job.id)
-        jobs_rows.append([
-            job.model,
-            job.benchmark,
-            job.status,
-            f"{job.progress}%",
-        ])
+        jobs_rows.append(
+            [
+                job.model,
+                job.benchmark,
+                job.status,
+                f"{job.progress}%",
+            ]
+        )
     if jobs_rows:
         render_table(
             ["Model", "Benchmark", "Status", "Progress"],

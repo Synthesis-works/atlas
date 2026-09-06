@@ -143,10 +143,16 @@ class _RecordingSession:
         q = _RecordingQuery(self._env.get(entity, []))
         if entity is Execution:
             original = q.filter
-            q.filter = lambda *criteria, **kw: (self.execution_filters.extend(criteria), original(*criteria, **kw))[1]
+            q.filter = lambda *criteria, **kw: (
+                self.execution_filters.extend(criteria),
+                original(*criteria, **kw),
+            )[1]
         if entity is Benchmark:
             original = q.filter
-            q.filter = lambda *criteria, **kw: (self.benchmark_filters.extend(criteria), original(*criteria, **kw))[1]
+            q.filter = lambda *criteria, **kw: (
+                self.benchmark_filters.extend(criteria),
+                original(*criteria, **kw),
+            )[1]
         return q
 
 
@@ -272,7 +278,9 @@ class TestHistoryAuthentication:
 
 
 class TestHistoryRouterScoping:
-    def test_benchmarks_forwards_accessible_projects(self, client, mock_benchmark_service, monkeypatch):
+    def test_benchmarks_forwards_accessible_projects(
+        self, client, mock_benchmark_service, monkeypatch
+    ):
         accessible = [uuid.uuid4(), uuid.uuid4()]
         monkeypatch.setattr(
             "apps.backend.routers.history.resolve_accessible_project_ids",
@@ -288,9 +296,14 @@ class TestHistoryRouterScoping:
         ):
             resp = client.get("/api/v1/history/benchmarks/recent")
         assert resp.status_code == 200
-        assert mock_benchmark_service.get_recent_benchmarks.call_args.kwargs["project_ids"] == accessible
+        assert (
+            mock_benchmark_service.get_recent_benchmarks.call_args.kwargs["project_ids"]
+            == accessible
+        )
 
-    def test_executions_forwards_accessible_projects(self, client, mock_execution_service, monkeypatch):
+    def test_executions_forwards_accessible_projects(
+        self, client, mock_execution_service, monkeypatch
+    ):
         accessible = [uuid.uuid4()]
         monkeypatch.setattr(
             "apps.backend.routers.history.resolve_accessible_project_ids",
@@ -306,7 +319,10 @@ class TestHistoryRouterScoping:
         ):
             resp = client.get("/api/v1/history/executions/recent")
         assert resp.status_code == 200
-        assert mock_execution_service.get_recent_executions.call_args.kwargs["project_ids"] == accessible
+        assert (
+            mock_execution_service.get_recent_executions.call_args.kwargs["project_ids"]
+            == accessible
+        )
 
     def test_models_forwards_accessible_projects(self, client, mock_execution_service, monkeypatch):
         accessible = [uuid.uuid4(), uuid.uuid4(), uuid.uuid4()]
@@ -324,7 +340,9 @@ class TestHistoryRouterScoping:
         ):
             resp = client.get("/api/v1/history/models/recent")
         assert resp.status_code == 200
-        assert mock_execution_service.get_recent_models.call_args.kwargs["project_ids"] == accessible
+        assert (
+            mock_execution_service.get_recent_models.call_args.kwargs["project_ids"] == accessible
+        )
 
     def test_empty_membership_benchmarks_yields_empty_not_global(
         self, client, mock_benchmark_service, monkeypatch

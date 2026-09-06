@@ -46,16 +46,12 @@ def _dataset(ds_id: str = DATASET_ID) -> dict:
             }
         ],
         "total_tasks": 1,
-        "sample_tasks": [
-            {"name": "task_0", "input": {"text": "hi"}, "expected_output": {"a": 1}}
-        ],
+        "sample_tasks": [{"name": "task_0", "input": {"text": "hi"}, "expected_output": {"a": 1}}],
     }
 
 
 def _client() -> AtlasClient:
-    return AtlasClient(
-        "http://localhost:8000", token_supplier=StaticTokenSupplier("t")
-    )
+    return AtlasClient("http://localhost:8000", token_supplier=StaticTokenSupplier("t"))
 
 
 class TestListDatasets:
@@ -77,9 +73,7 @@ class TestGetDataset:
     def test_get_dataset(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_response(
             method="GET",
-            url=(
-                f"http://localhost:8000/api/v1/projects/{PROJECT_ID}/datasets/{DATASET_ID}"
-            ),
+            url=(f"http://localhost:8000/api/v1/projects/{PROJECT_ID}/datasets/{DATASET_ID}"),
             json=_dataset(),
         )
         client = _client()
@@ -133,9 +127,7 @@ class TestUpdateDataset:
         updated["name"] = "Renamed"
         httpx_mock.add_response(
             method="PUT",
-            url=(
-                f"http://localhost:8000/api/v1/projects/{PROJECT_ID}/datasets/{DATASET_ID}"
-            ),
+            url=(f"http://localhost:8000/api/v1/projects/{PROJECT_ID}/datasets/{DATASET_ID}"),
             json=updated,
         )
         client = _client()
@@ -146,9 +138,7 @@ class TestUpdateDataset:
     def test_update_only_provided(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_response(
             method="PUT",
-            url=(
-                f"http://localhost:8000/api/v1/projects/{PROJECT_ID}/datasets/{DATASET_ID}"
-            ),
+            url=(f"http://localhost:8000/api/v1/projects/{PROJECT_ID}/datasets/{DATASET_ID}"),
             json=_dataset(),
         )
         client = _client()
@@ -165,9 +155,7 @@ class TestUploadTasks:
     def test_upload_tasks(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_response(
             method="POST",
-            url=(
-                f"http://localhost:8000/api/v1/projects/{PROJECT_ID}/datasets/{DATASET_ID}/tasks"
-            ),
+            url=(f"http://localhost:8000/api/v1/projects/{PROJECT_ID}/datasets/{DATASET_ID}/tasks"),
             json={
                 "id": VERSION_ID,
                 "dataset_id": DATASET_ID,

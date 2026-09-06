@@ -109,13 +109,15 @@ class TestWhoami:
         httpx_mock.add_response(
             method="GET",
             url="http://localhost:8000/api/v1/auth/me",
-            json=_ok({
-                "id": "550e8400-e29b-41d4-a716-446655440000",
-                "email": "a@b.com",
-                "full_name": "X",
-                "is_active": True,
-                "is_verified": False,
-            }),
+            json=_ok(
+                {
+                    "id": "550e8400-e29b-41d4-a716-446655440000",
+                    "email": "a@b.com",
+                    "full_name": "X",
+                    "is_active": True,
+                    "is_verified": False,
+                }
+            ),
         )
         client = AtlasClient("http://localhost:8000", token_supplier=StaticTokenSupplier("my-tok"))
         client.whoami()
@@ -169,9 +171,7 @@ class TestHealth:
 
 
 class TestSubmitExecution:
-    def test_submit_execution_returns_queued(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_submit_execution_returns_queued(self, httpx_mock: pytest.MockTransport) -> None:
         """Successful submission returns ExecutionResponse in QUEUED state."""
         bv_id = "22222222-2222-2222-2222-222222222222"
         exec_id = "11111111-1111-1111-1111-111111111111"
@@ -209,9 +209,7 @@ class TestSubmitExecution:
         assert result.attempts == []
         client.close()
 
-    def test_submit_execution_custom_model(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_submit_execution_custom_model(self, httpx_mock: pytest.MockTransport) -> None:
         """Custom target_model is sent in the request body."""
         bv_id = "22222222-2222-2222-2222-222222222222"
         httpx_mock.add_response(
@@ -244,9 +242,7 @@ class TestSubmitExecution:
         assert body["target_model"] == "gpt-4o"
         client.close()
 
-    def test_submit_execution_404_raises_not_found(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_submit_execution_404_raises_not_found(self, httpx_mock: pytest.MockTransport) -> None:
         """Non-existent benchmark version raises NotFoundError."""
         bv_id = "00000000-0000-0000-0000-000000000000"
         httpx_mock.add_response(
@@ -260,9 +256,7 @@ class TestSubmitExecution:
             client.submit_execution(bv_id)
         client.close()
 
-    def test_submit_execution_401_raises_auth_error(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_submit_execution_401_raises_auth_error(self, httpx_mock: pytest.MockTransport) -> None:
         """Missing/invalid token raises AuthError."""
         bv_id = "22222222-2222-2222-2222-222222222222"
         httpx_mock.add_response(
@@ -310,9 +304,7 @@ class TestSubmitExecution:
 
 
 class TestListDispatchTargets:
-    def test_success_parses_bare_list(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_success_parses_bare_list(self, httpx_mock: pytest.MockTransport) -> None:
         """GET /executions/dispatch-targets returns a bare (unwrapped) list."""
         httpx_mock.add_response(
             method="GET",
@@ -399,9 +391,7 @@ class TestListDispatchTargets:
 
 
 class TestGetExecution:
-    def test_get_execution_success(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_get_execution_success(self, httpx_mock: pytest.MockTransport) -> None:
         """Returns parsed ExecutionResponse with populated fields."""
         exec_id = "11111111-1111-1111-1111-111111111111"
         bv_id = "22222222-2222-2222-2222-222222222222"
@@ -440,9 +430,7 @@ class TestGetExecution:
         assert result.attempts == []
         client.close()
 
-    def test_get_execution_404_raises_not_found(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_get_execution_404_raises_not_found(self, httpx_mock: pytest.MockTransport) -> None:
         """Non-existent execution raises NotFoundError."""
         exec_id = "00000000-0000-0000-0000-000000000000"
         httpx_mock.add_response(
@@ -456,9 +444,7 @@ class TestGetExecution:
             client.get_execution(exec_id)
         client.close()
 
-    def test_get_execution_401_raises_auth_error(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_get_execution_401_raises_auth_error(self, httpx_mock: pytest.MockTransport) -> None:
         """Missing/invalid token raises AuthError."""
         exec_id = "11111111-1111-1111-1111-111111111111"
         httpx_mock.add_response(
@@ -472,9 +458,7 @@ class TestGetExecution:
             client.get_execution(exec_id)
         client.close()
 
-    def test_get_execution_403_raises_forbidden(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_get_execution_403_raises_forbidden(self, httpx_mock: pytest.MockTransport) -> None:
         """Insufficient permissions raises ForbiddenError."""
         exec_id = "11111111-1111-1111-1111-111111111111"
         httpx_mock.add_response(
@@ -529,9 +513,7 @@ class TestGetExecution:
 
 
 class TestListExecutions:
-    def test_list_executions_success(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_list_executions_success(self, httpx_mock: pytest.MockTransport) -> None:
         """Returns ExecutionPage with items and pagination metadata."""
         bv_id = "22222222-2222-2222-2222-222222222222"
         user_id = "33333333-3333-3333-3333-333333333333"
@@ -585,9 +567,7 @@ class TestListExecutions:
         assert result.items[1].target_model == "gpt-4o"
         client.close()
 
-    def test_list_executions_empty(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_list_executions_empty(self, httpx_mock: pytest.MockTransport) -> None:
         """Empty items list returns ExecutionPage with empty items."""
         httpx_mock.add_response(
             method="GET",
@@ -604,9 +584,7 @@ class TestListExecutions:
         assert result.total == 0
         client.close()
 
-    def test_list_executions_filters_passed(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_list_executions_filters_passed(self, httpx_mock: pytest.MockTransport) -> None:
         """Query params are sent correctly."""
         bv_id = "22222222-2222-2222-2222-222222222222"
         httpx_mock.add_response(
@@ -634,9 +612,7 @@ class TestListExecutions:
         assert "offset=10" in url
         client.close()
 
-    def test_list_executions_401_raises_auth_error(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_list_executions_401_raises_auth_error(self, httpx_mock: pytest.MockTransport) -> None:
         """Unauthenticated request raises AuthError."""
         httpx_mock.add_response(
             method="GET",
@@ -654,9 +630,7 @@ class TestListExecutions:
 
 
 class TestCancelExecution:
-    def test_cancel_execution_success(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_cancel_execution_success(self, httpx_mock: pytest.MockTransport) -> None:
         """Cancel returns the execution with status unchanged (cooperative)."""
         exec_id = "11111111-1111-1111-1111-111111111111"
         bv_id = "22222222-2222-2222-2222-222222222222"
@@ -690,9 +664,7 @@ class TestCancelExecution:
         assert str(result.id) == exec_id
         client.close()
 
-    def test_cancel_execution_terminal_returns_400(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_cancel_execution_terminal_returns_400(self, httpx_mock: pytest.MockTransport) -> None:
         """Backend returns 400 for terminal execution — not idempotent."""
         exec_id = "11111111-1111-1111-1111-111111111111"
         httpx_mock.add_response(
@@ -709,9 +681,7 @@ class TestCancelExecution:
         assert exc_info.value.status == 400
         client.close()
 
-    def test_cancel_execution_404_raises_not_found(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_cancel_execution_404_raises_not_found(self, httpx_mock: pytest.MockTransport) -> None:
         """Non-existent execution raises NotFoundError."""
         exec_id = "00000000-0000-0000-0000-000000000000"
         httpx_mock.add_response(
@@ -725,9 +695,7 @@ class TestCancelExecution:
             client.cancel_execution(exec_id)
         client.close()
 
-    def test_cancel_execution_401_raises_auth_error(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_cancel_execution_401_raises_auth_error(self, httpx_mock: pytest.MockTransport) -> None:
         """Missing/invalid token raises AuthError."""
         exec_id = "11111111-1111-1111-1111-111111111111"
         httpx_mock.add_response(
@@ -792,9 +760,7 @@ class TestErrorMapping:
                 status_code=500,
                 json=_err(500, "INTERNAL", "something broke"),
             )
-        client = AtlasClient(
-            "http://localhost:8000", token_supplier=StaticTokenSupplier("tok")
-        )
+        client = AtlasClient("http://localhost:8000", token_supplier=StaticTokenSupplier("tok"))
         with pytest.raises(ServerError):
             client.whoami()
         client.close()
@@ -806,9 +772,7 @@ class TestErrorMapping:
                 url="http://localhost:8000/api/v1/auth/me",
                 status_code=502,
             )
-        client = AtlasClient(
-            "http://localhost:8000", token_supplier=StaticTokenSupplier("tok")
-        )
+        client = AtlasClient("http://localhost:8000", token_supplier=StaticTokenSupplier("tok"))
         with pytest.raises(ServerError):
             client.whoami()
         client.close()
@@ -894,9 +858,7 @@ class TestSecurityEdgeCases:
         def bad_supplier() -> str:
             raise OSError("keychain locked")
 
-        client = AtlasClient(
-            "http://localhost:8000", token_supplier=bad_supplier
-        )
+        client = AtlasClient("http://localhost:8000", token_supplier=bad_supplier)
         with pytest.raises(AuthError, match="keychain locked"):
             client.whoami()
         client.close()
@@ -937,9 +899,7 @@ class TestSecurityEdgeCases:
             client.health_summary()
         client.close()
 
-    def test_no_password_in_exception_message(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_no_password_in_exception_message(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_response(
             method="POST",
             url="http://localhost:8000/api/v1/auth/login",
@@ -1027,9 +987,7 @@ class TestListReportRuns:
         assert result.total == 0
         client.close()
 
-    def test_list_report_runs_401_raises_auth_error(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_list_report_runs_401_raises_auth_error(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_response(
             method="GET",
             url="http://localhost:8000/api/v1/reports/runs?limit=50&offset=0",
@@ -1057,9 +1015,7 @@ class TestListReportRuns:
         assert exc_info.value.status == 403
         client.close()
 
-    def test_list_report_runs_no_omitted_params(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_list_report_runs_no_omitted_params(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_response(
             method="GET",
             url="http://localhost:8000/api/v1/reports/runs?limit=50&offset=0",
@@ -1158,9 +1114,7 @@ class TestGetReportRun:
         assert result.scores == []
         client.close()
 
-    def test_get_report_run_401_raises_auth_error(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_get_report_run_401_raises_auth_error(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_response(
             method="GET",
             url="http://localhost:8000/api/v1/reports/runs/3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -1203,9 +1157,7 @@ class TestGetReportRun:
         assert exc_info.value.status == 404
         client.close()
 
-    def test_get_report_run_500_raises_server_error(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_get_report_run_500_raises_server_error(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_response(
             method="GET",
             url="http://localhost:8000/api/v1/reports/runs/3fa85f64-5717-4562-b3fc-2c963f66afa6",
@@ -1232,9 +1184,7 @@ class TestGetReportRun:
 class TestExportReportRun:
     _RUN_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
 
-    def test_export_report_run_returns_raw_content(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_export_report_run_returns_raw_content(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_response(
             method="GET",
             url=(
@@ -1264,7 +1214,7 @@ class TestExportReportRun:
                 f"http://localhost:8000/api/v1/reports/runs/{TestExportReportRun._RUN_ID}/export"
                 "?format=json&include_prompt=false&include_expected_output=false"
             ),
-            content=b'[]',
+            content=b"[]",
             headers={"Content-Type": "application/json"},
         )
         client = AtlasClient("http://localhost:8000")

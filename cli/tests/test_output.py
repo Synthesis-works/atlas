@@ -37,6 +37,7 @@ def test_render_json_error() -> None:
     buf = io.StringIO()
     # Monkeypatch sys.stderr for this test.
     import sys
+
     old = sys.stderr
     sys.stderr = buf
     try:
@@ -52,6 +53,7 @@ def test_render_json_error() -> None:
 def test_render_json_error_with_details() -> None:
     buf = io.StringIO()
     import sys
+
     old = sys.stderr
     sys.stderr = buf
     try:

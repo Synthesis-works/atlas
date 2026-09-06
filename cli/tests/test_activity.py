@@ -176,9 +176,7 @@ def test_activity_json_all_sections(runner: CliRunner) -> None:
 
 def test_activity_json_filtered_type(runner: CliRunner) -> None:
     with patch("cli.client.AtlasClient", return_value=_mock_client()):
-        result = runner.invoke(main, [
-            "--output", "json", "activity", "--type", "benchmarks"
-        ])
+        result = runner.invoke(main, ["--output", "json", "activity", "--type", "benchmarks"])
     assert result.exit_code == 0
     data = json.loads(result.output)
     assert "benchmarks" in data

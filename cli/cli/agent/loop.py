@@ -87,9 +87,7 @@ class AgentLoop:
         assert self.context is not None
         elapsed = (self._now() - self.context.started_at).total_seconds()
         if elapsed >= AGENT_DEADLINE_SECONDS:
-            raise GoalExceededError(
-                f"deadline ({AGENT_DEADLINE_SECONDS}s) exceeded"
-            )
+            raise GoalExceededError(f"deadline ({AGENT_DEADLINE_SECONDS}s) exceeded")
 
     def _dispatch(self, decision: AgentDecision) -> None:
         """Record + execute one tool call, capturing failures as observations."""
@@ -151,9 +149,7 @@ class AgentLoop:
             self._check_deadline()
             ctx.bump_step()
 
-            prompt_context = build_context(
-                ctx, conversation_history=self._conversation_history
-            )
+            prompt_context = build_context(ctx, conversation_history=self._conversation_history)
             decision = self.provider.decide(  # type: ignore[attr-defined]
                 ctx.goal, prompt_context, declarations
             )
@@ -162,7 +158,8 @@ class AgentLoop:
             if decision.type is AgentDecisionType.FINAL_RESPONSE:
                 ctx.completed_at = self._now()
                 return AgentResult(
-                    ok=True, response=decision.response or "Task completed.",
+                    ok=True,
+                    response=decision.response or "Task completed.",
                 )
 
             if decision.type is AgentDecisionType.TOOL_CALL:

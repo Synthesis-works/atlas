@@ -59,6 +59,3 @@ def exit_code_for_error(exc: Exception) -> int:
     if isinstance(exc, ApiError):
         return ExitCode.UNSPECIFIED
     return ExitCode.UNSPECIFIED
-
-
-

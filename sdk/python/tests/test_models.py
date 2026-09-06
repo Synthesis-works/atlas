@@ -78,13 +78,9 @@ class TestListModels:
         assert request.url.path == "/api/v1/models"
         client.close()
 
-    def test_list_models_sends_auth_header(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_list_models_sends_auth_header(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_response(method="GET", url=_URL, json=_ok([_entry("mock", "mock")]))
-        client = AtlasClient(
-            "http://localhost:8000", token_supplier=StaticTokenSupplier("my-tok")
-        )
+        client = AtlasClient("http://localhost:8000", token_supplier=StaticTokenSupplier("my-tok"))
         client.list_models()
         request = httpx_mock.get_request()
         assert request is not None

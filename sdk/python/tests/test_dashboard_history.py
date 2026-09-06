@@ -143,9 +143,7 @@ class TestDashboardSnapshotDto:
         assert snapshot.capability.capabilities[0].score == 84.5
 
     def test_models_parse_capability_absent(self) -> None:
-        snapshot = DashboardSnapshot.model_validate(
-            _dashboard_payload(capability=None)
-        )
+        snapshot = DashboardSnapshot.model_validate(_dashboard_payload(capability=None))
         assert snapshot.capability is None
 
     def test_model_dump_round_trips_wire_shape(self) -> None:
@@ -225,9 +223,7 @@ class TestGetDashboard:
             client.get_dashboard()
         client.close()
 
-    def test_network_error_raises_network_error(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_network_error_raises_network_error(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_exception(httpx.ConnectError("connection refused"))
         client = AtlasClient("http://localhost:8000", max_retries=0)
         with pytest.raises(NetworkError):
@@ -236,20 +232,20 @@ class TestGetDashboard:
 
 
 class TestGetRecentBenchmarks:
-    def test_success_parses_wrapped_list(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_success_parses_wrapped_list(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_response(
             method="GET",
             url="http://localhost:8000/api/v1/history/benchmarks/recent?limit=10",
-            json=_ok([
-                {
-                    "id": "c711da4c-dbe9-4b37-a94f-0590ade5d01b",
-                    "project_id": "33333333-3333-3333-3333-333333333333",
-                    "state": "published",
-                    "name": "SWE-Bench Lite",
-                }
-            ]),
+            json=_ok(
+                [
+                    {
+                        "id": "c711da4c-dbe9-4b37-a94f-0590ade5d01b",
+                        "project_id": "33333333-3333-3333-3333-333333333333",
+                        "state": "published",
+                        "name": "SWE-Bench Lite",
+                    }
+                ]
+            ),
         )
         client = AtlasClient("http://localhost:8000")
         result = client.get_recent_benchmarks()
@@ -287,24 +283,24 @@ class TestGetRecentBenchmarks:
 
 
 class TestGetRecentExecutions:
-    def test_success_parses_wrapped_list(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_success_parses_wrapped_list(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_response(
             method="GET",
             url="http://localhost:8000/api/v1/history/executions/recent?limit=10",
-            json=_ok([
-                {
-                    "id": "ff0a7a03-ca03-4b67-bc47-eae9335ad6e8",
-                    "benchmark_name": "HellaSwag",
-                    "target_model": "gemini-2.5-flash",
-                    "status": "FAILED",
-                    "started_at": "2026-08-26T06:24:31.588819",
-                    "completed_at": "2026-08-26T06:24:39.671965",
-                    "duration": 8083,
-                    "project_id": "00000000-0000-0000-0000-000000000003",
-                }
-            ]),
+            json=_ok(
+                [
+                    {
+                        "id": "ff0a7a03-ca03-4b67-bc47-eae9335ad6e8",
+                        "benchmark_name": "HellaSwag",
+                        "target_model": "gemini-2.5-flash",
+                        "status": "FAILED",
+                        "started_at": "2026-08-26T06:24:31.588819",
+                        "completed_at": "2026-08-26T06:24:39.671965",
+                        "duration": 8083,
+                        "project_id": "00000000-0000-0000-0000-000000000003",
+                    }
+                ]
+            ),
         )
         client = AtlasClient("http://localhost:8000")
         result = client.get_recent_executions()
@@ -332,24 +328,24 @@ class TestGetRecentExecutions:
 
 
 class TestGetRecentModels:
-    def test_success_parses_wrapped_list(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_success_parses_wrapped_list(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_response(
             method="GET",
             url="http://localhost:8000/api/v1/history/models/recent?limit=10",
-            json=_ok([
-                {
-                    "name": "gemini-2.5-flash",
-                    "last_executed_at": "2026-08-26T06:24:30.396401",
-                    "execution_count": 1,
-                },
-                {
-                    "name": "gemini-1.5-pro",
-                    "last_executed_at": "2026-08-26T03:16:42.457915",
-                    "execution_count": 12,
-                },
-            ]),
+            json=_ok(
+                [
+                    {
+                        "name": "gemini-2.5-flash",
+                        "last_executed_at": "2026-08-26T06:24:30.396401",
+                        "execution_count": 1,
+                    },
+                    {
+                        "name": "gemini-1.5-pro",
+                        "last_executed_at": "2026-08-26T03:16:42.457915",
+                        "execution_count": 12,
+                    },
+                ]
+            ),
         )
         client = AtlasClient("http://localhost:8000")
         result = client.get_recent_models()
@@ -360,9 +356,7 @@ class TestGetRecentModels:
         assert result[1].last_executed_at is not None
         client.close()
 
-    def test_network_error_raises_network_error(
-        self, httpx_mock: pytest.MockTransport
-    ) -> None:
+    def test_network_error_raises_network_error(self, httpx_mock: pytest.MockTransport) -> None:
         httpx_mock.add_exception(httpx.ConnectError("connection refused"))
         client = AtlasClient("http://localhost:8000", max_retries=0)
         with pytest.raises(NetworkError):

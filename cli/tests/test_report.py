@@ -282,15 +282,25 @@ def test_report_list_all_filters(runner: CliRunner) -> None:
     bid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     mock = _mock_client()
     with patch("cli.client.AtlasClient", return_value=mock):
-        runner.invoke(main, [
-            "report", "list",
-            "--status", "FAILED",
-            "--benchmark-id", bid,
-            "--benchmark-version", "3.0.0",
-            "--target-model", "claude-3",
-            "--limit", "10",
-            "--offset", "5",
-        ])
+        runner.invoke(
+            main,
+            [
+                "report",
+                "list",
+                "--status",
+                "FAILED",
+                "--benchmark-id",
+                bid,
+                "--benchmark-version",
+                "3.0.0",
+                "--target-model",
+                "claude-3",
+                "--limit",
+                "10",
+                "--offset",
+                "5",
+            ],
+        )
     mock.list_report_runs.assert_called_once_with(
         status="FAILED",
         benchmark_id=bid,
@@ -516,9 +526,9 @@ def test_report_get_human_no_scores_section(runner: CliRunner) -> None:
 def test_report_get_json(runner: CliRunner) -> None:
     summary = _report_summary()
     with patch("cli.client.AtlasClient", return_value=_mock_get_client(summary)):
-        result = runner.invoke(main, [
-            "--output", "json", "report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-        ])
+        result = runner.invoke(
+            main, ["--output", "json", "report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+        )
     assert result.exit_code == 0
     data = json.loads(result.output)
     assert data["run_id"] == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
@@ -588,9 +598,7 @@ def test_report_get_404(runner: CliRunner) -> None:
     mock = MagicMock()
     mock.__enter__ = MagicMock(return_value=mock)
     mock.__exit__ = MagicMock(return_value=False)
-    mock.get_report_run.side_effect = NotFoundError(
-        status=404, message="Report summary not found."
-    )
+    mock.get_report_run.side_effect = NotFoundError(status=404, message="Report summary not found.")
     with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"])
     assert result.exit_code == 5
@@ -628,9 +636,9 @@ def test_report_get_json_error(runner: CliRunner) -> None:
     mock.__exit__ = MagicMock(return_value=False)
     mock.get_report_run.side_effect = AuthError(status=401, message="Token expired")
     with patch("cli.client.AtlasClient", return_value=mock):
-        result = runner.invoke(main, [
-            "--output", "json", "report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-        ])
+        result = runner.invoke(
+            main, ["--output", "json", "report", "get", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+        )
     assert result.exit_code == 3
 
 
@@ -687,10 +695,16 @@ def test_report_export_human_receipt(runner: CliRunner, tmp_path, monkeypatch) -
 def test_report_export_explicit_output_path(runner: CliRunner, tmp_path) -> None:
     dest = tmp_path / "my-report.json"
     with patch("cli.client.AtlasClient", return_value=_mock_export_client()):
-        result = runner.invoke(main, [
-            "report", "export", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "--output-file", str(dest),
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "report",
+                "export",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "--output-file",
+                str(dest),
+            ],
+        )
     assert result.exit_code == 0
     assert f"Exported report to {dest} (31 bytes)" in result.output
     assert dest.read_bytes() == b'{"report": {"title": "Sample"}}'
@@ -699,11 +713,18 @@ def test_report_export_explicit_output_path(runner: CliRunner, tmp_path) -> None
 def test_report_export_json_receipt(runner: CliRunner, tmp_path) -> None:
     dest = tmp_path / "receipt.json"
     with patch("cli.client.AtlasClient", return_value=_mock_export_client()):
-        result = runner.invoke(main, [
-            "--output", "json", "report", "export",
-            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "--output-file", str(dest),
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "--output",
+                "json",
+                "report",
+                "export",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "--output-file",
+                str(dest),
+            ],
+        )
     assert result.exit_code == 0
     data = json.loads(result.output)
     assert data == {
@@ -718,10 +739,18 @@ def test_report_export_csv_format(runner: CliRunner, tmp_path) -> None:
     dest = tmp_path / "report.csv"
     mock = _mock_export_client(content=b"run_id,target_model\n1,gpt-4o", filename="report.csv")
     with patch("cli.client.AtlasClient", return_value=mock):
-        result = runner.invoke(main, [
-            "report", "export", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "--format", "csv", "--output-file", str(dest),
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "report",
+                "export",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "--format",
+                "csv",
+                "--output-file",
+                str(dest),
+            ],
+        )
     assert result.exit_code == 0
     mock.export_report_run.assert_called_once_with(
         "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
@@ -735,11 +764,17 @@ def test_report_export_csv_format(runner: CliRunner, tmp_path) -> None:
 def test_report_export_quiet(runner: CliRunner, tmp_path) -> None:
     dest = tmp_path / "quiet.json"
     with patch("cli.client.AtlasClient", return_value=_mock_export_client()):
-        result = runner.invoke(main, [
-            "--quiet", "report", "export",
-            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "--output-file", str(dest),
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "--quiet",
+                "report",
+                "export",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "--output-file",
+                str(dest),
+            ],
+        )
     assert result.exit_code == 0
     assert result.output == ""
     assert dest.read_bytes() == b'{"report": {"title": "Sample"}}'
@@ -748,11 +783,17 @@ def test_report_export_quiet(runner: CliRunner, tmp_path) -> None:
 def test_report_export_passes_include_prompt(runner: CliRunner, tmp_path) -> None:
     mock = _mock_export_client()
     with patch("cli.client.AtlasClient", return_value=mock):
-        runner.invoke(main, [
-            "report", "export", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "--output-file", str(tmp_path / "x.json"),
-            "--include-prompt",
-        ])
+        runner.invoke(
+            main,
+            [
+                "report",
+                "export",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "--output-file",
+                str(tmp_path / "x.json"),
+                "--include-prompt",
+            ],
+        )
     mock.export_report_run.assert_called_once_with(
         "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         format_type="json",
@@ -764,11 +805,17 @@ def test_report_export_passes_include_prompt(runner: CliRunner, tmp_path) -> Non
 def test_report_export_passes_include_expected_output(runner: CliRunner, tmp_path) -> None:
     mock = _mock_export_client()
     with patch("cli.client.AtlasClient", return_value=mock):
-        runner.invoke(main, [
-            "report", "export", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "--output-file", str(tmp_path / "x.json"),
-            "--include-expected-output",
-        ])
+        runner.invoke(
+            main,
+            [
+                "report",
+                "export",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "--output-file",
+                str(tmp_path / "x.json"),
+                "--include-expected-output",
+            ],
+        )
     mock.export_report_run.assert_called_once_with(
         "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         format_type="json",
@@ -782,10 +829,16 @@ def test_report_export_passes_include_expected_output(runner: CliRunner, tmp_pat
 
 def test_report_export_stdout_dash_writes_raw_bytes(runner: CliRunner) -> None:
     with patch("cli.client.AtlasClient", return_value=_mock_export_client()):
-        result = runner.invoke(main, [
-            "report", "export", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "--output-file", "-",
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "report",
+                "export",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "--output-file",
+                "-",
+            ],
+        )
     assert result.exit_code == 0
     assert result.stdout_bytes == b'{"report": {"title": "Sample"}}'
 
@@ -796,11 +849,18 @@ def test_report_export_stdout_dash_no_receipt_in_json_mode(runner: CliRunner) ->
         "cli.client.AtlasClient",
         return_value=_mock_export_client(content=content),
     ):
-        result = runner.invoke(main, [
-            "--output", "json", "report", "export",
-            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "--output-file", "-",
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "--output",
+                "json",
+                "report",
+                "export",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "--output-file",
+                "-",
+            ],
+        )
     assert result.exit_code == 0
     assert result.stdout_bytes == content
 
@@ -812,10 +872,16 @@ def test_report_export_refuses_overwrite(runner: CliRunner, tmp_path) -> None:
     dest = tmp_path / "existing.json"
     dest.write_bytes(b"old-content")
     with patch("cli.client.AtlasClient", return_value=_mock_export_client()):
-        result = runner.invoke(main, [
-            "report", "export", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "--output-file", str(dest),
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "report",
+                "export",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "--output-file",
+                str(dest),
+            ],
+        )
     assert result.exit_code == 8
     assert "already exists" in result.output
     assert "--force" in result.output
@@ -826,11 +892,17 @@ def test_report_export_force_overwrites(runner: CliRunner, tmp_path) -> None:
     dest = tmp_path / "existing.json"
     dest.write_bytes(b"old-content")
     with patch("cli.client.AtlasClient", return_value=_mock_export_client()):
-        result = runner.invoke(main, [
-            "report", "export", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "--output-file", str(dest),
-            "--force",
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "report",
+                "export",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "--output-file",
+                str(dest),
+                "--force",
+            ],
+        )
     assert result.exit_code == 0
     assert dest.read_bytes() == b'{"report": {"title": "Sample"}}'
 
@@ -843,10 +915,16 @@ def test_report_export_401(runner: CliRunner) -> None:
 
     err = AuthError(status=401, message="Unauthorized")
     with patch("cli.client.AtlasClient", return_value=_mock_export_client_error(err)):
-        result = runner.invoke(main, [
-            "report", "export", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "--output-file", "-",
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "report",
+                "export",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "--output-file",
+                "-",
+            ],
+        )
     assert result.exit_code == 3
 
 
@@ -855,10 +933,16 @@ def test_report_export_403(runner: CliRunner) -> None:
 
     err = ForbiddenError(status=403, message="Forbidden")
     with patch("cli.client.AtlasClient", return_value=_mock_export_client_error(err)):
-        result = runner.invoke(main, [
-            "report", "export", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "--output-file", "-",
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "report",
+                "export",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "--output-file",
+                "-",
+            ],
+        )
     assert result.exit_code == 4
 
 
@@ -867,10 +951,16 @@ def test_report_export_404(runner: CliRunner) -> None:
 
     err = NotFoundError(status=404, message="Report export not found.")
     with patch("cli.client.AtlasClient", return_value=_mock_export_client_error(err)):
-        result = runner.invoke(main, [
-            "report", "export", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "--output-file", "-",
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "report",
+                "export",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "--output-file",
+                "-",
+            ],
+        )
     assert result.exit_code == 5
 
 
@@ -879,10 +969,16 @@ def test_report_export_422(runner: CliRunner) -> None:
 
     err = ValidationError(status=422, message="Invalid parameter")
     with patch("cli.client.AtlasClient", return_value=_mock_export_client_error(err)):
-        result = runner.invoke(main, [
-            "report", "export", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "--output-file", "-",
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "report",
+                "export",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "--output-file",
+                "-",
+            ],
+        )
     assert result.exit_code == 7
 
 
@@ -891,10 +987,16 @@ def test_report_export_network_error(runner: CliRunner) -> None:
 
     err = NetworkError(message="Connection refused")
     with patch("cli.client.AtlasClient", return_value=_mock_export_client_error(err)):
-        result = runner.invoke(main, [
-            "report", "export", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "--output-file", "-",
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "report",
+                "export",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "--output-file",
+                "-",
+            ],
+        )
     assert result.exit_code == 6
 
 
@@ -903,15 +1005,21 @@ def test_report_export_server_error(runner: CliRunner) -> None:
 
     err = ServerError(status=500, message="Internal error")
     with patch("cli.client.AtlasClient", return_value=_mock_export_client_error(err)):
-        result = runner.invoke(main, [
-            "report", "export", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-            "--output-file", "-",
-        ])
+        result = runner.invoke(
+            main,
+            [
+                "report",
+                "export",
+                "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+                "--output-file",
+                "-",
+            ],
+        )
     assert result.exit_code == 1
 
 
 def test_report_export_invalid_format_is_usage_error(runner: CliRunner) -> None:
-    result = runner.invoke(main, [
-        "report", "export", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "--format", "xml"
-    ])
+    result = runner.invoke(
+        main, ["report", "export", "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", "--format", "xml"]
+    )
     assert result.exit_code == 2

@@ -223,9 +223,7 @@ def test_leaderboard_benchmark_default_params(runner: CliRunner) -> None:
 def test_leaderboard_benchmark_pagination_params(runner: CliRunner) -> None:
     mock = _mock_client()
     with patch("cli.client.AtlasClient", return_value=mock):
-        runner.invoke(main, [
-            "leaderboard", "benchmark", _BV_ID, "--limit", "10", "--offset", "5"
-        ])
+        runner.invoke(main, ["leaderboard", "benchmark", _BV_ID, "--limit", "10", "--offset", "5"])
     mock.get_benchmark_leaderboard.assert_called_once_with(_BV_ID, limit=10, offset=5)
 
 
@@ -296,10 +294,10 @@ def test_leaderboard_benchmark_json_error(runner: CliRunner) -> None:
 
     mock = _mock_client_error(AuthError(status=401, message="Expired token"))
     with patch("cli.client.AtlasClient", return_value=mock):
-        result = runner.invoke(main, [
-            "--output", "json", "leaderboard", "benchmark", _BV_ID
-        ])
+        result = runner.invoke(main, ["--output", "json", "leaderboard", "benchmark", _BV_ID])
     assert result.exit_code == 3
+
+
 # -- model command -------------------------------------------------------
 
 
@@ -375,7 +373,7 @@ def test_leaderboard_model_human_omits_null_fields(runner: CliRunner) -> None:
         average_rank=None,
         average_score=None,
         last_execution=None,
-latest_delta=None,
+        latest_delta=None,
     )
     with patch("cli.client.AtlasClient", return_value=_mock_summary_client(summary)):
         result = runner.invoke(main, ["leaderboard", "model", "mock"])
@@ -389,8 +387,15 @@ latest_delta=None,
 
 
 def test_leaderboard_model_human_unknown(runner: CliRunner) -> None:
-    summary = _summary(model="nope", benchmarks=0, best_rank=None, average_rank=None,
-                       average_score=None, last_execution=None, latest_delta=None)
+    summary = _summary(
+        model="nope",
+        benchmarks=0,
+        best_rank=None,
+        average_rank=None,
+        average_score=None,
+        last_execution=None,
+        latest_delta=None,
+    )
     with patch("cli.client.AtlasClient", return_value=_mock_summary_client(summary)):
         result = runner.invoke(main, ["leaderboard", "model", "nope"])
     assert result.exit_code == 0
@@ -413,8 +418,15 @@ def test_leaderboard_model_json_preserves_backend_structure(runner: CliRunner) -
 
 
 def test_leaderboard_model_json_unknown_preserves_nulls(runner: CliRunner) -> None:
-    summary = _summary(model="nope", benchmarks=0, best_rank=None, average_rank=None,
-                       average_score=None, last_execution=None, latest_delta=None)
+    summary = _summary(
+        model="nope",
+        benchmarks=0,
+        best_rank=None,
+        average_rank=None,
+        average_score=None,
+        last_execution=None,
+        latest_delta=None,
+    )
     with patch("cli.client.AtlasClient", return_value=_mock_summary_client(summary)):
         result = runner.invoke(main, ["--output", "json", "leaderboard", "model", "nope"])
     assert result.exit_code == 0
@@ -515,6 +527,8 @@ def test_leaderboard_model_json_error(runner: CliRunner) -> None:
     with patch("cli.client.AtlasClient", return_value=mock):
         result = runner.invoke(main, ["--output", "json", "leaderboard", "model", "mock"])
     assert result.exit_code == 3
+
+
 # -- model --history ------------------------------------------------------
 
 
@@ -593,13 +607,18 @@ def test_leaderboard_model_history_human_empty(runner: CliRunner) -> None:
 def test_leaderboard_model_history_json_preserves_backend_structure(runner: CliRunner) -> None:
     points = [
         _point(timestamp="2026-08-23T07:04:07.219431", score=100.0, rank=None),
-        _point(timestamp="2026-08-23T07:05:00.000000", score=99.5, rank=2,
-               benchmark_version=None, execution_id="abc"),
+        _point(
+            timestamp="2026-08-23T07:05:00.000000",
+            score=99.5,
+            rank=2,
+            benchmark_version=None,
+            execution_id="abc",
+        ),
     ]
     with patch("cli.client.AtlasClient", return_value=_mock_history_client(points)):
-        result = runner.invoke(main, [
-            "--output", "json", "leaderboard", "model", "mock", "--history"
-        ])
+        result = runner.invoke(
+            main, ["--output", "json", "leaderboard", "model", "mock", "--history"]
+        )
     assert result.exit_code == 0
     data = json.loads(result.output)
     assert len(data) == 2
@@ -692,10 +711,12 @@ def test_leaderboard_model_history_json_error(runner: CliRunner) -> None:
 
     mock = _mock_history_client_error(AuthError(status=401, message="Expired token"))
     with patch("cli.client.AtlasClient", return_value=mock):
-        result = runner.invoke(main, [
-            "--output", "json", "leaderboard", "model", "mock", "--history"
-        ])
+        result = runner.invoke(
+            main, ["--output", "json", "leaderboard", "model", "mock", "--history"]
+        )
     assert result.exit_code == 3
+
+
 # -- model --benchmarks ----------------------------------------------------
 
 
@@ -710,8 +731,7 @@ def _bench_history(
     )
 
     version_objs = [
-        ModelBenchmarkVersionHistory(version_string=v, history=points)
-        for v, points in versions
+        ModelBenchmarkVersionHistory(version_string=v, history=points) for v, points in versions
     ]
     return ModelBenchmarkHistory(benchmark_name=benchmark_name, versions=version_objs)
 
@@ -796,11 +816,11 @@ def test_leaderboard_model_benchmarks_human(runner: CliRunner) -> None:
     human_idx = result.output.index("HumanEval")
     python_idx = result.output.index("Python Vulnerability Detection Benchmark")
     assert human_idx < python_idx
-    assert "3" in result.output          # HumanEval totals 3 runs
-    assert "2" in result.output          # HumanEval has 2 versions
-    assert "95.00" in result.output      # HumanEval latest score
+    assert "3" in result.output  # HumanEval totals 3 runs
+    assert "2" in result.output  # HumanEval has 2 versions
+    assert "95.00" in result.output  # HumanEval latest score
     assert "2026-08-23 06:55" in result.output
-    assert "100.00" in result.output     # Python benchmark latest score
+    assert "100.00" in result.output  # Python benchmark latest score
     assert "2026-08-23 07:04" in result.output
 
 
@@ -834,9 +854,9 @@ def test_leaderboard_model_benchmarks_json_preserves_backend_structure(
         "cli.client.AtlasClient",
         return_value=_mock_benchmarks_client(entries),
     ):
-        result = runner.invoke(main, [
-            "--output", "json", "leaderboard", "model", "mock", "--benchmarks"
-        ])
+        result = runner.invoke(
+            main, ["--output", "json", "leaderboard", "model", "mock", "--benchmarks"]
+        )
     assert result.exit_code == 0
     data = json.loads(result.output)
     assert len(data) == 1
@@ -865,9 +885,7 @@ def test_leaderboard_model_benchmarks_passes_model_name(runner: CliRunner) -> No
 def test_leaderboard_model_history_and_benchmarks_mutually_exclusive(
     runner: CliRunner,
 ) -> None:
-    result = runner.invoke(main, [
-        "leaderboard", "model", "mock", "--history", "--benchmarks"
-    ])
+    result = runner.invoke(main, ["leaderboard", "model", "mock", "--history", "--benchmarks"])
     assert result.exit_code == 2
 
 

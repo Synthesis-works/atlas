@@ -55,9 +55,7 @@ class MockClient:
 
 def _raw_function_call(name: str, args: dict) -> dict:
     return {
-        "candidates": [
-            {"content": {"parts": [{"functionCall": {"name": name, "args": args}}]}}
-        ]
+        "candidates": [{"content": {"parts": [{"functionCall": {"name": name, "args": args}}]}}]
     }
 
 
@@ -72,9 +70,7 @@ class TestAgentProviderDecide:
 
     def test_final_text_response_decision(self) -> None:
         client = MockClient(
-            result=_llm_response(
-                {"candidates": [{"content": {"parts": [{"text": "all done"}]}}]}
-            )
+            result=_llm_response({"candidates": [{"content": {"parts": [{"text": "all done"}]}}]})
         )
         provider = AgentProvider(model="m", client=client)  # type: ignore[arg-type]
         decision = provider.decide("task", "", [])

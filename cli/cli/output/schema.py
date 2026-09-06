@@ -47,9 +47,7 @@ class ArraySchemaDocument(dict[str, Any]):
         )
 
 
-def emit_json_schema(
-    model: type[BaseModel], *, output_mode: str, array: bool = False
-) -> bool:
+def emit_json_schema(model: type[BaseModel], *, output_mode: str, array: bool = False) -> bool:
     """Emit the schema document and report the flag was handled.
 
     In ``quiet`` mode the flag is a no-op (no stdout, exit 0) — ``--quiet``

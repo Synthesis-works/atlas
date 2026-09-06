@@ -28,9 +28,7 @@ ORG_ID = "dddddddd-dddd-dddd-dddd-dddddddddddd"
 
 
 def _client() -> AtlasClient:
-    return AtlasClient(
-        "http://localhost:8000", token_supplier=StaticTokenSupplier("t")
-    )
+    return AtlasClient("http://localhost:8000", token_supplier=StaticTokenSupplier("t"))
 
 
 class TestCreateBenchmark:
@@ -58,9 +56,7 @@ class TestCreateBenchmark:
         httpx_mock.add_response(
             method="POST",
             url=f"http://localhost:8000/api/v1/projects/{PROJECT_ID}/benchmarks",
-            json=_ok(
-                {"id": BENCH_ID, "project_id": PROJECT_ID, "state": "draft", "name": "X"}
-            ),
+            json=_ok({"id": BENCH_ID, "project_id": PROJECT_ID, "state": "draft", "name": "X"}),
             status_code=201,
         )
         client = _client()
@@ -85,9 +81,7 @@ class TestUpdateBenchmark:
         httpx_mock.add_response(
             method="PUT",
             url=f"http://localhost:8000/api/v1/benchmarks/{BENCH_ID}",
-            json=_ok(
-                {"id": BENCH_ID, "project_id": PROJECT_ID, "state": "draft", "name": "New"}
-            ),
+            json=_ok({"id": BENCH_ID, "project_id": PROJECT_ID, "state": "draft", "name": "New"}),
         )
         client = _client()
         bench = client.update_benchmark(BENCH_ID, name="New")
@@ -98,9 +92,7 @@ class TestUpdateBenchmark:
         httpx_mock.add_response(
             method="PUT",
             url=f"http://localhost:8000/api/v1/benchmarks/{BENCH_ID}",
-            json=_ok(
-                {"id": BENCH_ID, "project_id": PROJECT_ID, "state": "draft", "name": "X"}
-            ),
+            json=_ok({"id": BENCH_ID, "project_id": PROJECT_ID, "state": "draft", "name": "X"}),
         )
         client = _client()
         client.update_benchmark(BENCH_ID, objective="only objective")

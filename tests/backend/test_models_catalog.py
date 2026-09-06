@@ -154,11 +154,13 @@ def test_catalog_surfaces_configured_provider_models(
         "apps.backend.adapters.registry._provider_config_models",
         lambda: {"gemini": "gemini-custom-1", "ollama": "qwen-custom"},
     )
-    catalog = _catalog(**{
-        "ollama": _StubClient(healthy=True),
-        "gemini": _StubClient(healthy=True),
-        **_all_real_providers(healthy=True),
-    })
+    catalog = _catalog(
+        **{
+            "ollama": _StubClient(healthy=True),
+            "gemini": _StubClient(healthy=True),
+            **_all_real_providers(healthy=True),
+        }
+    )
     ids = {m.id for m in catalog}
     assert "gemini/gemini-custom-1" in ids
     assert "ollama/qwen-custom" in ids
@@ -194,9 +196,7 @@ def test_adapter_factory_delegates_to_registry(monkeypatch: pytest.MonkeyPatch) 
             is_test_only=False,
         )
     ]
-    monkeypatch.setattr(
-        "apps.backend.adapters.factory.list_models", lambda: expected
-    )
+    monkeypatch.setattr("apps.backend.adapters.factory.list_models", lambda: expected)
     assert AdapterFactory.get_available_models() == expected
 
 

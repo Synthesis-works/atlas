@@ -14,9 +14,7 @@ def test_client():
     from tests._fakes import FakeDB, published_submission_env
 
     mock_db = FakeDB(
-        published_submission_env(
-            version_id=uuid.UUID("00000000-0000-0000-0000-000000000005")
-        )
+        published_submission_env(version_id=uuid.UUID("00000000-0000-0000-0000-000000000005"))
     )
 
     mock_service = Mock()

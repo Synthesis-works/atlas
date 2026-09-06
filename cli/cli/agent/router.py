@@ -59,9 +59,7 @@ class ProviderRouter(LLMProvider):
         """Providers in call order honouring ``default_provider`` pin."""
         if not self.default_provider:
             return list(self.providers)
-        pinned = next(
-            (p for p in self.providers if p.name == self.default_provider), None
-        )
+        pinned = next((p for p in self.providers if p.name == self.default_provider), None)
         if pinned is None:
             return list(self.providers)
         return [pinned] + [p for p in self.providers if p.name != pinned.name]
@@ -147,8 +145,7 @@ class ProviderRouter(LLMProvider):
         return AgentDecision(
             type=AgentDecisionType.FAIL,
             error_message=(
-                "The AI provider is temporarily unavailable. "
-                "Please try again in a moment."
+                "The AI provider is temporarily unavailable. Please try again in a moment."
             ),
             detail=f"All providers failed: {last_raw or 'unknown error'}",
         )

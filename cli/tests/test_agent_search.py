@@ -57,12 +57,8 @@ class TestSearchTool:
     def test_delegates(self) -> None:
         reg = ToolRegistry()
         client = _mock_client()
-        result = reg.execute(
-            "search", client, {"project_id": PROJECT, "q": "counting", "limit": 5}
-        )
-        client.search.assert_called_once_with(
-            PROJECT, "counting", entity_types=None, limit=5
-        )
+        result = reg.execute("search", client, {"project_id": PROJECT, "q": "counting", "limit": 5})
+        client.search.assert_called_once_with(PROJECT, "counting", entity_types=None, limit=5)
         assert result.ok is True
         assert "counting" in result.summary
         assert result.data["total"] == 2
@@ -75,9 +71,7 @@ class TestSearchTool:
             client,
             {"project_id": PROJECT, "q": "run", "entity_types": ["execution"]},
         )
-        client.search.assert_called_once_with(
-            PROJECT, "run", entity_types=["execution"], limit=20
-        )
+        client.search.assert_called_once_with(PROJECT, "run", entity_types=["execution"], limit=20)
         assert result.ok is True
         assert result.data["items"][0]["entity_type"] == "benchmark"
 
