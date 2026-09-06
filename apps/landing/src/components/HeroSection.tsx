@@ -114,11 +114,12 @@ export default function HeroSection() {
           </div>
         </motion.div>
 
-        {/* Enter Atlas CTA */}
+        {/* CTA group — Enter Atlas primary, Atlas CLI secondary */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-wrap items-center justify-center gap-3"
         >
           <motion.button
             ref={enterGlareRef}
@@ -139,20 +140,13 @@ export default function HeroSection() {
             Enter Atlas
             <ArrowRight className="w-3.5 h-3.5" />
           </motion.button>
-        </motion.div>
 
-        {/* Secondary CLI CTA — understated discovery path to /cli */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        >
           <Link
             to="/cli"
-            className="group inline-flex items-center gap-1.5 mt-3 text-xs text-white/35 hover:text-white/70 transition-colors duration-200 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-full px-7 py-2.5 text-sm font-medium text-white/70 bg-white/[0.03] border border-white/15 hover:text-white hover:bg-white/[0.07] hover:border-white/30 transition-colors duration-200 cursor-pointer"
           >
-            <span className="tracking-wide">CLI</span>
-            <ArrowRight className="w-3 h-3 transition-transform duration-200 group-hover:translate-x-0.5" />
+            Atlas CLI
+            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </motion.div>
       </div>
