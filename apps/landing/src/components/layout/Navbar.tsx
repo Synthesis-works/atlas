@@ -20,6 +20,7 @@ const NAV_LINKS = [
   { label: 'Benchmarks',    to: '/benchmarks' },
   { label: 'Research',      to: '/research' },
   { label: 'Documentation', to: '/documentation' },
+  { label: 'CLI',           to: '/cli' },
   { label: 'Open Source',   to: '/open-source' },
   { label: 'Sandbox',       to: '/sandbox' },
 ] as const;
