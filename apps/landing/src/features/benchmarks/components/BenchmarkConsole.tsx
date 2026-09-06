@@ -2,6 +2,7 @@ import React, { useState, memo } from 'react';
 import { Terminal } from '@/shared/components';
 import { Sparkles, AlertTriangle, Play, CheckCircle, Clock, Terminal as TerminalIcon } from 'lucide-react';
 import type { QueueItem } from '@/store/workspaceStore';
+import { ProvenanceBadge } from './ProvenanceBadge';
 import { cn } from '@/lib/utils';
 
 interface BenchmarkConsoleProps {
@@ -118,8 +119,11 @@ export const BenchmarkConsoleComponent: React.FC<BenchmarkConsoleProps> = ({ log
                       <span className="text-white/30">•</span>
                       <span className="text-white/60">{item.benchmarkName}</span>
                     </div>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-white/40">
-                      {item.status}
+                    <span className="flex items-center gap-1.5">
+                      <ProvenanceBadge source={item.source} isVerified={item.isVerified} />
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-white/40">
+                        {item.status}
+                      </span>
                     </span>
                   </div>
 
@@ -148,29 +152,42 @@ export const BenchmarkConsoleComponent: React.FC<BenchmarkConsoleProps> = ({ log
 
         {/* AI Diagnostics & Insights */}
         {activeTab === 'insights' && (
-          <div role="tabpanel" id="panel-insights" aria-labelledby="tab-insights" className="p-4 rounded-xl border border-purple-500/20 bg-purple-950/20 space-y-4 font-mono text-xs">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-purple-300">
-                <AlertTriangle className="w-4 h-4 text-amber-400" aria-hidden="true" />
-                <span className="font-semibold">Anomaly Diagnostic Detected in MMLU-Pro</span>
+          <div role="tabpanel" id="panel-insights" aria-labelledby="tab-insights" className="h-full">
+            {queue.some((item) => item.status === 'Failed') ? (
+              <div className="p-4 rounded-xl border border-red-500/20 bg-red-950/20 space-y-4 font-mono text-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-red-300">
+                    <AlertTriangle className="w-4 h-4 text-red-400" aria-hidden="true" />
+                    <span className="font-semibold">Execution Anomaly Detected</span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30">
+                    Action Required
+                  </span>
+                </div>
+                {queue
+                  .filter((item) => item.status === 'Failed')
+                  .map((failed) => (
+                    <div key={failed.id} className="text-white/70 text-xs leading-relaxed space-y-1">
+                      <p>
+                        Benchmark <span className="text-white font-semibold">{failed.benchmarkName}</span> running model{' '}
+                        <span className="text-white font-semibold">{failed.model}</span> encountered an execution failure.
+                      </p>
+                    </div>
+                  ))}
               </div>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                Auto-Diagnostic Active
-              </span>
-            </div>
-
-            <p className="text-white/70 text-xs leading-relaxed">
-              Accuracy dropped by 4.2% and median latency increased by 21% following prompt template update v2.1.0 on GPT-5 runner. Likely caused by unconstrained Chain-of-Thought recursion.
-            </p>
-
-            <div className="flex items-center gap-4 pt-2 border-t border-purple-500/20 text-purple-300 text-xs">
-              <button className="underline hover:text-white cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                View Diagnostic Trace →
-              </button>
-              <button className="underline hover:text-white cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-                Rollback Prompt Template
-              </button>
-            </div>
+            ) : (
+              <div className="h-full min-h-[220px] flex flex-col justify-center items-center p-8 rounded-xl border border-white/5 bg-white/[0.02] text-center space-y-3 font-mono text-xs">
+                <CheckCircle className="w-7 h-7 text-emerald-400" aria-hidden="true" />
+                <div className="space-y-1">
+                  <span className="text-sm font-semibold text-white/90 block">
+                    No active execution anomalies detected
+                  </span>
+                  <p className="text-white/40 text-[11px] max-w-md">
+                    All benchmark evaluation runners and execution workers are operating within nominal parameters.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { fadeUp, stagger } from '@/lib/motion';
 import { ScrambleSectionTitle } from '@/components/motion';
+import { ProvenanceBadge } from '@/features/benchmarks/components/ProvenanceBadge';
 
 export interface ActivityEventItem {
   id: string;
@@ -21,6 +22,8 @@ export interface ActivityEventItem {
   title: string;
   description: string;
   timestamp: string;
+  source?: string;
+  is_verified?: boolean;
 }
 
 const ACTIVITY_ICONS: Record<string, LucideIcon> = {
@@ -51,6 +54,12 @@ export function RecentActivity({ events = [] }: { events?: ActivityEventItem[] }
     <section className="liquid-glass-card rounded-2xl p-5 border border-white/10 flex flex-col h-full min-h-0">
       <ScrambleSectionTitle text="Activity Timeline" className="text-xs tracking-[0.2em] uppercase text-white/20 mb-4" />
 
+      {items.length === 0 ? (
+        <div className="flex-1 flex flex-col justify-center py-8 text-center space-y-2">
+          <p className="text-sm text-white/40">No local executions yet.</p>
+          <p className="text-xs text-white/20">Dispatch a benchmark run to see live activity here.</p>
+        </div>
+      ) : (
       <motion.div
         variants={stagger(0.05, 0.1)}
         initial="hidden"
@@ -65,8 +74,11 @@ export function RecentActivity({ events = [] }: { events?: ActivityEventItem[] }
                 <Icon className="w-2 h-2 text-white/30" />
               </div>
               <div>
-                <div className="flex items-baseline justify-between gap-2">
-                  <p className="text-sm text-white/70">{event.title}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <p className="text-sm text-white/70 truncate">{event.title}</p>
+                    <ProvenanceBadge source={event.source} isVerified={event.is_verified} />
+                  </div>
                   <span className="text-xs text-white/15 shrink-0">
                     {formatRelativeTime(event.timestamp)}
                   </span>
@@ -79,6 +91,7 @@ export function RecentActivity({ events = [] }: { events?: ActivityEventItem[] }
           );
         })}
       </motion.div>
+      )}
     </section>
   );
 }

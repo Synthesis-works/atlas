@@ -43,6 +43,22 @@ class ExecutionQueuedEvent(DomainEvent):
 
 
 @dataclass(frozen=True)
+class AgentRunRequestedEvent(DomainEvent):
+    """Ask the worker to execute one agent reasoning loop.
+
+    Written to the transactional outbox by the API routes (create/approve/
+    clarify/run-again) when ``AGENT_TASKS_CELERY_EXECUTION`` is enabled, then
+    picked up by the Render worker's outbox sweep, which enqueues the local
+    ``run_agent_task`` Celery task. This keeps the serverless API free of any
+    direct Redis/broker dependency.
+    """
+
+    task_id: uuid.UUID
+    provider_type: str
+    model_override: str | None = None
+
+
+@dataclass(frozen=True)
 class ExecutionStartedEvent(DomainEvent):
     execution_id: uuid.UUID
     attempt_id: uuid.UUID

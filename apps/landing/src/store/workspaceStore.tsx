@@ -29,6 +29,8 @@ export interface QueueItem {
   benchmarkName: string;
   progress: number;
   status: 'Running' | 'Queued' | 'Completed' | 'Failed';
+  source?: string;
+  isVerified?: boolean;
 }
 
 export interface WorkspaceUserPreferences {
@@ -45,6 +47,7 @@ interface WorkspaceStoreContextType {
   compareBenchmarkIds: string[];
   preferences: WorkspaceUserPreferences;
   queue: QueueItem[];
+  benchmarkProvenance: Record<string, { hasDemo: boolean; hasUnverified: boolean }>;
   agentTasks: AgentTask[];
   terminalLogs: string[];
   notifications: NotificationItem[];
@@ -67,21 +70,9 @@ interface WorkspaceStoreContextType {
 
 const WorkspaceStoreContext = createContext<WorkspaceStoreContextType | null>(null);
 
-const INITIAL_QUEUE: QueueItem[] = [
-  { id: 'q-1', model: 'GPT-5', benchmarkName: 'MMLU-Pro', progress: 78, status: 'Running' },
-  { id: 'q-2', model: 'Claude-3.5-Sonnet', benchmarkName: 'GPQA', progress: 41, status: 'Running' },
-  { id: 'q-3', model: 'Qwen-2.5-Coder', benchmarkName: 'HumanEval', progress: 0, status: 'Queued' },
-  { id: 'q-4', model: 'Gemma-2-27B', benchmarkName: 'Arena-Hard', progress: 100, status: 'Completed' },
-];
+const INITIAL_QUEUE: QueueItem[] = [];
 
-const INITIAL_LOGS = [
-  '09:42:01 [System] Initializing Atlas Evaluation Engine v2.1...',
-  '09:42:02 [Dataset] MMLU-Pro test split indexed (16,000 samples).',
-  '09:42:04 [Engine] Connected model engine target: GPT-5 (stream=enabled).',
-  '09:42:08 [Execution] Evaluated prompt batch 314 / 1200 (Pass@1: 92.8%).',
-  '09:42:15 [Metrics] Calculating hallucination rate and latency metrics...',
-  '09:42:18 [Report] Artifacts saved to /evaluations/run-148/artifacts.',
-];
+const INITIAL_LOGS: string[] = [];
 
 export const WorkspaceStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [benchmarks, setBenchmarks] = useState<Benchmark[]>(MOCK_BENCHMARKS);
@@ -90,6 +81,7 @@ export const WorkspaceStoreProvider: React.FC<{ children: React.ReactNode }> = (
   const [activeDrawerBenchmark, setActiveDrawerBenchmark] = useState<Benchmark | null>(null);
   const [compareBenchmarkIds, setCompareBenchmarkIds] = useState<string[]>([]);
   const [queue, setQueue] = useState<QueueItem[]>(INITIAL_QUEUE);
+  const [benchmarkProvenance, setBenchmarkProvenance] = useState<Record<string, { hasDemo: boolean; hasUnverified: boolean }>>({});
   const [agentTasks, setAgentTasks] = useState<AgentTask[]>([]);
   const [terminalLogs, setTerminalLogs] = useState<string[]>(INITIAL_LOGS);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -115,8 +107,20 @@ export const WorkspaceStoreProvider: React.FC<{ children: React.ReactNode }> = (
           benchmarkName: ev.benchmark,
           progress: ev.progress,
           status: ev.status === 'Completed' ? 'Completed' : (ev.status === 'Failed' ? 'Failed' : (ev.status === 'Queued' ? 'Queued' : 'Running')),
+          source: ev.source ?? undefined,
+          isVerified: ev.isVerified ?? undefined,
         }));
         setQueue(queueMapped);
+
+        const provenance: Record<string, { hasDemo: boolean; hasUnverified: boolean }> = {};
+        res.data.forEach((ev) => {
+          if (!ev.benchmark) return;
+          const key = ev.benchmark;
+          provenance[key] = provenance[key] || { hasDemo: false, hasUnverified: false };
+          if (ev.source === 'demo') provenance[key].hasDemo = true;
+          if (ev.isVerified === false) provenance[key].hasUnverified = true;
+        });
+        setBenchmarkProvenance(provenance);
       }
     });
 
@@ -483,6 +487,7 @@ export const WorkspaceStoreProvider: React.FC<{ children: React.ReactNode }> = (
       compareBenchmarkIds,
       preferences,
       queue,
+      benchmarkProvenance,
       agentTasks,
       terminalLogs,
       notifications,
@@ -510,6 +515,7 @@ export const WorkspaceStoreProvider: React.FC<{ children: React.ReactNode }> = (
       compareBenchmarkIds,
       preferences,
       queue,
+      benchmarkProvenance,
       agentTasks,
       terminalLogs,
       notifications,

@@ -75,6 +75,7 @@ testpaths = [
 ]
 
 pythonpath = [
+    "cli",
     ".",
     "packages",
     "packages/database",

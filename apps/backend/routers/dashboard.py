@@ -217,7 +217,12 @@ def get_dashboard(
         for execution, domain in cap_rows:
             score = (execution.execution_config or {}).get("pass_at_1")
             if score is not None and domain:
-                by_domain.setdefault(domain, []).append(float(score))
+                value = float(score)
+                # Defensive normalization: preserve the canonical 0-1 contract
+                # even when legacy 0-100 telemetry is still present.
+                if value > 1.0:
+                    value /= 100.0
+                by_domain.setdefault(domain, []).append(value)
         capabilities = [
             {"domain": domain, "score": round(sum(scores) / len(scores), 1)}
             for domain, scores in sorted(by_domain.items())

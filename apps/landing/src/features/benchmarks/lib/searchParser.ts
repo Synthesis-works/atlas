@@ -44,7 +44,7 @@ export function filterBenchmarksByQuery(benchmarks: Benchmark[], query: string):
     if (criteria.category && bm.category.toLowerCase() !== criteria.category) return false;
     if (criteria.tag && !bm.tags.some((t) => t.toLowerCase().includes(criteria.tag!))) return false;
     if (criteria.author && !bm.author.toLowerCase().includes(criteria.author)) return false;
-    if (criteria.minVerification && bm.verificationScore < criteria.minVerification) return false;
+    if (criteria.minVerification && (bm.verificationScore ?? 0) < criteria.minVerification) return false;
 
     if (criteria.textQuery) {
       const matchesName = bm.name.toLowerCase().includes(criteria.textQuery);

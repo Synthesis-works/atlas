@@ -10,6 +10,7 @@ from apps.backend.config import settings
 from apps.backend.core.telemetry import get_logger, set_correlation_id, set_trace_id
 from packages.execution_engine.application.interfaces import EventPublisher
 from packages.execution_engine.domain.events import (
+    AgentRunRequestedEvent,
     DomainEvent,
     ExecutionCancelledEvent,
     ExecutionCompletedEvent,
@@ -42,6 +43,7 @@ EVENT_REGISTRY: dict[str, type[Any]] = {
     "ExecutionCancelledEvent": ExecutionCancelledEvent,
     "EvaluationStartedEvent": EvaluationStartedEvent,
     "EvaluationCompletedEvent": EvaluationCompletedEvent,
+    "AgentRunRequestedEvent": AgentRunRequestedEvent,
 }
 
 

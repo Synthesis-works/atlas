@@ -9,44 +9,35 @@ export interface RuntimeMetricsProps {
   totalEvaluations?: number;
   totalModels?: number;
   avgRuntimeSec?: number;
+  engineVersion?: string;
+}
+
+function statusDot(status?: string): string {
+  const s = (status || '').toLowerCase();
+  if (s.includes('health') || s === 'healthy' || s === 'ok') return 'bg-emerald-500';
+  if (s.includes('degrad') || s.includes('warn')) return 'bg-amber-400';
+  if (s) return 'bg-white/40';
+  return 'bg-white/20';
 }
 
 export function AtlasRuntime({
-  engineStatus = 'Healthy',
-  totalBenchmarks = 20,
-  totalEvaluations = 51,
-  totalModels = 15,
-  avgRuntimeSec = 14.8,
+  engineStatus,
+  totalBenchmarks,
+  totalEvaluations,
+  totalModels,
+  avgRuntimeSec,
+  engineVersion,
 }: RuntimeMetricsProps) {
-  const engines = [
-    { name: 'Benchmark Engine', status: engineStatus },
-    { name: 'Execution Engine', status: engineStatus },
-    { name: 'Evaluation Engine', status: engineStatus },
-    { name: 'Reporting Engine', status: engineStatus },
-  ];
-
-  const adapters = [
-    { name: 'Ollama Local', status: 'Active', type: 'Local' },
-    { name: 'API Gateway', status: 'Active', type: 'Gateway' },
-  ];
-
   const metrics = [
-    { label: 'Benchmarks', value: String(totalBenchmarks) },
-    { label: 'Evaluations', value: String(totalEvaluations) },
-    { label: 'Models', value: String(totalModels) },
-    { label: 'Avg Runtime', value: `${avgRuntimeSec.toFixed(1)} s` },
-  ];
-
-  const metadata = [
-    { label: 'Engine', value: 'Atlas v0.3' },
-    { label: 'Schema', value: 'Evaluation v2.1' },
+    { label: 'Benchmarks', value: totalBenchmarks != null ? String(totalBenchmarks) : '—' },
+    { label: 'Evaluations', value: totalEvaluations != null ? String(totalEvaluations) : '—' },
+    { label: 'Models', value: totalModels != null ? String(totalModels) : '—' },
+    { label: 'Avg Runtime', value: avgRuntimeSec != null ? `${avgRuntimeSec.toFixed(1)} s` : '—' },
   ];
 
   return (
     <motion.section variants={fadeUp} initial="hidden" animate="visible" className="space-y-4">
-      <h2 className="text-xs tracking-[0.2em] uppercase text-white/20">
-        Atlas Runtime
-      </h2>
+      <h2 className="text-xs tracking-[0.2em] uppercase text-white/20">Atlas Runtime</h2>
 
       <Card className="!p-5 space-y-5">
         {/* Subsystems Health */}
@@ -55,45 +46,12 @@ export function AtlasRuntime({
             <Server className="w-3.5 h-3.5 text-accent/70" />
             <span>Engine Health</span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            {engines.map((eng) => (
-              <div
-                key={eng.name}
-                className="p-2.5 rounded-xl border border-white/[0.03] bg-white/[0.01] flex items-center justify-between"
-              >
-                <span className="text-xs text-white/70">{eng.name}</span>
-                <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[10px] text-emerald-400 font-medium">{eng.status}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="h-px bg-white/[0.06]" />
-
-        {/* Execution Adapters */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-white/30">
-            <Cpu className="w-3.5 h-3.5 text-accent/70" />
-            <span>Execution Adapters</span>
-          </div>
-          <div className="space-y-2">
-            {adapters.map((ad) => (
-              <div
-                key={ad.name}
-                className="px-3 py-2 rounded-xl border border-white/[0.03] bg-white/[0.01] flex items-center justify-between"
-              >
-                <div className="flex flex-col">
-                  <span className="text-xs font-medium text-white/80">{ad.name}</span>
-                  <span className="text-[10px] text-white/25 mt-0.5">{ad.type}</span>
-                </div>
-                <span className="text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/20 text-emerald-400 bg-emerald-500/5 font-medium">
-                  {ad.status}
-                </span>
-              </div>
-            ))}
+          <div className="p-2.5 rounded-xl border border-white/[0.03] bg-white/[0.01] flex items-center justify-between">
+            <span className="text-xs text-white/70">Atlas Engine</span>
+            <div className="flex items-center gap-1.5 shrink-0 ml-2">
+              <div className={`w-1.5 h-1.5 rounded-full ${statusDot(engineStatus)}`} />
+              <span className="text-[10px] text-white/50 font-medium">{engineStatus || '—'}</span>
+            </div>
           </div>
         </div>
 
@@ -123,14 +81,33 @@ export function AtlasRuntime({
         {/* Engine Version metadata */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-white/30">
-            <Terminal className="w-3.5 h-3.5 text-accent/70" />
+            <Cpu className="w-3.5 h-3.5 text-accent/70" />
             <span>Engine Version</span>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            {metadata.map((meta) => (
-              <div key={meta.label} className="flex flex-col">
-                <span className="text-[10px] text-white/20 uppercase tracking-wider">{meta.label}</span>
-                <span className="text-xs font-mono text-white/70 mt-1">{meta.value}</span>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] text-white/20 uppercase tracking-wider">Version</span>
+            <span className="text-xs font-mono text-white/70 mt-1">{engineVersion ? `Atlas v${engineVersion}` : '—'}</span>
+          </div>
+        </div>
+
+        <div className="h-px bg-white/[0.06]" />
+
+        {/* Execution Adapters (registration only, no health claims) */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-white/30">
+            <Terminal className="w-3.5 h-3.5 text-accent/70" />
+            <span>Execution Adapters</span>
+          </div>
+          <div className="space-y-2">
+            {['Ollama Local', 'API Gateway'].map((ad) => (
+              <div
+                key={ad}
+                className="px-3 py-2 rounded-xl border border-white/[0.03] bg-white/[0.01] flex items-center justify-between"
+              >
+                <span className="text-xs font-medium text-white/80">{ad}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full border border-white/10 text-white/40 bg-white/5 font-medium">
+                  Registered
+                </span>
               </div>
             ))}
           </div>
@@ -139,3 +116,5 @@ export function AtlasRuntime({
     </motion.section>
   );
 }
+
+export default AtlasRuntime;

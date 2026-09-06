@@ -88,7 +88,7 @@ def run_evaluation_task(self, execution_id_str: str):
             # and `score_explanation` not a custom pydantic model for this return since MVP
             from packages.evaluation_engine.domain.scoring import CapabilityProfile
 
-            overall = 100.0 if measurements.raw_data.get("exact_match") else 0.0
+            overall = 1.0 if measurements.raw_data.get("exact_match") else 0.0
             return CapabilityProfile(
                 scores={"Reasoning": overall},
                 overall_score=overall,

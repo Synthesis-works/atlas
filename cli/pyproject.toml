@@ -63,3 +63,10 @@ strict_optional = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Ensure the real `cli` package (cli/cli/) is importable when pytest runs with
+# this project dir on sys.path; prevents the repo-root `cli/` namespace dir from
+# shadowing it and breaking `from cli import __version__`.
+pythonpath = [
+    ".",
+    "cli"
+]

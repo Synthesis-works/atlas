@@ -6,8 +6,9 @@ X-Request-ID correlation header propagation, idempotency, cancellation contract,
 
 import uuid
 from datetime import datetime, timezone, UTC
+from types import SimpleNamespace
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 from fastapi.testclient import TestClient
 from apps.backend.main import app
 from apps.backend.schemas.auth import TokenClaims
@@ -15,7 +16,9 @@ from apps.backend.dependencies import (
     require_authenticated,
     get_db_session,
 )
+from apps.backend.authz import ProjectAuthorizationService, get_project_authz_service
 from apps.backend.routers.executions import get_execution_service
+from atlas_db.models.execution import Execution as DBExecution
 from packages.execution_engine.domain.models import Execution, ExecutionState
 from tests._fakes import FakeDB, published_submission_env
 
@@ -43,9 +46,11 @@ def override_auth_and_services():
 
     execution_cache: dict[str, Execution] = {}
 
-    def mock_submit_execution(**kwargs):
-        benchmark_version_id = kwargs["benchmark_version_id"]
+    def mock_submit_execution(
+        benchmark_version_id: uuid.UUID, created_by: uuid.UUID = None, **kwargs
+    ):
         cache_key = str(benchmark_version_id)
+
         if cache_key in execution_cache:
             return execution_cache[cache_key]
 
@@ -80,7 +85,18 @@ def override_auth_and_services():
     mock_service.submit_execution.side_effect = mock_submit_execution
     mock_service.cancel_execution.side_effect = mock_cancel_execution
 
-    app.dependency_overrides[get_db_session] = lambda: MagicMock()
+    # The dispatch invariant requires an existing benchmark version carrying a
+    # primary dataset version and no unlinked foreign datasets.
+    fake_db = MagicMock()
+    fake_version = SimpleNamespace(
+        id=uuid.uuid4(),
+        benchmark_id=uuid.uuid4(),
+        primary_dataset_version_id=uuid.uuid4(),
+        dataset_versions=[],
+    )
+    fake_db.query.return_value.filter.return_value.first.return_value = fake_version
+
+    app.dependency_overrides[get_db_session] = lambda: fake_db
     app.dependency_overrides[require_authenticated] = lambda: mock_claims
     app.dependency_overrides[get_execution_service] = lambda: mock_service
     yield
@@ -150,6 +166,18 @@ def test_post_execution_idempotency():
 def test_post_execution_cancellation_contract():
     """Verify POST /api/v1/executions/{execution_id}/cancel returns ExecutionResponse with CANCELLED status."""
     exec_id = uuid.uuid4()
+    project_id = uuid.uuid4()
+    db_item = DBExecution(
+        id=exec_id,
+        project_id=project_id,
+        benchmark_version_id=uuid.uuid4(),
+        status="QUEUED",
+        target_model="groq/llama-3.1-8b-instant",
+        submitted_by_id=uuid.uuid4(),
+    )
+    app.dependency_overrides[get_db_session] = lambda: FakeDB({DBExecution: [db_item]})
+    app.dependency_overrides[get_project_authz_service] = lambda: Mock(spec=ProjectAuthorizationService)
+
     response = client.post(f"/api/v1/executions/{exec_id}/cancel")
     assert response.status_code == 200, f"Expected 200, got {response.status_code}"
     data = response.json()

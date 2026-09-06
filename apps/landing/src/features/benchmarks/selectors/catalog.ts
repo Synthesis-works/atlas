@@ -54,7 +54,7 @@ export function sortBenchmarks(benchmarks: Benchmark[], sort: BenchmarkSortState
         comparison = a.name.localeCompare(b.name);
         break;
       case 'verificationScore':
-        comparison = a.verificationScore - b.verificationScore;
+        comparison = (a.verificationScore ?? 0) - (b.verificationScore ?? 0);
         break;
       case 'tasksCount':
         comparison = a.tasksCount - b.tasksCount;

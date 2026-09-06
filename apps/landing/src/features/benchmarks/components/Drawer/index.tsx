@@ -66,6 +66,58 @@ export const BenchmarkDrawer: React.FC<BenchmarkDrawerProps> = ({
           </button>
         </div>
 
+        {/* Database Identity & Provenance Metadata */}
+        <div className="p-4 rounded-xl border border-white/5 bg-black/40 space-y-3 font-mono text-xs">
+          <div className="flex items-center justify-between border-b border-white/5 pb-2">
+            <h4 className="font-semibold text-white">Database Provenance & Entity Identity</h4>
+            <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              {benchmark.status}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-[11px]">
+            <div>
+              <span className="text-white/40 block">Benchmark ID</span>
+              <span className="text-white/80 select-all">{benchmark.id}</span>
+            </div>
+            <div>
+              <span className="text-white/40 block">Benchmark Version ID</span>
+              <span className="text-white/80 select-all">{benchmark.versionId || '—'}</span>
+            </div>
+            <div>
+              <span className="text-white/40 block">Primary Dataset ID</span>
+              <span className="text-white/80 select-all">{benchmark.datasetId || '—'}</span>
+            </div>
+            <div>
+              <span className="text-white/40 block">Dataset Version ID</span>
+              <span className="text-white/80 select-all">{benchmark.datasetVersionId || '—'}</span>
+            </div>
+            <div>
+              <span className="text-white/40 block">Evaluation Case Count</span>
+              <span className="text-white/80 font-bold">
+                {benchmark.evaluationCaseCount != null ? benchmark.evaluationCaseCount : '—'}
+              </span>
+            </div>
+            <div>
+              <span className="text-white/40 block">Total Executions</span>
+              <span className="text-white/80 font-bold">
+                {benchmark.executionCount != null ? benchmark.executionCount : '—'}
+              </span>
+            </div>
+            <div>
+              <span className="text-white/40 block">Last Updated</span>
+              <span className="text-white/60">
+                {benchmark.updatedAt ? new Date(benchmark.updatedAt).toLocaleString() : '—'}
+              </span>
+            </div>
+            <div>
+              <span className="text-white/40 block">Latest Execution</span>
+              <span className="text-white/60">
+                {benchmark.latestExecutionAt ? new Date(benchmark.latestExecutionAt).toLocaleString() : '—'}
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* 9-Point Verification Checklist */}
         <VerificationSection benchmark={benchmark} />
 

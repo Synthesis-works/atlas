@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { motion } from 'framer-motion';
 import { pageCrossfade } from '@/lib/motion';
+import { BenchmarkStoreProvider } from '../store/benchmarkStore';
 import { useBenchmarks } from '../hooks/useBenchmarks';
 import {
   WorkspacePage,
@@ -18,14 +19,11 @@ import BenchmarkDrawer from './Drawer';
 import BenchmarkCompareModal from './BenchmarkCompareModal';
 import AtlasRuntimeWidget from './AtlasRuntimeWidget';
 
-const DEFAULT_RUN_MODEL = 'groq/openai/gpt-oss-20b';
-
-export const BenchmarksFeature: React.FC = () => {
+const BenchmarksFeatureContent: React.FC = () => {
   const {
-    benchmarks: _benchmarks,
+    benchmarks,
     kpis,
     searchQuery,
-    selectedCategory: _selectedCategory,
     activeDrawerBenchmark,
     compareBenchmarkIds,
     compareBenchmarks,
@@ -42,7 +40,23 @@ export const BenchmarksFeature: React.FC = () => {
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
 
   const handleRunBenchmark = useCallback(
-    async (benchmarkName?: string) => {
+    async (benchmarkName?: string, modelOverride?: string) => {
+      let targetModel = modelOverride;
+      if (!targetModel) {
+        try {
+          const { getModels } = await import('@/features/models/services/modelsService');
+          const modelsRes = await getModels();
+          const available = (modelsRes.data || []).find(
+            (m) => m.status === 'AVAILABLE' || m.status === 'healthy' || m.status === 'deployed'
+          );
+          // Fall back to the backend's canonical default target model rather
+          // than a hardcoded local Ollama model name.
+          targetModel = available?.name || 'gemini-2.5-flash';
+        } catch {
+          targetModel = 'gemini-2.5-flash';
+        }
+      }
+
       const { getDispatchTargets } = await import('@/features/evaluations/services/evaluationService');
       const res = await getDispatchTargets();
       const targets = res.data || [];
@@ -50,7 +64,7 @@ export const BenchmarksFeature: React.FC = () => {
         ? targets.find((t) => t.benchmark_name === benchmarkName)
         : targets[0];
       if (!target) return;
-      await triggerRun(target.benchmark_version_id, DEFAULT_RUN_MODEL);
+      await triggerRun(target.benchmark_version_id, targetModel, target.dataset_version_id);
     },
     [triggerRun]
   );
@@ -68,6 +82,10 @@ export const BenchmarksFeature: React.FC = () => {
             compareCount={compareBenchmarkIds.length}
             onOpenCompare={() => setIsCompareModalOpen(true)}
             onRunClick={() => handleRunBenchmark()}
+            benchmarksCount={benchmarks.length}
+            activeCount={benchmarks.filter((b) => b.status === 'Running').length}
+            queueCount={queue.filter((q: any) => q.status === 'Running' || q.status === 'Queued').length}
+            averageScore={kpis.avgVerification}
           />
         </WorkspaceHero>
 
@@ -109,4 +127,13 @@ export const BenchmarksFeature: React.FC = () => {
   );
 };
 
+export const BenchmarksFeature: React.FC = () => {
+  return (
+    <BenchmarkStoreProvider>
+      <BenchmarksFeatureContent />
+    </BenchmarkStoreProvider>
+  );
+};
+
 export default BenchmarksFeature;
+

@@ -1,10 +1,16 @@
 from uuid import UUID
 
 from atlas_db.models.core import OrganizationRole
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.orm import Session
 
 from apps.backend.authz import ProjectAuthorizationService, get_project_authz_service
-from apps.backend.dependencies import TokenClaims, get_benchmark_app_service, require_authenticated
+from apps.backend.dependencies import (
+    TokenClaims,
+    get_benchmark_app_service,
+    get_db_session,
+    require_authenticated,
+)
 from apps.backend.schemas.benchmarks import (
     BenchmarkCreate,
     BenchmarkFilterRequest,
@@ -94,6 +100,34 @@ def list_global_benchmarks(
         page_req=page_req, sort_req=sort_req, filter_req=filter_req, project_id=None
     )
     return APIResponse.success_response(data=benchmarks_page)
+
+
+@benchmarks_router.post(
+    "", response_model=APIResponse[BenchmarkRead], status_code=status.HTTP_201_CREATED
+)
+def create_global_benchmark(
+    data: BenchmarkCreate,
+    project_id: UUID = Query(
+        ...,
+        description=(
+            "Target project id. Required explicitly: attaching a benchmark to an "
+            "arbitrary (e.g. first) project would be ambiguous and unauthorized."
+        ),
+    ),
+    claims: TokenClaims = Depends(require_authenticated),
+    project_authz: ProjectAuthorizationService = Depends(get_project_authz_service),
+    app_service: BenchmarkApplicationService = Depends(get_benchmark_app_service),
+):
+    # Same authorization contract as the project-scoped create: the caller must
+    # be an active member of the project's organization with write access.
+    project_authz.authorize_project_access(
+        project_id=project_id,
+        user_id=claims.sub,
+        allowed_roles=[OrganizationRole.MEMBER, OrganizationRole.ADMIN, OrganizationRole.OWNER],
+    )
+
+    benchmark = app_service.create_benchmark(project_id=project_id, author_id=claims.sub, data=data)
+    return APIResponse.success_response(data=benchmark)
 
 
 @benchmarks_router.get("/{benchmark_id}", response_model=APIResponse[BenchmarkRead])

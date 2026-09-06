@@ -180,38 +180,67 @@ def create_execution(
     )
 
     dataset_version_id = getattr(payload, "dataset_version_id", None)
-    if dataset_version_id is None:
-        dataset_version_id = getattr(benchmark_version, "primary_dataset_version_id", None)
-    if dataset_version_id is None:
-        from atlas_db.models.tasks import TestCase
+    if dataset_version_id is None and hasattr(benchmark_version, "primary_dataset_version_id"):
+        raw_dv = benchmark_version.primary_dataset_version_id
+        if isinstance(raw_dv, uuid.UUID):
+            dataset_version_id = raw_dv
+        elif isinstance(raw_dv, str):
+            try:
+                dataset_version_id = uuid.UUID(raw_dv)
+            except ValueError:
+                pass
 
-        row = (
-            db.query(TestCase.dataset_version_id)
-            .filter(TestCase.dataset_version_id.isnot(None))
-            .first()
-        )
-        if row:
-            dataset_version_id = row[0]
-
+    # Executions target a concrete, reproducible dataset version. Fabricating a
+    # value (e.g. an arbitrary TestCase row or a random UUID) would silently run
+    # against the wrong data or a non-existent version, so an unknown or missing
+    # dataset version is rejected explicitly instead.
     if dataset_version_id is None:
         raise HTTPException(
-            status_code=400,
-            detail="A dataset_version_id could not be resolved for this execution",
+            status_code=422,
+            detail=(
+                f"No dataset version is configured for benchmark_version "
+                f"{benchmark_version_id}; provide or attach a dataset_version_id."
+            ),
         )
 
     try:
         dataset_version_id = uuid.UUID(str(dataset_version_id))
     except (ValueError, TypeError):
         raise HTTPException(
-            status_code=400,
+            status_code=422,
             detail=f"Invalid dataset_version_id: {dataset_version_id}",
         )
+
+    linked_dataset_versions = {
+        dv.id for dv in (benchmark_version.dataset_versions or []) if dv is not None
+    }
+    if linked_dataset_versions and dataset_version_id not in linked_dataset_versions:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"dataset_version_id {dataset_version_id} is not associated with "
+                f"benchmark_version {benchmark_version_id}."
+            ),
+        )
+
+    idempotency_key = getattr(payload, "idempotency_key", None)
+    if idempotency_key:
+        from atlas_db.models.execution import Execution as DBExecution
+
+        existing = (
+            db.query(DBExecution).filter(DBExecution.idempotency_key == idempotency_key).first()
+        )
+        if existing:
+            # A matching submission was already accepted; resolve to that
+            # execution record instead of queuing a duplicate.
+            return map_db_item_to_response(existing)
 
     execution = service.submit_execution(
         benchmark_version_id=benchmark_version_id,
         dataset_version_id=dataset_version_id,
         submitted_by=user_id,
         target_model=target_model,
+        idempotency_key=idempotency_key,
     )
     if hasattr(service, "execution_repo") and hasattr(service.execution_repo, "session"):
         service.execution_repo.session.commit()
@@ -236,7 +265,6 @@ def list_dispatch_targets(
     owning the benchmark's project.
     """
     from atlas_db.models.authoring import Benchmark, BenchmarkVersion
-    from atlas_db.models.tasks import TestCase
 
     active_org_ids = [
         row[0]
@@ -266,21 +294,15 @@ def list_dispatch_targets(
 
     targets = []
     for bv_id, name, version_string, primary_dv in rows:
-        dataset_version_id = primary_dv
-        if dataset_version_id is None:
-            row = (
-                db.query(TestCase.dataset_version_id)
-                .filter(TestCase.dataset_version_id.isnot(None))
-                .first()
-            )
-            if row:
-                dataset_version_id = row[0]
+        # dataset_version_id is left unsatisfied (None) when the benchmark version
+        # declares no primary dataset version, so an empty target surfaces the
+        # misconfiguration instead of attaching an arbitrary unrelated dataset.
         targets.append(
             DispatchTargetResponse(
                 benchmark_version_id=bv_id,
                 benchmark_name=name,
                 version_string=version_string,
-                dataset_version_id=dataset_version_id,
+                dataset_version_id=primary_dv,
             )
         )
     return targets

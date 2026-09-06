@@ -63,10 +63,16 @@ jobs:
           echo "no changed python files to format-check"
         fi
 
-    - name: Run Mypy on changed Python files
+    - name: Run Mypy on CLI + SDK packages
+      # Run per project directory so module resolution uses that project's
+      # package root. Running from the repo root would resolve `cli` to the
+      # repo-root namespace directory and fail with `Module "cli" has no
+      # attribute "__version__"` (and worse, pull unrelated test files under
+      # each project's strict mypy config).
       run: |
         if [ -n "${{ steps.changed-py.outputs.changed_py }}" ]; then
-          mypy ${{ steps.changed-py.outputs.changed_py }}
+          (cd cli && mypy cli)
+          (cd sdk/python && mypy atlas_sdk)
         else
           echo "no changed python files to type-check"
         fi

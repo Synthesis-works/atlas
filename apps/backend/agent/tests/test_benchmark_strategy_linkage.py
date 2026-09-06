@@ -208,7 +208,7 @@ def _build_engine_registry():
 
     class StubScoring(BaseScoringStrategy):
         def score(self, measurements):
-            overall = 100.0 if measurements.raw_data.get("exact_match") else 0.0
+            overall = 1.0 if measurements.raw_data.get("exact_match") else 0.0
             return DomainProfile(
                 scores={"Reasoning": overall},
                 overall_score=overall,
@@ -304,7 +304,7 @@ def test_worker_evaluation_succeeds_with_linked_strategy(db_session, tmp_path):
 
     profiles = db_session.query(CapabilityProfile).all()
     assert len(profiles) == 1
-    assert profiles[0].overall_score == 100.0
+    assert profiles[0].overall_score == 1.0
     assert profiles[0].strategy_version_id == sv.id
     assert db_session.query(EvaluationResult).count() == 1
 
@@ -415,4 +415,4 @@ def test_full_agent_lifecycle_with_strategy_linkage(db_session, tmp_path):
         db_session.query(CapabilityProfile).filter(CapabilityProfile.execution_id == exec_b).all()
     )
     assert len(profiles) == 1
-    assert profiles[0].overall_score == 100.0
+    assert profiles[0].overall_score == 1.0

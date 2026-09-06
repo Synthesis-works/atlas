@@ -11,6 +11,10 @@ interface BenchmarkHeaderProps {
   compareCount: number;
   onOpenCompare: () => void;
   onRunClick: () => void;
+  benchmarksCount?: number;
+  activeCount?: number;
+  queueCount?: number;
+  averageScore?: number | null;
 }
 
 export const BenchmarkHeader: React.FC<BenchmarkHeaderProps> = ({
@@ -21,6 +25,10 @@ export const BenchmarkHeader: React.FC<BenchmarkHeaderProps> = ({
   compareCount,
   onOpenCompare,
   onRunClick,
+  benchmarksCount = 0,
+  activeCount = 0,
+  queueCount = 0,
+  averageScore = null,
 }) => {
   return (
     <div className="liquid-glass-card rounded-2xl p-5 sm:p-6 border border-white/10 space-y-5">
@@ -28,9 +36,19 @@ export const BenchmarkHeader: React.FC<BenchmarkHeaderProps> = ({
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
         <div className="space-y-1.5 flex-1 min-w-0">
           <div className="flex items-center gap-2 text-xs font-mono text-accent/80 uppercase tracking-widest">
-            <span className="flex items-center gap-1.5 font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Cluster Live
+            <span
+              className={`flex items-center gap-1.5 font-semibold px-2 py-0.5 rounded border ${
+                activeCount > 0
+                  ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20'
+                  : queueCount > 0
+                  ? 'text-amber-300 bg-amber-500/10 border-amber-500/20'
+                  : 'text-white/50 bg-white/5 border-white/10'
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${activeCount > 0 ? 'bg-emerald-400 animate-pulse' : queueCount > 0 ? 'bg-amber-400' : 'bg-white/40'}`}
+              />
+              {activeCount > 0 ? 'Evaluating' : queueCount > 0 ? 'Queued' : 'Standby'}
             </span>
             <span className="text-white/20">•</span>
             <span className="flex items-center gap-1 text-white/60">
@@ -41,7 +59,9 @@ export const BenchmarkHeader: React.FC<BenchmarkHeaderProps> = ({
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white flex items-center gap-3">
             <span>Benchmark Registry</span>
             <span className="text-xs font-mono font-normal px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white/50">
-              24 Active Suites
+              {benchmarksCount === 0
+                ? 'No benchmarks available'
+                : `${activeCount} Active Suite${activeCount === 1 ? '' : 's'}`}
             </span>
           </h1>
 
@@ -56,15 +76,18 @@ export const BenchmarkHeader: React.FC<BenchmarkHeaderProps> = ({
             <div className="flex items-center gap-2">
               <Activity className="w-3.5 h-3.5 text-emerald-400" />
               <span className="text-white/40">Queue:</span>
-              <span className="text-white font-semibold">12 Jobs</span>
+              <span className="text-white font-semibold">{queueCount} Job{queueCount === 1 ? '' : 's'}</span>
             </div>
             <div className="w-px h-3 bg-white/10" />
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-3.5 h-3.5 text-teal-400" />
               <span className="text-white/40">Score:</span>
-              <span className="text-white font-semibold">98.4%</span>
+              <span className="text-white font-semibold">
+                {averageScore != null ? `${averageScore}%` : '—'}
+              </span>
             </div>
           </div>
+
 
           {compareCount > 0 && (
             <button

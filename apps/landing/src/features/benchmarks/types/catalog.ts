@@ -7,7 +7,7 @@ export interface BenchmarkCardModel {
   category: BenchmarkCategory;
   difficulty: BenchmarkDifficulty;
   status: BenchmarkStatus;
-  verificationScore: number;
+  verificationScore: number | null;
   tasksCountFormatted: string;
   estimatedRuntime: string;
 }
@@ -18,7 +18,7 @@ export interface BenchmarkRowModel {
   category: BenchmarkCategory;
   difficulty: BenchmarkDifficulty;
   status: BenchmarkStatus;
-  verificationScore: number;
+  verificationScore: number | null;
   tasksCountFormatted: string;
   estimatedRuntime: string;
   updatedAt: string;
@@ -36,7 +36,7 @@ export interface BenchmarkPreviewModel {
   estimatedRuntime: string;
   license: string;
   author: string;
-  verificationScore: number;
+  verificationScore: number | null;
   tags: string[];
   metrics: MetricCardItem[];
   compatibleModels: string[];
