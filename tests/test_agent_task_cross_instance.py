@@ -360,6 +360,4 @@ def test_get_and_list_reflect_worker_side_state_change():
 
     listed = client.get("/api/v1/agent/tasks")
     assert listed.status_code == 200
-    assert any(
-        t["task_id"] == task_id and t["status"] == "CANCELLED" for t in listed.json()
-    )
+    assert any(t["task_id"] == task_id and t["status"] == "CANCELLED" for t in listed.json())
