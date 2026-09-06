@@ -11,10 +11,30 @@ from fastapi.testclient import TestClient
 from apps.backend.main import app
 from apps.backend.dependencies import get_db_session, get_dataset_service, require_authenticated
 from apps.backend.schemas.auth import TokenClaims
+from apps.backend.schemas.datasets import DatasetRead
 from atlas_db.models.dataset import Dataset, DatasetStatus
 
 
 client = TestClient(app)
+
+
+def _build_read(dataset: Dataset) -> DatasetRead:
+    return DatasetRead(
+        id=dataset.id,
+        project_id=dataset.project_id,
+        created_by_member_id=None,
+        status=dataset.status,
+        created_at=dataset.created_at,
+        updated_at=dataset.updated_at,
+        name=dataset.name,
+        description=dataset.description,
+        registry_id=None,
+        source_id=None,
+        license_id=None,
+        versions=[],
+        total_tasks=0,
+        sample_tasks=[],
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -33,19 +53,31 @@ def override_dataset_dependencies():
         updated_at=datetime.now(UTC),
     )
 
+    read_domain = _build_read(dataset_domain)
+
     mock_service = MagicMock()
-    mock_service.list_datasets.return_value = [dataset_domain]
-    mock_service.get_dataset.side_effect = lambda ds_id: (
-        dataset_domain if ds_id == sample_dataset_id else None
+    mock_service.list_datasets.return_value = [read_domain]
+    mock_service.get_dataset_details.side_effect = lambda ds_id: (
+        read_domain if ds_id == sample_dataset_id else None
     )
-    mock_service.create_dataset.side_effect = lambda project_id, user_id, data: Dataset(
-        id=uuid.uuid4(),
+    mock_service.create_dataset.side_effect = lambda project_id, user_id, data: DatasetRead(
+        id=sample_dataset_id,
         project_id=project_id,
-        name=data.name,
-        description=data.description,
+        created_by_member_id=user_id,
         status=DatasetStatus.ACTIVE,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
+        name=data.name,
+        description=data.description,
+        versions=[],
+        total_tasks=0,
+        sample_tasks=[],
+    )
+    mock_service.update_dataset.side_effect = lambda ds_id, project_id, data: read_domain
+    mock_service.upload_tasks.side_effect = None
+    mock_service.validate_dataset.side_effect = None
+    mock_service.get_dataset.side_effect = lambda ds_id: (
+        dataset_domain if ds_id == sample_dataset_id else None
     )
 
     user_id = uuid.uuid4()

@@ -26,16 +26,9 @@ def mock_execution_service():
 def test_client(mock_execution_service):
     from apps.backend.dependencies import get_db_session, require_authenticated
     from apps.backend.schemas.auth import TokenClaims
+    from tests._fakes import FakeDB
 
-    mock_db = Mock()
-    mock_db.query.return_value.count.return_value = 0
-    mock_db.query.return_value.filter.return_value.count.return_value = 0
-    mock_db.query.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
-    mock_db.query.return_value.filter.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
-
-    benchmark_version = Mock()
-    benchmark_version.dataset_versions = []
-    mock_db.query.return_value.filter.return_value.first.return_value = benchmark_version
+    mock_db = FakeDB()
 
     app.dependency_overrides[get_execution_service] = lambda: mock_execution_service
     app.dependency_overrides[get_db_session] = lambda: mock_db
@@ -47,8 +40,15 @@ def test_client(mock_execution_service):
 
 
 def test_create_execution(test_client, mock_execution_service):
+    from apps.backend.dependencies import get_db_session
+    from tests._fakes import FakeDB, published_submission_env
+
     benchmark_id = uuid.uuid4()
     exec_id = uuid.uuid4()
+
+    app.dependency_overrides[get_db_session] = lambda: FakeDB(
+        published_submission_env(version_id=benchmark_id)
+    )
 
     execution = Execution(
         id=exec_id, benchmark_version_id=benchmark_id, status=ExecutionState.QUEUED, max_retries=3
@@ -75,7 +75,26 @@ def test_list_executions(test_client):
 
 
 def test_cancel_execution(test_client, mock_execution_service):
+    from apps.backend.authz import ProjectAuthorizationService, get_project_authz_service
+    from apps.backend.dependencies import get_db_session
+    from atlas_db.models.execution import Execution as DBExecution
+    from tests._fakes import FakeDB
+
     exec_id = uuid.uuid4()
+    project_id = uuid.uuid4()
+    db_item = DBExecution(
+        id=exec_id,
+        project_id=project_id,
+        benchmark_version_id=uuid.uuid4(),
+        status="QUEUED",
+        target_model="groq/llama-3.1-8b-instant",
+        submitted_by_id=uuid.uuid4(),
+    )
+    app.dependency_overrides[get_db_session] = lambda: FakeDB({DBExecution: [db_item]})
+
+    authz = Mock(spec=ProjectAuthorizationService)
+    app.dependency_overrides[get_project_authz_service] = lambda: authz
+
     execution = Execution(
         id=exec_id,
         benchmark_version_id=uuid.uuid4(),

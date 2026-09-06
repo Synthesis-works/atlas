@@ -60,3 +60,49 @@ class EvaluationEnqueuedResponse(BaseModel):
     message: str = "Evaluation task enqueued successfully"
 
     model_config = {"from_attributes": True}
+
+
+class ExecutionEvaluationResultRead(BaseModel):
+    model_output_id: uuid.UUID
+    strategy_version_id: uuid.UUID
+    judge_id: uuid.UUID | None = None
+    status: str
+    passed: bool
+    confidence: float | None = None
+    reasoning: str | None = None
+    raw_measurements: dict[str, Any] | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class EvaluationResultsRead(BaseModel):
+    execution_id: uuid.UUID
+    status: str
+    overall_score: float | None = None
+    profile_id: uuid.UUID | None = None
+    total_outputs: int
+    evaluated_outputs: int
+    passed_outputs: int
+    results: list[ExecutionEvaluationResultRead] = Field(default_factory=list)
+
+    model_config = {"from_attributes": True}
+
+
+class ExecutionCompareItemRead(BaseModel):
+    execution_id: uuid.UUID
+    target_model: str | None = None
+    overall_score: float | None = None
+    passed_outputs: int = 0
+    total_outputs: int = 0
+    evaluated_outputs: int = 0
+    rank: int
+
+    model_config = {"from_attributes": True}
+
+
+class ExecutionCompareRequest(BaseModel):
+    execution_ids: list[uuid.UUID] = Field(min_length=1, max_length=50)
+
+
+class ExecutionCompareResponse(BaseModel):
+    leaderboard: list[ExecutionCompareItemRead] = Field(default_factory=list)

@@ -11,15 +11,11 @@ from apps.backend.schemas.auth import TokenClaims
 def test_client():
     from apps.backend.routers.executions import get_execution_service
     from packages.execution_engine.domain.models import Execution, ExecutionState
+    from tests._fakes import FakeDB, published_submission_env
 
-    mock_db = Mock()
-    mock_db.query.return_value.count.return_value = 0
-    mock_db.query.return_value.filter.return_value.count.return_value = 0
-    mock_db.query.return_value.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
-
-    benchmark_version = Mock()
-    benchmark_version.dataset_versions = []
-    mock_db.query.return_value.filter.return_value.first.return_value = benchmark_version
+    mock_db = FakeDB(
+        published_submission_env(version_id=uuid.UUID("00000000-0000-0000-0000-000000000005"))
+    )
 
     mock_service = Mock()
     mock_service.submit_execution.return_value = Execution(

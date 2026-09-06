@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import uuid
 from datetime import datetime
 from typing import Any
 
 from atlas_db.models.dataset import DatasetLifecycle, DatasetStatus, DatasetExportState
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DatasetBase(BaseModel):
@@ -15,7 +17,34 @@ class DatasetBase(BaseModel):
 
 
 class DatasetCreate(DatasetBase):
-    pass
+    version_string: str = Field(default="v1.0.0")
+    tasks: list[DatasetTaskItem] = Field(default_factory=list)
+
+
+class DatasetUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    registry_id: uuid.UUID | None = None
+    source_id: uuid.UUID | None = None
+    license_id: uuid.UUID | None = None
+
+
+class DatasetTaskItem(BaseModel):
+    """A single dataset task authored by the agent/CLI via REST.
+
+    ``input``/``expected_output`` are required; ``description`` is optional.
+    """
+
+    input: Any
+    expected_output: Any
+    description: str | None = None
+
+
+class DatasetTaskUpload(BaseModel):
+    """Upload (replace) tasks for a dataset as a fresh version."""
+
+    tasks: list[DatasetTaskItem]
+    version_string: str = "v1.0.0"
 
 
 class DatasetRead(DatasetBase):
@@ -25,6 +54,9 @@ class DatasetRead(DatasetBase):
     status: DatasetStatus
     created_at: datetime
     updated_at: datetime
+    versions: list[DatasetVersionRead] | None = None
+    total_tasks: int = 0
+    sample_tasks: list[Any] = []
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -49,6 +81,15 @@ class DatasetVersionRead(DatasetVersionBase):
     created_by_id: uuid.UUID | None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DatasetValidationResult(BaseModel):
+    dataset_id: uuid.UUID
+    version_id: uuid.UUID | None = None
+    lifecycle: DatasetLifecycle
+    valid: bool
+    task_count: int = 0
+    messages: list[str] = []
 
 
 class DatasetExportResponse(BaseModel):

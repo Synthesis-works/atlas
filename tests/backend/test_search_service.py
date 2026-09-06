@@ -15,7 +15,7 @@ class MockProvider(SearchProvider):
     def entity_type(self) -> str:
         return self._entity_type
 
-    def search(self, request: SearchRequest) -> list[SearchResult]:
+    def search(self, request: SearchRequest, project_ids: list | None = None) -> list[SearchResult]:
         return self._results
 
 

@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime, timezone, UTC
 from types import SimpleNamespace
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 from fastapi.testclient import TestClient
 from apps.backend.main import app
 from apps.backend.schemas.auth import TokenClaims
@@ -16,10 +16,19 @@ from apps.backend.dependencies import (
     require_authenticated,
     get_db_session,
 )
+from apps.backend.authz import ProjectAuthorizationService, get_project_authz_service
 from apps.backend.routers.executions import get_execution_service
+from atlas_db.models.execution import Execution as DBExecution
 from packages.execution_engine.domain.models import Execution, ExecutionState
+from tests._fakes import FakeDB, published_submission_env
 
 client = TestClient(app)
+
+
+def _install_submission_db(version_id: uuid.UUID) -> None:
+    app.dependency_overrides[get_db_session] = lambda: FakeDB(
+        published_submission_env(version_id=version_id)
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -110,6 +119,8 @@ def test_post_execution_dispatch_contract():
         "execution_config": {},
     }
 
+    _install_submission_db(version_id)
+
     response = client.post(
         f"/api/v1/benchmarks/{version_id}/executions",
         json=payload,
@@ -134,6 +145,7 @@ def test_post_execution_dispatch_contract():
 def test_post_execution_idempotency():
     """Verify consecutive duplicate dispatch requests resolve to the same execution record."""
     version_id = uuid.uuid4()
+    _install_submission_db(version_id)
     req_id = str(uuid.uuid4())
     headers = {"X-Request-ID": req_id}
     payload = {
@@ -154,6 +166,20 @@ def test_post_execution_idempotency():
 def test_post_execution_cancellation_contract():
     """Verify POST /api/v1/executions/{execution_id}/cancel returns ExecutionResponse with CANCELLED status."""
     exec_id = uuid.uuid4()
+    project_id = uuid.uuid4()
+    db_item = DBExecution(
+        id=exec_id,
+        project_id=project_id,
+        benchmark_version_id=uuid.uuid4(),
+        status="QUEUED",
+        target_model="groq/llama-3.1-8b-instant",
+        submitted_by_id=uuid.uuid4(),
+    )
+    app.dependency_overrides[get_db_session] = lambda: FakeDB({DBExecution: [db_item]})
+    app.dependency_overrides[get_project_authz_service] = lambda: Mock(
+        spec=ProjectAuthorizationService
+    )
+
     response = client.post(f"/api/v1/executions/{exec_id}/cancel")
     assert response.status_code == 200, f"Expected 200, got {response.status_code}"
     data = response.json()

@@ -53,6 +53,7 @@ def get_auth_service(db: Session = Depends(get_db_session)) -> AuthService:
 
 
 from atlas_db.repositories.dataset import DatasetRepository, DatasetVersionRepository
+from atlas_db.repositories.tasks import PromptRepository, TaskRepository, TestCaseRepository
 
 from apps.backend.services.benchmarks import BenchmarkService
 from apps.backend.services.datasets import DatasetService
@@ -61,7 +62,11 @@ from apps.backend.services.publishing import PublishingService
 
 def get_dataset_service(db: Session = Depends(get_db_session)) -> DatasetService:
     return DatasetService(
-        dataset_repo=DatasetRepository(db), version_repo=DatasetVersionRepository(db)
+        dataset_repo=DatasetRepository(db),
+        version_repo=DatasetVersionRepository(db),
+        task_repo=TaskRepository(db),
+        prompt_repo=PromptRepository(db),
+        test_case_repo=TestCaseRepository(db),
     )
 
 
@@ -198,6 +203,15 @@ from atlas_db.repositories.execution import ExecutionRepository
 def get_execution_app_service(db: Session = Depends(get_db_session)) -> ExecutionApplicationService:
     repo = ExecutionRepository(db)
     return ExecutionApplicationService(execution_repo=repo)
+
+
+from apps.backend.services.evaluation_parity import EvaluationParityService
+
+
+def get_evaluation_parity_service(
+    db: Session = Depends(get_db_session),
+) -> EvaluationParityService:
+    return EvaluationParityService(db)
 
 
 from apps.backend.services.leaderboard import LeaderboardApplicationService

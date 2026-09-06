@@ -88,7 +88,7 @@ class ReportingRepository:
         return run_obj, bv_obj, b_obj, profile_obj
 
     def get_runs_filtered(
-        self, filter_obj: ReportRunsFilter
+        self, filter_obj: ReportRunsFilter, project_ids: list | None = None
     ) -> tuple[
         list[tuple[AtlasRun, BenchmarkVersion | None, Benchmark | None, CapabilityProfile | None]],
         int,
@@ -103,6 +103,10 @@ class ReportingRepository:
             .outerjoin(BenchmarkVersion, AtlasRun.benchmark_version_id == BenchmarkVersion.id)
             .outerjoin(Benchmark, BenchmarkVersion.benchmark_id == Benchmark.id)
         )
+
+        if project_ids is not None:
+            stmt = stmt.where(AtlasRun.project_id.in_(project_ids))
+            count_stmt = count_stmt.where(AtlasRun.project_id.in_(project_ids))
 
         if filter_obj.target_model:
             stmt = stmt.where(AtlasRun.target_model == filter_obj.target_model)

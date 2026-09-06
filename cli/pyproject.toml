@@ -1,0 +1,72 @@
+[build-system]
+requires = ["setuptools>=77.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atlas-cli"
+dynamic = ["version"]
+description = "Atlas CLI — first-class programmatic interface to the Atlas control plane."
+requires-python = ">=3.11"
+license = "MIT"
+readme = "README.md"
+dependencies = [
+    "click>=8.1.0",
+    "httpx>=0.28.1",
+    "pydantic[email]>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "ruff>=0.16.0",
+    "mypy>=2.0.0",
+]
+
+[project.scripts]
+atlas = "cli.app:entrypoint"
+
+[tool.setuptools]
+packages = [
+    "atlas_sdk",
+    "atlas_sdk.models",
+    "cli",
+    "cli.agent",
+    "cli.agent.tools",
+    "cli.commands",
+    "cli.output",
+    "packages",
+    "packages.llm",
+    "packages.llm.clients",
+    "packages.llm.models",
+]
+
+[tool.setuptools.package-dir]
+cli = "cli"
+atlas_sdk = "../sdk/python/atlas_sdk"
+packages = "../packages"
+
+[tool.setuptools.dynamic]
+version = {attr = "cli.__version__"}
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+disallow_untyped_defs = true
+strict_optional = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Ensure the real `cli` package (cli/cli/) is importable when pytest runs with
+# this project dir on sys.path; prevents the repo-root `cli/` namespace dir from
+# shadowing it and breaking `from cli import __version__`.
+pythonpath = [
+    ".",
+    "cli"
+]

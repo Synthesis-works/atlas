@@ -10,7 +10,14 @@ from apps.backend.authz import ProjectAuthorizationService, get_project_authz_se
 # We'll need get_dataset_service in dependencies.py
 from apps.backend.dependencies import get_dataset_service, require_authenticated
 from apps.backend.schemas.auth import TokenClaims
-from apps.backend.schemas.datasets import DatasetCreate, DatasetRead
+from apps.backend.schemas.datasets import (
+    DatasetCreate,
+    DatasetRead,
+    DatasetTaskUpload,
+    DatasetUpdate,
+    DatasetValidationResult,
+    DatasetVersionRead,
+)
 from apps.backend.services.datasets import DatasetService
 
 router = APIRouter(prefix="/projects/{project_id}/datasets", tags=["datasets"])
@@ -51,7 +58,8 @@ def create_dataset(
         user_id=claims.sub,
         allowed_roles=[OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER],
     )
-    return dataset_service.create_dataset(project_id, member.id, data)
+    created = dataset_service.create_dataset(project_id, member.id, data)
+    return created
 
 
 @router.get("/{dataset_id}", response_model=DatasetRead)
@@ -72,10 +80,69 @@ def get_dataset(
             OrganizationRole.VIEWER,
         ],
     )
-    dataset = dataset_service.get_dataset(dataset_id)
+    dataset = dataset_service.get_dataset_details(dataset_id)
     if not dataset or dataset.project_id != project_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dataset not found")
     return dataset
+
+
+@router.put("/{dataset_id}", response_model=DatasetRead)
+def update_dataset(
+    data: DatasetUpdate,
+    dataset_id: uuid.UUID = Path(...),
+    project_id: uuid.UUID = Path(...),
+    dataset_service: DatasetService = Depends(get_dataset_service),
+    claims: TokenClaims = Depends(require_authenticated),
+    authz_service: ProjectAuthorizationService = Depends(get_project_authz_service),
+):
+    member = authz_service.authorize_project_access(
+        project_id=project_id,
+        user_id=claims.sub,
+        allowed_roles=[OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER],
+    )
+    updated = dataset_service.update_dataset(dataset_id, project_id, data)
+    if not updated:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dataset not found")
+    return updated
+
+
+@router.post("/{dataset_id}/tasks", response_model=DatasetVersionRead, status_code=201)
+def upload_dataset_tasks(
+    upload: DatasetTaskUpload,
+    dataset_id: uuid.UUID = Path(...),
+    project_id: uuid.UUID = Path(...),
+    dataset_service: DatasetService = Depends(get_dataset_service),
+    claims: TokenClaims = Depends(require_authenticated),
+    authz_service: ProjectAuthorizationService = Depends(get_project_authz_service),
+):
+    member = authz_service.authorize_project_access(
+        project_id=project_id,
+        user_id=claims.sub,
+        allowed_roles=[OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER],
+    )
+    version = dataset_service.upload_tasks(dataset_id, project_id, member.id, upload)
+    if not version:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dataset not found")
+    return version
+
+
+@router.post("/{dataset_id}/validate", response_model=DatasetValidationResult)
+def validate_dataset(
+    dataset_id: uuid.UUID = Path(...),
+    project_id: uuid.UUID = Path(...),
+    dataset_service: DatasetService = Depends(get_dataset_service),
+    claims: TokenClaims = Depends(require_authenticated),
+    authz_service: ProjectAuthorizationService = Depends(get_project_authz_service),
+):
+    member = authz_service.authorize_project_access(
+        project_id=project_id,
+        user_id=claims.sub,
+        allowed_roles=[OrganizationRole.OWNER, OrganizationRole.ADMIN, OrganizationRole.MEMBER],
+    )
+    result = dataset_service.validate_dataset(dataset_id, project_id)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dataset not found")
+    return result
 
 
 from apps.backend.schemas.datasets import DatasetExportResponse

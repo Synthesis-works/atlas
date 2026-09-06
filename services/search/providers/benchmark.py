@@ -15,8 +15,14 @@ class BenchmarkSearchProvider(SearchProvider):
     def entity_type(self) -> str:
         return "benchmark"
 
-    def search(self, request: SearchRequest) -> list[SearchResult]:
+    def search(self, request: SearchRequest, project_ids: list | None = None) -> list[SearchResult]:
         query = self.db.query(Benchmark)
+
+        # Scope to an explicit set of projects when provided. This is the
+        # enforcement point for project-scoped access: only rows owned by the
+        # authorized project(s) are ever considered.
+        if project_ids is not None:
+            query = query.filter(Benchmark.project_id.in_(project_ids))
 
         if request.q:
             search_term = f"%{request.q}%"
@@ -27,7 +33,7 @@ class BenchmarkSearchProvider(SearchProvider):
 
             # For now, just fetch all that match
             query = query.filter(
-                or_(Benchmark.name.ilike(search_term), Benchmark.description.ilike(search_term))
+                or_(Benchmark.name.ilike(search_term), Benchmark.objective.ilike(search_term))
             )
 
         # We don't want to pull millions, limit to what is requested
@@ -54,7 +60,7 @@ class BenchmarkSearchProvider(SearchProvider):
                     entity_type=self.entity_type,
                     title=b.name,
                     subtitle=f"Status: {b.status}",
-                    description=b.description,
+                    description=b.objective,
                     url=f"/benchmarks/{b.id}",
                     score=score,
                     metadata={"project_id": str(b.project_id), "status": b.status},

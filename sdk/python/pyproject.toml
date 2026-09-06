@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=77.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atlas-sdk"
+version = "0.1.0"
+description = "Python SDK for the Atlas control-plane API — a thin HTTP client with no business logic."
+requires-python = ">=3.11"
+license = "MIT"
+readme = "README.md"
+dependencies = [
+    "httpx>=0.28.1",
+    "pydantic[email]>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-httpx>=0.35.0",
+    "ruff>=0.16.0",
+    "mypy>=2.0.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["atlas_sdk*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+disallow_untyped_defs = true
+strict_optional = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
