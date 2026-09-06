@@ -6,7 +6,7 @@
  */
 
 import { useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { useExperience } from '@/core/ExperienceController';
@@ -139,6 +139,21 @@ export default function HeroSection() {
             Enter Atlas
             <ArrowRight className="w-3.5 h-3.5" />
           </motion.button>
+        </motion.div>
+
+        {/* Secondary CLI CTA — understated discovery path to /cli */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <Link
+            to="/cli"
+            className="group inline-flex items-center gap-1.5 mt-3 text-xs text-white/35 hover:text-white/70 transition-colors duration-200 cursor-pointer"
+          >
+            <span className="tracking-wide">CLI</span>
+            <ArrowRight className="w-3 h-3 transition-transform duration-200 group-hover:translate-x-0.5" />
+          </Link>
         </motion.div>
       </div>
     </div>
