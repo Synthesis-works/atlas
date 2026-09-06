@@ -20,12 +20,20 @@ pip install atlas-cli
 ## Quick start
 
 ```bash
-# point at the Atlas API (defaults to http://localhost:8000)
+# 1. Verify the install
+atlas --version
+
+# 2. Point at the Atlas API (defaults to http://localhost:8000)
 export ATLAS_BASE_URL="https://api.example.com"
 
-# authenticate (token is saved in %APPDATA%\Atlas\config.toml, never in the repo)
+# 3. Authenticate (token is saved in %APPDATA%\Atlas\config.toml, never in the repo)
 atlas login
+
+# 4. Confirm your identity
 atlas whoami
+
+# 5. Browse the full command list
+atlas --help
 ```
 
 ## Commands
@@ -33,16 +41,29 @@ atlas whoami
 - `atlas health` — check API health
 - `atlas leaderboard` — model / benchmark leaderboards
 - `atlas benchmark` — benchmark operations
-- `atlas models` — model operations
+- `atlas model` — model operations
 - `atlas report` — execution reports
 - `atlas run` — start executions
 - `atlas dashboard` — dashboard summaries
 - `atlas activity` — recent activity
-- `atlas agent` — interactive agent (requires a provider key)
 
-Run `atlas --help` for the full command list.
+These are deterministic, scriptable operations (human, JSON, or quiet output via
+`--output`). Run `atlas --help` for the full command list.
 
 ## Agent
+
+The agentic side of the CLI runs an LLM brain directly in your terminal. It
+comes in two shapes:
+
+- **Interactive REPL** — run bare `atlas` in a terminal to start a
+  Gemini-CLI-style conversation:
+  ```bash
+  atlas
+  ```
+- **One-shot task** — run a single quoted task non-interactively:
+  ```bash
+  atlas agent "List the available benchmarks"
+  ```
 
 The agent brain uses an LLM provider. Set one of:
 
@@ -51,8 +72,8 @@ export GEMINI_API_KEY="..."
 export GROQ_API_KEY="..."
 ```
 
-Then run `atlas agent "your task"`. With no key configured the agent refuses to
-start and points you at the missing environment variable.
+With no key configured the agent refuses to start and points you at the missing
+environment variable.
 
 ## Development
 
