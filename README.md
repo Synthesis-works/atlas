@@ -302,14 +302,14 @@ Names only — values are secrets or per-deployment and are never committed.
 
 ## 13. Atlas CLI
 
-`atlas-cli` is the terminal interface for Atlas — deterministic commands plus a tool-calling agent, developed in Python 3.11+ with `click` under `cli/`. The distributed wheel/sdist bundles the Atlas SDK (`atlas_sdk`) and the internal LLM layer (`packages/llm`), so `pip install atlas-cli` is fully self-contained.
+`atlas-cli` is the terminal interface for Atlas — deterministic commands plus a tool-calling agent, developed in Python 3.11+ with `click` under `cli/`. The distributed wheel/sdist bundles the Atlas SDK (`atlas_sdk`) and the internal LLM layer (`packages/llm`), so `pip install synthesis-atlas-cli` is fully self-contained.
 
 Install and verify:
 
 ```bash
-pip install atlas-cli            # Python 3.11+
+pip install synthesis-atlas-cli    # Python 3.11+, distribution name (executable stays `atlas`)
 
-atlas --version                  # atlas-cli 0.1.0
+atlas --version                    # atlas 0.1.0
 atlas --help
 ```
 

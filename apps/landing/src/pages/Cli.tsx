@@ -8,6 +8,7 @@
  */
 
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import {
   Terminal,
   Rocket,
@@ -46,7 +47,7 @@ const WHY = [
 
 const INSTALL_STEPS = [
   {
-    command: 'pip install atlas-cli',
+    command: 'python -m pip install synthesis-atlas-cli',
     caption: 'Python 3.11+ — fully self-contained, no extra SDK install required.',
   },
   {
@@ -81,21 +82,20 @@ export default function Cli() {
           description="Install Atlas CLI once and drive the whole evaluation platform — including a full agent — from the command line."
           cta={
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <a
-                href="https://github.com/Synthesis-works/atlas"
-                target="_blank"
-                rel="noreferrer"
+              <Link
+                to="/cli/install"
                 className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-full text-white transition-colors duration-200"
                 style={{ background: 'var(--color-accent)' }}
               >
-                View on GitHub
+                <Download className="w-4 h-4" />
+                Install Atlas CLI
                 <ArrowRight className="w-4 h-4" />
-              </a>
+              </Link>
               <a
                 href="#installation"
                 className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-full text-white/70 border border-white/10 hover:border-white/25 hover:text-white transition-colors duration-200"
               >
-                <Download className="w-4 h-4" />
+                <Terminal className="w-4 h-4" />
                 Get started
               </a>
             </div>
@@ -162,6 +162,23 @@ export default function Cli() {
               </motion.div>
             ))}
           </div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: false, margin: '-80px' }}
+            className="mt-8"
+          >
+            <Link
+              to="/cli/install"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-full text-white transition-colors duration-200"
+              style={{ background: 'var(--color-accent)' }}
+            >
+              Read the step-by-step installation guide
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </motion.div>
         </section>
 
         {/* Two modes */}

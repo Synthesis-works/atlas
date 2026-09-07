@@ -18,6 +18,7 @@ const Research = lazy(() => import('@/pages/Research'));
 const Documentation = lazy(() => import('@/pages/Documentation'));
 const OpenSource = lazy(() => import('@/pages/OpenSource'));
 const Cli = lazy(() => import('@/pages/Cli'));
+const CliInstall = lazy(() => import('@/pages/CliInstall'));
 const Login = lazy(() => import('@/pages/Login'));
 const Sandbox = lazy(() => import('@/components/ui/draggable-card-demo-2'));
 
@@ -87,6 +88,7 @@ function AppRoutes() {
         <Route path="research" element={<Suspense fallback={<PageLoader />}><Research /></Suspense>} />
         <Route path="documentation" element={<Suspense fallback={<PageLoader />}><Documentation /></Suspense>} />
         <Route path="cli" element={<Suspense fallback={<PageLoader />}><Cli /></Suspense>} />
+        <Route path="cli/install" element={<Suspense fallback={<PageLoader />}><CliInstall /></Suspense>} />
         <Route path="open-source" element={<Suspense fallback={<PageLoader />}><OpenSource /></Suspense>} />
         <Route path="sandbox" element={<Suspense fallback={<PageLoader />}><Sandbox /></Suspense>} />
       </Route>
