@@ -2,15 +2,15 @@
 
 Command-line interface for the Atlas evaluation platform.
 
-`atlas` talks to the Atlas control-plane API to manage benchmarks, models, runs,
-and reports. The CLI distribution bundles the Atlas SDK (`atlas_sdk`) and the
+`atlas` talks to the Atlas control-plane API to manage benchmarks, models, runs, and
+reports. The CLI distribution bundles the Atlas SDK (`atlas_sdk`) and the
 internal LLM layer (`packages.llm`) that powers the agent brain, so a single
-`pip install atlas-cli` is fully self-contained.
+`pip install synthesis-atlas-cli` is fully self-contained.
 
 ## Install
 
 ```bash
-pip install atlas-cli
+pip install synthesis-atlas-cli
 ```
 
 - Python 3.11+ is required.

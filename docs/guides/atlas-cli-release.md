@@ -103,21 +103,61 @@ to `main` / `feature/**`.
   SDK + CLI pytest suites.
 - `build` job: staged wheel + sdist via uv, offline validation, artifact upload.
 
-## 5. Future publishing (currently DISABLED)
+## 5. Publishing: renamed distribution, trusted publishing wired
 
-`.github/workflows/publish-atlas-cli.yml` implements the future upload path but is
-**not enabled**: no PyPI project is configured and no GitHub Environment
-`pypi-publish` exists.
+> **Distribution-name decision (2026-09-07):** the distribution on PyPI is
+> **`synthesis-atlas-cli`** — the executable stays **`atlas`**. The originally
+> intended `atlas-cli` name was permanently blocked by PyPI's similarity rule
+> (existing `atlascli` project, verified with Warehouse's own check via
+> `canipypi`); `synthesis-atlas-cli` passed the same check and was registered.
 
-When enabled it will only run for an explicit tag push `atlas-cli-v*` **and** an
-explicit `github.ref_type == 'tag'` condition, on the `pypi-publish` GitHub
-Environment (protect it with required reviewers). It uses OIDC trusted publishing
-(`pypa/gh-action-pypi-publish` with `id-token: write`), so no long-lived token is
-stored in repository secrets, and `skip-existing` makes re-releases idempotent.
+The distribution name lives in exactly one metadata location —
+`cli/pyproject.toml` (`name = "synthesis-atlas-cli"`). It is independent of:
 
-Until those prerequisites exist, ordinary CI (PRs, branch pushes, main pushes)
+- the installed executable (`[project.scripts] atlas = "cli.app:entrypoint"`),
+- the runtime dependencies (`click`, `httpx`, `pydantic[email]`),
+- `build_cli_dist.py` / `validate_cli_dist.py`, which assert on the embedded
+  version + `atlas` executable only, not on the distribution name,
+- the GitHub Actions `publish-atlas-cli.yml` workflow (uploads
+  `dist/artifacts/*` generically), whose only name-dependent convention is the
+  human-facing release tag `synthesis-atlas-cli-v*`.
+
+Status:
+
+- PyPI project **`synthesis-atlas-cli`**: registered with a **pending trusted
+  publisher** (OIDC) for this repository's `publish-atlas-cli.yml` workflow and
+  the `pypi-publish` environment. `GET https://pypi.org/pypi/synthesis-atlas-cli/json`
+  returns 404 until the first release is published.
+- GitHub Environment **`pypi-publish`**: exists in repo Settings (protect it
+  with required reviewers).
+- The wheel/sdist are fully self-contained: a clean-environment install from the
+  built artifacts pulls only `click`, `httpx`, `pydantic` from PyPI and imports
+  `cli`, `atlas_sdk`, and `packages.llm` inline (verified in a fresh venv outside
+  the repository). Search-free note: the PyPI `atlas-sdk` name belongs to an
+  unrelated project (`atlassistant/atlas-sdk`), which is why the SDK is bundled
+  rather than depended on.
+
+The workflow only runs for an explicit tag push `synthesis-atlas-cli-v*` **and**
+an explicit `github.ref_type == 'tag'` condition, on the `pypi-publish` GitHub
+Environment. It uses OIDC trusted publishing (`pypa/gh-action-pypi-publish` with
+`id-token: write`), so no long-lived token is stored in repository secrets, and
+`skip-existing` makes re-releases idempotent.
+
+Until the release tag is pushed, ordinary CI (PRs, branch pushes, main pushes)
 can never invoke the publish job: it has no trigger path and the upload fails
 closed if it somehow runs.
+
+### Release steps
+
+To publish the first release:
+
+1. Confirm the tag you push matches the distribution + version: for
+   `__version__ = "0.1.0"` the release tag is **`synthesis-atlas-cli-v0.1.0`**.
+2. Push the tag from a merged `main` (the workflow builds from the tagged source,
+   validates wheel + sdist in fresh venvs, and uploads via trusted publishing —
+   the pending publisher becomes the real one on first upload).
+3. Verify at pypi.org/project/synthesis-atlas-cli/, then `python -m pip install
+   synthesis-atlas-cli` in an empty venv and run `atlas --version`.
 
 ## 6. Definition of done for a release
 
@@ -125,5 +165,4 @@ closed if it somehow runs.
 - [ ] `python scripts/build_cli_dist.py` produces matching wheel + sdist.
 - [ ] `python scripts/validate_cli_dist.py` passes for both artifacts.
 - [ ] CI `atlas-cli CI` workflow is green on the release branch.
-- [ ] Tag `atlas-cli-vX.Y.Z` pushed **after** the branch is merged (publishing itself
-      only happens once #5 is configured by an operator).
+- [ ] Tag `synthesis-atlas-cli-vX.Y.Z` pushed **after** the branch is merged.
