@@ -46,7 +46,7 @@ _pass_context = click.make_pass_decorator(Context, ensure=True)
     "--base-url",
     default=None,
     envvar="ATLAS_BASE_URL",
-    help="Atlas API base URL (default: http://localhost:8000).",
+    help="Atlas API base URL (default: the hosted Atlas API).",
 )
 @click.option(
     "--profile",

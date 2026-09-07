@@ -52,7 +52,7 @@ def test_login_success_persists_token(runner: CliRunner, tmp_path: Path) -> None
     assert "expected-token" not in result.output
     cfg = load_config(config_path=_profile_path(tmp_path))
     assert cfg.token == "expected-token"
-    assert cfg.base_url == "http://localhost:8000"
+    assert cfg.base_url == "https://atlas-api-synthesis-works.vercel.app"
 
 
 def test_login_email_flag_prompts_only_for_password(runner: CliRunner, tmp_path: Path) -> None:
@@ -106,7 +106,7 @@ def test_login_json_payload_never_contains_token(runner: CliRunner, tmp_path: Pa
     data = json.loads(result.output)
     assert data["success"] is True
     assert data["email"] == "demo@atlas.val"
-    assert data["base_url"] == "http://localhost:8000"
+    assert data["base_url"] == "https://atlas-api-synthesis-works.vercel.app"
     assert "token" not in json.dumps(data)
     assert "secret-token" not in result.output
 

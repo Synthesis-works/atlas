@@ -14,7 +14,7 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-_DEFAULT_BASE_URL = "http://localhost:8000"
+_DEFAULT_BASE_URL = "https://atlas-api-synthesis-works.vercel.app"
 _DEFAULT_TIMEOUT = 60.0
 _DEFAULT_OUTPUT = "human"
 _DEFAULT_RETRIES = 3  # mirrors the SDK's built-in retry cap; 0 disables retries

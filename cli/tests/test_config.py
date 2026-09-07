@@ -11,13 +11,29 @@ from cli.config import clear_saved_token, default_config_path, load_config, save
 
 def test_defaults() -> None:
     cfg = load_config()
-    assert cfg.base_url == "http://localhost:8000"
+    assert cfg.base_url == "https://atlas-api-synthesis-works.vercel.app"
     assert cfg.timeout == 60.0
     assert cfg.output == "human"
     assert cfg.profile == "default"
     assert cfg.no_color is False
     assert cfg.quiet is False
     assert cfg.retries == 3
+
+
+def test_fresh_install_defaults_to_hosted_api(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ATLAS_BASE_URL", raising=False)
+    monkeypatch.delenv("ATLAS_PROFILE", raising=False)
+    cfg = load_config()
+    assert cfg.base_url == "https://atlas-api-synthesis-works.vercel.app"
+
+
+def test_localhost_override_still_works_via_flag() -> None:
+    assert load_config(base_url="http://localhost:8000").base_url == "http://localhost:8000"
+
+
+def test_localhost_override_still_works_via_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ATLAS_BASE_URL", "http://localhost:8000")
+    assert load_config().base_url == "http://localhost:8000"
 
 
 def test_cli_flags_override() -> None:

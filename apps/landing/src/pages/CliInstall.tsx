@@ -60,7 +60,9 @@ const STEPS: Step[] = [
     title: 'Install',
     description: (
       <>
-        Install Atlas CLI as a normal Python package. The wheel is fully self-contained — the Atlas
+        Install Atlas CLI as a normal Python package. The PyPI package is{' '}
+        <span className="text-white/70">synthesis-atlas-cli</span>; the command you run is{' '}
+        <span className="text-white/70">atlas</span>. The wheel is fully self-contained — the Atlas
         SDK and the LLM layer ship inside it, so one command is all you need:
       </>
     ),
@@ -83,17 +85,13 @@ const STEPS: Step[] = [
     title: 'Authenticate',
     description: (
       <>
-        Point the CLI at your Atlas deployment (defaults to{' '}
-        <span className="text-white/70">http://localhost:8000</span>) and log in. The access token is
-        saved in your <span className="text-white/70">user profile</span> — never in the repository —
-        and is never printed:
+        Atlas CLI connects to the <span className="text-white/70">hosted Atlas API</span> by default —
+        no configuration needed. The access token is saved in your{' '}
+        <span className="text-white/70">user profile</span> — never in the repository — and is never
+        printed:
       </>
     ),
-    commands: [
-      'export ATLAS_BASE_URL="https://your-atlas-deployment"',
-      'atlas login',
-      'atlas whoami',
-    ],
+    commands: ['atlas login', 'atlas whoami'],
   },
   {
     n: '05',
@@ -148,8 +146,10 @@ const TROUBLESHOOTING = [
     icon: KeyRound,
     title: 'Authentication issues',
     body: `Log in with \`atlas login\` and confirm with \`atlas whoami\`. If commands are rejected,
-    make sure ATLAS_BASE_URL points at your deployment and that your account is active. The token is
-    stored in your user profile — delete it with \`atlas logout\` and log in again.`,
+    make sure you are connected to the right deployment — Atlas CLI uses the hosted API by default,
+    and \`ATLAS_BASE_URL\` / \`--base-url\` only need to be set for local or self-hosted deployments —
+    and that your account is active. The token is stored in your user profile — delete it with
+    \`atlas logout\` and log in again.`,
   },
 ];
 
@@ -204,7 +204,7 @@ export default function CliInstall() {
             <p className="text-xs text-white/40 leading-relaxed">
               <span className="text-white/70">You only need Python and pip.</span> You do not need
               the Atlas repository, an SDK install, or any other package —{' '}
-              <span className="text-white/70">atlas-cli</span> bundles everything it needs.
+              <span className="text-white/70">synthesis-atlas-cli</span> bundles everything it needs.
             </p>
           </motion.div>
         </section>
@@ -244,6 +244,22 @@ export default function CliInstall() {
               </motion.div>
             ))}
           </div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: false, margin: '-80px' }}
+            className="mt-8 rounded-xl border border-white/5 bg-white/[0.02] p-5"
+          >
+            <h4 className="text-sm font-semibold text-white mb-2">Connecting elsewhere</h4>
+            <p className="text-xs text-white/30 leading-relaxed">
+              Atlas CLI uses the hosted Atlas API by default. To connect to a local or self-hosted
+              deployment, set the <span className="text-white/70">ATLAS_BASE_URL</span> environment
+              variable or pass <span className="text-white/70">--base-url</span> — for example{' '}
+              <span className="text-white/70">atlas --base-url http://localhost:8000 health</span>.
+            </p>
+          </motion.div>
         </section>
 
         {/* Troubleshooting */}
