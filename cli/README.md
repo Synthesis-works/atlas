@@ -9,6 +9,9 @@ internal LLM layer (`packages.llm`) that powers the agent brain, so a single
 
 ## Install
 
+The package on PyPI is **`synthesis-atlas-cli`**; once installed, the command
+you run is **`atlas`**.
+
 ```bash
 pip install synthesis-atlas-cli
 ```
@@ -23,17 +26,24 @@ pip install synthesis-atlas-cli
 # 1. Verify the install
 atlas --version
 
-# 2. Point at the Atlas API (defaults to http://localhost:8000)
-export ATLAS_BASE_URL="https://api.example.com"
-
-# 3. Authenticate (token is saved in %APPDATA%\Atlas\config.toml, never in the repo)
+# 2. Authenticate against the hosted Atlas API (the default — no configuration needed)
 atlas login
 
-# 4. Confirm your identity
+# 3. Confirm your identity
 atlas whoami
 
-# 5. Browse the full command list
+# 4. Browse the full command list
 atlas --help
+```
+
+Atlas CLI targets the hosted Atlas API by default. To connect to a local or
+self-hosted Atlas deployment, override the endpoint with `ATLAS_BASE_URL` or
+`--base-url`:
+
+```bash
+export ATLAS_BASE_URL="http://localhost:8000"   # local / self-hosted
+# or, per command:
+atlas --base-url "http://localhost:8000" health
 ```
 
 ## Commands

@@ -254,9 +254,10 @@ export default function Cli() {
                 <p className="text-xs text-white/30 leading-relaxed">
                   Authenticate with{' '}
                   <code className="text-[#4F8CFF]/80 font-mono">atlas login</code>{' '}
-                  — the access token is saved in your user profile and is never printed. Point the CLI at any Atlas
-                  deployment with the <code className="text-[#4F8CFF]/80 font-mono">ATLAS_BASE_URL</code> environment
-                  variable (defaults to <code className="text-white/50 font-mono">http://localhost:8000</code>). Verify
+                  — the access token is saved in your user profile and is never printed. Atlas CLI uses
+                  the hosted Atlas API by default; point it at a local or self-hosted deployment with
+                  the <code className="text-[#4F8CFF]/80 font-mono">ATLAS_BASE_URL</code> environment
+                  variable or <code className="text-[#4F8CFF]/80 font-mono">--base-url</code>. Verify
                   with <code className="text-[#4F8CFF]/80 font-mono">atlas whoami</code>.
                 </p>
               </Card>
