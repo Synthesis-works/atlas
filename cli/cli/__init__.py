@@ -1,3 +1,3 @@
 """atlas-cli — first-class programmatic interface to the Atlas control plane."""
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
