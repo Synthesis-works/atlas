@@ -75,10 +75,12 @@ const STEPS: Step[] = [
       <>
         Confirm the install. <span className="text-white/70">atlas --version</span> prints the
         installed version, and <span className="text-white/70">atlas --help</span> lists every
-        command and option:
+        command and option. If <span className="text-white/70">atlas</span> is not yet on your{' '}
+        <span className="text-white/70">PATH</span>, the same CLI is available as{' '}
+        <span className="text-white/70">python -m cli</span>:
       </>
     ),
-    commands: ['atlas --version', 'atlas --help'],
+    commands: ['atlas --version', 'atlas --help', 'python -m cli --version'],
   },
   {
     n: '04',
@@ -134,9 +136,15 @@ const TROUBLESHOOTING = [
   {
     icon: Terminal,
     title: '"atlas" is not recognized as a command',
-    body: `The \`atlas\` executable is installed into your Python scripts directory, which must be on
-    your PATH. Reinstall with \`python -m pip install synthesis-atlas-cli\` and check that your Python's
-    Scripts\\bin directory is on PATH. On Windows, \`py\` instead of \`python\` may be needed.`,
+    body: `The \`atlas\` executable is installed into your Python "Scripts" directory (for example
+    C:\\Users\\<you>\\AppData\\Local\\Python\\Python3xx\\Scripts on Windows). Typing \`atlas\` only
+    works when that directory is on your PATH. To find where it was installed, run \`python -m pip
+    show -f synthesis-atlas-cli\` — look for the Scripts/bin path at the bottom. To use the CLI
+    without touching PATH at all, run \`python -m cli --version\` instead of \`atlas\`. To make
+    \`atlas\` work everywhere, add that Scripts folder to your PATH (Windows: "Environment
+    Variables" / "Edit the system environment variables" → Advanced → Environment Variables →
+    User variables → Path). Atlas does not modify PATH automatically; this is normal Python
+    behavior. On Windows, \`py\` instead of \`python\` may be needed.`,
   },
   {
     icon: AlertTriangle,

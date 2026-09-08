@@ -159,13 +159,63 @@ def test_environment_base_url_overrides_saved_base_url(
     assert load_config(config_path=path).base_url == "http://env:7000"
 
 
+# ---------------------------------------------------------------------------
+# Legacy "http://localhost:8000" migration (v0.1.3)
+# ---------------------------------------------------------------------------
+
+
+def test_saved_legacy_localhost_migrates_to_hosted_default(tmp_path: Path) -> None:
+    path = tmp_path / "config.toml"
+    save_profile(token="t", base_url="http://localhost:8000", config_path=path)
+    cfg = load_config(config_path=path)
+    assert cfg.base_url == "https://atlas-api-synthesis-works.vercel.app"
+    assert cfg.token == "t"
+
+
+def test_saved_legacy_localhost_does_not_shadow_hosted_default_without_profile(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("ATLAS_BASE_URL", raising=False)
+    assert load_config().base_url == "https://atlas-api-synthesis-works.vercel.app"
+
+
+def test_cli_flag_overrides_saved_legacy_localhost(tmp_path: Path) -> None:
+    path = tmp_path / "config.toml"
+    save_profile(token="t", base_url="http://localhost:8000", config_path=path)
+    assert load_config(base_url="http://flag:9000", config_path=path).base_url == "http://flag:9000"
+
+
+def test_env_var_overrides_saved_legacy_localhost(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "config.toml"
+    save_profile(token="t", base_url="http://localhost:8000", config_path=path)
+    monkeypatch.setenv("ATLAS_BASE_URL", "http://env:7000")
+    assert load_config(config_path=path).base_url == "http://env:7000"
+
+
+def test_saved_custom_localhost_url_is_preserved() -> None:
+    path = Path("_tmp_legacy_migration.toml")
+    try:
+        save_profile(token="t", base_url="http://127.0.0.1:8000", config_path=path)
+        assert load_config(config_path=path).base_url == "http://127.0.0.1:8000"
+    finally:
+        Path.unlink(path, missing_ok=True)
+
+
+def test_saved_non_legacy_custom_base_url_is_not_migrated(tmp_path: Path) -> None:
+    path = tmp_path / "config.toml"
+    save_profile(token="t", base_url="https://custom.example.com", config_path=path)
+    assert load_config(config_path=path).base_url == "https://custom.example.com"
+
+
 def test_clear_saved_token_preserves_base_url(tmp_path: Path) -> None:
     path = tmp_path / "config.toml"
-    save_profile(token="saved-token", base_url="http://localhost:8000", config_path=path)
+    save_profile(token="saved-token", base_url="http://saved:9000", config_path=path)
     clear_saved_token(config_path=path)
     cfg = load_config(config_path=path)
     assert cfg.token is None
-    assert cfg.base_url == "http://localhost:8000"
+    assert cfg.base_url == "http://saved:9000"
 
 
 def test_default_config_path_under_appdata(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -164,14 +164,14 @@ def test_login_saves_active_base_url(runner: CliRunner, tmp_path: Path) -> None:
 def test_logout_removes_saved_token(runner: CliRunner, tmp_path: Path) -> None:
     save_profile(
         token="saved-token",
-        base_url="http://localhost:8000",
+        base_url="http://saved:9000",
         config_path=_profile_path(tmp_path),
     )
     result = runner.invoke(main, ["logout"])
     assert result.exit_code == 0
     cfg = load_config(config_path=_profile_path(tmp_path))
     assert cfg.token is None
-    assert cfg.base_url == "http://localhost:8000"
+    assert cfg.base_url == "http://saved:9000"
 
 
 def test_logout_succeeds_when_no_saved_token_exists(runner: CliRunner, tmp_path: Path) -> None:

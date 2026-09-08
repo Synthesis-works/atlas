@@ -11,7 +11,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from cli.agent.tools.base import AgentPermission, BaseTool, ToolResult
 
@@ -69,6 +69,8 @@ class _SearchArgs(BaseModel):
 
 
 class _ModelNameArgs(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     model_name: str
 
 

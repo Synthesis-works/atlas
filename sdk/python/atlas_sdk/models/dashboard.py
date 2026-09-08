@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class DashboardItem(BaseModel):
@@ -74,6 +74,8 @@ class DashboardCapabilityScore(BaseModel):
 
 class DashboardCapability(BaseModel):
     """Summary for the current #1 leaderboard model (may be absent)."""
+
+    model_config = ConfigDict(protected_namespaces=())
 
     model_name: str
     provider: str

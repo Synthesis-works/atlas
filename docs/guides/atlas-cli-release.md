@@ -157,7 +157,9 @@ To publish the first release:
    validates wheel + sdist in fresh venvs, and uploads via trusted publishing —
    the pending publisher becomes the real one on first upload).
 3. Verify at pypi.org/project/synthesis-atlas-cli/, then `python -m pip install
-   synthesis-atlas-cli` in an empty venv and run `atlas --version`.
+   synthesis-atlas-cli` in an empty venv and run `atlas --version` (and
+   `python -m cli --version`, the module fallback for environments where the
+   console-script `Scripts` directory is not on `PATH`).
 
 ## 6. Definition of done for a release
 

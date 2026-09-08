@@ -15,6 +15,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 _DEFAULT_BASE_URL = "https://atlas-api-synthesis-works.vercel.app"
+#: Historical pre-0.1.1 built-in default.  Profiles written while that was the
+#: default contain this exact value; it must NOT override the hosted default today.
+_LEGACY_DEFAULT_BASE_URL = "http://localhost:8000"
 _DEFAULT_TIMEOUT = 60.0
 _DEFAULT_OUTPUT = "human"
 _DEFAULT_RETRIES = 3  # mirrors the SDK's built-in retry cap; 0 disables retries
@@ -64,8 +67,15 @@ def load_config(
     resolved_profile = profile or os.environ.get("ATLAS_PROFILE") or "default"
     saved = _read_profiles(config_path).get(resolved_profile, {})
 
+    saved_base_url = saved.get("base_url")
+    if saved_base_url == _LEGACY_DEFAULT_BASE_URL:
+        # The historical default must never shadow the current hosted default.
+        # Only the exact legacy value migrates; explicit flags/env and custom
+        # URLs still take precedence and are preserved unchanged.
+        saved_base_url = None
+
     resolved_base_url = (
-        base_url or os.environ.get("ATLAS_BASE_URL") or saved.get("base_url") or _DEFAULT_BASE_URL
+        base_url or os.environ.get("ATLAS_BASE_URL") or saved_base_url or _DEFAULT_BASE_URL
     )
     resolved_timeout = (
         timeout if timeout is not None else _env_float("ATLAS_TIMEOUT", _DEFAULT_TIMEOUT)
