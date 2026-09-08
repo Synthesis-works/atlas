@@ -134,10 +134,9 @@ def _is_tty() -> bool:
 
 
 def _agent_unavailable_message() -> str:
-    return (
-        "error: Atlas agent brain unavailable. Set GROQ_API_KEY or GEMINI_API_KEY "
-        "to use the Atlas agent."
-    )
+    from cli.agent.setup import missing_key_message
+
+    return missing_key_message()
 
 
 def _run_repl(ctx: Context) -> int:

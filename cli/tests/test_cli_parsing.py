@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from click.testing import CliRunner
 
+from cli import __version__
 from cli.app import entrypoint, main
 
 
@@ -17,7 +18,7 @@ def test_help_exits_zero(runner: CliRunner) -> None:
 def test_version(runner: CliRunner) -> None:
     result = runner.invoke(main, ["--version"])
     assert result.exit_code == 0
-    assert "0.1.1" in result.output
+    assert __version__ in result.output
 
 
 def test_no_subcommand_shows_help(runner: CliRunner) -> None:
