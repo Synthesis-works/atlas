@@ -74,7 +74,5 @@ def missing_key_message() -> str:
         for shell_label, command in setup_commands(provider):
             lines.append(f"  {shell_label:<27} {command}")
     lines.append("")
-    lines.append(
-        "Create a key at console.groq.com (Groq) or AI Studio at ai.google.dev (Gemini)."
-    )
+    lines.append("Create a key at console.groq.com (Groq) or AI Studio at ai.google.dev (Gemini).")
     return "\n".join(lines)
