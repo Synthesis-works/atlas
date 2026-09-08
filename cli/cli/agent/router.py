@@ -33,6 +33,7 @@ from cli.agent.provider import (
     AgentProviderUnavailableError,
     LLMProvider,
 )
+from cli.agent.setup import PROVIDER_ENV_VAR
 from cli.agent.state import AgentDecision, AgentDecisionType
 
 
@@ -91,7 +92,8 @@ class ProviderRouter(LLMProvider):
                 type=AgentDecisionType.FAIL,
                 error_message=(
                     "No AI provider is configured. "
-                    "Set GROQ_API_KEY or GEMINI_API_KEY to use the agent."
+                    "Set GROQ_API_KEY or GEMINI_API_KEY to use the agent. "
+                    "See the Atlas CLI README for per-platform setup."
                 ),
                 detail=detail,
             )
@@ -101,11 +103,13 @@ class ProviderRouter(LLMProvider):
             pinned = next((p for p in available if p.name == self.default_provider), None)
             if pinned is None:
                 avail_str = ", ".join(p.name for p in available)
+                env_var = PROVIDER_ENV_VAR.get(self.default_provider, "")
+                hint = f" Set {env_var} to enable it." if env_var else ""
                 return AgentDecision(
                     type=AgentDecisionType.FAIL,
                     error_message=(
                         f"Provider '{self.default_provider}' is not available "
-                        f"(available: {avail_str})."
+                        f"(available: {avail_str}).{hint}"
                     ),
                 )
             try:

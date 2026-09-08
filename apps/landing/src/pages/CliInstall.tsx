@@ -112,7 +112,10 @@ const STEPS: Step[] = [
         Atlas CLI embeds an LLM-powered agent. Run <span className="text-white/70">atlas</span> bare to
         open an interactive conversation, or pass a quoted task for a one-shot run. Set{' '}
         <span className="text-white/70">GROQ_API_KEY</span> or{' '}
-        <span className="text-white/70">GEMINI_API_KEY</span> to power the brain:
+        <span className="text-white/70">GEMINI_API_KEY</span> with your platform's syntax —
+        PowerShell <span className="text-[#F8FAFC]/90 font-mono">$env:GEMINI_API_KEY="YOUR_GEMINI_API_KEY"</span>,
+        macOS/Linux/Git Bash <span className="text-[#F8FAFC]/90 font-mono">export GEMINI_API_KEY="YOUR_GEMINI_API_KEY"</span>,
+        or Colab <span className="text-[#F8FAFC]/90 font-mono">%env GEMINI_API_KEY=YOUR_GEMINI_API_KEY</span>:
       </>
     ),
     commands: ['atlas', 'atlas agent "List the available benchmarks"'],
@@ -141,6 +144,15 @@ const TROUBLESHOOTING = [
     body: `Atlas CLI requires Python 3.11+. If \`pip\` refuses to install, upgrade Python first, then
     create a fresh environment and try again. Check with \`python --version\` (Windows: \`py
     --version\`).`,
+  },
+  {
+    icon: KeyRound,
+    title: 'Agent says "brain unavailable" or "export is not recognized"',
+    body: `On Windows PowerShell do NOT use Bash syntax like \`export GEMINI_API_KEY="..."\`. The correct
+    PowerShell form is \`$env:GEMINI_API_KEY="YOUR_GEMINI_API_KEY"\` (same for \`GROQ_API_KEY\`). On
+    macOS/Linux/Git Bash use \`export GEMINI_API_KEY="YOUR_GEMINI_API_KEY"\`; in Google Colab use
+    \`%env GEMINI_API_KEY=YOUR_GEMINI_API_KEY\`. Create keys at console.groq.com (Groq) or
+    ai.google.dev (Gemini), then retry the command.`,
   },
   {
     icon: KeyRound,

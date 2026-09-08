@@ -266,15 +266,25 @@ export default function Cli() {
             <motion.div variants={fadeUp} initial="hidden" whileInView="visible" viewport={{ once: false, margin: '-80px' }}>
               <Card className="!p-5 border border-white/5">
                 <p className="text-xs text-white/30 leading-relaxed mb-3">
-                  The agent brain runs on a provider key. With none configured, the agent refuses to start and tells
-                  you which variable to set:
+                  The agent brain runs on a provider key. With none configured, the agent refuses to start and
+                  prints the exact setup command for your platform:
                 </p>
-                <div className="rounded-xl border border-white/5 bg-black/40 p-3.5">
-                  <code className="text-xs text-[#F8FAFC] font-mono">
-                    export GROQ_API_KEY="..."{' '}
-                    <span className="text-white/25"># or</span>{' '}
-                    GEMINI_API_KEY="..."
+                <div className="rounded-xl border border-white/5 bg-black/40 p-3.5 space-y-1">
+                  <p className="text-[11px] text-white/25 font-mono"># Windows PowerShell</p>
+                  <code className="block text-xs text-[#F8FAFC] font-mono">
+                    {'$env:GEMINI_API_KEY="YOUR_GEMINI_API_KEY"'}
                   </code>
+                  <p className="text-[11px] text-white/25 font-mono pt-1"># macOS / Linux / Git Bash</p>
+                  <code className="block text-xs text-[#F8FAFC] font-mono">
+                    {'export GEMINI_API_KEY="YOUR_GEMINI_API_KEY"'}
+                  </code>
+                  <p className="text-[11px] text-white/25 font-mono pt-1"># Google Colab</p>
+                  <code className="block text-xs text-[#F8FAFC] font-mono">
+                    {'%env GEMINI_API_KEY=YOUR_GEMINI_API_KEY'}
+                  </code>
+                  <p className="text-[11px] text-white/25 pt-1">
+                    # Groq: use GROQ_API_KEY / YOUR_GROQ_API_KEY instead
+                  </p>
                 </div>
               </Card>
             </motion.div>

@@ -75,15 +75,38 @@ comes in two shapes:
   atlas agent "List the available benchmarks"
   ```
 
-The agent brain uses an LLM provider. Set one of:
+The agent brain uses an LLM provider key: `GROQ_API_KEY` (tried first by
+default) or `GEMINI_API_KEY`. Set one with the syntax for your platform:
 
-```bash
-export GEMINI_API_KEY="..."
-export GROQ_API_KEY="..."
+**Windows PowerShell**
+
+```powershell
+$env:GROQ_API_KEY="YOUR_GROQ_API_KEY"
+# or
+$env:GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
 ```
 
-With no key configured the agent refuses to start and points you at the missing
-environment variable.
+**macOS / Linux / Git Bash**
+
+```bash
+export GROQ_API_KEY="YOUR_GROQ_API_KEY"
+# or
+export GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+```
+
+**Google Colab**
+
+```python
+%env GROQ_API_KEY=YOUR_GROQ_API_KEY
+# or
+%env GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+```
+
+> The shell form matters: `export KEY="..."` is Bash (macOS/Linux/Git Bash).
+> In Windows PowerShell use `$env:KEY="..."` — the Bash form is not valid
+> there. Create a Groq key at console.groq.com or a Gemini key at
+> ai.google.dev. With no key configured the agent refuses to start (exit code
+> 10) and prints the exact setup commands for your platform.
 
 ## Development
 
