@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from atlas_sdk.models.benchmarks import PageResponse
 
@@ -25,6 +25,8 @@ class LeaderboardEntryRead(BaseModel):
 
     Mirrors ``apps/backend/schemas/leaderboard.py::LeaderboardEntryRead``.
     """
+
+    model_config = ConfigDict(protected_namespaces=())
 
     rank: int
     model_name: str

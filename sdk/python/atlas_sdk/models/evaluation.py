@@ -10,11 +10,13 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EvaluationResultItemRead(BaseModel):
     """A single per-output evaluation result (mirror of ExecutionEvaluationResultRead)."""
+
+    model_config = ConfigDict(protected_namespaces=())
 
     model_output_id: uuid.UUID
     strategy_version_id: uuid.UUID
