@@ -406,8 +406,17 @@ class GenerateReportTool(BaseTool):
 
         report_id = uuid.uuid4()
         agent_task_id = kwargs.get("task_id")
-        proj_id = kwargs.get("project_id") or uuid.UUID("00000000-0000-0000-0000-000000000001")
-        user_id = uuid.UUID("00000000-0000-0000-0000-000000000003")
+        _SHARED_FALLBACK = uuid.UUID("00000000-0000-0000-0000-000000000001")
+        proj_id = kwargs.get("project_id") or _SHARED_FALLBACK
+        if proj_id == _SHARED_FALLBACK:
+            from atlas_db.models.authoring import Benchmark as DBBenchmark
+
+            bm = (
+                db.query(DBBenchmark).filter(DBBenchmark.id == uuid.UUID(str(benchmark_id))).first()
+            )
+            if bm and bm.project_id:
+                proj_id = bm.project_id
+        user_id = kwargs.get("user_id") or uuid.UUID("00000000-0000-0000-0000-000000000003")
 
         exec_id = None
         if agent_task_id:

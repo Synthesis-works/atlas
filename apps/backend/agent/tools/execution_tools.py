@@ -141,9 +141,20 @@ class RunBenchmarkTool(BaseTool):
                 "supported evaluation_method."
             )
 
-        proj_id = kwargs.get("project_id") or uuid.UUID("00000000-0000-0000-0000-000000000001")
+        _SHARED_FALLBACK = uuid.UUID("00000000-0000-0000-0000-000000000001")
+        proj_id = kwargs.get("project_id") or _SHARED_FALLBACK
+        if proj_id == _SHARED_FALLBACK:
+            from atlas_db.models.authoring import Benchmark as DBBenchmark
+
+            anchor = (
+                db.query(DBBenchmark)
+                .filter(DBBenchmark.id == benchmark_version.benchmark_id)
+                .first()
+            )
+            if anchor and anchor.project_id:
+                proj_id = anchor.project_id
         agent_task_id = kwargs.get("task_id")
-        user_id = uuid.UUID("00000000-0000-0000-0000-000000000003")
+        user_id = kwargs.get("user_id") or uuid.UUID("00000000-0000-0000-0000-000000000003")
 
         # Validate that selected models are configured/available in our registry
         from packages.llm.registry import ModelRegistry
