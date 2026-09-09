@@ -82,6 +82,7 @@ def create_app() -> FastAPI:
         system,
         leaderboard,
         agent,
+        agent_sessions,
         billing,
         dashboard,
     )
@@ -109,6 +110,7 @@ def create_app() -> FastAPI:
     app.include_router(leaderboard.router, prefix="/api/v1")
     app.include_router(models.router, prefix="/api/v1")
     app.include_router(agent.router, prefix="/api/v1")
+    app.include_router(agent_sessions.router, prefix="/api/v1")
     app.include_router(billing.router, prefix="/api/v1")
     app.include_router(dashboard.router, prefix="/api/v1")
 

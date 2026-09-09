@@ -23,6 +23,12 @@ from atlas_sdk.models.auth import AuthUserRead, TokenResponse
 from atlas_sdk.models.health import HealthData
 from atlas_sdk.models.models import ModelRead
 from atlas_sdk.models.responses import ErrorDetail, ResponseMeta
+from atlas_sdk.models.sessions import (
+    AgentPendingAction,
+    AgentSessionMessage,
+    AgentSessionRead,
+    AgentSessionTurnRead,
+)
 
 # ── Expected OpenAPI schema shapes (Phase 1 endpoints) ────────────────
 #
@@ -87,6 +93,62 @@ _EXPECTED_SCHEMAS: dict[str, dict[str, Any]] = {
             "is_test_only": {"type": "boolean", "default": False},
         },
     },
+    "AgentSessionMessage": {
+        "type": "object",
+        "required": ["role", "content"],
+        "properties": {
+            "role": {"type": "string"},
+            "content": {"type": "string"},
+            "task_id": {"anyOf": [{"type": "string", "format": "uuid"}, {"type": "null"}]},
+            "created_at": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+        },
+    },
+    "AgentPendingAction": {
+        "type": "object",
+        "required": ["action", "task_id"],
+        "properties": {
+            "action": {"type": "string"},
+            "task_id": {"type": "string", "format": "uuid"},
+            "tool_name": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+            "approval_token_required": {"anyOf": [{"type": "boolean"}, {"type": "null"}]},
+            "clarification_id": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+            "question": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+            "message": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+        },
+    },
+    "AgentSessionRead": {
+        "type": "object",
+        "required": ["session_id", "status", "state", "provider", "transcript"],
+        "properties": {
+            "session_id": {"type": "string", "format": "uuid"},
+            "title": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+            "status": {"type": "string"},
+            "state": {"type": "string"},
+            "provider": {"type": "string"},
+            "project_id": {"anyOf": [{"type": "string", "format": "uuid"}, {"type": "null"}]},
+            "current_task_id": {"anyOf": [{"type": "string", "format": "uuid"}, {"type": "null"}]},
+            "pending_action": {
+                "anyOf": [{"$ref": "#/components/schemas/AgentPendingAction"}, {"type": "null"}]
+            },
+            "transcript": {
+                "type": "array",
+                "items": {"$ref": "#/components/schemas/AgentSessionMessage"},
+            },
+            "created_at": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+            "updated_at": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]},
+            "last_activity_at": {
+                "anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]
+            },
+        },
+    },
+    "AgentSessionTurnRead": {
+        "type": "object",
+        "required": ["session"],
+        "properties": {
+            "session": {"$ref": "#/components/schemas/AgentSessionRead"},
+            "reply": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+        },
+    },
 }
 
 
@@ -119,6 +181,10 @@ class TestContractBaseline:
             ("ResponseMeta", ResponseMeta),
             ("ErrorDetail", ErrorDetail),
             ("ModelRead", ModelRead),
+            ("AgentSessionMessage", AgentSessionMessage),
+            ("AgentPendingAction", AgentPendingAction),
+            ("AgentSessionRead", AgentSessionRead),
+            ("AgentSessionTurnRead", AgentSessionTurnRead),
         ],
     )
     def test_dto_matches_schema(self, schema_name: str, model: type) -> None:

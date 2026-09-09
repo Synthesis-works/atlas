@@ -38,12 +38,26 @@ class ToolExecutor:
             return obs, None
 
         try:
+            from apps.backend.agent.scope import ToolScopeEnforcer
+
+            tool = self.registry.get_tool(tool_name)
+            if tool is None:
+                raise ValueError(f"Tool '{tool_name}' not found in registry")
+            ToolScopeEnforcer(db).enforce(task, tool, arguments)
+
+            scope_kwargs: dict[str, Any] = {}
+            if task.created_by_user_id is not None:
+                scope_kwargs["user_id"] = str(task.created_by_user_id)
+            if task.organization_id is not None:
+                scope_kwargs["organization_id"] = str(task.organization_id)
+
             output = self.registry.execute(
                 tool_name=tool_name,
                 db=db,
                 arguments=arguments,
                 project_id=task.project_id,
                 task_id=str(task.task_id),
+                **scope_kwargs,
             )
             obs = ObservationRecord(
                 call_id=call_id, tool_name=tool_name, success=True, output=output

@@ -65,3 +65,45 @@ class ApiUsageCounter(Base):
     key: Mapped[str] = mapped_column(String(255), primary_key=True)
     count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     window_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class AgentSession(Base):
+    """A hosted conversational session between a user and the agent.
+
+    Each session owns a bounded transcript (list of messages) and may hold a
+    pointer to the currently-active (or most recent) ``AgentTaskRecord``. The
+    transcript is lazily refreshed from the live task's observation list each
+    time the session is read or the task completes.
+
+    ``created_by_user_id`` is stamped from the JWT at creation time and is
+    **never** NULL for rows created through the API. Ownership is enforced
+    server-side; a user may only read/modify their own sessions.
+    """
+
+    __tablename__ = "agent_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), nullable=False, index=True
+    )
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="ACTIVE")
+    provider: Mapped[str] = mapped_column(String(50), nullable=False, default="gemini")
+    model: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    current_task_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True
+    )
+    # Bounded list of ConversationMessage dicts serialized as JSONB.
+    # Max 30 entries enforced at the API layer before write.
+    transcript: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
+    )
+    last_activity_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

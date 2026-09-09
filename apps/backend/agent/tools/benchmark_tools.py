@@ -34,6 +34,15 @@ class SearchBenchmarksTool(BaseTool):
             raise ValueError("limit is required")
 
         q = db.query(Benchmark)
+        # Owned tasks pass their JWT-derived organization_id; restrict search to
+        # benchmarks in that organization's projects (no more global discovery).
+        organization_id = kwargs.get("organization_id")
+        if organization_id:
+            from atlas_db.models.core import Project
+
+            q = q.join(Project, Benchmark.project_id == Project.id).filter(
+                Project.org_id == uuid.UUID(str(organization_id))
+            )
         if query:
             q = q.filter(Benchmark.name.ilike(f"%{query}%"))
         results = q.limit(limit).all()

@@ -67,6 +67,13 @@ from atlas_sdk.models.reports import (
 )
 from atlas_sdk.models.responses import APIResponse
 from atlas_sdk.models.search import SearchResult
+from atlas_sdk.models.sessions import (
+    AgentApprovalRequest,
+    AgentClarificationRequest,
+    AgentSessionCreate,
+    AgentSessionRead,
+    AgentSessionTurnRead,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1132,6 +1139,121 @@ class AtlasClient:
                 or f"report-{run_id}.{format_type}"
             ),
         )
+
+    # ── hosted agent sessions ────────────────────────────────────────
+
+    def create_agent_session(
+        self,
+        goal: str,
+        *,
+        provider: str = "gemini",
+        title: str | None = None,
+        model: str | None = None,
+        project_id: str | None = None,
+    ) -> AgentSessionRead:
+        """Create a hosted agent session.
+
+        ``POST /api/v1/agent/sessions``
+
+        Returns the session as a bare dict (no ``APIResponse`` envelope),
+        including the initial transcript and its lifecycle ``state``.  Session
+        tasks run with server-set READ-only grants, so the session surfaces as
+        ``AWAITING_APPROVAL`` (or ``AWAITING_CLARIFICATION``) until the user
+        explicitly approves/clarifies via the session endpoints.
+        """
+        body = AgentSessionCreate(
+            goal=goal,
+            provider=provider,
+            title=title,
+            model=model,
+            project_id=project_id,
+        ).model_dump(mode="json", exclude_none=True)
+        response = self._post_raw("/api/v1/agent/sessions", json=body)
+        return AgentSessionRead.model_validate(response.json())
+
+    def list_agent_sessions(self) -> list[AgentSessionRead]:
+        """List the authenticated user's active agent sessions.
+
+        ``GET /api/v1/agent/sessions``
+
+        Returns a bare list (no ``APIResponse`` envelope).
+        """
+        response = self._get_raw("/api/v1/agent/sessions")
+        return self._parse_bare(
+            response,
+            lambda raw: [AgentSessionRead.model_validate(item) for item in raw],
+        )
+
+    def get_agent_session(self, session_id: str) -> AgentSessionRead:
+        """Fetch a single agent session by ID.
+
+        ``GET /api/v1/agent/sessions/{session_id}``
+        """
+        response = self._get_raw(f"/api/v1/agent/sessions/{session_id}")
+        return AgentSessionRead.model_validate(response.json())
+
+    def delete_agent_session(self, session_id: str) -> None:
+        """Archive an agent session (soft delete; idempotent).
+
+        ``DELETE /api/v1/agent/sessions/{session_id}``
+        """
+        self._delete_raw(f"/api/v1/agent/sessions/{session_id}")
+
+    def send_agent_session_message(self, session_id: str, message: str) -> AgentSessionTurnRead:
+        """Send a user message as the next agent turn.
+
+        ``POST /api/v1/agent/sessions/{session_id}/messages``
+
+        Raises ``ConflictError`` (409) while a turn is mid-flight
+        (``AWAITING_APPROVAL`` / ``RUNNING`` / ``WAITING_FOR_EXECUTION``), or
+        when the message must instead be answered as a clarification.
+        """
+        body = {"message": message}
+        response = self._post_raw(f"/api/v1/agent/sessions/{session_id}/messages", json=body)
+        return AgentSessionTurnRead.model_validate(response.json())
+
+    def approve_agent_session(
+        self,
+        session_id: str,
+        *,
+        approval_token: str,
+    ) -> AgentSessionTurnRead:
+        """Approve the pending tool action for a session's current task.
+
+        ``POST /api/v1/agent/sessions/{session_id}/approve``
+
+        Raises ``AuthError`` (401) when the token is wrong and ``ApiError``
+        (400) when no approval is pending.
+        """
+        body = AgentApprovalRequest(approval_token=approval_token).model_dump(mode="json")
+        response = self._post_raw(f"/api/v1/agent/sessions/{session_id}/approve", json=body)
+        return AgentSessionTurnRead.model_validate(response.json())
+
+    def clarify_agent_session(
+        self,
+        session_id: str,
+        *,
+        answer: str,
+        clarification_id: str | None = None,
+    ) -> AgentSessionTurnRead:
+        """Answer the pending clarification for a session's current task.
+
+        ``POST /api/v1/agent/sessions/{session_id}/clarify``
+        """
+        body = AgentClarificationRequest(
+            answer=answer,
+            clarification_id=clarification_id,
+        ).model_dump(mode="json", exclude_none=True)
+        response = self._post_raw(f"/api/v1/agent/sessions/{session_id}/clarify", json=body)
+        return AgentSessionTurnRead.model_validate(response.json())
+
+    def cancel_agent_session(self, session_id: str) -> AgentSessionTurnRead:
+        """Cancel the session's current task.
+
+        ``POST /api/v1/agent/sessions/{session_id}/cancel``
+        """
+        response = self._post_raw(f"/api/v1/agent/sessions/{session_id}/cancel")
+        return AgentSessionTurnRead.model_validate(response.json())
 
     # ── lifecycle ─────────────────────────────────────────────────────
 

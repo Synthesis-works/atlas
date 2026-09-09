@@ -72,6 +72,16 @@ from atlas_sdk.models.responses import (
     ResponseMeta,
 )
 from atlas_sdk.models.search import SearchResult
+from atlas_sdk.models.sessions import (
+    AgentApprovalRequest,
+    AgentClarificationRequest,
+    AgentPendingAction,
+    AgentSessionCreate,
+    AgentSessionMessage,
+    AgentSessionMessageRequest,
+    AgentSessionRead,
+    AgentSessionTurnRead,
+)
 
 __all__ = [
     "AuthUserRead",
@@ -136,4 +146,12 @@ __all__ = [
     "ErrorDetail",
     "ResponseMeta",
     "SearchResult",
+    "AgentApprovalRequest",
+    "AgentClarificationRequest",
+    "AgentPendingAction",
+    "AgentSessionCreate",
+    "AgentSessionMessage",
+    "AgentSessionMessageRequest",
+    "AgentSessionRead",
+    "AgentSessionTurnRead",
 ]
