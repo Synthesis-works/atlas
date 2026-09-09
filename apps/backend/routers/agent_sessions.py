@@ -153,6 +153,7 @@ def _pending_action(task: AgentTask | None) -> dict[str, Any] | None:
             "task_id": str(task.task_id),
             "tool_name": args.get("tool_name"),
             "approval_token_required": True,
+            "approval_token": task.approval_token,
         }
     if task.status == AgentTaskStatus.WAITING_FOR_CLARIFICATION:
         return {

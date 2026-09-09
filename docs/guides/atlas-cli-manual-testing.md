@@ -256,18 +256,53 @@ Precedence (highest wins): **CLI flag > environment variable > saved profile > b
 
 **Retry semantics:** `--retries` (default `3`, matching the SDK) controls the SDK's built-in retry loop, which applies **only to idempotent GET/HEAD requests** on transient failures (429, 5xx, or transport errors). `run submit` (POST) and other non-idempotent calls are **never** automatically retried, regardless of `--retries`. Negative values and non-integers are usage errors (exit 2).
 
-### 5.2 Bare invocations
+### 5.2 Bare invocations & agent-first routing (P2)
 
 ```powershell
 atlas --help
-atlas            # same as --help (invoke_without_command)
+atlas            # interactive TTY → hosted agent REPL (or BYOK fallback)
+                 # non-TTY (piped)    → help (same as --help), safe for automation
 atlas --version
 ```
+
+**Agent-first routing:** the root group treats its first non-command token as
+natural language, so a quoted (or multi-word) phrase is sent to the hosted
+agent as a one-shot request, and a bare interactive ``atlas`` starts the
+conversational REPL:
+
+```powershell
+atlas "run the mock benchmark suite"        # hosted one-shot (needs `atlas login`)
+atlas run the mock benchmark suite          # same, unquoted multiple tokens
+atlas                                       # interactive hosted REPL (TTY)
+```
+
+Rules:
+
+- **Registered commands always win.** ``atlas login``, ``atlas benchmark …``,
+  ``atlas agent "…"``, etc. resolve exactly as before; only an *unknown* first
+  token (plus bare ``atlas``) enters the conversational path.
+- **Hosted-default:** when an Atlas session exists (``atlas login`` or
+  ``ATLAS_TOKEN``), ``atlas`` and ``atlas "…"`` run against the **server-side
+  brain** through the session API. Provider keys stay on the server — the CLI
+  never sees one. Turns poll while running; tool approvals are surfaced and
+  only approved after an explicit ``y/N`` confirm; clarifications ask inline in
+  the REPL.
+- **BYOK fallback:** ``atlas agent "task"`` is unchanged (local LLM loop over
+  ``--provider auto|groq|gemini``). Without a token, a bare ``atlas`` falls back
+  to the same BYOK loop when a provider key is set.
+- **No auth + no key:** conversational paths print actionable guidance
+  (``atlas login`` or BYOK setup) and exit **10** rather than failing with a
+  usage error.
+- Options before the phrase are parsed normally (``atlas --quiet "…"``); tokens
+  *after* the first NL token are treated as part of the natural language
+  (``atlas "hello" --quiet`` sends ``hello --quiet``).
 
 Current command tree:
 
 ```text
 atlas
+├─ (conversational) hosted REPL          # bare, interactive TTY only
+├─ (conversational) hosted one-shot      # first non-command token / quoted phrase
 ├─ login
 ├─ logout
 ├─ whoami
@@ -283,6 +318,7 @@ atlas
 │  └─ model MODEL_NAME [--history | --benchmarks] [--json-schema]
 ├─ model
 │  └─ list [--json-schema]
+├─ agent TASK [--provider auto|groq|gemini]   # BYOK one-shot (unchanged)
 ├─ run
 │  ├─ submit BENCHMARK_VERSION_ID --target-model [--dataset-version-id] [--preview]
 │  ├─ get EXECUTION_ID [--json-schema]
@@ -732,7 +768,7 @@ Human output is a per-section `Recent <Type>` table (`Timestamp`, `Name`/`Status
 | 7 | Invalid request / validation error |
 | 8 | Conflict / overwrite refused |
 | 9 | Watch timeout (not used here) |
-| **10** | **`AGENT_UNAVAILABLE` — no `GROQ_API_KEY`/`GEMINI_API_KEY` set, or every provider offline/unavailable** |
+| **10** | **`AGENT_UNAVAILABLE` — conversational paths or `atlas agent` with no Atlas session and no `GROQ_API_KEY`/`GEMINI_API_KEY` (guidance on stderr)** |
 | 130 | Interrupted (SIGINT) |
 
 ```powershell
@@ -752,28 +788,33 @@ atlas --quiet agent "List the available benchmarks"; echo "exit=$LASTEXITCODE"
 atlas agent "any task"  # → exit 10, "error: Atlas agent brain unavailable..."
 ```
 
-#### `atlas` (bare, interactive TTY) — REPL
+#### `atlas` (bare, interactive TTY) — REPL (P2 hosted-first)
 
-- **API:** same as one-shot; conversation context preserved across turns.
-- **Auth:** same requirements (token + at least one brain key: `GROQ_API_KEY` or `GEMINI_API_KEY`).
-- **Prompt:** `You >` for input, `Atlas >` for assistant response.
-- **Session history:** each turn prepended to the next prompt (bounded by step ceiling).
-- **Mutation confirmation:** before executing any **WRITE** tool (`submit_run`,
-  `create_benchmark`, `update_benchmark`, `create_benchmark_version`,
-  `publish_benchmark_version`, `delete_benchmark`, `archive_benchmark_version`,
-  `export_report`, …), the REPL prompts:
-  `Atlas is about to call submit_run(...). Proceed? [y/N]`
-  - `y` / `yes` → executes, prints `[ok] tool_name`, continues.
-  - `n` / `no` / Enter → prints `[!] tool_name`, records a structured **declined** observation (not an execution failure), continues.
-- **Destructive double-confirm (v3.2):** `delete_benchmark` and
-  `archive_benchmark_version` get a stronger two-step prompt. After the first
-  "Allow …?" is confirmed, the REPL asks again:
-  `Really delete_benchmark? This cannot be undone.` — declining either step
-  records a declined observation and skips the mutation.
-- **READ tools** (`list_benchmarks`, `get_run`, `model list`,
-  `list_organizations`, `list_projects`, etc.) **never prompt**.
-- **Progress:** every tool call prints `[ok] tool_name` on success, `[!] tool_name` on failure/decline (ASCII-safe on all consoles).
-- **Exit:** `exit`, `quit`, `q`, Ctrl-C, or EOF (Ctrl-Z on Windows, Ctrl-D on Unix) → clean exit 0.
+- **Mode selection.** When an Atlas session exists (`atlas login` or
+  `ATLAS_TOKEN`), the REPL drives the **hosted** brain through the session API
+  (`create` on the first message, then `send message` per turn; each turn
+  syncs the conversation transcript). Provider keys stay on the server. Without
+  a token, bare `atlas` **falls back to the BYOK loop** (`GROQ_API_KEY` /
+  `GEMINI_API_KEY`); with neither, it prints actionable guidance and exits 10.
+- **Auth:** hosted mode needs only the token; BYOK mode needs token + at least
+  one brain key (`GROQ_API_KEY` or `GEMINI_API_KEY`).
+- **Prompt:** `Atlas >` for input; assistant replies print as `Atlas: …`.
+  Greeting: `Atlas: Hi! I'm Atlas. What would you like to work on?`
+- **Turn lifecycle (hosted):** if a turn is still running server-side the CLI
+  polls `GET /sessions/{id}` until the session settles; the final reply is the
+  server-synced assistant transcript entry.
+- **Hosted approvals (never auto-approved):** when the server parks on a tool,
+  the REPL prints `Atlas needs your approval for <tool>. Approve? [y/N]`.
+  `y` → approves with the server's single-use `approval_token`; any decline →
+  the turn is cancelled. Clarifications ask inline and resume with the answer.
+- **BYOK confirmation (fallback mode):** before executing any **WRITE** tool,
+  the REPL prompts `Atlas is about to call submit_run(...). Proceed? [y/N]` —
+  `y` executes, `n`/Enter records a structured **declined** observation and
+  continues.
+- **Exit:** `exit`, `quit`, or `q` prints `Bye!` and exits 0; Ctrl-C during a
+  turn cancels the turn (exit 130-ish path); EOF exits cleanly. The hosted
+  session is archived on a clean exit. One-shot requests archive their session
+  once the reply is printed.
 
 **Benchmark-authoring examples (v3.2):**
 ```powershell
@@ -873,12 +914,14 @@ You > exit
 echo "" | atlas   # usage help, exit 0 (no REPL)
 ```
 
-**Routing rules (verified):**
+**Routing rules (verified, P2 agent-first):**
 | Invocation | stdin is TTY? | Result |
 |------------|---------------|--------|
-| `atlas` | yes | REPL |
+| `atlas` | yes | hosted REPL (or BYOK fallback) |
 | `atlas` | no (piped/redirected) | help (exit 0) |
-| `atlas agent "task"` | any | one-shot (exit 10 if no `GROQ_API_KEY`/`GEMINI_API_KEY`) |
+| `atlas "NL phrase"` / `atlas multi word phrase` | any | hosted one-shot (exit 10 if no Atlas session & no brain key) |
+| `atlas <known command> …` (`login`, `benchmark`, `run`, `agent`, …) | any | deterministic command (unchanged) |
+| `atlas agent "task"` | any | BYOK one-shot (exit 10 if no `GROQ_API_KEY`/`GEMINI_API_KEY`) |
 
 ---
 

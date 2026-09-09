@@ -51,10 +51,13 @@ def test_python_m_cli_help(tmp_path: Path) -> None:
     assert "benchmark" in proc.stdout
 
 
-def test_python_m_cli_unknown_command_exits_usage(tmp_path: Path) -> None:
+def test_python_m_cli_unknown_command_routes_to_hosted_oneshot(tmp_path: Path) -> None:
+    # Agent-first routing: a non-command first token is natural language, so a
+    # typo'd command becomes a hosted one-shot request.  Without an Atlas
+    # session that can't run: exit 10 with actionable guidance.
     proc = _run("definitely-not-a-command", cwd=tmp_path)
-    assert proc.returncode == 2
-    assert "Error:" in proc.stderr
+    assert proc.returncode == 10
+    assert "atlas login" in proc.stderr
 
 
 if __name__ == "__main__":

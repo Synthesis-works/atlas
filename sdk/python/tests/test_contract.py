@@ -111,6 +111,7 @@ _EXPECTED_SCHEMAS: dict[str, dict[str, Any]] = {
             "task_id": {"type": "string", "format": "uuid"},
             "tool_name": {"anyOf": [{"type": "string"}, {"type": "null"}]},
             "approval_token_required": {"anyOf": [{"type": "boolean"}, {"type": "null"}]},
+            "approval_token": {"anyOf": [{"type": "string"}, {"type": "null"}]},
             "clarification_id": {"anyOf": [{"type": "string"}, {"type": "null"}]},
             "question": {"anyOf": [{"type": "string"}, {"type": "null"}]},
             "message": {"anyOf": [{"type": "string"}, {"type": "null"}]},

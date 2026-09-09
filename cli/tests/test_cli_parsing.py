@@ -94,14 +94,19 @@ def test_entrypoint_negative_retries_env_exits_2(
 # itself (clean stderr message, exit 2, no traceback).
 
 
-def test_entrypoint_unknown_command_exits_2(
+def test_entrypoint_unknown_command_routes_to_hosted_oneshot_without_auth(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    # Agent-first: a non-command first token is natural language.  Without an
+    # Atlas session the hosted one-shot can't run, so it must exit 10 with
+    # actionable guidance — and never a traceback.
     monkeypatch.setattr("sys.argv", ["atlas", "nonexistent"])
     with pytest.raises(SystemExit) as exc_info:
         entrypoint()
-    assert exc_info.value.code == 2
-    assert "Error:" in capsys.readouterr().err
+    assert exc_info.value.code == 10
+    captured = capsys.readouterr().err
+    assert "atlas login" in captured
+    assert "Traceback" not in captured
 
 
 def test_entrypoint_invalid_choice_exits_2(
