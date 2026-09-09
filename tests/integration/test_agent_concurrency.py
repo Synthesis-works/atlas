@@ -1,12 +1,12 @@
 import pytest
 import threading
 import time
-from fastapi.testclient import TestClient
 
 from apps.backend.main import app
 from apps.backend.routers.agent import _agent_tasks_db
+from tests._agent_auth import AuthenticatedTestClient
 
-client = TestClient(app)
+client = AuthenticatedTestClient(app, user_id="44444444-4444-4444-8444-444444444444")
 
 
 @pytest.fixture(autouse=True)

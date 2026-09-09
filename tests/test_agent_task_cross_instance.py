@@ -10,7 +10,8 @@ task from the local registry and expects every operation to still succeed.
 """
 
 import pytest
-from fastapi.testclient import TestClient
+
+from tests._agent_auth import AuthenticatedTestClient
 
 
 @pytest.fixture(autouse=True)
@@ -28,7 +29,7 @@ def setup_db():
 
 from apps.backend.main import app  # noqa: E402
 
-client = TestClient(app)
+client = AuthenticatedTestClient(app, user_id="33333333-3333-4333-8333-333333333333")
 
 # A resumed mock loop legitimately parks at WAITING_FOR_EXECUTION when no
 # execution backend (docker / GitHub Actions) resolves the run inside the

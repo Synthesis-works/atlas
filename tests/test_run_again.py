@@ -1,11 +1,11 @@
 import pytest
-from fastapi.testclient import TestClient
 from uuid import UUID
 
 from apps.backend.main import app
 from apps.backend.routers.agent import _agent_tasks_db
+from tests._agent_auth import AuthenticatedTestClient
 
-client = TestClient(app)
+client = AuthenticatedTestClient(app, user_id="22222222-2222-4222-8222-222222222222")
 
 
 @pytest.fixture(autouse=True)

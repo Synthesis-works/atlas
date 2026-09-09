@@ -112,6 +112,16 @@ LLM cycles. Two hardening layers ship with the persisted store:
   ends `FAILED` after retries.
 - Optional tuning: `AGENT_STALE_WAITING_MINUTES` (default 15),
   `AGENT_EXECUTION_WAIT_DEADLINE_SECONDS` (default 480, unchanged).
+- **P0 auth hardening**: every `/api/v1/agent/*` endpoint requires a valid
+  Bearer JWT. Task reads/mutations are owner-scoped to `claims.sub`
+  (`created_by_user_id` stamped at creation; legacy owner-less rows never
+  surface), and `/reports/{id}` requires active membership in the
+  organization owning the report's execution lineage.
+- Optional per-user abuse limits (disabled by default so local dev and tests
+  stay deterministic): `AGENT_RATE_LIMIT_ENABLED=true` (prod),
+  `AGENT_RATE_LIMIT_MAX_PER_MINUTE` (default 120),
+  `AGENT_RATE_LIMIT_MAX_TASKS_PER_DAY` (default 200). Counters are
+  DB-backed sliding windows (`api_usage_counters`), no Redis dependency.
 - Optional (prod recommends): `AGENT_TASKS_CELERY_EXECUTION=true` on the Vercel
   API env so initial runs are routed through the outbox and execute on the
   Render worker instead of the serverless request thread. Use the Supabase

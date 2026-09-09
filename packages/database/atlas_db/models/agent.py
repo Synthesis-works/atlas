@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, String
+from sqlalchemy import DateTime, Integer, String
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -36,9 +36,32 @@ class AgentTaskRecord(Base):
     # checkpointed. NULL when the task is parked/terminal and owned by no one.
     instance_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Identity/ownership of the authenticated user that created this task and
+    # the organization the token claimed at creation time. NULL for legacy
+    # (pre-P0) rows; those rows are never surfaced to any user.
+    created_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True
+    )
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, onupdate=_utcnow, nullable=False
     )
+
+
+class ApiUsageCounter(Base):
+    """
+    DB-backed sliding-window usage counter for opt-in per-user rate limits.
+
+    Rows are keyed by a scope string (e.g. ``agent:user:<uuid>``); ``count``
+    accumulates within ``window_until``. Purged naturally by overwrite on window
+    expiry. Serverless-safe: no in-memory or Redis dependency.
+    """
+
+    __tablename__ = "api_usage_counters"
+
+    key: Mapped[str] = mapped_column(String(255), primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    window_until: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

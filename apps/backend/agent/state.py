@@ -91,6 +91,11 @@ class TraceEvent(BaseModel):
 class AgentTask(BaseModel):
     task_id: UUID = Field(default_factory=uuid4)
     project_id: Optional[UUID] = None
+    # Ownership stamped from JWT claims by the API router at creation time and
+    # retained in the persisted snapshot so cross-user access can be denied.
+    # None for legacy tasks and direct worker-side constructions.
+    created_by_user_id: Optional[UUID] = None
+    organization_id: Optional[UUID] = None
     goal: str
     status: AgentTaskStatus = AgentTaskStatus.PENDING
     granted_permissions: list[AgentPermission] = Field(

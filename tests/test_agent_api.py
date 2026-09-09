@@ -1,7 +1,8 @@
 import os
 import dotenv
 import pytest
-from fastapi.testclient import TestClient
+
+from tests._agent_auth import AuthenticatedTestClient
 
 dotenv.load_dotenv()
 
@@ -23,7 +24,7 @@ from apps.backend.main import app
 from apps.backend.agent.providers.gemini import GeminiAgentProvider
 from apps.backend.agent.state import AgentDecisionType, AgentPermission, AgentTask, AgentTaskStatus
 
-client = TestClient(app)
+client = AuthenticatedTestClient(app, user_id="11111111-1111-4111-8111-111111111111")
 
 
 def test_list_agent_tools_endpoint():
