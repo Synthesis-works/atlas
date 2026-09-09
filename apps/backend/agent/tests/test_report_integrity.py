@@ -7,8 +7,11 @@
 import uuid
 
 import pytest
+from fastapi import HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+from apps.backend.schemas.auth import TokenClaims
 
 from atlas_db.core.base import Base
 from atlas_db.models.authoring import Benchmark, BenchmarkVersion
@@ -43,6 +46,26 @@ def clear_agent_tasks():
     _agent_tasks_db.clear()
     yield
     _agent_tasks_db.clear()
+
+
+def _claims(user_id=None):
+    return TokenClaims(
+        sub=user_id or uuid.uuid4(),
+        exp=0,
+        iat=0,
+        jti=uuid.uuid4(),
+    )
+
+
+class _AllowAuthz:
+    """Stands in for ProjectAuthorizationService and records each call."""
+
+    def __init__(self):
+        self.calls = []
+
+    def authorize_project_access(self, project_id, user_id, allowed_roles):
+        self.calls.append((project_id, user_id, allowed_roles))
+        return None
 
 
 def _register_task(execution_id):
@@ -170,12 +193,19 @@ def test_report_benchmark_id_resolves_through_execution_chain(db_session):
     db_session.add(report_version)
     db_session.commit()
 
-    result = get_agent_report(str(report_version.id), db=db_session)
+    authz = _AllowAuthz()
+    result = get_agent_report(
+        str(report_version.id), db=db_session, claims=_claims(), project_authz=authz
+    )
 
     assert result["report_id"] == str(report_version.id)
     assert result["benchmark_id"] == str(benchmark_id)
     assert result["benchmark_id"] != str(report.id)
     assert result["execution_id"] == str(execution_id)
+    # P0 ownership boundary: authorization ran against the execution's project.
+    execution = db_session.query(Execution).filter(Execution.id == execution_id).first()
+    assert execution is not None
+    assert authz.calls and authz.calls[0][0] == execution.project_id
 
 
 def test_report_benchmark_id_null_when_unresolvable(db_session):
@@ -193,10 +223,15 @@ def test_report_benchmark_id_null_when_unresolvable(db_session):
     db_session.add(report_version)
     db_session.commit()
 
-    result = get_agent_report(str(report_version.id), db=db_session)
-
-    assert result["benchmark_id"] is None
-    assert result["execution_id"] is None
+    # P0 ownership boundary: a report with no execution lineage is denied.
+    with pytest.raises(HTTPException) as excinfo:
+        get_agent_report(
+            str(report_version.id),
+            db=db_session,
+            claims=_claims(),
+            project_authz=_AllowAuthz(),
+        )
+    assert excinfo.value.status_code == 403
 
 
 def test_report_benchmark_id_null_when_execution_dangling(db_session):
@@ -227,9 +262,14 @@ def test_report_benchmark_id_null_when_execution_dangling(db_session):
     db_session.add(report_version)
     db_session.commit()
 
-    result = get_agent_report(str(report_version.id), db=db_session)
+    authz = _AllowAuthz()
+    result = get_agent_report(
+        str(report_version.id), db=db_session, claims=_claims(), project_authz=authz
+    )
 
     assert result["benchmark_id"] is None
+    # P0 ownership boundary: authorization ran against the dangling execution's project.
+    assert authz.calls and authz.calls[0][0] == dangling_execution.project_id
 
 
 def test_generate_report_created_at_comes_from_persisted_version(db_session):

@@ -94,6 +94,22 @@ class Settings(BaseSettings):
         validation_alias="AGENT_EXECUTION_WAIT_DEADLINE_SECONDS",
     )
 
+    # Minimal per-user abuse limits for the agent API (opt-in). Production sets
+    # AGENT_RATE_LIMIT_ENABLED=true; disabled by default so local dev and unit
+    # tests stay deterministic. NOT a billing-grade quota subsystem.
+    agent_rate_limit_enabled: bool = Field(
+        default=False,
+        validation_alias="AGENT_RATE_LIMIT_ENABLED",
+    )
+    agent_rate_limit_max_per_minute: int = Field(
+        default=120,
+        validation_alias="AGENT_RATE_LIMIT_MAX_PER_MINUTE",
+    )
+    agent_rate_limit_max_tasks_per_day: int = Field(
+        default=200,
+        validation_alias="AGENT_RATE_LIMIT_MAX_TASKS_PER_DAY",
+    )
+
     # Stale-WAITING recovery: an agent task parked in WAITING_FOR_EXECUTION is
     # force-failed once it has waited this long while its tracked executions
     # are still non-terminal (the per-execution timeout machinery should have

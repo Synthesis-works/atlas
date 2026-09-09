@@ -66,6 +66,19 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentFilter = 'all';
     let autoSelectedOnStart = false;
 
+    // All agent endpoints now require a Bearer JWT (P0 auth hardening). This
+    // panel is served statically; reuse the same localStorage token the landing
+    // app writes so requests authenticate when a user is signed in.
+    function fetchApi(url, options) {
+        options = options || {};
+        const headers = Object.assign({}, options.headers || {});
+        const token = localStorage.getItem('atlas_token');
+        if (token) {
+            headers['Authorization'] = 'Bearer ' + token;
+        }
+        return fetch(url, Object.assign({}, options, { headers: headers }));
+    }
+
     // Helper for safe element style mutation
     function setDisplay(element, value) {
         if (element) {
@@ -140,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             try {
-                const resp = await fetch('/api/v1/agent/tasks', { method: 'DELETE' });
+                const resp = await fetchApi('/api/v1/agent/tasks', { method: 'DELETE' });
                 if (resp.ok) {
                     currentTaskId = null;
                     clearInterval(pollInterval);
@@ -172,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchRecentActivity() {
         try {
-            const resp = await fetch('/api/v1/agent/tasks');
+            const resp = await fetchApi('/api/v1/agent/tasks');
             if (!resp.ok) return;
             const allTasks = await resp.json();
             
@@ -264,7 +277,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const resp = await fetch('/api/v1/agent/tasks', {
+            const resp = await fetchApi('/api/v1/agent/tasks', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -315,7 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentTaskId) return;
 
         try {
-            const resp = await fetch(`/api/v1/agent/tasks/${currentTaskId}`);
+            const resp = await fetchApi(`/api/v1/agent/tasks/${currentTaskId}`);
             if (!resp.ok) return;
 
             const task = await resp.json();
@@ -686,11 +699,11 @@ AgentTask: ${task.task_id}
             }
 
             try {
-                const resp = await fetch(`/api/v1/agent/reports/${currentReportId}`);
+                const resp = await fetchApi(`/api/v1/agent/reports/${currentReportId}`);
                 if (!resp.ok) throw new Error('Report not found');
                 const report = await resp.json();
 
-                const taskResp = await fetch(`/api/v1/agent/tasks/${currentTaskId}`);
+                const taskResp = await fetchApi(`/api/v1/agent/tasks/${currentTaskId}`);
                 const taskData = await taskResp.json();
 
                 if (modalReportTitle) modalReportTitle.textContent = report.title || 'Comparative Benchmark Evaluation Report';
@@ -795,7 +808,7 @@ AgentTask: ${taskData.task_id}
                     artRunAgainBtn.disabled = true;
                     artRunAgainBtn.textContent = 'Launching...';
 
-                    const resp = await fetch(`/api/v1/agent/tasks/${currentTaskId}/run-again`, {
+                    const resp = await fetchApi(`/api/v1/agent/tasks/${currentTaskId}/run-again`, {
                         method: 'POST'
                     });
 
@@ -895,7 +908,7 @@ AgentTask: ${taskData.task_id}
         approveBtn.addEventListener('click', async () => {
             if (!currentTaskId || !currentApprovalToken) return;
             try {
-                await fetch(`/api/v1/agent/tasks/${currentTaskId}/approve`, {
+                await fetchApi(`/api/v1/agent/tasks/${currentTaskId}/approve`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ approval_token: currentApprovalToken })
@@ -912,7 +925,7 @@ AgentTask: ${taskData.task_id}
         cancelBtn.addEventListener('click', async () => {
             if (!currentTaskId) return;
             try {
-                await fetch(`/api/v1/agent/tasks/${currentTaskId}/cancel`, { method: 'POST' });
+                await fetchApi(`/api/v1/agent/tasks/${currentTaskId}/cancel`, { method: 'POST' });
                 setDisplay(approvalCard, 'none');
             } catch (e) {
                 alert(`Cancellation error: ${e.message}`);
@@ -932,7 +945,7 @@ AgentTask: ${taskData.task_id}
             try {
                 clarifySubmitBtn.disabled = true;
                 clarifySubmitBtn.style.opacity = '0.5';
-                const resp = await fetch(`/api/v1/agent/tasks/${currentTaskId}/clarify`, {
+                const resp = await fetchApi(`/api/v1/agent/tasks/${currentTaskId}/clarify`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -963,7 +976,7 @@ AgentTask: ${taskData.task_id}
         clarifyCancelBtn.addEventListener('click', async () => {
             if (!currentTaskId) return;
             try {
-                await fetch(`/api/v1/agent/tasks/${currentTaskId}/cancel`, { method: 'POST' });
+                await fetchApi(`/api/v1/agent/tasks/${currentTaskId}/cancel`, { method: 'POST' });
                 setDisplay(clarificationCard, 'none');
             } catch (e) {
                 alert(`Cancellation error: ${e.message}`);

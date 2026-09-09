@@ -17,10 +17,28 @@ from apps.backend.agent.providers.router import (
 )
 from apps.backend.agent.state import AgentPermission, AgentTask, AgentTaskStatus
 from apps.backend.agent.tools.registry import ToolRegistry
-from apps.backend.dependencies import get_db_session
+from apps.backend.authz import ProjectAuthorizationService, get_project_authz_service
+from apps.backend.dependencies import (
+    TokenClaims,
+    get_db_session,
+    require_authenticated,
+)
+from apps.backend.rate_limit import (
+    enforce_agent_minute_rate_limit,
+    enforce_agent_task_create_limit,
+)
 from atlas_db.core.session import SessionLocal
+from atlas_db.models.core import OrganizationRole
 
 router = APIRouter(prefix="/agent", tags=["Atlas Agent"])
+
+# Read-level access to an agent-owned report requires any membership role.
+READ_ROLES = [
+    OrganizationRole.OWNER,
+    OrganizationRole.ADMIN,
+    OrganizationRole.MEMBER,
+    OrganizationRole.VIEWER,
+]
 
 
 def _persist_task(db: Session, task: "AgentTask", instance_id: Optional[str] = None) -> None:
@@ -40,12 +58,16 @@ def _persist_task(db: Session, task: "AgentTask", instance_id: Optional[str] = N
             goal=task.goal,
             status=task.status.value,
             snapshot=snapshot,
+            created_by_user_id=task.created_by_user_id,
+            organization_id=task.organization_id,
         )
         db.add(record)
     else:
         record.goal = task.goal
         record.status = task.status.value
         record.snapshot = snapshot
+        record.created_by_user_id = task.created_by_user_id
+        record.organization_id = task.organization_id
     if instance_id is not None:
         record.instance_id = instance_id
         record.heartbeat_at = datetime.now(UTC)
@@ -76,6 +98,33 @@ def _load_agent_task(db: Session, task_id: UUID) -> Optional["AgentTask"]:
     if record is None:
         return _agent_tasks_db.get(task_id)
     task = AgentTask.model_validate(record.snapshot)
+    _agent_tasks_db[task_id] = task
+    return task
+
+
+def _require_task_owner(db: Session, task_id: UUID, claims: TokenClaims) -> AgentTask:
+    """Resolve a persisted task and enforce owner-only access.
+
+    Tasks created before P0 auth hardening carry a NULL ``created_by_user_id``
+    and must never surface to any user (403), even to users who know the id.
+    """
+    from atlas_db.models.agent import AgentTaskRecord
+
+    user_id = claims.sub
+    record = db.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == task_id).first()
+    if record is None:
+        task = _agent_tasks_db.get(task_id)
+        if task is not None and task.created_by_user_id == user_id:
+            return task
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
+        )
+    task = AgentTask.model_validate(record.snapshot)
+    if task.created_by_user_id is None or task.created_by_user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this agent task.",
+        )
     _agent_tasks_db[task_id] = task
     return task
 
@@ -248,11 +297,15 @@ def create_agent_task(
     payload: TaskCreateRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db_session),
+    claims: TokenClaims = Depends(require_authenticated),
+    _: TokenClaims = Depends(enforce_agent_task_create_limit),
 ):
     task = AgentTask(
         goal=payload.goal,
         granted_permissions=payload.permissions,
         primary_provider=payload.provider,
+        created_by_user_id=claims.sub,
+        organization_id=claims.organization_id,
     )
     if payload.model is not None:
         task.model = payload.model
@@ -270,18 +323,23 @@ def create_agent_task(
 
 
 @router.get("/tasks/{task_id}", response_model=dict[str, Any])
-def get_agent_task(task_id: UUID, db: Session = Depends(get_db_session)):
-    task = _load_agent_task(db, task_id)
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
-        )
+def get_agent_task(
+    task_id: UUID,
+    db: Session = Depends(get_db_session),
+    claims: TokenClaims = Depends(require_authenticated),
+):
+    task = _require_task_owner(db, task_id, claims)
 
     return _serialize_agent_task(task)
 
 
 @router.get("/reports/{report_id}", response_model=dict[str, Any])
-def get_agent_report(report_id: str, db: Session = Depends(get_db_session)):
+def get_agent_report(
+    report_id: str,
+    db: Session = Depends(get_db_session),
+    claims: TokenClaims = Depends(require_authenticated),
+    project_authz: ProjectAuthorizationService = Depends(get_project_authz_service),
+):
     from atlas_db.models.reporting import ReportMetric, ReportVersion
     import uuid
 
@@ -298,6 +356,27 @@ def get_agent_report(report_id: str, db: Session = Depends(get_db_session)):
             status_code=status.HTTP_404_NOT_FOUND, detail=f"Report '{report_id}' not found."
         )
 
+    # Agent-report ownership boundary: a report is readable through the agent
+    # endpoint only when its lineage back to an execution (and thus a project)
+    # can be resolved, and the caller is an active member of that project's
+    # organization (any role). Legacy reports without execution linkage are
+    # unreachable, matching how the endpoint treats unresolvable ownership.
+    execution = None
+    if version.execution_id:
+        from atlas_db.models.execution import Execution as DBExecution
+
+        execution = db.query(DBExecution).filter(DBExecution.id == version.execution_id).first()
+    if not execution or not execution.project_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have access to this report.",
+        )
+    project_authz.authorize_project_access(
+        project_id=execution.project_id,
+        user_id=claims.sub,
+        allowed_roles=READ_ROLES,
+    )
+
     metrics = [
         {"metric_name": m.metric_name, "metric_value": m.metric_value} for m in version.metrics
     ]
@@ -307,10 +386,8 @@ def get_agent_report(report_id: str, db: Session = Depends(get_db_session)):
     # If the linkage cannot be resolved, return null rather than inventing one.
     benchmark_id = None
     if version.execution_id:
-        from atlas_db.models.execution import Execution as DBExecution
         from atlas_db.models.authoring import BenchmarkVersion as DBBenchmarkVersion
 
-        execution = db.query(DBExecution).filter(DBExecution.id == version.execution_id).first()
         if execution and execution.benchmark_version_id:
             benchmark_version = (
                 db.query(DBBenchmarkVersion)
@@ -334,34 +411,58 @@ def get_agent_report(report_id: str, db: Session = Depends(get_db_session)):
 
 
 @router.get("/tasks", response_model=list[dict[str, Any]])
-def list_agent_tasks(db: Session = Depends(get_db_session)):
-    """Read every task from its persisted snapshot, the source of truth.
+def list_agent_tasks(
+    db: Session = Depends(get_db_session),
+    claims: TokenClaims = Depends(require_authenticated),
+    _: TokenClaims = Depends(enforce_agent_minute_rate_limit),
+):
+    """Read the caller's tasks from their persisted snapshots, the source of
+    truth.
 
     The worker checkpoints all state transitions to ``agent_task_records`` in
     its own process; listing from the DB (instead of the process-local
     registry first) keeps statuses correct across instances rather than
     surfacing the stale working copy of whichever warm lambda created a task.
+    Rows are filtered to the authenticated caller and legacy (owner-less)
+    rows are never surfaced.
     """
     from atlas_db.models.agent import AgentTaskRecord
 
-    records = db.query(AgentTaskRecord).order_by(AgentTaskRecord.created_at.desc()).all()
+    records = (
+        db.query(AgentTaskRecord)
+        .filter(AgentTaskRecord.created_by_user_id == claims.sub)
+        .order_by(AgentTaskRecord.created_at.desc())
+        .all()
+    )
     return [_serialize_agent_task(AgentTask.model_validate(r.snapshot)) for r in records]
 
 
 @router.delete("/tasks", response_model=dict[str, Any])
-def clear_agent_tasks(db: Session = Depends(get_db_session)):
+def clear_agent_tasks(
+    db: Session = Depends(get_db_session),
+    claims: TokenClaims = Depends(require_authenticated),
+):
+    """Clear the caller's agent tasks (never other users' tasks)."""
     from atlas_db.models.agent import AgentTaskRecord
 
-    _agent_tasks_db.clear()
-    db.query(AgentTaskRecord).delete()
+    user_id = claims.sub
+    for tid, task in list(_agent_tasks_db.items()):
+        if task.created_by_user_id == user_id:
+            del _agent_tasks_db[tid]
+    db.query(AgentTaskRecord).filter(AgentTaskRecord.created_by_user_id == user_id).delete()
     db.commit()
     return {"status": "success", "message": "All agent tasks cleared."}
 
 
 @router.delete("/tasks/{task_id}", response_model=dict[str, Any])
-def delete_agent_task(task_id: UUID, db: Session = Depends(get_db_session)):
+def delete_agent_task(
+    task_id: UUID,
+    db: Session = Depends(get_db_session),
+    claims: TokenClaims = Depends(require_authenticated),
+):
     from atlas_db.models.agent import AgentTaskRecord
 
+    _require_task_owner(db, task_id, claims)
     if task_id in _agent_tasks_db:
         del _agent_tasks_db[task_id]
     record = db.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == task_id).first()
@@ -378,12 +479,10 @@ def approve_agent_task(
     payload: TaskApprovalRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db_session),
+    claims: TokenClaims = Depends(require_authenticated),
+    _: TokenClaims = Depends(enforce_agent_minute_rate_limit),
 ):
-    task = _load_agent_task(db, task_id)
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
-        )
+    task = _require_task_owner(db, task_id, claims)
 
     if task.status != AgentTaskStatus.WAITING_FOR_APPROVAL:
         raise HTTPException(
@@ -423,12 +522,13 @@ def approve_agent_task(
 
 
 @router.post("/tasks/{task_id}/cancel", response_model=dict[str, Any])
-def cancel_agent_task(task_id: UUID, db: Session = Depends(get_db_session)):
-    task = _load_agent_task(db, task_id)
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
-        )
+def cancel_agent_task(
+    task_id: UUID,
+    db: Session = Depends(get_db_session),
+    claims: TokenClaims = Depends(require_authenticated),
+    _: TokenClaims = Depends(enforce_agent_minute_rate_limit),
+):
+    task = _require_task_owner(db, task_id, claims)
 
     task.status = AgentTaskStatus.CANCELLED
     task.add_trace("TASK_CANCELLED", {"reason": "User manual cancellation"})
@@ -459,12 +559,10 @@ def clarify_agent_task(
     payload: TaskClarificationRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db_session),
+    claims: TokenClaims = Depends(require_authenticated),
+    _: TokenClaims = Depends(enforce_agent_minute_rate_limit),
 ):
-    task = _load_agent_task(db, task_id)
-    if not task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
-        )
+    task = _require_task_owner(db, task_id, claims)
 
     if task.status != AgentTaskStatus.WAITING_FOR_CLARIFICATION:
         raise HTTPException(
@@ -543,12 +641,10 @@ def run_agent_task_again(
     task_id: UUID,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db_session),
+    claims: TokenClaims = Depends(require_authenticated),
+    _: TokenClaims = Depends(enforce_agent_minute_rate_limit),
 ):
-    old_task = _load_agent_task(db, task_id)
-    if not old_task:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"AgentTask '{task_id}' not found."
-        )
+    old_task = _require_task_owner(db, task_id, claims)
 
     # Create new task cloning parameters
     from uuid import uuid4
@@ -568,6 +664,8 @@ def run_agent_task_again(
         dataset_version_id=old_task.dataset_version_id,
         primary_provider=old_task.primary_provider,
         model=old_task.model,
+        created_by_user_id=old_task.created_by_user_id,
+        organization_id=old_task.organization_id,
     )
 
     # Register in in-memory tasks database
@@ -602,12 +700,12 @@ def run_agent_task_again(
 
 
 @router.get("/tools", response_model=list[dict[str, Any]])
-def list_agent_tools():
+def list_agent_tools(claims: TokenClaims = Depends(require_authenticated)):
     return _tool_registry.list_tools()
 
 
 @router.get("/providers", response_model=list[dict[str, Any]])
-def list_agent_providers():
+def list_agent_providers(claims: TokenClaims = Depends(require_authenticated)):
     """
     Returns the list of configured Agent reasoning providers.
 

@@ -31,7 +31,11 @@ async def custom_http_exception_handler(
         error=ErrorDetail(code=f"HTTP_{exc.status_code}", message=str(exc.detail)),
         meta=_get_meta(request),
     )
-    return JSONResponse(status_code=exc.status_code, content=error_response.model_dump(mode="json"))
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error_response.model_dump(mode="json"),
+        headers=exc.headers or None,
+    )
 
 
 async def validation_exception_handler(
