@@ -76,3 +76,31 @@ def missing_key_message() -> str:
     lines.append("")
     lines.append("Create a key at console.groq.com (Groq) or AI Studio at ai.google.dev (Gemini).")
     return "\n".join(lines)
+
+
+def hosted_unavailable_message() -> str:
+    """Guidance when the conversational agent has neither Atlas auth nor BYOK.
+
+    The default conversational experience runs on the hosted Atlas brain, which
+    requires an authenticated Atlas session.  The local agent path is available
+    as a BYOK fallback via ``atlas agent`` when a provider key is configured.
+    """
+    lines: list[str] = [
+        "error: Atlas agent is unavailable. No Atlas session and no local LLM "
+        "provider key were found.",
+        "",
+        "To use the hosted Atlas brain, authenticate with:",
+        "    atlas login",
+        "",
+        "Or configure a supported BYOK provider and use the explicit agent path:",
+        '    atlas agent --provider gemini "your task"',
+        '    atlas agent --provider groq "your task"',
+    ]
+    for provider in ("groq", "gemini"):
+        lines.append("")
+        lines.append(f"{provider.upper()} (setup for the BYOK agent path):")
+        for shell_label, command in setup_commands(provider):
+            lines.append(f"  {shell_label:<27} {command}")
+    lines.append("")
+    lines.append("Create a key at console.groq.com (Groq) or AI Studio at ai.google.dev (Gemini).")
+    return "\n".join(lines)

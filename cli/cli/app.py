@@ -33,7 +33,44 @@ class Context:
 _pass_context = click.make_pass_decorator(Context, ensure=True)
 
 
-@click.group(invoke_without_command=True)
+class _AgentFirstGroup(click.Group):
+    """Root group whose first non-option token is treated as natural language.
+
+    Resolution order is strict and stable:
+
+    1. ``--help`` / ``--version`` / any global option (parsed by the group's
+       own option parser *before* command resolution; consumed there).
+    2. A registered deterministic command — ``login``, ``benchmark``,
+       ``run``, ``agent``, etc. — wins on the FIRST token, always.
+    3. Anything else (unknown first token, or a quoted/multi-word phrase) is
+       routed to the hidden ``_nlu`` command, which sends the whole remainder
+       as a prompt to the hosted agent — ``atlas "run the mock suite"`` and
+       ``atlas help me`` both work, while ``atlas run the mock suite`` stays a
+       deterministic ``run`` invocation (its own usage error), so future
+       commands never change meaning.
+    """
+
+    def resolve_command(
+        self, ctx: click.Context, args: list[str]
+    ) -> tuple[str, click.Command, list[str]]:
+        token = args[0] if args else None
+        if token is None or token.startswith("-"):
+            # No tokens (bare ``atlas``) or a leftover option-like token:
+            # nothing to route here (the group's own options were already
+            # consumed by its option parser before this is reached).
+            raise click.NoSuchCommand(token or "")
+        known = self.get_command(ctx, token)
+        if known is not None:
+            return token, known, args[1:]
+        # Not a command → agent-first: hand the FULL argument list to _nlu so
+        # every token after ``atlas`` is interpreted as natural language.
+        nlu = self.get_command(ctx, "_nlu")
+        if nlu is not None:
+            return "_nlu", nlu, args
+        raise click.NoSuchCommand(token)
+
+
+@click.group(cls=_AgentFirstGroup, invoke_without_command=True)
 @click.option(
     "--output",
     "-o",
@@ -105,6 +142,13 @@ def main(
       atlas dashboard
 
       atlas leaderboard model mock --history
+
+      atlas "run the mock benchmark suite"
+
+    With no command, ``atlas`` starts the interactive agent: the hosted Atlas
+    conversation when you are signed in, otherwise the local BYOK loop.  With
+    a quoted (or multi-word) non-command first token, the whole phrase is sent
+    to the hosted agent as a one-shot request.
     """
     ctx.config = load_config(
         base_url=base_url,
@@ -134,31 +178,84 @@ def _is_tty() -> bool:
 
 
 def _agent_unavailable_message() -> str:
+    """BYOK-only guidance (used by ``atlas agent``)."""
     from cli.agent.setup import missing_key_message
 
     return missing_key_message()
 
 
+def _hosted_unavailable_message() -> str:
+    """Guidance for conversational paths when neither auth nor BYOK keys exist."""
+    from cli.agent.setup import hosted_unavailable_message
+
+    return hosted_unavailable_message()
+
+
 def _run_repl(ctx: Context) -> int:
-    """Start the interactive agent REPL; returns a process exit code."""
-    from cli.agent.repl import AgentREPL, build_agent_provider
+    """Start the conversational agent REPL; returns a process exit code.
+
+    Hosted-first: when an Atlas session token is present the REPL drives the
+    hosted brain through the P1 session API (provider keys stay on the
+    server).  Without auth it falls back to the existing BYOK local loop so a
+    keyed set-up keeps working.  With neither, prints actionable guidance and
+    exits 10.
+    """
+    cfg: AtlasConfig = ctx.config
+
+    def _byok_repl() -> int:
+        from cli.agent.repl import AgentREPL, build_agent_provider
+        from cli.client import build_client
+
+        provider = build_agent_provider()
+        if not provider.available:
+            click.echo(_hosted_unavailable_message(), err=True)
+            return ExitCode.AGENT_UNAVAILABLE
+        repl = AgentREPL(provider=provider, client_factory=lambda: build_client(cfg))
+        try:
+            return repl.interact()
+        except Exception as exc:  # noqa: BLE001
+            error_exit(exc, cfg.effective_output())
+            return ExitCode.UNSPECIFIED
+
+    if not cfg.token:
+        return _byok_repl()
+
+    from cli.agent.hosted import HostedAgentREPL
     from cli.client import build_client
 
-    provider = build_agent_provider()
-    if not provider.available:
-        click.echo(_agent_unavailable_message(), err=True)
-        return ExitCode.AGENT_UNAVAILABLE
+    try:
+        with build_client(cfg) as client:
+            return HostedAgentREPL(client).interact()
+    except Exception as exc:  # noqa: BLE001
+        error_exit(exc, cfg.effective_output())
+        return ExitCode.UNSPECIFIED
+
+
+@click.command(name="_nlu", hidden=True)
+@click.argument("words", nargs=-1, required=True)
+@_pass_context
+def _nlu(ctx: Context, words: tuple[str, ...]) -> None:
+    """Agent-first fallback: send the remaining tokens as natural language.
+
+    Hidden from ``--help``; only reachable via the ``_AgentFirstGroup``
+    routing for unknown first tokens (bare ``atlas`` is handled separately).
+    Requires an Atlas session; without one it prints guidance and exits 10.
+    """
+    from cli.agent.hosted import run_hosted_one_shot
+    from cli.client import build_client
 
     cfg: AtlasConfig = ctx.config
-    repl = AgentREPL(
-        provider=provider,
-        client_factory=lambda: build_client(cfg),
-    )
+    if not cfg.token:
+        click.echo(_hosted_unavailable_message(), err=True)
+        raise SystemExit(ExitCode.AGENT_UNAVAILABLE)
+    task = " ".join(words)
     try:
-        return repl.interact()
+        with build_client(cfg) as client:
+            code = run_hosted_one_shot(client, task)
     except Exception as exc:  # noqa: BLE001
         error_exit(exc, cfg.effective_output())
         raise SystemExit(ExitCode.UNSPECIFIED) from exc
+    raise SystemExit(code)
 
 
 @click.command(name="agent")
@@ -214,6 +311,7 @@ from cli.commands.report import report_group as _report_group  # noqa: E402
 from cli.commands.run import run_group as _run_group  # noqa: E402
 
 main.add_command(agent_cmd)
+main.add_command(_nlu)
 main.add_command(_login_cmd)  # type: ignore[has-type]
 main.add_command(_logout_cmd)  # type: ignore[has-type]
 main.add_command(_whoami_cmd)  # type: ignore[has-type]

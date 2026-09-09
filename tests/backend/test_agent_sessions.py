@@ -346,6 +346,12 @@ def test_approval_flow_with_wrong_and_right_token(db_session):
     session_id = _seed_session(db_session, owner=USER_A, org_id=ORG_A, current_task_id=task.task_id)
 
     with _session_client(db_session, _claims(USER_A, org_id=ORG_A)) as client:
+        fetched = client.get(f"/api/v1/agent/sessions/{session_id}").json()
+        pending = fetched["pending_action"]
+        assert pending["action"] == "approve"
+        assert pending["tool_name"] == "create_benchmark"
+        assert pending["approval_token"] == "tok-123"
+
         resp_401 = client.post(
             f"/api/v1/agent/sessions/{session_id}/approve", json={"approval_token": "wrong"}
         )

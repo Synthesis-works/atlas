@@ -60,6 +60,7 @@ class AgentPendingAction(BaseModel):
     task_id: str
     tool_name: str | None = None
     approval_token_required: bool | None = None
+    approval_token: str | None = None
     clarification_id: str | None = None
     question: str | None = None
     message: str | None = None

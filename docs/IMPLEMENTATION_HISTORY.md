@@ -2,6 +2,14 @@
 
 This document tracks all major implementation milestones for Atlas.
 
+## Milestone: Hosted Conversational Session API (P1) + CLI Agent-First UX (P2)
+- **Date**: September 2026
+- **Branches**: P1 `feature/hosted-session-api` (merged to `main` as `7e09beb`, PR #75); P2 `feature/p2-cli-agent-first` (implemented, **not yet merged**).
+- **Purpose**: P1 — a REST session API so a hosted brain can run conversational agent turns server-side (state machine with approval/clarification, server-owned provider credentials, per-session task lineage, `_require_active_session` lifecycle guard). P2 — make the CLI agent-first: bare `atlas` on a TTY opens the hosted REPL, non-command first tokens become hosted one-shot requests, while every deterministic command and the BYOK `atlas agent` path remain unchanged.
+- **Files changed**: P1 — `apps/backend/routers/agent_sessions.py` (+ `_pending_action`, `_derive_state`, `_sync_transcript`, Celery dispatch), `tests/backend/test_agent_sessions.py` (incl. archived-session regression), SDK session DTOs + client methods, contract baseline, CLI agent tools integration. P2 — `cli/cli/agent/hosted.py` (new hosted turn engine, `HostedAgentREPL`, `run_hosted_one_shot`, polling, explicit-only approvals, clarification), `cli/cli/app.py` (`_AgentFirstGroup` NL-routing + hidden `_nlu` one-shot + hosted-first `_run_repl`), `cli/cli/agent/setup.py` (hosted-vs-BYOK guidance), backend/SDK `approval_token` surfacing in `AgentPendingAction`, new CLI suite `cli/tests/test_hosted_agent.py`.
+- **Impact**: `atlas` and `atlas "NL"` now use the hosted brain when signed in (provider keys never leave the server); approvals require an explicit user confirm using the server's single-use token; sessions are archived after one-shots and on clean REPL exit. Without auth or a BYOK key, conversational paths print actionable guidance and exit 10.
+- **Current status**: P1 complete (backend 45, SDK 239/2 skipped, mypy + ruff clean; merged `7e09beb`). P2 implemented on `feature/p2-cli-agent-first`: CLI suite 607 passed, backend sessions 18 passed, SDK contract/session 25 passed/2 skipped, ruff + mypy clean on touched files. P2 awaits review/merge.
+
 ## Milestone: Atlas CLI v2 — Execution Authority (Slice 1) & Published Discovery / Real Submit Authz (Slice 2)
 - **Date**: August 2026
 - **Branch**: `feature/atlas-cli-v2`
