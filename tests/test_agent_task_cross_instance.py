@@ -379,7 +379,7 @@ def test_agent_run_subscriber_enqueues_on_worker_side(monkeypatch):
         timestamp=datetime.now(UTC),
         task_id=task_id,
         provider_type="groq",
-        model_override="llama-3.3-70b-versatile",
+        model_override="openai/gpt-oss-20b",
     )
 
     # Registry round-trip: an outbox message must deserialize to the event.
@@ -393,7 +393,7 @@ def test_agent_run_subscriber_enqueues_on_worker_side(monkeypatch):
     monkeypatch.setattr(run_agent_task, "delay", chain.delay)
 
     AgentRunSubscriber().handle(event)
-    chain.delay.assert_called_once_with(str(task_id), "groq", "llama-3.3-70b-versatile")
+    chain.delay.assert_called_once_with(str(task_id), "groq", "openai/gpt-oss-20b")
 
 
 def test_get_and_list_reflect_worker_side_state_change():

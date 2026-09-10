@@ -86,8 +86,8 @@ class ModelRegistry:
         models.append(
             {
                 "provider": "groq",
-                "model": "llama-3.3-70b-versatile",
-                "display_name": "Llama 3.3 70b (Groq)",
+                "model": "openai/gpt-oss-20b",
+                "display_name": "GPT-OSS 20B (Groq)",
                 "source": "cloud",
                 "available": bool(groq_key),
                 "status": "AVAILABLE" if groq_key else "NOT_CONFIGURED",

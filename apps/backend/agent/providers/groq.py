@@ -19,9 +19,9 @@ class GroqAgentProvider(BaseLLMProvider):
     """
     Agent LLM provider using Groq.com inference API.
 
-    Groq serves OSS models (LLaMA 3.x, Mixtral) via an OpenAI-compatible
-    API at ultra-low latency. It has strong native function/tool calling
-    support on llama-3.3-70b-versatile.
+    Groq serves OSS models (GPT-OSS 20B, LLaMA 3.x, Mixtral) via an
+    OpenAI-compatible API at ultra-low latency. It has strong native
+    function/tool calling support on openai/gpt-oss-20b.
 
     Note: This is Groq.com (https://groq.com), not xAI Grok. The xAI Grok
     provider is in grok.py and currently disabled in the production fallback
@@ -34,8 +34,8 @@ class GroqAgentProvider(BaseLLMProvider):
         api_key_env: str = "GROQ_API_KEY",
         client: Optional[GroqClient] = None,
     ):
-        # llama-3.3-70b-versatile: verified working with tool calling (2026-08-15 audit)
-        configured_model = os.getenv("GROQ_MODEL") or "llama-3.3-70b-versatile"
+        # openai/gpt-oss-20b: standard-tier, tool-calling capable (2026-09-09 switch)
+        configured_model = os.getenv("GROQ_MODEL") or "openai/gpt-oss-20b"
         self.model: str = model or configured_model
         self.client = client or GroqClient(api_key_env=api_key_env)
 

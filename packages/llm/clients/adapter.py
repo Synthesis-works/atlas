@@ -133,7 +133,7 @@ class ProviderAdapter:
           'google/gemini-1.5-pro' -> ('gemini', 'gemini-1.5-pro')
           'grok-2' -> ('grok', 'grok-2')
           'mistral-large-latest' -> ('mistral', 'mistral-large-latest')
-          'groq/llama-3.3-70b-versatile' -> ('groq', 'llama-3.3-70b-versatile')
+          'groq/openai/gpt-oss-20b' -> ('groq', 'openai/gpt-oss-20b')
           'nvidia/meta/llama-3.1-405b-instruct' -> ('nvidia', 'meta/llama-3.1-405b-instruct')
           'ollama/llama3' -> ('ollama', 'llama3')
         """
