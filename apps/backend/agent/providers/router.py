@@ -3,7 +3,7 @@ Atlas Agent Provider Router
 
 Production fallback chain (verified 2026-08-15):
     Primary:    Gemini (gemini-3.5-flash-lite)   — Google AI, native functionDeclarations
-    Fallback 1: Groq   (llama-3.3-70b-versatile) — Groq.com, OpenAI-compat tool calling
+    Fallback 1: Groq   (openai/gpt-oss-20b) — Groq.com, OpenAI-compat tool calling
     Fallback 2: Mistral (mistral-small-latest)    — Mistral AI, OpenAI-compat tool calling
 
 xAI/Grok: code preserved in grok.py but EXCLUDED from production chain.
@@ -71,9 +71,9 @@ PROVIDER_REGISTRY: list[ProviderConfig] = [
     ),
     ProviderConfig(
         value="groq",
-        label="Groq (LLaMA 3.3)",
-        description="LLaMA 3.3 70B via Groq.com inference API. Ultra-low latency tool calling.",
-        model="llama-3.3-70b-versatile",
+        label="Groq (GPT-OSS 20B)",
+        description="GPT-OSS 20B via Groq.com inference API. Ultra-low latency tool calling.",
+        model="openai/gpt-oss-20b",
         is_test_only=False,
         api_key_env="GROQ_API_KEY",
     ),
@@ -174,7 +174,7 @@ class ProviderRouter(BaseLLMProvider):
 
     Default chain (when all keys are configured):
         Primary:    GeminiAgentProvider (gemini-3.5-flash-lite)
-        Fallback 1: GroqAgentProvider   (llama-3.3-70b-versatile)
+        Fallback 1: GroqAgentProvider   (openai/gpt-oss-20b)
         Fallback 2: MistralAgentProvider (mistral-small-latest)
 
     The chain is built from PROVIDER_REGISTRY at instantiation time,

@@ -171,7 +171,7 @@ Issues discovered while running PR #44 locally. Markers: **[code]** = confirmed 
 | Model catalog | `/api/v1/models` returned 404 → catalog showed error state (now fixed: router was never mounted) | High | [API] | main & PR #44 (pre-fix) | `models.router` defined but not included in `main.py` | ✅ fixed in PR #44 (`c68e10b`); re-verify in browser |
 | Dataset page | Datasets endpoint returned 500 → catalog error state (now fixed) | High | [API] | main & PR #44 (pre-fix) | `DatasetService.list_datasets` used `.session`; repository exposes `.db` | ✅ fixed in PR #44 (`c68e10b`); re-verify in browser |
 | Benchmark catalog | Real data loads correctly; when the API fails the UI now shows an honest error/empty state instead of mock data (intentional behavior change) | Low | [API] | PR #44 | — | Confirm the empty state copy is user-friendly |
-| Model selector | Registry marks `groq/llama-3.3-70b-versatile` and `grok-2-latest` as `available=True`, but the providers 404 those model names → user selects a "ready" model and the run fails | High | [API] | main & PR #44 | Stale model names in `packages/llm/registry.py` | Clean up registry names to real provider IDs (e.g. `gpt-oss-20b`) |
+| Model selector | Registry marks `groq/llama-3.3-70b-versatile` and `grok-2-latest` as `available=True`, but the providers 404 those model names → user selects a "ready" model and the run fails | High | [API] | main & PR #44 | Stale model names in `packages/llm/registry.py` | Groq fixed in 0.2.2 (→ `openai/gpt-oss-20b`); `grok-2-latest` in `registry.py` still stale (open) |
 | Models page widgets | `modelsStore` silently ignores fetch failures (only sets data on success; no error surface) | Medium | [code] | main & PR #44 | Store fetch effect has no error state | Add store-level error/retry, or share the catalog's error state |
 | Execution detail | COMPLETED runs show `completed_items 0/N` and empty `started_at/completed_at` in the API/UI | Medium | [API] | main & PR #44 | Execution DTO mapping quirk (pre-existing) | Fix DTO hydration of progress timestamps |
 | Leaderboard/evaluations (local dev only) | After a local run, eval results and leaderboard snapshot never appear | Medium | [API] | main & PR #44 (dev-only) | Local outbox sweep requires Redis (absent in one-click dev) + dispatcher exception-handler bug (§10) | Prod pipeline verified working; add Redis to local dev or fix the dispatcher error path |
@@ -193,7 +193,7 @@ All pre-existing on `main` unless noted; none were introduced by PR #44 (PR #44 
 | 3 | `GET /api/v1/search` 500 — `Benchmark.description` does not exist on the model | ⚠️ open | `services/search/providers/benchmark.py:30` — drop/replace the attribute reference |
 | 4 | Outbox dispatcher exception handler crashes — `logger.error("...", event=...)` collides with structlog's `event` kwarg → messages stay PENDING/FAILED | ⚠️ open (dev impact only; prod pipeline verified working) | `outbox_dispatcher.py:126` — rename the kwarg |
 | 5 | Local outbox sweep needs Redis; one-click dev has none | ⚠️ open (dev only) | Document or add Redis to dev setup |
-| 6 | Stale registry model names (`llama-3.3-70b-versatile`, `grok-2-latest`) | ⚠️ open | Registry cleanup to real provider model IDs |
+| 6 | Stale registry model names (`llama-3.3-70b-versatile`, `grok-2-latest`) | ✅ groq fixed in 0.2.2 | Registry cleanup: groq → `openai/gpt-oss-20b`; `grok-2-latest` still open |
 | 7 | `completed_items`/`started_at` not hydrated on COMPLETED runs | ⚠️ open (cosmetic) | Execution DTO mapping fix |
 
 ---

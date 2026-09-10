@@ -29,7 +29,7 @@ def test_factory_returns_real_adapter_for_real_targets():
     adapter_mistral = AdapterFactory.get_adapter("mistral-large-latest")
     assert isinstance(adapter_mistral, RealModelAdapter)
 
-    adapter_groq = AdapterFactory.get_adapter("groq/llama-3.3-70b-versatile")
+    adapter_groq = AdapterFactory.get_adapter("groq/openai/gpt-oss-20b")
     assert isinstance(adapter_groq, RealModelAdapter)
 
     adapter_nvidia = AdapterFactory.get_adapter("nvidia/meta/llama-3.1-405b-instruct")

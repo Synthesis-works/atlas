@@ -98,7 +98,7 @@
 | Provider | Status | Notes |
 |---|---|---|
 | **Gemini** | Primary, default | `gemini-3.5-flash-lite`. Native `functionDeclarations`, schema sent unchanged. Quota is precious — do NOT run real-API tests casually. |
-| **Groq** | Fallback 1 | `llama-3.3-70b-versatile`. OpenAI-compatible tool calling (fixed), `extract_json_object` text fallback. |
+| **Groq** | Fallback 1 | `openai/gpt-oss-20b`. OpenAI-compatible tool calling (fixed), `extract_json_object` text fallback. |
 | **Mistral** | Fallback 2 | `mistral-small-latest`. Same normalization/fallback handling as Groq. |
 | **Grok (xAI)** | Excluded | Code preserved in `grok.py`; registry entry commented out — no credits, deprecated model IDs. Re-enable by un-commenting its `ProviderConfig` once funded. |
 | **Mock** | Test-only | `is_test_only=True`, filtered out of `/providers` and hidden from UI. |
