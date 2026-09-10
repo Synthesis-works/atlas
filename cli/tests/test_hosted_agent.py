@@ -470,6 +470,64 @@ class TestRepl:
         assert sends[0][2]["message"] == "second"
         assert client.deleted == ["s1"]
 
+    def test_eof_at_clarification_archives_session(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """EOF raised at the *nested* clarification prompt still archives the session."""
+        client = FakeClient(
+            create_agent_session=lambda goal, provider=None: _session(
+                state="AWAITING_CLARIFICATION",
+                pending_action=_pend(action="clarify", question="Which model?"),
+            )
+        )
+
+        def _inputs_then_eof() -> object:
+            it = iter(["hello"])
+
+            def _input(_prompt: str = "") -> str:
+                try:
+                    return next(it)
+                except StopIteration:
+                    raise EOFError from None
+
+            return _input
+
+        monkeypatch.setattr("builtins.input", _inputs_then_eof())
+        monkeypatch.setattr("cli.agent.hosted.time.sleep", lambda _s: None)
+        out: list[str] = []
+        repl = HostedAgentREPL(client, sleep=lambda _s: None, echo=out.append)
+        code = repl.interact()
+        assert code == ExitCode.SUCCESS
+        assert "Bye!" in "\n".join(out)
+        assert client.deleted == ["s1"]
+
+    def test_ctrl_c_at_clarification_archives_session(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Ctrl-C raised at the *nested* clarification prompt still archives the session."""
+        client = FakeClient(
+            create_agent_session=lambda goal, provider=None: _session(
+                state="AWAITING_CLARIFICATION",
+                pending_action=_pend(action="clarify", question="Which model?"),
+            )
+        )
+
+        def _inputs_then_interrupt() -> object:
+            it = iter(["hello"])
+
+            def _input(_prompt: str = "") -> str:
+                try:
+                    return next(it)
+                except StopIteration:
+                    raise KeyboardInterrupt from None
+
+            return _input
+
+        monkeypatch.setattr("builtins.input", _inputs_then_interrupt())
+        monkeypatch.setattr("cli.agent.hosted.time.sleep", lambda _s: None)
+        repl = HostedAgentREPL(client, sleep=lambda _s: None)
+        code = repl.interact()
+        assert code == ExitCode.INTERRUPTED
+        assert client.deleted == ["s1"]
+
 
 class TestProviderPreference:
     def test_hosted_wins_over_byok_when_authenticated(

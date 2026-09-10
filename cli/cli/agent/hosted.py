@@ -188,31 +188,42 @@ class HostedAgentREPL:
         self._session_id: str | None = None
 
     def interact(self) -> int:
-        """Loop user turns until EOF / Ctrl-C / quit."""
+        """Loop user turns until EOF / Ctrl-C / quit.
+
+        Cleanup runs in a ``finally`` so the session is always archived even
+        when a nested ``input`` (e.g. a clarification prompt inside a turn)
+        raises EOF / Ctrl-C instead of returning an answer.
+        """
         self._echo(_GREETING)
         self._echo("")
 
         exit_code = ExitCode.SUCCESS
-        while True:
-            try:
-                raw = input("Atlas > ")
-            except (EOFError, KeyboardInterrupt):
-                self._echo("")
-                self._echo("Bye!")
-                break
-            line = (raw or "").strip()
-            if not line:
-                continue
-            if line.lower() in _STOP_COMMANDS:
-                self._echo("Bye!")
-                break
-            try:
-                self._run_turn(line)
-            except KeyboardInterrupt:
-                self._echo("(interrupted)")
-                exit_code = ExitCode.INTERRUPTED
-                break
-        self._cleanup()
+        try:
+            while True:
+                try:
+                    raw = input("Atlas > ")
+                except (EOFError, KeyboardInterrupt):
+                    self._echo("")
+                    self._echo("Bye!")
+                    break
+                line = (raw or "").strip()
+                if not line:
+                    continue
+                if line.lower() in _STOP_COMMANDS:
+                    self._echo("Bye!")
+                    break
+                try:
+                    self._run_turn(line)
+                except KeyboardInterrupt:
+                    self._echo("(interrupted)")
+                    exit_code = ExitCode.INTERRUPTED
+                    break
+                except EOFError:
+                    self._echo("")
+                    self._echo("Bye!")
+                    break
+        finally:
+            self._cleanup()
         return exit_code
 
     def _run_turn(self, line: str) -> None:

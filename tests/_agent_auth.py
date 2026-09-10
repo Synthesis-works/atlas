@@ -55,6 +55,9 @@ class AuthenticatedTestClient(TestClient):
         )
 
     def request(self, method: str, url: str, **kwargs):
-        headers = kwargs.setdefault("headers", {})
+        headers = kwargs.get("headers")
+        if headers is None:
+            headers = {}
+            kwargs["headers"] = headers
         headers.setdefault("authorization", f"Bearer {self._token}")
         return super().request(method, url, **kwargs)
