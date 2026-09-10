@@ -435,3 +435,68 @@ def test_get_and_list_reflect_worker_side_state_change():
     listed = client.get("/api/v1/agent/tasks")
     assert listed.status_code == 200
     assert any(t["task_id"] == task_id and t["status"] == "CANCELLED" for t in listed.json())
+
+
+def test_run_again_does_not_leak_default_model(monkeypatch):
+    """Regression (0.2.3): run-again must clone an omitted model as None on both
+    the source and the new task, and both outbox events must carry
+    model_override=None (never the generic gemini default)."""
+    from apps.backend.config import settings
+
+    monkeypatch.setattr(settings, "agent_tasks_celery_execution", True)
+
+    from apps.backend.routers.agent import SessionLocal
+    from atlas_db.models.outbox import OutboxMessage
+
+    payload = {
+        "goal": "run-again model regression",
+        "provider": "groq",
+        "permissions": ["READ"],
+    }
+    response = client.post("/api/v1/agent/tasks", json=payload)
+    assert response.status_code == 201
+    source_id = response.json()["task_id"]
+
+    rerun = client.post(f"/api/v1/agent/tasks/{source_id}/run-again")
+    assert rerun.status_code == 200
+    new_id = rerun.json()["task_id"]
+
+    from apps.backend.agent.state import AgentTask
+    from atlas_db.models.agent import AgentTaskRecord
+
+    db = SessionLocal()
+    try:
+        for task_id in (source_id, new_id):
+            record = db.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == task_id).first()
+            assert record is not None
+            snapshot = AgentTask.model_validate(record.snapshot)
+            assert snapshot.model is None, f"task {task_id} must not carry a leaked model"
+
+            row = (
+                db.query(OutboxMessage)
+                .filter(OutboxMessage.event_type == "AgentRunRequestedEvent")
+                .filter(OutboxMessage.aggregate_id == task_id)
+                .order_by(OutboxMessage.created_at.desc())
+                .first()
+            )
+            assert row is not None, f"task {task_id} must have a dispatch outbox event"
+            assert row.payload["model_override"] is None
+            assert "gemini-3.5-flash-lite" not in str(row.payload)
+    finally:
+        db.close()
+
+
+def test_worker_resume_factory_uses_provider_default_when_model_omitted():
+    """Regression (0.2.3): the worker resume provider factory must resolve an
+    omitted model to the primary provider's own default (groq ->
+    openai/gpt-oss-20b), never the generic 'gemini-3.5-flash-lite' literal."""
+    from apps.backend.agent.state import AgentTask
+    from apps.backend.worker.agent_resume import _default_provider_factory
+
+    task = AgentTask(goal="resume model regression", primary_provider="groq")
+    assert task.model is None, "omitted model must default to None on the task"
+
+    router = _default_provider_factory(task)
+    assert router.primary is not None
+    assert router.primary.model == "openai/gpt-oss-20b"
+    assert router.primary.model != "gemini-3.5-flash-lite"
