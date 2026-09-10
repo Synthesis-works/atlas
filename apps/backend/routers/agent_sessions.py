@@ -312,6 +312,8 @@ def _run_or_dispatch(background_tasks: BackgroundTasks, db: Session, task: Agent
     from apps.backend.agent.agent import AtlasAgent
     from apps.backend.agent.providers.mock import MockAgentProvider
 
+    _persist_task(db, task)
+
     if task.primary_provider == "mock":
         agent = AtlasAgent(provider=MockAgentProvider(), registry=_tool_registry)
         agent.run_task(task, db)

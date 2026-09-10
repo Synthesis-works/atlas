@@ -622,6 +622,8 @@ def clarify_agent_task(
     # Transition task back to PLANNING status
     task.status = AgentTaskStatus.PLANNING
 
+    _persist_task(db, task)
+
     if task.primary_provider == "mock":
         agent = AtlasAgent(provider=MockAgentProvider(), registry=_tool_registry)
         agent.run_task(task, db)

@@ -31,6 +31,7 @@ from apps.backend.dependencies import get_db_session, require_authenticated
 from apps.backend.main import app
 from apps.backend.schemas.auth import TokenClaims
 from atlas_db.models.agent import AgentSession, AgentTaskRecord
+from atlas_db.models.outbox import OutboxMessage
 
 USER_A = uuid.uuid4()
 USER_B = uuid.uuid4()
@@ -118,6 +119,17 @@ def _task(status_value: str, *, goal: str = "seeded task") -> AgentTask:
         status=AgentTaskStatus(status_value),
         granted_permissions=[AgentPermission.READ],
     )
+
+
+def _pending_clarification_task() -> AgentTask:
+    """A WAITING_FOR_CLARIFICATION task on a non-mock provider, seeded directly
+    (the mock provider would never park; it answers or resumes inline)."""
+    task = _task("WAITING_FOR_CLARIFICATION", goal="need clarification on scope")
+    task.primary_provider = "gemini"
+    task.clarification_prompt = "Should we test addition or subtraction?"
+    task.clarification_request = "Should we test addition or subtraction?"
+    task.clarification_id = "clarify_seeded01"
+    return task
 
 
 def test_all_session_endpoints_require_auth(db_session):
@@ -334,6 +346,98 @@ def test_clarification_flow_via_message_turn(db_session):
         answered_body = answered.json()
         assert answered_body["session"]["state"] == "AWAITING_APPROVAL"
         assert answered_body["reply"]
+
+
+def _assert_clarify_persisted_before_dispatch(db_session, task: AgentTask, answer: str) -> None:
+    """The persisted snapshot must already be PLANNING with the answer BEFORE
+    the worker (fresh process, re-reading the row) claims the run."""
+    from apps.backend.worker.agent_tasks import run_agent_task_core
+
+    record = (
+        db_session.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == task.task_id).first()
+    )
+    assert record is not None
+    snapshot = AgentTask.model_validate(record.snapshot)
+    assert snapshot.status == AgentTaskStatus.PLANNING
+    assert snapshot.clarification_request is None
+    assert snapshot.clarification_prompt is None
+    assert [c["answer"] for c in snapshot.past_clarifications] == [answer]
+
+    queued = (
+        db_session.query(OutboxMessage)
+        .filter(OutboxMessage.event_type == "AgentRunRequestedEvent")
+        .filter(OutboxMessage.aggregate_id == task.task_id)
+        .first()
+    )
+    assert queued is not None, "the resumed run must be enqueued via the outbox"
+
+    # Simulate the worker's fresh-process re-read. A stale row (pre-fix) is not
+    # claimable, so run_agent_task_core no-ops and the answer is stranded.
+    resumed = run_agent_task_core(
+        db_session, task.task_id, provider_type="mock", model_override=None
+    )
+    assert resumed == "WAITING_FOR_APPROVAL"
+    record = (
+        db_session.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == task.task_id).first()
+    )
+    assert AgentTask.model_validate(record.snapshot).status == AgentTaskStatus.WAITING_FOR_APPROVAL
+
+
+def test_clarify_persists_planning_before_outbox_dispatch(db_session, monkeypatch):
+    """With AGENT_TASKS_CELERY_EXECUTION=true the /clarify transition must be
+    durable before the outbox run is enqueued. The worker re-reads the
+    persisted snapshot in its own process, so a WAITING_FOR_CLARIFICATION row
+    (pre-fix ordering: no persist in the dispatch path) makes the resumed run
+    unclaimable and loses the user's answer."""
+    from apps.backend.config import settings
+
+    monkeypatch.setattr(settings, "agent_tasks_celery_execution", True)
+
+    task = _pending_clarification_task()
+    _persist_task_row(db_session, task=task, created_by=USER_A, org_id=ORG_A)
+    session_id = _seed_session(
+        db_session,
+        owner=USER_A,
+        org_id=ORG_A,
+        current_task_id=task.task_id,
+        provider="gemini",
+    )
+
+    with _session_client(db_session, _claims(USER_A, org_id=ORG_A)) as client:
+        resp = client.post(
+            f"/api/v1/agent/sessions/{session_id}/clarify", json={"answer": "addition"}
+        )
+        assert resp.status_code == 200
+
+    db_session.expire_all()
+    _assert_clarify_persisted_before_dispatch(db_session, task, "addition")
+
+
+def test_message_clarification_persists_planning_before_outbox_dispatch(db_session, monkeypatch):
+    """Same durability boundary as the /clarify path, exercised through a
+    message turn while the task sits in WAITING_FOR_CLARIFICATION."""
+    from apps.backend.config import settings
+
+    monkeypatch.setattr(settings, "agent_tasks_celery_execution", True)
+
+    task = _pending_clarification_task()
+    _persist_task_row(db_session, task=task, created_by=USER_A, org_id=ORG_A)
+    session_id = _seed_session(
+        db_session,
+        owner=USER_A,
+        org_id=ORG_A,
+        current_task_id=task.task_id,
+        provider="gemini",
+    )
+
+    with _session_client(db_session, _claims(USER_A, org_id=ORG_A)) as client:
+        resp = client.post(
+            f"/api/v1/agent/sessions/{session_id}/messages", json={"message": "addition"}
+        )
+        assert resp.status_code == 200
+
+    db_session.expire_all()
+    _assert_clarify_persisted_before_dispatch(db_session, task, "addition")
 
 
 def test_approval_flow_with_wrong_and_right_token(db_session):

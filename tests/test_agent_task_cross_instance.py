@@ -133,6 +133,79 @@ def test_clarify_task_that_lives_on_another_instance():
     assert poll.json()["status"] == clarify_resp.json()["status"]
 
 
+def test_clarify_persists_planning_before_outbox_dispatch(monkeypatch):
+    """With AGENT_TASKS_CELERY_EXECUTION=true the /agent/tasks clarify
+    transition must be durable BEFORE the outbox run is enqueued. The worker
+    re-reads the persisted snapshot in its own process; a stale
+    WAITING_FOR_CLARIFICATION row (pre-fix ordering) is not claimable, so the
+    resumed run no-ops and the user's answer is stranded."""
+    from uuid import UUID
+
+    from apps.backend.agent.state import AgentPermission, AgentTask, AgentTaskStatus
+    from apps.backend.config import settings
+    from apps.backend.routers.agent import SessionLocal, _persist_task
+    from apps.backend.worker.agent_tasks import run_agent_task_core
+    from atlas_db.models.agent import AgentTaskRecord
+    from atlas_db.models.outbox import OutboxMessage
+
+    monkeypatch.setattr(settings, "agent_tasks_celery_execution", True)
+
+    task = AgentTask(
+        goal="Need clarification before proceeding",
+        status=AgentTaskStatus.WAITING_FOR_CLARIFICATION,
+        granted_permissions=[AgentPermission.READ],
+        primary_provider="gemini",
+        created_by_user_id=UUID("33333333-3333-4333-8333-333333333333"),
+        clarification_prompt="Should we test addition or subtraction?",
+        clarification_request="Should we test addition or subtraction?",
+        clarification_id="clarify_abc123",
+    )
+
+    db = SessionLocal()
+    try:
+        _persist_task(db, task)
+
+        resp = client.post(
+            f"/api/v1/agent/tasks/{task.task_id}/clarify",
+            json={"clarification_id": "clarify_abc123", "answer": "addition"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "PLANNING"
+
+        db.expire_all()
+        record = db.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == task.task_id).first()
+        snapshot = AgentTask.model_validate(record.snapshot)
+        assert snapshot.status == AgentTaskStatus.PLANNING
+        assert snapshot.clarification_request is None
+        assert [c["answer"] for c in snapshot.past_clarifications] == ["addition"]
+
+        queued = (
+            db.query(OutboxMessage)
+            .filter(OutboxMessage.event_type == "AgentRunRequestedEvent")
+            .filter(OutboxMessage.aggregate_id == task.task_id)
+            .first()
+        )
+        assert queued is not None, "the resumed run must be enqueued via the outbox"
+
+        # Simulate the worker re-reading the row in a fresh process. A stale
+        # WAITING_FOR_CLARIFICATION snapshot is not claimable -> skips the run.
+        resumed = run_agent_task_core(
+            db,
+            task.task_id,
+            provider_type="mock",
+            model_override=None,
+            instance_id="worker-test-instance",
+        )
+        assert resumed == "WAITING_FOR_APPROVAL"
+        db.expire_all()
+        record = db.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == task.task_id).first()
+        assert (
+            AgentTask.model_validate(record.snapshot).status == AgentTaskStatus.WAITING_FOR_APPROVAL
+        )
+    finally:
+        db.close()
+
+
 def test_run_again_from_persisted_source_task():
     payload = {
         "goal": "Need clarification test",
