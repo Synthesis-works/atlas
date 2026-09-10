@@ -296,8 +296,7 @@ def _create_session_task(
         organization_id=claims.organization_id,
         project_id=session.project_id,
     )
-    if model is not None:
-        task.model = model
+    task.model = model
     _agent_tasks_db[task.task_id] = task
     _persist_task(db, task)
     session.current_task_id = task.task_id

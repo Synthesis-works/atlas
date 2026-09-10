@@ -330,6 +330,38 @@ def test_build_provider_instance_unknown_returns_none():
     assert build_provider_instance("nonsense") is None
 
 
+def test_build_provider_instance_omitted_model_resolves_provider_default():
+    """Regression (0.2.3): the provider factory must NEVER substitute the
+    generic 'gemini-3.5-flash-lite' default when a non-gemini provider is
+    selected with an omitted model. Each provider falls back to its OWN
+    registered default model."""
+    expected_by_provider = {
+        "gemini": "gemini-3.5-flash-lite",
+        "groq": "openai/gpt-oss-20b",
+        "mistral": "mistral-small-latest",
+    }
+    for provider_value, expected in expected_by_provider.items():
+        instance = build_provider_instance(provider_value)
+        assert instance is not None
+        assert instance.model == expected
+        assert build_provider_instance(provider_value, None).model == expected
+
+    # The exact 0.2.2 production failure: groq primary, omitted model.
+    groq_default = build_provider_instance("groq", None)
+    assert groq_default is not None
+    assert groq_default.model == "openai/gpt-oss-20b"
+    assert groq_default.model != "gemini-3.5-flash-lite"
+
+
+def test_build_provider_instance_explicit_override_wins():
+    """Regression (0.2.3): an explicitly-chosen model override is honored
+    exactly, even when it differs from the provider's registered default."""
+    built = build_provider_instance("groq", "llama-3.3-70b-versatile")
+    assert built is not None
+    assert built.model == "llama-3.3-70b-versatile"
+    assert build_provider_instance("gemini", "gemini-2.5-flash").model == "gemini-2.5-flash"
+
+
 def test_router_default_ordering_gemini_groq_mistral(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "test")
     monkeypatch.setenv("GROQ_API_KEY", "test")

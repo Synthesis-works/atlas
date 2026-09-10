@@ -307,8 +307,7 @@ def create_agent_task(
         created_by_user_id=claims.sub,
         organization_id=claims.organization_id,
     )
-    if payload.model is not None:
-        task.model = payload.model
+    task.model = payload.model
     _agent_tasks_db[task.task_id] = task
     _persist_task(db, task)
 

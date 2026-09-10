@@ -157,7 +157,10 @@ class AgentTask(BaseModel):
     # Provider Telemetry
     primary_provider: str = "gemini"
     current_provider: str = "gemini"
-    model: str = "gemini-3.5-flash-lite"
+    # None (omitted) means "use the primary provider's own configured default";
+    # the concrete model is resolved at dispatch time by the provider factory
+    # (model_override or config.model). An explicit model string is honored as-is.
+    model: Optional[str] = None
 
     def record_trace(self, step: int, action: str, result: dict[str, Any]) -> None:
         self.add_trace(event_type=action, details={"step": step, **result})

@@ -12,6 +12,7 @@ AWAITING_APPROVAL, never READY; the user must explicitly approve each pending
 mutation permission.
 """
 
+import json
 import uuid
 from contextlib import contextmanager
 
@@ -603,3 +604,187 @@ def test_minute_rate_limit_on_session_list(db_session, monkeypatch):
         second = client.get("/api/v1/agent/sessions")
         assert second.status_code == status.HTTP_429_TOO_MANY_REQUESTS
         assert second.json()["error"]["code"] == "HTTP_429"
+
+
+# ---------------------------------------------------------------------------
+# 0.2.3 model-default regressions: an omitted session model must resolve to the
+# selected provider's OWN configured default, never the generic
+# "gemini-3.5-flash-lite" literal.
+# ---------------------------------------------------------------------------
+
+
+def _snapshot_for(db, task_id) -> AgentTask:
+    record = db.query(AgentTaskRecord).filter(AgentTaskRecord.task_id == task_id).first()
+    assert record is not None, "task must be persisted"
+    return AgentTask.model_validate(record.snapshot)
+
+
+def _latest_run_request(db, task_id) -> dict | None:
+    queued = (
+        db.query(OutboxMessage)
+        .filter(OutboxMessage.event_type == "AgentRunRequestedEvent")
+        .filter(OutboxMessage.aggregate_id == task_id)
+        .order_by(OutboxMessage.created_at.desc())
+        .first()
+    )
+    return queued.payload if queued is not None else None
+
+
+@pytest.mark.parametrize(
+    ("provider", "expected_default"),
+    [
+        ("groq", "openai/gpt-oss-20b"),
+        ("gemini", "gemini-3.5-flash-lite"),
+        ("mistral", "mistral-small-latest"),
+    ],
+)
+def test_omitted_session_model_dispatches_provider_default_not_gemini(
+    db_session, monkeypatch, provider, expected_default
+):
+    """The 0.2.2 production bug: provider=groq + omitted model dispatched the
+    generic 'gemini-3.5-flash-lite' literal and Groq returned 404 model_not_found.
+    An omitted model must stay None on the task and outbox, and the provider
+    factory must resolve the provider's own default."""
+    from apps.backend.agent.providers.router import build_provider_instance
+    from apps.backend.config import settings
+
+    monkeypatch.setattr(settings, "agent_tasks_celery_execution", True)
+
+    with _session_client(db_session, _claims(USER_A, org_id=ORG_A)) as client:
+        created = client.post(
+            "/api/v1/agent/sessions",
+            json={"goal": f"regression omitted model {provider}", "provider": provider},
+        )
+        assert created.status_code == 201
+        task_id = uuid.UUID(created.json()["current_task_id"])
+
+    task = _snapshot_for(db_session, task_id)
+    assert task.primary_provider == provider
+    assert task.model is None, "omitted model must stay None on the task snapshot"
+
+    payload = _latest_run_request(db_session, task_id)
+    assert payload is not None
+    assert payload.get("model_override") is None
+
+    if provider in ("groq", "mistral"):
+        assert "gemini-3.5-flash-lite" not in json.dumps(payload)
+
+    provider_instance = build_provider_instance(provider, payload.get("model_override"))
+    assert provider_instance is not None
+    assert provider_instance.model == expected_default
+
+
+def test_omitted_model_explicitly_groq_resolves_to_gpt_oss(db_session, monkeypatch):
+    """IMPORTANT 0.2.3 regression: provider=groq, model omitted must NEVER yield
+    model_override='gemini-3.5-flash-lite'; the resolved model must be groq's
+    own default (openai/gpt-oss-20b)."""
+    from apps.backend.config import settings
+
+    monkeypatch.setattr(settings, "agent_tasks_celery_execution", True)
+
+    with _session_client(db_session, _claims(USER_A, org_id=ORG_A)) as client:
+        created = client.post(
+            "/api/v1/agent/sessions",
+            json={"goal": "groq omitted model must default to gpt-oss-20b", "provider": "groq"},
+        )
+        assert created.status_code == 201
+        task_id = uuid.UUID(created.json()["current_task_id"])
+
+    payload = _latest_run_request(db_session, task_id)
+    assert payload is not None
+    assert payload["model_override"] is None
+
+    from apps.backend.agent.providers.router import build_provider_instance
+
+    resolved = build_provider_instance("groq", payload["model_override"])
+    assert resolved is not None
+    assert resolved.model == "openai/gpt-oss-20b"
+    assert resolved.model != "gemini-3.5-flash-lite"
+
+
+def test_explicit_session_model_is_preserved(db_session, monkeypatch):
+    """An explicitly-chosen model is honored end-to-end: task snapshot, outbox
+    event, persisted session row, and the built provider instance."""
+    from apps.backend.agent.providers.router import build_provider_instance
+    from apps.backend.config import settings
+
+    monkeypatch.setattr(settings, "agent_tasks_celery_execution", True)
+
+    explicit = "llama-3.3-70b-versatile"
+    with _session_client(db_session, _claims(USER_A, org_id=ORG_A)) as client:
+        created = client.post(
+            "/api/v1/agent/sessions",
+            json={"goal": "explicit model preserved", "provider": "groq", "model": explicit},
+        )
+        assert created.status_code == 201
+        task_id = uuid.UUID(created.json()["current_task_id"])
+
+    task = _snapshot_for(db_session, task_id)
+    assert task.model == explicit
+
+    payload = _latest_run_request(db_session, task_id)
+    assert payload is not None
+    assert payload["model_override"] == explicit
+
+    session_row = (
+        db_session.query(AgentSession)
+        .filter(AgentSession.id == uuid.UUID(created.json()["session_id"]))
+        .first()
+    )
+    assert session_row is not None
+    assert session_row.model == explicit
+
+    provider_instance = build_provider_instance("groq", task.model)
+    assert provider_instance is not None
+    assert provider_instance.model == explicit
+
+
+def test_approval_redispatch_keeps_omitted_model_none(db_session, monkeypatch):
+    """Re-dispatching a parked session task after approval must keep
+    model_override=None, not resurrect the gemini default."""
+    from apps.backend.config import settings
+
+    monkeypatch.setattr(settings, "agent_tasks_celery_execution", True)
+
+    task = _task("WAITING_FOR_APPROVAL", goal="approval model regression")
+    task.primary_provider = "groq"
+    task.pending_tool_call = {"tool_name": "create_benchmark", "arguments": {"name": "x"}}
+    task.approval_token = "tok-model"
+    _persist_task_row(db_session, task=task, created_by=USER_A, org_id=ORG_A)
+    session_id = _seed_session(
+        db_session, owner=USER_A, org_id=ORG_A, current_task_id=task.task_id, provider="groq"
+    )
+
+    with _session_client(db_session, _claims(USER_A, org_id=ORG_A)) as client:
+        ok = client.post(
+            f"/api/v1/agent/sessions/{session_id}/approve", json={"approval_token": "tok-model"}
+        )
+        assert ok.status_code == 200
+
+    payload = _latest_run_request(db_session, task.task_id)
+    assert payload is not None
+    assert payload["model_override"] is None
+    assert "gemini-3.5-flash-lite" not in json.dumps(payload)
+
+
+def test_new_message_turn_omitted_model_keeps_provider_default(db_session, monkeypatch):
+    """A follow-up session message spawns a new task that still dispatches with
+    model_override=None when the session carries no explicit model."""
+    from apps.backend.config import settings
+
+    monkeypatch.setattr(settings, "agent_tasks_celery_execution", True)
+
+    session_id = _seed_session(db_session, owner=USER_A, org_id=ORG_A, provider="groq")
+
+    with _session_client(db_session, _claims(USER_A, org_id=ORG_A)) as client:
+        sent = client.post(
+            f"/api/v1/agent/sessions/{session_id}/messages", json={"message": "next turn"}
+        )
+        assert sent.status_code == 200
+        task_id = uuid.UUID(sent.json()["session"]["current_task_id"])
+
+    payload = _latest_run_request(db_session, task_id)
+    assert payload is not None
+    assert payload["provider_type"] == "groq"
+    assert payload["model_override"] is None
+    assert "gemini-3.5-flash-lite" not in json.dumps(payload)
