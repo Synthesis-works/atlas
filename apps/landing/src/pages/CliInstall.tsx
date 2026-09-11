@@ -100,19 +100,22 @@ const STEPS: Step[] = [
     title: 'Run your first command',
     description: (
       <>
-        Every command is a deterministic, scriptable operation with human, JSON, and quiet output.
-        Try a leaderboard or a health check:
+        Every deterministic command is a scriptable, reliable operation with human, JSON, and quiet
+        output. This is the recommended Atlas CLI workflow. Try a health check or a leaderboard:
       </>
     ),
     commands: ['atlas health', 'atlas leaderboard model mock'],
   },
   {
     n: '06',
-    title: 'Use the agent',
+    title: 'Try the experimental agent (preview)',
     description: (
       <>
-        Atlas CLI embeds an LLM-powered agent. Run <span className="text-white/70">atlas</span> bare to
-        open an interactive conversation, or pass a quoted task for a one-shot run. Set{' '}
+        Atlas CLI also embeds an <span className="text-white/70">experimental conversational
+        agent</span> — an ongoing test surface, so behavior may change. Run{' '}
+        <span className="text-white/70">atlas</span> bare to open an interactive conversation, or pass
+        a quoted task for a one-shot run. When authenticated, the agent can use the hosted Atlas
+        agent; bring-your-own-key (BYOK) provider support is also available. Set{' '}
         <span className="text-white/70">GROQ_API_KEY</span> or{' '}
         <span className="text-white/70">GEMINI_API_KEY</span> with your platform's syntax —
         PowerShell <span className="text-[#F8FAFC]/90 font-mono">$env:GEMINI_API_KEY="YOUR_GEMINI_API_KEY"</span>,
@@ -187,7 +190,7 @@ export default function CliInstall() {
           eyebrow="Atlas CLI"
           title="Installation guide"
           accent="Get started in minutes."
-          description="Install Atlas CLI once and drive the whole evaluation platform — including a full agent — from the command line. No source code required."
+          description="Install Atlas CLI once and control the whole evaluation platform from the command line — deterministic commands for reliable benchmark workflows, plus an experimental conversational agent you can try. No source code required."
           cta={
             <div className="flex flex-wrap items-center justify-center gap-3">
               <a
@@ -328,7 +331,7 @@ export default function CliInstall() {
             <Bot className="w-6 h-6 text-[#4F8CFF]/70 mx-auto mb-3" />
             <p className="text-sm text-white/70 mb-1 font-medium">Ready when you are</p>
             <p className="text-xs text-white/30 mb-6">
-              Authenticate, run your first command, then let the agent take over.
+              Authenticate, run your first deterministic command, then try the experimental conversational agent when you're ready.
             </p>
             <Link
               to="/cli"

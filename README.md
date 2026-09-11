@@ -302,20 +302,20 @@ Names only — values are secrets or per-deployment and are never committed.
 
 ## 13. Atlas CLI
 
-`atlas-cli` is the terminal interface for Atlas — deterministic commands plus a tool-calling agent, developed in Python 3.11+ with `click` under `cli/`. The distributed wheel/sdist bundles the Atlas SDK (`atlas_sdk`) and the internal LLM layer (`packages/llm`), so `pip install synthesis-atlas-cli` is fully self-contained.
+`atlas-cli` is the terminal interface for Atlas — a scriptable command-line interface to the Atlas control plane with deterministic commands for reliable benchmark workflows, plus an experimental conversational agent. It is developed in Python 3.11+ with `click` under `cli/`. The distributed wheel/sdist bundles the Atlas SDK (`atlas_sdk`) and the internal LLM layer (`packages/llm`), so `pip install synthesis-atlas-cli` is fully self-contained.
 
 Install and verify:
 
 ```bash
 pip install synthesis-atlas-cli    # Python 3.11+, distribution name (executable stays `atlas`)
 
-atlas --version                    # atlas 0.1.0
+atlas --version                    # atlas, version 0.2.3
 atlas --help
 ```
 
 Authentication: `atlas login` stores the access token in `%APPDATA%\Atlas\config.toml` (per-user, never in the repo); `atlas logout` removes it; `atlas whoami` shows the authenticated identity. `ATLAS_BASE_URL`, `ATLAS_PROFILE`, `ATLAS_OUTPUT`, and `ATLAS_TOKEN` are honored, with precedence CLI flags > environment variables > saved profile > built-in defaults.
 
-**Deterministic commands** (each supports human/JSON/quiet output via `--output`, plus `--base-url`, `--profile`, `--timeout`, `--retries`):
+**Deterministic commands (primary, recommended workflow)** — each supports human/JSON/quiet output via `--output`, plus `--base-url`, `--profile`, `--timeout`, `--retries`:
 
 | Command | Purpose |
 |---|---|
@@ -328,11 +328,15 @@ Authentication: `atlas login` stores the access token in `%APPDATA%\Atlas\config
 | `atlas report` | Reports (`list` / `get` / `export`) |
 | `atlas run` | Executions (`submit` / `get` / `list` / `watch` / `cancel`) |
 
-**Agent** — the CLI embeds the Atlas agent for terminal workflows:
+These deterministic commands are the recommended way to operate Atlas from the terminal — predictable, scriptable, and reproducible.
 
-- Bare `atlas` in an interactive TTY starts the agent REPL; `atlas agent "your task"` runs one-shot, non-interactively.
+**Experimental conversational agent (preview)** — the CLI also ships an experimental agent for terminal workflows. It is functional and released, but it is an ongoing test surface and behavior may change while the agent is being developed:
+
+- Bare `atlas` in an interactive TTY starts the agent REPL; `atlas agent "your task"` runs one-shot, non-interactively. When authenticated, the agent can use the hosted Atlas agent; BYOK provider support is also available.
 - The agent exposes Atlas capabilities as tools (benchmarks, benchmark versions, models, evaluations, datasets, runs, reports, leaderboards, search, activity, dashboard, health) through the existing SDK client — never raw HTTP, shell, or filesystem.
 - `--provider [auto|groq|gemini]` selects the brain: `auto` falls back across configured providers (Groq, Gemini) on availability failures, while `gemini`/`groq` pin a provider. Set `GROQ_API_KEY` or `GEMINI_API_KEY` on the machine; without any key the agent exits gracefully and points at the missing variable.
+
+The conversational agent is an experimental surface under active development. For predictable benchmark workflows, use the deterministic CLI commands.
 
 **Packaging** — `scripts/build_cli_dist.py` stages a self-contained tree and builds a wheel + sdist into `cli/dist` (gitignored); `scripts/validate_cli_dist.py` validates them offline in a fresh venv (imports, `--help`/`--version`, graceful no-key agent exit, metadata with no `atlas-sdk`/`atlas-llm` dependency). CI runs both via `atlas-cli CI` (`.github/workflows/cli.yml`). See [docs/guides/atlas-cli-release.md](docs/guides/atlas-cli-release.md) and [docs/guides/atlas-cli-v3-agent-architecture.md](docs/guides/atlas-cli-v3-agent-architecture.md).
 

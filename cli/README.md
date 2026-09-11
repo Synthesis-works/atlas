@@ -46,24 +46,32 @@ export ATLAS_BASE_URL="http://localhost:8000"   # local / self-hosted
 atlas --base-url "http://localhost:8000" health
 ```
 
-## Commands
+## Recommended workflow
+
+Atlas CLI gives you a scriptable command-line interface to the Atlas control
+plane, with deterministic commands for reliable benchmark workflows:
 
 - `atlas health` — check API health
 - `atlas leaderboard` — model / benchmark leaderboards
 - `atlas benchmark` — benchmark operations
+- `atlas benchmark versions <BENCHMARK_ID>` — inspect an immutable benchmark's versions
 - `atlas model` — model operations
 - `atlas report` — execution reports
 - `atlas run` — start executions
 - `atlas dashboard` — dashboard summaries
 - `atlas activity` — recent activity
 
-These are deterministic, scriptable operations (human, JSON, or quiet output via
-`--output`). Run `atlas --help` for the full command list.
+`atlas login` / `atlas whoami` authenticate you, and `atlas --help` lists every
+command. These are deterministic, scriptable operations (human, JSON, or quiet
+output via `--output`). For predictable, reproducible CLI workflows, use these
+deterministic commands.
 
-## Agent
+## Experimental conversational agent (preview)
 
-The agentic side of the CLI runs an LLM brain directly in your terminal. It
-comes in two shapes:
+Alongside the deterministic commands, the CLI ships an **experimental
+conversational agent** that runs an LLM brain directly in your terminal. It is
+an ongoing test surface — behavior may change while the agent is being
+developed. It comes in two shapes:
 
 - **Interactive REPL** — run bare `atlas` in a terminal to start a
   Gemini-CLI-style conversation:
@@ -75,8 +83,11 @@ comes in two shapes:
   atlas agent "List the available benchmarks"
   ```
 
-The agent brain uses an LLM provider key: `GROQ_API_KEY` (tried first by
-default) or `GEMINI_API_KEY`. Set one with the syntax for your platform:
+When you are authenticated (`atlas login`), the agent can use the **hosted
+Atlas agent** (provider keys stay on the server). Bring-your-own-key (BYOK)
+provider support is also available. The agent brain uses an LLM provider key:
+`GROQ_API_KEY` (tried first by default) or `GEMINI_API_KEY`. Set one with the
+syntax for your platform:
 
 **Windows PowerShell**
 
@@ -107,6 +118,9 @@ export GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
 > there. Create a Groq key at console.groq.com or a Gemini key at
 > ai.google.dev. With no key configured the agent refuses to start (exit code
 > 10) and prints the exact setup commands for your platform.
+
+The conversational agent is an experimental surface under active development.
+For predictable benchmark workflows, use the deterministic CLI commands.
 
 ## Development
 
