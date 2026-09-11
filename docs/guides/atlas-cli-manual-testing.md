@@ -1,5 +1,13 @@
 # Atlas CLI — Manual Testing Guide
 
+> **Positioning note:** The **deterministic commands** (`atlas health`, `atlas
+> benchmark …`, `atlas run …`, `atlas report …`, `atlas leaderboard …`, etc.)
+> are the **primary, recommended** Atlas CLI workflow. The conversational agent
+> (`atlas` REPL / `atlas agent "…"` one-shot) is a real, released capability but
+> is an **experimental / ongoing-test** surface whose behavior may change. This
+> guide documents both, including the agent's routing rules, for testers — it is
+> not an endorsement of the agent as the primary way to operate Atlas.
+
 - **Date:** 2026-08-28 (revised after the installable-CLI sprint — `atlas login`/`logout` + persisted credentials)
 - **Branch:** `feature/atlas-cli-skeleton`
 - **HEAD:** `1d446f1` (`feat(cli): add login and logout commands`)

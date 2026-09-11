@@ -27,9 +27,9 @@ import { Card, Badge } from '@/design/primitives';
 const WHY = [
   {
     icon: Blocks,
-    title: 'Deterministic primitives',
+    title: 'Deterministic by design',
     description:
-      'Inspect health, leaderboards, benchmarks, models, and reports with scriptable one-shot commands.',
+      'A scriptable command-line interface to the Atlas control plane, with deterministic commands for reliable benchmark workflows.',
   },
   {
     icon: ShieldCheck,
@@ -39,9 +39,9 @@ const WHY = [
   },
   {
     icon: Bot,
-    title: 'An agent in your terminal',
+    title: 'An experimental agent, too',
     description:
-      'Bare `atlas` opens an interactive agent REPL, or run a single task with `atlas agent "..."`.',
+      'Bare `atlas` opens an interactive agent REPL, or run a single task with `atlas agent "..."`. Preview surface — behavior may change.',
   },
 ];
 
@@ -62,9 +62,12 @@ const INSTALL_STEPS = [
 
 const DETERMINISTIC = [
   { command: 'atlas health', description: 'Check Atlas API health.' },
+  { command: 'atlas login', description: 'Authenticate against the hosted API.' },
+  { command: 'atlas whoami', description: 'Confirm your identity.' },
   { command: 'atlas dashboard', description: 'Workspace dashboard summary.' },
   { command: 'atlas leaderboard', description: 'Model / benchmark leaderboards.' },
   { command: 'atlas benchmark', description: 'Benchmark operations.' },
+  { command: 'atlas benchmark versions', description: 'Inspect immutable benchmark versions.' },
   { command: 'atlas model', description: 'Model operations.' },
   { command: 'atlas report', description: 'Execution reports.' },
   { command: 'atlas run', description: 'Start executions.' },
@@ -79,7 +82,7 @@ export default function Cli() {
           eyebrow="Atlas CLI"
           title="The control plane"
           accent="in your terminal."
-          description="Install Atlas CLI once and drive the whole evaluation platform — including a full agent — from the command line."
+          description="Atlas CLI gives you a scriptable command-line interface to the Atlas control plane, with deterministic commands for reliable benchmark workflows — plus an experimental conversational agent you can try."
           cta={
             <div className="flex flex-wrap items-center justify-center gap-3">
               <Link
@@ -196,11 +199,11 @@ export default function Cli() {
                   <div className="liquid-glass rounded-xl p-3 shrink-0">
                     <Blocks className="w-5 h-5 text-[#4F8CFF]/85" />
                   </div>
-                  <Badge variant="default">Deterministic</Badge>
+                  <Badge variant="default">Recommended</Badge>
                 </div>
-                <h4 className="text-sm font-semibold text-white mb-1">Scriptable commands</h4>
+                <h4 className="text-sm font-semibold text-white mb-1">Deterministic commands</h4>
                 <p className="text-xs text-white/30 leading-relaxed mb-5">
-                  One-shot operations ideal for scripts, pipelines, and quick inspection. Human, JSON, and quiet output modes.
+                  The primary Atlas CLI workflow. One-shot operations ideal for scripts, pipelines, and quick inspection. Human, JSON, and quiet output modes.
                 </p>
                 <ul className="space-y-1.5">
                   {DETERMINISTIC.map((item) => (
@@ -220,11 +223,11 @@ export default function Cli() {
                   <div className="liquid-glass rounded-xl p-3 shrink-0">
                     <Bot className="w-5 h-5 text-[#4F8CFF]/85" />
                   </div>
-                  <Badge variant="outline">Agentic</Badge>
+                  <Badge variant="outline">Experimental</Badge>
                 </div>
-                <h4 className="text-sm font-semibold text-white mb-1">The Atlas agent</h4>
+                <h4 className="text-sm font-semibold text-white mb-1">Conversational agent (preview)</h4>
                 <p className="text-xs text-white/30 leading-relaxed mb-5">
-                  An LLM-powered agent inside the CLI. Interactive conversation in your terminal, or a one-shot task run.
+                  An experimental LLM-powered agent inside the CLI. Interactive conversation in your terminal, or a one-shot task run — an ongoing test surface.
                 </p>
                 <div className="space-y-2.5">
                   <div className="rounded-xl border border-white/5 bg-black/40 p-3.5">
@@ -236,6 +239,9 @@ export default function Cli() {
                     <code className="text-sm text-[#F8FAFC] font-mono">{'atlas agent "List the available benchmarks"'}</code>
                   </div>
                 </div>
+                <p className="text-[11px] text-white/25 leading-relaxed mt-4">
+                  The conversational agent is an experimental surface under active development. For predictable benchmark workflows, use the deterministic CLI commands.
+                </p>
               </Card>
             </motion.div>
           </div>
