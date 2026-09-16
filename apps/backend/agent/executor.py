@@ -58,6 +58,8 @@ class ToolExecutor:
                 scope_kwargs["user_id"] = str(task.created_by_user_id)
             if task.organization_id is not None:
                 scope_kwargs["organization_id"] = str(task.organization_id)
+            if hasattr(task, "execution_ids") and task.execution_ids:
+                scope_kwargs["execution_ids"] = task.execution_ids
 
             output = self.registry.execute(
                 tool_name=tool_name,

@@ -432,13 +432,10 @@ class GenerateReportTool(BaseTool):
         )
 
         exec_id = None
-        if agent_task_id:
-            from apps.backend.routers.agent import _agent_tasks_db
-
+        execution_ids = kwargs.get("execution_ids")
+        if execution_ids:
             try:
-                task_obj = _agent_tasks_db.get(uuid.UUID(agent_task_id))
-                if task_obj and task_obj.execution_ids:
-                    exec_id = uuid.UUID(task_obj.execution_ids[-1])
+                exec_id = uuid.UUID(execution_ids[-1])
             except Exception:
                 pass
 
@@ -474,17 +471,6 @@ class GenerateReportTool(BaseTool):
         except Exception as e:
             db.rollback()
             raise ValueError(f"Failed to save report to database: {e}")
-
-        # Update AgentTask with report tracking if task_id exists
-        if agent_task_id:
-            from apps.backend.routers.agent import _agent_tasks_db
-
-            try:
-                task_obj = _agent_tasks_db.get(uuid.UUID(agent_task_id))
-                if task_obj:
-                    task_obj.report_id = str(report_id)
-            except Exception:
-                pass
 
         # Persist ReportMetric rows ONLY from genuine evaluation data for the
         # linked execution. If no evaluation results exist, write no metrics —
