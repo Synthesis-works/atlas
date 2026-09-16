@@ -127,9 +127,21 @@ class ToolScopeEnforcer:
             AgentPermission.PUBLISH,
         ):
             if tool.name == "create_benchmark":
-                # Fallback to the default project if the task doesn't have one anchored
-                project_id = task.project_id or SHARED_FALLBACK_PROJECT_ID
-                self._authorize(user_id, project_id, roles)
+                # Fallback to the user's organization's first project if the task doesn't have one anchored
+                target_project_id = task.project_id
+
+                if target_project_id is None and task.organization_id is not None:
+                    from atlas_db.repositories.core import ProjectRepository
+
+                    project_repo = ProjectRepository(self.db)
+                    org_projects = project_repo.list(org_id=task.organization_id)
+                    if org_projects:
+                        target_project_id = org_projects[0].id
+
+                if target_project_id is None:
+                    target_project_id = SHARED_FALLBACK_PROJECT_ID
+
+                self._authorize(user_id, target_project_id, roles)
                 return
             raise ToolScopeDenied(
                 f"Tool '{tool.name}' could not be scoped to a project owned by the caller."
