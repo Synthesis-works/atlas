@@ -128,7 +128,7 @@ class ToolScopeEnforcer:
         ):
             if tool.name == "create_benchmark":
                 # Fallback to the default project if the task doesn't have one anchored
-                project_id = task.project_id or uuid.UUID("00000000-0000-0000-0000-000000000001")
+                project_id = task.project_id or SHARED_FALLBACK_PROJECT_ID
                 self._authorize(user_id, project_id, roles)
                 return
             raise ToolScopeDenied(
