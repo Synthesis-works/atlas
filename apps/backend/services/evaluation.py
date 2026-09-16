@@ -227,27 +227,46 @@ class EvaluationService:
                 )
 
             elif method in ("llm_judge", "rubric"):
-                greeting_words = {"hi", "hello", "hey", "greetings", "good morning"}
-                has_greeting = any(w in raw_lower for w in greeting_words)
-                matched_criteria = []
-                if rubric_criteria:
-                    for crit in rubric_criteria:
-                        crit_words = [w for w in crit.lower().split() if len(w) > 3]
-                        if any(w in raw_lower for w in crit_words) or has_greeting:
-                            matched_criteria.append(crit)
-                else:
-                    if has_greeting:
-                        matched_criteria = ["Responds with a friendly greeting"]
-                    else:
-                        matched_criteria = ["Response satisfies benchmark intent"]
+                try:
+                    from packages.llm.clients.gemini import GeminiClient
+                    from packages.llm.models.prompt import Prompt
+                    import json
 
-                passed = has_greeting or (len(matched_criteria) > 0)
-                score = 1.0 if passed else 0.0
-                reasoning = (
-                    f"Passed rubric criteria evaluation: {matched_criteria}"
-                    if passed
-                    else f"Failed rubric criteria evaluation: {rubric_criteria}"
-                )
+                    client = GeminiClient()
+                    eff_rubric = rubric_criteria if rubric_criteria else [f"Matches the expected answer semantically: {exp}"]
+
+                    system_instruction = (
+                        "You are an impartial expert evaluator. Your job is to evaluate if a model's output satisfies the given rubric criteria based on the expected answer.\n"
+                        "Provide your evaluation in JSON format with two keys:\n"
+                        "- 'passed': a boolean (true if the output broadly satisfies the criteria, false otherwise)\n"
+                        "- 'reasoning': a short string explaining your decision.\n"
+                        "Output ONLY valid JSON."
+                    )
+                    user_prompt = (
+                        f"Expected Answer / Intent: {exp}\n"
+                        f"Rubric Criteria: {eff_rubric}\n"
+                        f"Model Output: {raw_out}\n\n"
+                        "Evaluation JSON:"
+                    )
+
+                    response = client.generate("gemini-3.5-flash-lite", Prompt(user=user_prompt, system=system_instruction), temperature=0.0)
+                    text = response.response.strip()
+                    if text.startswith("```json"):
+                        text = text[7:]
+                    if text.startswith("```"):
+                        text = text[3:]
+                    if text.endswith("```"):
+                        text = text[:-3]
+                    text = text.strip()
+
+                    parsed = json.loads(text)
+                    passed = bool(parsed.get("passed", False))
+                    score = 1.0 if passed else 0.0
+                    reasoning = parsed.get("reasoning", "LLM Judge provided no reasoning.")
+                except Exception as e:
+                    passed = False
+                    score = 0.0
+                    reasoning = f"LLM Judge evaluation failed: {e}"
 
             else:  # exact_match
                 passed, score, metrics = self.exact_match.evaluate(
