@@ -129,9 +129,10 @@ class ToolScopeEnforcer:
             if tool.name == "create_benchmark":
                 # Fallback to the user's organization's first project if the task doesn't have one anchored
                 project_id = task.project_id
-                
+
                 if project_id is None and task.organization_id is not None:
                     from atlas_db.repositories.core import ProjectRepository
+
                     project_repo = ProjectRepository(self.db)
                     org_projects = project_repo.list(org_id=task.organization_id)
                     if org_projects:
