@@ -44,7 +44,7 @@ function preferRicher(a: AgentTask | null | undefined, b: AgentTask | null | und
   if (!b) return a;
   const score = (t: AgentTask) =>
     (t.plan?.length ?? 0) + (t.tool_calls?.length ?? 0) + (t.observations?.length ?? 0) + (t.step_count ?? 0);
-  return score(b) > score(a) ? b : a;
+  return score(b) >= score(a) ? b : a;
 }
 
 function getFinalSummary(finalResult: AgentTask['final_result']): string {
