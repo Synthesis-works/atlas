@@ -199,7 +199,7 @@ class ExecutionRunner:
                 self.db.add(output)
 
             # Update execution progress
-            execution.completed_items = len(outputs)
+            execution.completed_items = len(outputs) + len(existing_tc_ids)
             if prov.termination_reason == "completed":
                 execution.status = ExecutionStatus.COMPLETED
             self.db.commit()
