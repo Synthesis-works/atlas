@@ -199,7 +199,7 @@ class RunBenchmarkTool(BaseTool):
             db.commit()
         except Exception as e:
             db.rollback()
-            raise ValueError(f'Database error: {e}')
+            raise ValueError(f"Database error: {e}")
             raise
 
         # Post-commit, fire-and-forget: nudge the Render worker so it wakes and

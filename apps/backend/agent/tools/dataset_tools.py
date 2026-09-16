@@ -260,7 +260,7 @@ class UpdateDatasetTool(BaseTool):
             db.refresh(version)
         except Exception as e:
             db.rollback()
-            raise ValueError(f'Database error: {e}')
+            raise ValueError(f"Database error: {e}")
 
         return {
             "dataset_id": dataset_id,
@@ -345,7 +345,7 @@ class ValidateBenchmarkDatasetTool(BaseTool):
             db.commit()
         except Exception as e:
             db.rollback()
-            raise ValueError(f'Database error: {e}')
+            raise ValueError(f"Database error: {e}")
 
         return {
             "valid": True,
