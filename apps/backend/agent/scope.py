@@ -127,12 +127,9 @@ class ToolScopeEnforcer:
             AgentPermission.PUBLISH,
         ):
             if tool.name == "create_benchmark":
-                if task.project_id is None:
-                    raise ToolScopeDenied(
-                        "Tool 'create_benchmark' requires a project-scoped task; "
-                        "no project is anchored to this task."
-                    )
-                self._authorize(user_id, task.project_id, roles)
+                # Fallback to the default project if the task doesn't have one anchored
+                project_id = task.project_id or uuid.UUID("00000000-0000-0000-0000-000000000001")
+                self._authorize(user_id, project_id, roles)
                 return
             raise ToolScopeDenied(
                 f"Tool '{tool.name}' could not be scoped to a project owned by the caller."
