@@ -59,14 +59,18 @@ class ToolExecutor:
             if task.organization_id is not None:
                 scope_kwargs["organization_id"] = str(task.organization_id)
             if hasattr(task, "execution_ids") and task.execution_ids:
-                scope_kwargs["execution_ids"] = task.execution_ids
+                if "execution_ids" not in arguments:
+                    scope_kwargs["execution_ids"] = task.execution_ids
+
+            if "project_id" not in arguments:
+                scope_kwargs["project_id"] = task.project_id
+            if "task_id" not in arguments:
+                scope_kwargs["task_id"] = str(task.task_id)
 
             output = self.registry.execute(
                 tool_name=tool_name,
                 db=db,
                 arguments=arguments,
-                project_id=task.project_id,
-                task_id=str(task.task_id),
                 **scope_kwargs,
             )
             obs = ObservationRecord(
