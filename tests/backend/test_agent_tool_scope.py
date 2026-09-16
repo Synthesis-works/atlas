@@ -200,8 +200,9 @@ def test_unresolvable_target_denied_for_mutation(db_session):
     user = uuid.uuid4()
     task = _task(created_by=user, org=uuid.uuid4(), project_id=None)
     enforcer, authz = _enforcer(db_session, allow=True)
-    with pytest.raises(ToolScopeDenied):
-        enforcer.enforce(task, _tool("create_benchmark"), {"name": "orphan"})
+    # The new behavior falls back to the default project if unanchored
+    enforcer.enforce(task, _tool("create_benchmark"), {"name": "orphan"})
+    assert authz.allowed_at[-1][0] == str(SHARED_FALLBACK_PROJECT_ID)
 
 
 def test_create_benchmark_requires_project_anchor(db_session):
