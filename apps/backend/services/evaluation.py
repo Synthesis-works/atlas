@@ -233,7 +233,11 @@ class EvaluationService:
                     import json
 
                     client = GeminiClient()
-                    eff_rubric = rubric_criteria if rubric_criteria else [f"Matches the expected answer semantically: {exp}"]
+                    eff_rubric = (
+                        rubric_criteria
+                        if rubric_criteria
+                        else [f"Matches the expected answer semantically: {exp}"]
+                    )
 
                     system_instruction = (
                         "You are an impartial expert evaluator. Your job is to evaluate if a model's output satisfies the given rubric criteria based on the expected answer.\n"
@@ -249,7 +253,11 @@ class EvaluationService:
                         "Evaluation JSON:"
                     )
 
-                    response = client.generate("gemini-3.5-flash-lite", Prompt(user=user_prompt, system=system_instruction), temperature=0.0)
+                    response = client.generate(
+                        "gemini-3.5-flash-lite",
+                        Prompt(user=user_prompt, system=system_instruction),
+                        temperature=0.0,
+                    )
                     text = response.response.strip()
                     if text.startswith("```json"):
                         text = text[7:]
