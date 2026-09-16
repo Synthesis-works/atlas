@@ -197,8 +197,9 @@ class RunBenchmarkTool(BaseTool):
         # Commit transaction so worker or synchronous eager task can query the records
         try:
             db.commit()
-        except Exception:
+        except Exception as e:
             db.rollback()
+            raise ValueError(f"Database error: {e}")
             raise
 
         # Post-commit, fire-and-forget: nudge the Render worker so it wakes and
