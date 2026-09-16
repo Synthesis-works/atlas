@@ -161,8 +161,9 @@ class CreateEvaluationCaseTool(BaseTool):
 
         try:
             db.commit()
-        except Exception:
+        except Exception as e:
             db.rollback()
+            raise ValueError(f'Database error: {e}')
 
         return {
             "dataset_id": dataset_id,
@@ -407,7 +408,9 @@ class GenerateReportTool(BaseTool):
         report_id = uuid.uuid4()
         agent_task_id = kwargs.get("task_id")
         _SHARED_FALLBACK = uuid.UUID("00000000-0000-0000-0000-000000000001")
-        proj_id = kwargs.get("project_id") or _SHARED_FALLBACK
+        
+        raw_proj_id = kwargs.get("project_id")
+        proj_id = uuid.UUID(raw_proj_id) if isinstance(raw_proj_id, str) else raw_proj_id or _SHARED_FALLBACK
         if proj_id == _SHARED_FALLBACK:
             from atlas_db.models.authoring import Benchmark as DBBenchmark
 
@@ -416,7 +419,9 @@ class GenerateReportTool(BaseTool):
             )
             if bm and bm.project_id:
                 proj_id = bm.project_id
-        user_id = kwargs.get("user_id") or uuid.UUID("00000000-0000-0000-0000-000000000003")
+                
+        raw_user_id = kwargs.get("user_id")
+        user_id = uuid.UUID(raw_user_id) if isinstance(raw_user_id, str) else raw_user_id or uuid.UUID("00000000-0000-0000-0000-000000000003")
 
         exec_id = None
         if agent_task_id:
@@ -458,8 +463,9 @@ class GenerateReportTool(BaseTool):
         try:
             db.commit()
             db.refresh(report_version)
-        except Exception:
+        except Exception as e:
             db.rollback()
+            raise ValueError(f"Failed to save report to database: {e}")
 
         # Update AgentTask with report tracking if task_id exists
         if agent_task_id:
