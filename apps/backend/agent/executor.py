@@ -43,6 +43,14 @@ class ToolExecutor:
             tool = self.registry.get_tool(tool_name)
             if tool is None:
                 raise ValueError(f"Tool '{tool_name}' not found in registry")
+
+            if task.project_id is None and task.organization_id is not None:
+                from atlas_db.repositories.core import ProjectRepository
+
+                org_projects = ProjectRepository(db).list(org_id=task.organization_id)
+                if org_projects:
+                    task.project_id = org_projects[0].id
+
             ToolScopeEnforcer(db).enforce(task, tool, arguments)
 
             scope_kwargs: dict[str, Any] = {}
