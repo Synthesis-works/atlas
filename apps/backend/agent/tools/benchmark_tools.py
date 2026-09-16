@@ -162,8 +162,9 @@ class CreateBenchmarkTool(BaseTool):
 
         try:
             db.commit()
-        except Exception:
+        except Exception as e:
             db.rollback()
+            raise ValueError(f'Database error: {e}')
 
         return {
             "id": str(bm_id),
