@@ -180,7 +180,7 @@ class GeminiProvider(LLMProvider):
         *,
         available: bool | None = None,
     ) -> None:
-        self.model = model or os.environ.get("AGENT_MODEL") or "gemini-1.5-flash"
+        self.model = model or os.environ.get("AGENT_MODEL") or "gemini-2.5-flash"
         self.client = client or GeminiClient(api_key_env=api_key_env)
         self._available = bool(self.client.health()) if available is None else available
 

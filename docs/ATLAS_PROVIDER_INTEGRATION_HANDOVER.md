@@ -57,7 +57,7 @@
    `data["choices"][0]["message"]["content"]` was None for pure `tool_calls` messages; `LLMResponse.response` (required `str`) raised a pydantic `string_type` error before `raw.tool_calls` could be read — breaking native tool calling. Fix: `.get("content") or ""`.
 
 3. **Every API task creation failed pydantic validation (`string_type`).**
-   `TaskCreateRequest.model` is `Optional[str] = None`, but `AgentTask.model` is a required `str`. Passing `payload.model=None` explicitly raised a validation error. Fix in `apps/backend/routers/agent.py`: only assign `model` when provided, letting `AgentTask` keep its default (`gemini-1.5-flash`).
+   `TaskCreateRequest.model` is `Optional[str] = None`, but `AgentTask.model` is a required `str`. Passing `payload.model=None` explicitly raised a validation error. Fix in `apps/backend/routers/agent.py`: only assign `model` when provided, letting `AgentTask` keep its default (`gemini-2.5-flash`).
 
 4. **`ProviderRouter(primary=X)` duplicated the primary in its fallback chain.**
    `ProviderRouter(primary=gemini)` produced `[gemini, gemini, groq, mistral]`, wasting a full extra attempt on the same provider. Fix: `_provider_value()` and exclude the primary's registry value when building fallbacks.
@@ -97,7 +97,7 @@
 
 | Provider | Status | Notes |
 |---|---|---|
-| **Gemini** | Primary, default | `gemini-1.5-flash`. Native `functionDeclarations`, schema sent unchanged. Quota is precious — do NOT run real-API tests casually. |
+| **Gemini** | Primary, default | `gemini-2.5-flash`. Native `functionDeclarations`, schema sent unchanged. Quota is precious — do NOT run real-API tests casually. |
 | **Groq** | Fallback 1 | `openai/gpt-oss-20b`. OpenAI-compatible tool calling (fixed), `extract_json_object` text fallback. |
 | **Mistral** | Fallback 2 | `mistral-small-latest`. Same normalization/fallback handling as Groq. |
 | **Grok (xAI)** | Excluded | Code preserved in `grok.py`; registry entry commented out — no credits, deprecated model IDs. Re-enable by un-commenting its `ProviderConfig` once funded. |

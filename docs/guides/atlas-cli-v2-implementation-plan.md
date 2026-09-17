@@ -162,7 +162,7 @@ atlas run watch <completed-id> --timeout 5 --output json   # expect 0
 **Goal:** no silent paying default; a deterministic, cost-free preflight.
 
 **Design (from investigation §4):**
-- `--target-model` becomes **required** (Remove the `gemini-1.5-flash` default at `cli/cli/commands/run.py:56`.) This is the deliberate v2 change: "forgot the model" can never silently spend money. Update help + Example.
+- `--target-model` becomes **required** (Remove the `gemini-2.5-flash` default at `cli/cli/commands/run.py:56`.) This is the deliberate v2 change: "forgot the model" can never silently spend money. Update help + Example.
 - Add `--preview`: resolve benchmark-version → dataset-version + adapter (same mapping the backend uses: `mock|mocked` → MockModelAdapter, else RealModelAdapter — mirrored at `cli/` for the *plan*, never to decide truth), print a machine-readable plan (version, dataset_version_id, target_model, adapter kind, estimated nothing/“no cost preflight”), **no POST**, exit 0. Uses existing read-only GETs only (Slice 2 makes them available).
 - Keep POST retry-free (Slice 5).
 
@@ -193,7 +193,7 @@ atlas run submit 55555555-5555-5555-5555-555555555555                           
 atlas run submit 55555555-5555-5555-5555-555555555555 --target-model mock --preview  # exit 0, plan JSON, NO run created
 atlas run submit 55555555-5555-5555-5555-555555555555 --target-model mock --output json  # exit 0, QUEUED
 atlas run submit 55555555-5555-5555-5555-555555555555 --target-model mock --preview --output json  # exit 0, adapter_kind mock
-atlas run submit 55555555-5555-5555-5555-555555555555 --target-model gemini-1.5-flash --preview --output json  # exit 0, adapter_kind real
+atlas run submit 55555555-5555-5555-5555-555555555555 --target-model gemini-2.5-flash --preview --output json  # exit 0, adapter_kind real
 atlas run submit 00000000-0000-0000-0000-000000000000 --target-model mock --preview  # exit 5, no POST
 ```
 
@@ -278,7 +278,7 @@ An **authoritative execution-target catalog** was pulled forward out of the (oth
 - "Available" semantics pinned to the runtime gate: `status=AVAILABLE` ⇔ `client.health()` passes (the same check execution applies); `NOT_CONFIGURED` = recognized id but this deployment lacks the credential/host — **`NOT_CONFIGURED` ≠ invalid**; it is still a legal `--target-model` value.
 
 ### Implementation (shipped, commit `a70d23d`)
-- `apps/backend/adapters/registry.py` — `list_models()` enumerates: `mock` (always present/test-only) + each `ProviderAdapter` client's `list_models()` + per-provider `config/providers.json` `model` field + `DEFAULT_TARGET_MODELS` (`gemini-1.5-flash`, `groq/llama-3.1-8b-instant` — the app-code defaults the clients' static lists omit). Canonical `id` = `mock` or `provider/model`; client entries already carrying the `provider/` prefix are normalized (kills `groq/groq/x`, which the resolver would mis-parse). `status` from `adapter.clients[provider].health()`.
+- `apps/backend/adapters/registry.py` — `list_models()` enumerates: `mock` (always present/test-only) + each `ProviderAdapter` client's `list_models()` + per-provider `config/providers.json` `model` field + `DEFAULT_TARGET_MODELS` (`gemini-2.5-flash`, `groq/llama-3.1-8b-instant` — the app-code defaults the clients' static lists omit). Canonical `id` = `mock` or `provider/model`; client entries already carrying the `provider/` prefix are normalized (kills `groq/groq/x`, which the resolver would mis-parse). `status` from `adapter.clients[provider].health()`.
 - `AdapterFactory.get_available_models()` (was a phantom) + real `apps/backend/routers/models.py` (authed) + mounted in `main.py`.
 - SDK `AtlasClient.list_models() -> list[ModelRead]`; SDK `ModelRead`/`ModelStatus` DTOs exported.
 - CLI `atlas model list`: table / `--output json` (bare array) / `--quiet` / `--json-schema` (offline `ArraySchemaDocument(ModelRead)`).
