@@ -283,12 +283,13 @@ class DockerExecutor(Executor):
             provenance.finished_at = datetime.now(UTC)
 
             # Collect logs
-            logs = client.api.logs(container_id, stdout=True, stderr=True, stream=False)
-            logs_str = (
-                logs.decode("utf-8", errors="replace") if isinstance(logs, bytes) else str(logs)
+            stdout, stderr = client.api.logs(
+                container_id, stdout=True, stderr=True, stream=False, demux=True
             )
-
-            # Collect resource stats
+            logs = stdout or b""
+            if stderr:
+                logs += b"\n" + stderr
+            logs_str = logs.decode("utf-8", errors="replace")
             await self._collect_stats(client, container_id, provenance)
 
             # Determine termination reason
@@ -306,8 +307,12 @@ class DockerExecutor(Executor):
             else:
                 provenance.termination_reason = "error"
 
+            logger.error(f"!!! DEBUG DOCKER EXECUTOR !!! RAW LOGS: {repr(logs_str[:1000])}")
+
             # Parse results from container output
             outputs_data = self._parse_outputs(logs_str, context)
+
+            logger.error(f"!!! DEBUG DOCKER EXECUTOR !!! PARSED OUTPUTS: {outputs_data}")
 
             return ExecutionResult(
                 provenance=provenance,
@@ -391,13 +396,6 @@ class DockerExecutor(Executor):
             line = line.strip()
             if not line:
                 continue
-
-            # docker-py api.logs() returns multiplexed streams with an 8-byte header
-            # when tty is not enabled. Strip leading binary data until the first '{'.
-            start_idx = line.find("{")
-            if start_idx == -1:
-                continue
-            line = line[start_idx:]
 
             try:
                 data = json.loads(line)
