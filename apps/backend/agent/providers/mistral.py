@@ -48,55 +48,44 @@ class MistralAgentProvider(BaseLLMProvider):
 
         prompt = Prompt(user=prompt_context, system=system_instruction)
 
-        try:
-            start_t = time.time()
-            response = self.client.generate(self.model, prompt, tools=tools_payload)
-            latency = int((time.time() - start_t) * 1000)
+        response = self.client.generate(
+            self.model, prompt, tools=tools_payload if tools_payload else None
+        )
+        raw_choice = (response.raw or {}).get("choices", [{}])[0]
+        message = raw_choice.get("message", {})
 
-            raw_choice = (response.raw or {}).get("choices", [{}])[0]
-            message = raw_choice.get("message", {})
+        # 1. Native Tool Calling (primary path)
+        if "tool_calls" in message and message["tool_calls"]:
+            tool_call = message["tool_calls"][0].get("function", {})
+            tool_name = tool_call.get("name")
+            raw_args = tool_call.get("arguments", {})
+            arguments = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
+            if tool_name:
+                logger.info(f"Mistral selected native tool '{tool_name}' with args: {arguments}")
+                return AgentDecision(
+                    type=AgentDecisionType.TOOL_CALL,
+                    tool_name=tool_name,
+                    arguments=arguments,
+                    reasoning=f"Mistral selected native tool '{tool_name}'",
+                )
 
-            # 1. Native Tool Calling Response Parsing
-            if "tool_calls" in message and message["tool_calls"]:
-                tool_call = message["tool_calls"][0].get("function", {})
-                tool_name = tool_call.get("name")
-                raw_args = tool_call.get("arguments", {})
-                arguments = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
+        # 2. Secondary Fallback: balanced-JSON extraction from content
+        content = (message.get("content") or "").strip()
+        if content:
+            parsed = extract_json_object(content)
+            if parsed and "tool_name" in parsed:
+                tool_name = parsed.get("tool_name")
+                arguments = parsed.get("arguments", {})
                 if tool_name:
-                    logger.info(
-                        f"Mistral selected native tool '{tool_name}' with args: {arguments}"
-                    )
                     return AgentDecision(
                         type=AgentDecisionType.TOOL_CALL,
                         tool_name=tool_name,
                         arguments=arguments,
-                        reasoning=f"Mistral selected native tool '{tool_name}'",
+                        reasoning=f"Mistral selected tool '{tool_name}' via JSON text",
                     )
 
-            # 2. Secondary Fallback: balanced-JSON extraction from content
-            content = (message.get("content") or "").strip()
-            if content:
-                parsed = extract_json_object(content)
-                if parsed and "tool_name" in parsed:
-                    tool_name = parsed.get("tool_name")
-                    arguments = parsed.get("arguments", {})
-                    if tool_name:
-                        return AgentDecision(
-                            type=AgentDecisionType.TOOL_CALL,
-                            tool_name=tool_name,
-                            arguments=arguments,
-                            reasoning=f"Mistral selected tool '{tool_name}' via JSON text",
-                        )
-
-            return AgentDecision(
-                type=AgentDecisionType.FINAL_RESPONSE,
-                response=content or "No response generated.",
-                reasoning="Mistral produced text response",
-            )
-
-        except Exception as e:
-            logger.error(f"MistralAgentProvider error: {e}")
-            return AgentDecision(
-                type=AgentDecisionType.FAIL,
-                error_message=f"Mistral provider decision failed: {str(e)}",
-            )
+        return AgentDecision(
+            type=AgentDecisionType.FINAL_RESPONSE,
+            response=content or "No response generated.",
+            reasoning="Mistral produced text response",
+        )

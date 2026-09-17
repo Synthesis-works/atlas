@@ -51,65 +51,36 @@ class GeminiAgentProvider(BaseLLMProvider):
         if available_tools:
             tools_payload = [{"functionDeclarations": available_tools}]
 
-        import time
-
         prompt = Prompt(user=prompt_context, system=system_instruction)
+        response = self.client.generate(self.model, prompt, tools=tools_payload)
+        raw = response.raw or {}
+        raw_candidate = raw.get("candidates", [{}])[0]
+        parts = raw_candidate.get("content", {}).get("parts", [])
 
-        max_internal_attempts = 1
-        for attempt in range(max_internal_attempts + 1):
-            try:
-                response = self.client.generate(self.model, prompt, tools=tools_payload)
-                raw = response.raw or {}
-                raw_candidate = raw.get("candidates", [{}])[0]
-                parts = raw_candidate.get("content", {}).get("parts", [])
-
-                for part in parts:
-                    if "functionCall" in part:
-                        fn = part["functionCall"]
-                        tool_name = fn.get("name")
-                        args = fn.get("args", {})
-                        logger.info(f"Gemini selected tool '{tool_name}' with args: {args}")
-                        return AgentDecision(
-                            type=AgentDecisionType.TOOL_CALL,
-                            tool_name=tool_name,
-                            arguments=args,
-                            reasoning=f"Gemini selected tool '{tool_name}'",
-                        )
-                    elif "text" in part:
-                        text_content = part["text"].strip()
-                        if text_content:
-                            return AgentDecision(
-                                type=AgentDecisionType.FINAL_RESPONSE,
-                                response=text_content,
-                                reasoning="Gemini produced final response",
-                            )
-
-                return AgentDecision(
-                    type=AgentDecisionType.FINAL_RESPONSE,
-                    response="Task completed.",
-                    reasoning="No further tool call or response returned by Gemini.",
-                )
-
-            except Exception as e:
-                err_str = str(e)
-                if (
-                    "429" in err_str
-                    or "503" in err_str
-                    or "quota" in err_str
-                    or "RESOURCE_EXHAUSTED" in err_str
-                ) and attempt < max_internal_attempts:
-                    sleep_time = 1.0
-                    logger.warning(
-                        f"Gemini API rate limit/unavailable. Retrying internal attempt {attempt + 1} in {sleep_time}s..."
+        for part in parts:
+            if "functionCall" in part:
+                fn = part["functionCall"]
+                tool_name = fn.get("name")
+                args = fn.get("args", {})
+                if tool_name:
+                    logger.info(f"Gemini selected tool '{tool_name}' with args: {args}")
+                    return AgentDecision(
+                        type=AgentDecisionType.TOOL_CALL,
+                        tool_name=tool_name,
+                        arguments=args,
+                        reasoning=f"Gemini selected tool '{tool_name}'",
                     )
-                    time.sleep(sleep_time)
-                    continue
+            elif "text" in part:
+                text_content = part["text"].strip()
+                if text_content:
+                    return AgentDecision(
+                        type=AgentDecisionType.FINAL_RESPONSE,
+                        response=text_content,
+                        reasoning="Gemini produced final response",
+                    )
 
-                logger.error(f"GeminiAgentProvider error: {e}")
-                return AgentDecision(
-                    type=AgentDecisionType.FAIL,
-                    error_message=f"Gemini provider decision failed: {str(e)}",
-                )
         return AgentDecision(
-            type=AgentDecisionType.FAIL, error_message="Exhausted task execution loop"
+            type=AgentDecisionType.FINAL_RESPONSE,
+            response="Task completed.",
+            reasoning="No further tool call or response returned by Gemini.",
         )

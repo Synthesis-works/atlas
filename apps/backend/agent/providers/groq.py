@@ -57,52 +57,44 @@ class GroqAgentProvider(BaseLLMProvider):
 
         prompt = Prompt(user=prompt_context, system=system_instruction)
 
-        try:
-            response = self.client.generate(
-                self.model, prompt, tools=tools_payload if tools_payload else None
-            )
-            raw_choice = (response.raw or {}).get("choices", [{}])[0]
-            message = raw_choice.get("message", {})
+        response = self.client.generate(
+            self.model, prompt, tools=tools_payload if tools_payload else None
+        )
+        raw_choice = (response.raw or {}).get("choices", [{}])[0]
+        message = raw_choice.get("message", {})
 
-            # 1. Native Tool Calling (primary path)
-            if "tool_calls" in message and message["tool_calls"]:
-                tool_call = message["tool_calls"][0].get("function", {})
-                tool_name = tool_call.get("name")
-                raw_args = tool_call.get("arguments", {})
-                arguments = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
+        # 1. Native Tool Calling (primary path)
+        if "tool_calls" in message and message["tool_calls"]:
+            tool_call = message["tool_calls"][0].get("function", {})
+            tool_name = tool_call.get("name")
+            raw_args = tool_call.get("arguments", {})
+            arguments = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
+            if tool_name:
+                logger.info(f"Groq selected native tool '{tool_name}' with args: {arguments}")
+                return AgentDecision(
+                    type=AgentDecisionType.TOOL_CALL,
+                    tool_name=tool_name,
+                    arguments=arguments,
+                    reasoning=f"Groq ({self.model}) selected native tool '{tool_name}'",
+                )
+
+        # 2. Text fallback: extract JSON tool call from content
+        content = (message.get("content") or "").strip()
+        if content:
+            parsed = extract_json_object(content)
+            if parsed and "tool_name" in parsed:
+                tool_name = parsed.get("tool_name")
+                arguments = parsed.get("arguments", {})
                 if tool_name:
-                    logger.info(f"Groq selected native tool '{tool_name}' with args: {arguments}")
                     return AgentDecision(
                         type=AgentDecisionType.TOOL_CALL,
                         tool_name=tool_name,
                         arguments=arguments,
-                        reasoning=f"Groq ({self.model}) selected native tool '{tool_name}'",
+                        reasoning=f"Groq ({self.model}) selected tool '{tool_name}' via JSON text",
                     )
 
-            # 2. Text fallback: extract JSON tool call from content
-            content = (message.get("content") or "").strip()
-            if content:
-                parsed = extract_json_object(content)
-                if parsed and "tool_name" in parsed:
-                    tool_name = parsed.get("tool_name")
-                    arguments = parsed.get("arguments", {})
-                    if tool_name:
-                        return AgentDecision(
-                            type=AgentDecisionType.TOOL_CALL,
-                            tool_name=tool_name,
-                            arguments=arguments,
-                            reasoning=f"Groq ({self.model}) selected tool '{tool_name}' via JSON text",
-                        )
-
-            return AgentDecision(
-                type=AgentDecisionType.FINAL_RESPONSE,
-                response=content or "No response generated.",
-                reasoning=f"Groq ({self.model}) produced text response",
-            )
-
-        except Exception as e:
-            logger.error(f"GroqAgentProvider error: {e}")
-            return AgentDecision(
-                type=AgentDecisionType.FAIL,
-                error_message=f"Groq provider decision failed: {str(e)}",
-            )
+        return AgentDecision(
+            type=AgentDecisionType.FINAL_RESPONSE,
+            response=content or "No response generated.",
+            reasoning=f"Groq ({self.model}) produced text response",
+        )
