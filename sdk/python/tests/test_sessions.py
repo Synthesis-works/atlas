@@ -84,7 +84,7 @@ class TestCreateAgentSession:
             "goal",
             provider="gemini",
             title="T",
-            model="gemini-2.5-flash",
+            model="gemini-3.6-flash",
             project_id="33333333-3333-4333-8333-333333333333",
         )
         request = httpx_mock.get_request()
@@ -96,7 +96,7 @@ class TestCreateAgentSession:
             "goal": "goal",
             "provider": "gemini",
             "title": "T",
-            "model": "gemini-2.5-flash",
+            "model": "gemini-3.6-flash",
             "project_id": "33333333-3333-4333-8333-333333333333",
         }
         client.close()

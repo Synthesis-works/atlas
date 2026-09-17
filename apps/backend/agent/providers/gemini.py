@@ -18,7 +18,7 @@ class GeminiAgentProvider(BaseLLMProvider):
 
     def __init__(
         self,
-        model: str = "gemini-2.5-flash",
+        model: str = "gemini-3.6-flash",
         api_key_env: str = "GEMINI_API_KEY",
         client: Optional[GeminiClient] = None,
     ):

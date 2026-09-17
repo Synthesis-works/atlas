@@ -137,7 +137,7 @@ def test_status_not_configured_when_providers_unhealthy() -> None:
 def test_status_is_per_provider() -> None:
     providers = _all_real_providers(healthy=True)
     providers["ollama"] = _StubClient(healthy=True, models=["qwen"])
-    providers["gemini"] = _StubClient(healthy=False, models=["gemini-2.5-flash"])
+    providers["gemini"] = _StubClient(healthy=False, models=["gemini-3.6-flash"])
     catalog = _catalog(**providers)
     by_provider = {m.provider: m.status for m in catalog}
     assert by_provider["ollama"] is ModelStatus.AVAILABLE

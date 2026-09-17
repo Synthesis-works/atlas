@@ -23,10 +23,10 @@ from packages.llm.clients.adapter import ProviderAdapter
 # App-code-referenced execution defaults that the provider clients' static
 # ``list_models()`` claims do not necessarily include.  Explicit and documented
 # so the catalog cannot silently miss what Atlas itself submits by default:
-#   - "gemini-2.5-flash"          SDK / CLI ``run submit`` default target_model
+#   - "gemini-3.6-flash"          SDK / CLI ``run submit`` default target_model
 #   - "groq/llama-3.1-8b-instant"  server-side submit fallback (executions.py)
 DEFAULT_TARGET_MODELS: tuple[str, ...] = (
-    "gemini-2.5-flash",
+    "gemini-3.6-flash",
     "groq/llama-3.1-8b-instant",
 )
 

@@ -397,7 +397,7 @@ def test_report_list_dto_fields(runner: CliRunner) -> None:
         run_id=uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
         benchmark_id=uuid.UUID("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
         benchmark_version="4.0.0",
-        target_model="gemini-2.5-flash",
+        target_model="gemini-3.6-flash",
         evaluation_status="COMPLETED",
         started_at=datetime(2026, 1, 1, tzinfo=UTC),
         completed_at=datetime(2026, 1, 2, tzinfo=UTC),
@@ -411,7 +411,7 @@ def test_report_list_dto_fields(runner: CliRunner) -> None:
         result = runner.invoke(main, ["report", "list"])
     assert result.exit_code == 0
     assert "aaaaaaaa" in result.output
-    assert "gemini-2.5-flash" in result.output
+    assert "gemini-3.6-flash" in result.output
     assert "4.0.0" in result.output
     assert "95.0" in result.output
     assert "2026-01-02" in result.output

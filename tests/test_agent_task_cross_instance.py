@@ -481,7 +481,7 @@ def test_run_again_does_not_leak_default_model(monkeypatch):
             )
             assert row is not None, f"task {task_id} must have a dispatch outbox event"
             assert row.payload["model_override"] is None
-            assert "gemini-2.5-flash" not in str(row.payload)
+            assert "gemini-3.6-flash" not in str(row.payload)
     finally:
         db.close()
 
@@ -489,7 +489,7 @@ def test_run_again_does_not_leak_default_model(monkeypatch):
 def test_worker_resume_factory_uses_provider_default_when_model_omitted():
     """Regression (0.2.3): the worker resume provider factory must resolve an
     omitted model to the primary provider's own default (groq ->
-    openai/gpt-oss-20b), never the generic 'gemini-2.5-flash' literal."""
+    openai/gpt-oss-20b), never the generic 'gemini-3.6-flash' literal."""
     from apps.backend.agent.state import AgentTask
     from apps.backend.worker.agent_resume import _default_provider_factory
 
@@ -499,4 +499,4 @@ def test_worker_resume_factory_uses_provider_default_when_model_omitted():
     router = _default_provider_factory(task)
     assert router.primary is not None
     assert router.primary.model == "openai/gpt-oss-20b"
-    assert router.primary.model != "gemini-2.5-flash"
+    assert router.primary.model != "gemini-3.6-flash"
