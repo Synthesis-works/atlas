@@ -152,7 +152,7 @@ class CreateEvaluationCaseTool(BaseTool):
                 "rubric_criteria": rubric,
                 "judge_configuration": {
                     "judge_provider": "gemini",
-                    "judge_model": "gemini-3.5-flash-lite",
+                    "judge_model": "gemini-1.5-flash",
                     "temperature": 0.0,
                 },
                 "status": "CREATED",
@@ -374,7 +374,7 @@ class CompareResultsTool(BaseTool):
         for i, item in enumerate(leaderboard):
             item["rank"] = i + 1
 
-        best = leaderboard[0]["model"] if leaderboard else "gemini-3.5-flash-lite"
+        best = leaderboard[0]["model"] if leaderboard else "gemini-1.5-flash"
 
         return {
             "total_runs_compared": len(execution_ids),
