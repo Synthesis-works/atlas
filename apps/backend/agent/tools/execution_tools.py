@@ -103,7 +103,7 @@ class RunBenchmarkTool(BaseTool):
             },
             "target_models": {
                 "type": "array",
-                "description": "List of model identifiers to test (e.g. ['gemini-3.5-flash-lite', 'grok-2-latest']).",
+                "description": "List of model identifiers to test (e.g. ['gemini-1.5-flash', 'grok-2-latest']).",
             },
         },
         "required": ["benchmark_version_id", "dataset_version_id", "target_models"],

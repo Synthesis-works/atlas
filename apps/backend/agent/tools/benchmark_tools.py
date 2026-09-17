@@ -129,7 +129,7 @@ class CreateBenchmarkTool(BaseTool):
             raise ValueError("name is required")
         description = kwargs.get("description", "")
         task_type = kwargs.get("task_type", "general")
-        evaluation_method = kwargs.get("evaluation_method", "exact_match")
+        evaluation_method = kwargs.get("evaluation_method", "llm_judge")
         proj_id = kwargs.get("project_id") or uuid.UUID("00000000-0000-0000-0000-000000000001")
         bm_id = uuid.uuid4()
         version_id = uuid.uuid4()
@@ -171,7 +171,7 @@ class CreateBenchmarkTool(BaseTool):
             "version_id": str(version_id),
             "name": bm.name,
             "status": bm.status,
-            "evaluation_method": (evaluation_method or "exact_match").strip().lower(),
+            "evaluation_method": (evaluation_method or "llm_judge").strip().lower(),
             "evaluation_strategy_version_id": str(strategy_version.id),
             "message": (
                 "Benchmark created successfully with evaluation strategy "

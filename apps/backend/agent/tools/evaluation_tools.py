@@ -103,7 +103,7 @@ class CreateEvaluationCaseTool(BaseTool):
         created_cases = []
         for case in evaluation_cases:
             case_id = str(uuid.uuid4())
-            method = case.get("evaluation_method", "exact_match")
+            method = case.get("evaluation_method", "llm_judge")
             expected = str(case.get("expected_answer", "")).strip()
             accepted = case.get("accepted_answers") or [expected]
             rubric = case.get("rubric_criteria") or [f"Mentions expected concepts: {expected}"]
@@ -152,7 +152,7 @@ class CreateEvaluationCaseTool(BaseTool):
                 "rubric_criteria": rubric,
                 "judge_configuration": {
                     "judge_provider": "gemini",
-                    "judge_model": "gemini-3.5-flash-lite",
+                    "judge_model": "gemini-1.5-flash",
                     "temperature": 0.0,
                 },
                 "status": "CREATED",
@@ -258,7 +258,7 @@ class EvaluateRunTool(BaseTool):
                 continue
 
             raw_meas = eval_res.raw_measurements or {}
-            method = raw_meas.get("evaluation_method", "exact_match")
+            method = raw_meas.get("evaluation_method", "llm_judge")
             exp = raw_meas.get("expected_answer", "")
             accepted_answers = raw_meas.get("accepted_answers", [exp])
             rubric_criteria = raw_meas.get("rubric_criteria", [])
@@ -374,7 +374,7 @@ class CompareResultsTool(BaseTool):
         for i, item in enumerate(leaderboard):
             item["rank"] = i + 1
 
-        best = leaderboard[0]["model"] if leaderboard else "gemini-3.5-flash-lite"
+        best = leaderboard[0]["model"] if leaderboard else "gemini-1.5-flash"
 
         return {
             "total_runs_compared": len(execution_ids),

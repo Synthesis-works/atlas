@@ -51,9 +51,9 @@ const BenchmarksFeatureContent: React.FC = () => {
           );
           // Fall back to the backend's canonical default target model rather
           // than a hardcoded local Ollama model name.
-          targetModel = available?.name || 'gemini-2.5-flash';
+          targetModel = available?.name || 'gemini-1.5-flash';
         } catch {
-          targetModel = 'gemini-2.5-flash';
+          targetModel = 'gemini-1.5-flash';
         }
       }
 

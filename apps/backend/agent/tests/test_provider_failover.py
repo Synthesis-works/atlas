@@ -226,7 +226,7 @@ def test_scenario_j_k_full_workflow_and_lineage_isolation():
             "arguments": {
                 "benchmark_version_id": "bmv-1",
                 "dataset_id": "ds-1",
-                "target_models": ["gemini-3.5-flash-lite"],
+                "target_models": ["gemini-1.5-flash"],
             },
         },
         {
@@ -319,7 +319,7 @@ def test_regression_prose_decision_rejection_and_repair():
                 "arguments": {
                     "benchmark_version_id": "bmv-1",
                     "dataset_id": "ds-1",
-                    "target_models": ["gemini-3.5-flash-lite"],
+                    "target_models": ["gemini-1.5-flash"],
                 },
             },
             {
@@ -505,7 +505,7 @@ def test_unhealthy_skip_emits_provider_fallback_trace():
 
     class _UnhealthyProvider(BaseLLMProvider):
         name = "gemini"
-        model = "gemini-3.5-flash-lite"
+        model = "gemini-1.5-flash"
 
         class _Client:
             def health(self):
@@ -574,7 +574,7 @@ def test_exception_retry_exhaustion_emits_provider_fallback_trace():
 
     class _RaisingProvider(BaseLLMProvider):
         name = "gemini"
-        model = "gemini-3.5-flash-lite"
+        model = "gemini-1.5-flash"
 
         def decide(self, task, prompt_context, available_tools):
             raise ConnectionError("connection failure: upstream timeout")

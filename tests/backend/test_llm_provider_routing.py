@@ -54,13 +54,13 @@ def test_registry_registered_model_resolves_to_its_declared_provider(adapter, pa
         [
             {
                 "provider": "gemini",
-                "model": "gemini-3.5-flash-lite",
+                "model": "gemini-1.5-flash",
             }
         ]
     )
-    provider, model = adapter.resolve_provider_and_model("gemini-3.5-flash-lite")
+    provider, model = adapter.resolve_provider_and_model("gemini-1.5-flash")
     assert provider == "gemini"
-    assert model == "gemini-3.5-flash-lite"
+    assert model == "gemini-1.5-flash"
 
 
 def test_mistral_resolves_to_mistral_cloud_even_with_unhealthy_client(

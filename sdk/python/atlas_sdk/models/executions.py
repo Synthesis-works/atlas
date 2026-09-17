@@ -70,7 +70,7 @@ class ExecutionResponse(BaseModel):
     id: uuid.UUID
     benchmark_version_id: uuid.UUID
     status: str  # ExecutionState value as string
-    target_model: str = "gemini-3.5-flash-lite"
+    target_model: str = "gemini-1.5-flash"
     completed_items: int = 0
     total_items: int = 1
     started_at: datetime | None = None
@@ -85,7 +85,7 @@ class ExecutionResponse(BaseModel):
 class ExecutionCreateRequest(BaseModel):
     """Request body for ``POST /api/v1/benchmarks/{bv_id}/executions``."""
 
-    target_model: str = "gemini-3.5-flash-lite"
+    target_model: str = "gemini-1.5-flash"
     dataset_version_id: uuid.UUID | None = None
     execution_config: dict[str, Any] | None = None
 

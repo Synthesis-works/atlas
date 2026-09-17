@@ -142,7 +142,7 @@ class CreateDatasetTool(BaseTool):
         if not bv:
             from apps.backend.services.evaluation import resolve_strategy_version_for_method
 
-            fallback_sv = resolve_strategy_version_for_method(db, "exact_match")
+            fallback_sv = resolve_strategy_version_for_method(db, "llm_judge")
             bv = BenchmarkVersion(
                 id=uuid.uuid4(),
                 benchmark_id=uuid.UUID(benchmark_id),
