@@ -283,7 +283,9 @@ class DockerExecutor(Executor):
             provenance.finished_at = datetime.now(UTC)
 
             # Collect logs
-            stdout, stderr = client.api.logs(container_id, stdout=True, stderr=True, stream=False, demux=True)
+            stdout, stderr = client.api.logs(
+                container_id, stdout=True, stderr=True, stream=False, demux=True
+            )
             logs = stdout or b""
             if stderr:
                 logs += b"\n" + stderr
@@ -309,7 +311,7 @@ class DockerExecutor(Executor):
 
             # Parse results from container output
             outputs_data = self._parse_outputs(logs_str, context)
-            
+
             logger.error(f"!!! DEBUG DOCKER EXECUTOR !!! PARSED OUTPUTS: {outputs_data}")
 
             return ExecutionResult(
