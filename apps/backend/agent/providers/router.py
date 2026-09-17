@@ -387,7 +387,7 @@ class ProviderRouter(BaseLLMProvider):
                         if attempt < self.max_retries_per_provider:
                             import re
 
-                            m = re.search(r"try again in ([\d\.]+)s", err_str.lower())
+                            m = re.search(r"try again in ([\d\.]+)s", err_msg.lower())
                             if m:
                                 requested_sleep = float(m.group(1)) + 0.5
                                 if requested_sleep > 20.0:
@@ -457,7 +457,22 @@ class ProviderRouter(BaseLLMProvider):
                         break
 
                     if attempt < self.max_retries_per_provider:
-                        sleep_time = min((attempt + 1) * 2.0, self.max_backoff_seconds)
+                        import re
+
+                        m = re.search(r"try again in ([\d\.]+)s", err_str.lower())
+                        if m:
+                            requested_sleep = float(m.group(1)) + 0.5
+                            if requested_sleep > 20.0:
+                                self._provider_cooldowns[provider_name] = (
+                                    time.time() + requested_sleep
+                                )
+                                msg = f"Rate limit requested {requested_sleep}s wait, skipping."
+                                failures_summary.append(f"{provider_name}: {msg}")
+                                self._record_fallback(task, chain, provider_idx, provider_name, msg)
+                                break
+                            sleep_time = requested_sleep
+                        else:
+                            sleep_time = min((attempt + 1) * 2.0, self.max_backoff_seconds)
                         logger.warning(
                             f"Exception on '{provider_name}' ({err_str}). Retrying in {sleep_time}s..."
                         )
