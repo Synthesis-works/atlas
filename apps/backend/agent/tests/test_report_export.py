@@ -79,7 +79,7 @@ def _seed_resolvable_chain(db):
         id=uuid.uuid4(),
         project_id=benchmark.project_id,
         benchmark_version_id=benchmark_version.id,
-        target_model="gemini-3.5-flash-lite",
+        target_model="gemini-1.5-flash",
         status=ExecutionStatus.COMPLETED,
     )
     db.add(execution)
@@ -142,7 +142,7 @@ def test_export_json_returns_real_report_artifact(db_session):
 
     assert document.execution is not None
     assert document.execution.id == execution_id
-    assert document.execution.target_model == "gemini-3.5-flash-lite"
+    assert document.execution.target_model == "gemini-1.5-flash"
     assert document.execution.status == ExecutionStatus.COMPLETED.value
 
     assert document.benchmark is not None
@@ -162,7 +162,7 @@ def test_export_json_truthful_nulls_for_dangling_benchmark(db_session):
         id=uuid.uuid4(),
         project_id=uuid.uuid4(),
         benchmark_version_id=uuid.uuid4(),
-        target_model="gemini-3.5-flash-lite",
+        target_model="gemini-1.5-flash",
         status=ExecutionStatus.FAILED,
     )
     db_session.add(execution)
@@ -219,7 +219,7 @@ def test_export_json_merges_agent_execution_meta(db_session):
         action="provider_decision_gemini",
         result={
             "provider": "gemini",
-            "model": "gemini-3.5-flash-lite",
+            "model": "gemini-1.5-flash",
             "decision_type": "FINAL_RESPONSE",
             "latency_ms": 120,
         },

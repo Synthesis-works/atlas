@@ -47,7 +47,7 @@ the only state change; everything else is read-only.
 | List runs | `atlas --output json run list --limit 3` | 115 total; full UUIDs, status, model, timestamps. exit 0. |
 | Inspect a run | `atlas run get <execution-id>` | exit 0 with full detail (but see §5/P3 — status surfaces are incoherent). |
 | Watch a run | `atlas run watch <id> --interval 2` | **No `--timeout` option.** On a stuck run it polls indefinitely (see §6). Only Ctrl-C (exit 130) stops it. |
-| Submit a run | `atlas run submit <version-id> --target-model mock` | exit 0, QUEUED → RUNNING. (Note: default target is `gemini-2.5-flash` — a paid provider — beware cost.) |
+| Submit a run | `atlas run submit <version-id> --target-model mock` | exit 0, QUEUED → RUNNING. (Note: default target is `gemini-1.5-flash` — a paid provider — beware cost.) |
 | Inspect a report | `atlas --output json report get <run-id>` | exit 0, score/details (when report exists). |
 | Export a report | `atlas report export <run-id> --output-file <path>`; `--format csv` | exit 0 both; JSON 1884 bytes, CSV 647 bytes. Raw `-` to stdout works (bytes, not JSON). |
 | Leaderboard/model | `atlas leaderboard model mock [--history\|--benchmarks]`; `leaderboard benchmark <vid>` | exit 0 all; `--history` exposes the only usable path to **benchmark version IDs**. |
@@ -82,7 +82,7 @@ gated by stale/absent org membership, not by capability.
 slow runs it hangs forever, wasting the agent's session. Needs a bound plus a non-zero terminal
 state (e.g. `TIMEOUT`).
 
-**P4 — `run submit` has a costly default (high).** Default `--target-model gemini-2.5-flash`
+**P4 — `run submit` has a costly default (high).** Default `--target-model gemini-1.5-flash`
 (falls through to a real provider adapter). An agent that submits "innocently" from a benchmark ID
 it found in `activity` hits a real external API. Needs explicit `--yes`/dry-run/preflight or a
 non-paying default.

@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $configs = @(
-    @{ Provider = "gemini"; Model = "gemini-2.5-flash" },
+    @{ Provider = "gemini"; Model = "gemini-1.5-flash" },
     @{ Provider = "grok"; Model = "grok-2-latest" }
 )
 

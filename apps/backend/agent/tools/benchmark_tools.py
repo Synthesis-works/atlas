@@ -171,7 +171,7 @@ class CreateBenchmarkTool(BaseTool):
             "version_id": str(version_id),
             "name": bm.name,
             "status": bm.status,
-            "evaluation_method": (evaluation_method or "exact_match").strip().lower(),
+            "evaluation_method": (evaluation_method or "llm_judge").strip().lower(),
             "evaluation_strategy_version_id": str(strategy_version.id),
             "message": (
                 "Benchmark created successfully with evaluation strategy "

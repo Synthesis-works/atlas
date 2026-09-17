@@ -305,7 +305,7 @@ export const MOCK_MODELS: RegistryModel[] = [
     defaultTemperature: 1.0, defaultTopP: 0.95, defaultMaxTokens: 8192,
   },
   {
-    id: 'gemini-2.5-flash',
+    id: 'gemini-1.5-flash',
     name: 'Gemini 2.5 Flash',
     provider: 'Google',
     family: 'Gemini',
@@ -325,7 +325,7 @@ export const MOCK_MODELS: RegistryModel[] = [
     overallScore: 84.2,
     latencyMs: 420,
     evaluationCount: 29,
-    profile: { modelId: 'gemini-2.5-flash', profileVersion: '1.0', taxonomyVersion: '1.0', capabilities: caps([82, 84, 83, 78, 80, 88, 79, 88]) },
+    profile: { modelId: 'gemini-1.5-flash', profileVersion: '1.0', taxonomyVersion: '1.0', capabilities: caps([82, 84, 83, 78, 80, 88, 79, 88]) },
     health: { availability: 99.8, reliability: 99.5, errorRate: 0.5, responseQuality: 88, status: 'healthy', lastChecked: '2026-07-22T08:00:00Z' },
     cost: { inputPer1kTokens: 0.000075, outputPer1kTokens: 0.0003, averageCostPerCall: 0.0002, monthlyEstimate: 24, projectedMonthly: 28, currency: 'USD' },
     deployment: { status: 'deployed', endpoint: 'https://generativelanguage.googleapis.com', region: 'global', runtime: 'Vertex AI', provider: 'Google' },
