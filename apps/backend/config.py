@@ -135,7 +135,7 @@ class Settings(BaseSettings):
     mistral_api_key: str | None = Field(default=None)
     grok_model: str = Field(default="grok-2", validation_alias="GROK_MODEL")
     mistral_model: str = Field(default="mistral-small-latest", validation_alias="MISTRAL_MODEL")
-    gemini_model: str = Field(default="gemini-1.5-flash", validation_alias="GEMINI_MODEL")
+    gemini_model: str = Field(default="gemini-2.5-flash", validation_alias="GEMINI_MODEL")
     llm_provider_timeout_seconds: float = Field(
         default=30.0, validation_alias="LLM_PROVIDER_TIMEOUT"
     )

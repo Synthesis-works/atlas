@@ -20,7 +20,7 @@ def test_factory_returns_mock_adapter_for_mock_target():
 
 
 def test_factory_returns_real_adapter_for_real_targets():
-    adapter_gemini = AdapterFactory.get_adapter("gemini-1.5-flash")
+    adapter_gemini = AdapterFactory.get_adapter("gemini-2.5-flash")
     assert isinstance(adapter_gemini, RealModelAdapter)
 
     adapter_grok = AdapterFactory.get_adapter("grok-2")
@@ -38,7 +38,7 @@ def test_factory_returns_real_adapter_for_real_targets():
 
 def test_missing_api_credentials_fails_clearly():
     with patch.dict(os.environ, {}, clear=True):
-        adapter = RealModelAdapter(target_model="gemini-1.5-flash")
+        adapter = RealModelAdapter(target_model="gemini-2.5-flash")
         with pytest.raises(LLMError) as exc_info:
             adapter.predict("Test prompt")
         assert "API key" in str(exc_info.value) or "unavailable" in str(exc_info.value)
@@ -52,10 +52,10 @@ def test_unknown_provider_fails_clearly():
 
 
 def test_successful_provider_response_converted_to_prediction_result():
-    adapter = RealModelAdapter(target_model="gemini-1.5-flash")
+    adapter = RealModelAdapter(target_model="gemini-2.5-flash")
     mock_response = LLMResponse(
         provider="gemini",
-        model="gemini-1.5-flash",
+        model="gemini-2.5-flash",
         prompt_tokens=15,
         completion_tokens=25,
         total_tokens=40,

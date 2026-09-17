@@ -2,7 +2,7 @@
 Atlas Agent Provider Router
 
 Production fallback chain (verified 2026-08-15):
-    Primary:    Gemini (gemini-1.5-flash)   — Google AI, native functionDeclarations
+    Primary:    Gemini (gemini-2.5-flash)   — Google AI, native functionDeclarations
     Fallback 1: Groq   (openai/gpt-oss-20b) — Groq.com, OpenAI-compat tool calling
     Fallback 2: Mistral (mistral-small-latest)    — Mistral AI, OpenAI-compat tool calling
 
@@ -74,7 +74,7 @@ PROVIDER_REGISTRY: list[ProviderConfig] = [
         value="gemini",
         label="Gemini (Google)",
         description="Google Gemini via Generative Language API. Supports native function calling.",
-        model="gemini-1.5-flash",
+        model="gemini-2.5-flash",
         is_test_only=False,
         api_key_env="GEMINI_API_KEY",
     ),
@@ -184,7 +184,7 @@ class ProviderRouter(BaseLLMProvider):
     Production-grade LLM Provider Router with automatic fallback chain.
 
     Default chain (when all keys are configured):
-        Primary:    GeminiAgentProvider (gemini-1.5-flash)
+        Primary:    GeminiAgentProvider (gemini-2.5-flash)
         Fallback 1: GroqAgentProvider   (openai/gpt-oss-20b)
         Fallback 2: MistralAgentProvider (mistral-small-latest)
 
