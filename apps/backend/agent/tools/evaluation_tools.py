@@ -103,7 +103,7 @@ class CreateEvaluationCaseTool(BaseTool):
         created_cases = []
         for case in evaluation_cases:
             case_id = str(uuid.uuid4())
-            method = case.get("evaluation_method", "exact_match")
+            method = case.get("evaluation_method", "llm_judge")
             expected = str(case.get("expected_answer", "")).strip()
             accepted = case.get("accepted_answers") or [expected]
             rubric = case.get("rubric_criteria") or [f"Mentions expected concepts: {expected}"]
