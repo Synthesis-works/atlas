@@ -76,7 +76,7 @@ def _dashboard_payload(**overrides: object) -> dict:
         "active_executions": [
             {
                 "id": "ff0a7a03-ca03-4b67-bc47-eae9335ad6e8",
-                "model": "gemini-2.5-flash",
+                "model": "gemini-3.5-flash-lite",
                 "benchmark": "HellaSwag",
                 "status": "Failed",
                 "progress": 0,
@@ -88,7 +88,7 @@ def _dashboard_payload(**overrides: object) -> dict:
             {
                 "id": "ex-ff0a7a03-ca03-4b67-bc47-eae9335ad6e8",
                 "type": "evaluation_started",
-                "title": "gemini-2.5-flash started on HellaSwag",
+                "title": "gemini-3.5-flash-lite started on HellaSwag",
                 "description": "Run ff0a7a03-ca03-4b67-bc47-eae9335ad6e8 is currently Failed.",
                 "timestamp": "2026-08-26T06:24:31.588819+00:00",
             }
@@ -134,7 +134,7 @@ class TestDashboardSnapshotDto:
         assert snapshot.active_executions[0].benchmark == "HellaSwag"
         activity = snapshot.activity[0]
         assert activity.type == "evaluation_started"
-        assert activity.title == "gemini-2.5-flash started on HellaSwag"
+        assert activity.title == "gemini-3.5-flash-lite started on HellaSwag"
         assert isinstance(snapshot.capability, DashboardCapability)
         assert snapshot.capability is not None
         assert snapshot.capability.model_name == "gemini-1.5-pro"
@@ -292,7 +292,7 @@ class TestGetRecentExecutions:
                     {
                         "id": "ff0a7a03-ca03-4b67-bc47-eae9335ad6e8",
                         "benchmark_name": "HellaSwag",
-                        "target_model": "gemini-2.5-flash",
+                        "target_model": "gemini-3.5-flash-lite",
                         "status": "FAILED",
                         "started_at": "2026-08-26T06:24:31.588819",
                         "completed_at": "2026-08-26T06:24:39.671965",
@@ -306,7 +306,7 @@ class TestGetRecentExecutions:
         result = client.get_recent_executions()
         assert len(result) == 1
         execution = result[0]
-        assert execution.target_model == "gemini-2.5-flash"
+        assert execution.target_model == "gemini-3.5-flash-lite"
         assert execution.benchmark_name == "HellaSwag"
         assert execution.status.value == "FAILED"
         assert execution.duration == 8083
@@ -335,7 +335,7 @@ class TestGetRecentModels:
             json=_ok(
                 [
                     {
-                        "name": "gemini-2.5-flash",
+                        "name": "gemini-3.5-flash-lite",
                         "last_executed_at": "2026-08-26T06:24:30.396401",
                         "execution_count": 1,
                     },
@@ -350,7 +350,7 @@ class TestGetRecentModels:
         client = AtlasClient("http://localhost:8000")
         result = client.get_recent_models()
         assert len(result) == 2
-        assert result[0].name == "gemini-2.5-flash"
+        assert result[0].name == "gemini-3.5-flash-lite"
         assert result[0].execution_count == 1
         assert result[1].execution_count == 12
         assert result[1].last_executed_at is not None

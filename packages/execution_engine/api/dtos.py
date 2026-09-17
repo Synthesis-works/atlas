@@ -29,7 +29,7 @@ class ExecutionResponse(BaseModel):
     id: uuid.UUID
     benchmark_version_id: uuid.UUID
     status: ExecutionState
-    target_model: str = "gemini-2.5-flash"
+    target_model: str = "gemini-3.5-flash-lite"
     completed_items: int = 0
     total_items: int = 1
     started_at: datetime | None = None
@@ -42,7 +42,7 @@ class ExecutionResponse(BaseModel):
 
 
 class ExecutionCreateRequest(BaseModel):
-    target_model: str = "gemini-2.5-flash"
+    target_model: str = "gemini-3.5-flash-lite"
     dataset_version_id: uuid.UUID | None = None
     execution_config: dict | None = None
     idempotency_key: str | None = Field(default=None, max_length=255)
