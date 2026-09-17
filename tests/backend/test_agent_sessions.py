@@ -634,7 +634,7 @@ def _latest_run_request(db, task_id) -> dict | None:
     ("provider", "expected_default"),
     [
         ("groq", "openai/gpt-oss-20b"),
-        ("gemini", "gemini-3.5-flash-lite"),
+        ("gemini", "gemini-1.5-flash"),
         ("mistral", "mistral-small-latest"),
     ],
 )
@@ -667,7 +667,7 @@ def test_omitted_session_model_dispatches_provider_default_not_gemini(
     assert payload.get("model_override") is None
 
     if provider in ("groq", "mistral"):
-        assert "gemini-3.5-flash-lite" not in json.dumps(payload)
+        assert "gemini-1.5-flash" not in json.dumps(payload)
 
     provider_instance = build_provider_instance(provider, payload.get("model_override"))
     assert provider_instance is not None
@@ -676,7 +676,7 @@ def test_omitted_session_model_dispatches_provider_default_not_gemini(
 
 def test_omitted_model_explicitly_groq_resolves_to_gpt_oss(db_session, monkeypatch):
     """IMPORTANT 0.2.3 regression: provider=groq, model omitted must NEVER yield
-    model_override='gemini-3.5-flash-lite'; the resolved model must be groq's
+    model_override='gemini-1.5-flash'; the resolved model must be groq's
     own default (openai/gpt-oss-20b)."""
     from apps.backend.config import settings
 

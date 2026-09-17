@@ -63,7 +63,7 @@ def test_evaluation_case_exact_match(db_session):
     # Setup execution store
     _benchmark_execution_store["exec-math-1"] = {
         "execution_id": "exec-math-1",
-        "target_model": "gemini-3.5-flash-lite",
+        "target_model": "gemini-1.5-flash",
         "status": "COMPLETED",
         "results": [
             {

@@ -129,7 +129,7 @@ class ProviderAdapter:
         Determines provider name and model name from target_model string.
         Examples:
           'mock' -> ('mock', 'mock')
-          'gemini-3.5-flash-lite' -> ('gemini', 'gemini-3.5-flash-lite')
+          'gemini-1.5-flash' -> ('gemini', 'gemini-1.5-flash')
           'google/gemini-1.5-pro' -> ('gemini', 'gemini-1.5-pro')
           'grok-2' -> ('grok', 'grok-2')
           'mistral-large-latest' -> ('mistral', 'mistral-large-latest')
