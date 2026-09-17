@@ -61,9 +61,9 @@ def test_models_endpoint_returns_typed_entries():
             is_test_only=True,
         ),
         ModelRead(
-            id="gemini/gemini-2.5-flash",
+            id="gemini/gemini-3.5-flash-lite",
             provider="gemini",
-            display_name="Gemini gemini-2.5-flash",
+            display_name="Gemini gemini-3.5-flash-lite",
             status=ModelStatus.NOT_CONFIGURED,
             is_test_only=False,
         ),

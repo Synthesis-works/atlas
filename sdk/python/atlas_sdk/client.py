@@ -712,7 +712,7 @@ class AtlasClient:
         self,
         benchmark_version_id: str,
         *,
-        target_model: str = "gemini-2.5-flash",
+        target_model: str = "gemini-3.5-flash-lite",
         dataset_version_id: str | None = None,
     ) -> ExecutionResponse:
         """Submit a new execution for a benchmark version.

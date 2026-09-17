@@ -42,7 +42,7 @@ class ExecutionService:
         project_id: uuid.UUID,
         dataset_version_id: uuid.UUID,
         submitted_by: uuid.UUID,
-        target_model: str = "gemini-2.5-flash",
+        target_model: str = "gemini-3.5-flash-lite",
     ) -> Execution:
         execution = Execution(
             id=execution_id,
