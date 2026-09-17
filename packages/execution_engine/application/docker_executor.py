@@ -391,6 +391,14 @@ class DockerExecutor(Executor):
             line = line.strip()
             if not line:
                 continue
+
+            # docker-py api.logs() returns multiplexed streams with an 8-byte header
+            # when tty is not enabled. Strip leading binary data until the first '{'.
+            start_idx = line.find("{")
+            if start_idx == -1:
+                continue
+            line = line[start_idx:]
+
             try:
                 data = json.loads(line)
                 if "test_case_id" in data and "output" in data:
@@ -399,11 +407,10 @@ class DockerExecutor(Executor):
                             "execution_id": str(context.execution_id),
                             "test_case_id": data["test_case_id"],
                             "raw_output": data["output"],
-                            "duration_ms": data.get("latency_ms"),
-                            "tokens_used": data.get("tokens"),
+                            "duration_ms": data.get("latency_ms", 0),
+                            "tokens_used": data.get("tokens", 0),
                         }
                     )
             except json.JSONDecodeError:
-                # Not a JSON output line, skip
-                continue
+                pass
         return outputs
