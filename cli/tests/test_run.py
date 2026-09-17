@@ -23,7 +23,7 @@ from cli.app import main
 def _exec_response(
     *,
     status: str = "QUEUED",
-    target_model: str = "gemini-2.5-flash",
+    target_model: str = "gemini-3.6-flash",
 ) -> ExecutionResponse:
     return ExecutionResponse(
         id=uuid.UUID("11111111-1111-1111-1111-111111111111"),
@@ -147,7 +147,7 @@ def test_submit_human(runner: CliRunner) -> None:
     assert result.exit_code == 0
     assert "11111111-1111-1111-1111-111111111111" in result.output
     assert "QUEUED" in result.output
-    assert "gemini-2.5-flash" in result.output
+    assert "gemini-3.6-flash" in result.output
 
 
 def test_submit_human_custom_model(runner: CliRunner) -> None:
@@ -180,7 +180,7 @@ def test_submit_json(runner: CliRunner) -> None:
     parsed = json.loads(result.output)
     assert parsed["id"] == "11111111-1111-1111-1111-111111111111"
     assert parsed["status"] == "QUEUED"
-    assert parsed["target_model"] == "gemini-2.5-flash"
+    assert parsed["target_model"] == "gemini-3.6-flash"
     assert parsed["benchmark_version_id"] == BENCH_VERSION_ID
     assert parsed["max_retries"] == 3
     assert parsed["attempts"] == []
@@ -510,7 +510,7 @@ def test_preview_real_adapter(runner: CliRunner) -> None:
                 "submit",
                 BENCH_VERSION_ID,
                 "--target-model",
-                "gemini-2.5-flash",
+                "gemini-3.6-flash",
                 "--preview",
             ],
         )
@@ -663,7 +663,7 @@ def _exec_response_running() -> ExecutionResponse:
         id=uuid.UUID(EXEC_ID),
         benchmark_version_id=uuid.UUID(BENCH_VERSION_ID),
         status="RUNNING",
-        target_model="gemini-2.5-flash",
+        target_model="gemini-3.6-flash",
         completed_items=3,
         total_items=10,
         started_at=datetime(2026, 8, 26, 12, 0, 0, tzinfo=UTC),
@@ -697,7 +697,7 @@ def test_get_human(runner: CliRunner) -> None:
     assert result.exit_code == 0
     assert EXEC_ID in result.output
     assert "RUNNING" in result.output
-    assert "gemini-2.5-flash" in result.output
+    assert "gemini-3.6-flash" in result.output
     assert "3/10" in result.output
 
 
@@ -853,7 +853,7 @@ def _list_items() -> list[ExecutionResponse]:
             id=uuid.UUID(EXEC_ID),
             benchmark_version_id=uuid.UUID(BENCH_VERSION_ID),
             status="COMPLETED",
-            target_model="gemini-2.5-flash",
+            target_model="gemini-3.6-flash",
             completed_items=10,
             total_items=10,
             started_at=datetime(2026, 8, 26, 12, 0, 0, tzinfo=UTC),
@@ -1092,7 +1092,7 @@ def _exec_response_for(status: str) -> ExecutionResponse:
         id=uuid.UUID(EXEC_ID_WATCH),
         benchmark_version_id=uuid.UUID(BENCH_VERSION_ID),
         status=status,
-        target_model="gemini-2.5-flash",
+        target_model="gemini-3.6-flash",
         completed_items=7 if status == "COMPLETED" else 3,
         total_items=10,
         started_at=datetime(2026, 8, 26, 12, 0, 0, tzinfo=UTC),
@@ -1667,7 +1667,7 @@ def _cancel_exec_response(status: str = "CANCELLING") -> ExecutionResponse:
         id=uuid.UUID(EXEC_ID_CANCEL),
         benchmark_version_id=uuid.UUID(BENCH_VERSION_ID),
         status=status,
-        target_model="gemini-2.5-flash",
+        target_model="gemini-3.6-flash",
         completed_items=3,
         total_items=10,
         started_at=datetime(2026, 8, 26, 12, 0, 0, tzinfo=UTC),

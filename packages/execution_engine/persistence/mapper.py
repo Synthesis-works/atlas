@@ -48,7 +48,7 @@ class ExecutionMapper:
             project_id=model.project_id,
             benchmark_version_id=model.benchmark_version_id,
             status=model.status,
-            target_model=getattr(model, "target_model", "gemini-2.5-flash") or "gemini-2.5-flash",
+            target_model=getattr(model, "target_model", "gemini-3.6-flash") or "gemini-3.6-flash",
             created_by=model.created_by_id,  # type: ignore
             created_at=model.created_at,
             updated_at=model.updated_at,

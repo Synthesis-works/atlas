@@ -40,7 +40,7 @@ class ExecutionApplicationService:
         benchmark_version_id: uuid.UUID,
         dataset_version_id: uuid.UUID,
         submitted_by: uuid.UUID,
-        target_model: str = "gemini-2.5-flash",
+        target_model: str = "gemini-3.6-flash",
         idempotency_key: str | None = None,
     ) -> Execution:
         """
