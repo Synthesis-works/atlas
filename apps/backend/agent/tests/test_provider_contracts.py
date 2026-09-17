@@ -21,9 +21,12 @@ from packages.llm.models.response import LLMResponse
 from apps.backend.agent.providers.gemini import GeminiAgentProvider
 from apps.backend.agent.providers.groq import GroqAgentProvider
 from apps.backend.agent.providers.mistral import MistralAgentProvider
+from apps.backend.agent.providers.mock import MockAgentProvider
+from apps.backend.agent.providers.nvidia import NvidiaAgentProvider
 from apps.backend.agent.providers.router import (
     PROVIDER_REGISTRY,
     ProviderRouter,
+    _build_default_chain,
     build_provider_instance,
     get_configured_providers,
 )
@@ -364,25 +367,28 @@ def test_build_provider_instance_explicit_override_wins():
     )
 
 
-def test_router_default_ordering_gemini_groq_mistral(monkeypatch):
+def test_router_default_ordering_groq_gemini_mistral_nvidia(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "test")
     monkeypatch.setenv("GROQ_API_KEY", "test")
     monkeypatch.setenv("MISTRAL_API_KEY", "test")
+    monkeypatch.setenv("NVIDIA_API_KEY", "test")
     router = ProviderRouter(max_retries_per_provider=0, max_backoff_seconds=0.1)
-    assert router.primary.__class__ is GeminiAgentProvider
-    assert router.fallbacks[0].__class__ is GroqAgentProvider
+    assert router.primary.__class__ is GroqAgentProvider
+    assert router.fallbacks[0].__class__ is GeminiAgentProvider
     assert router.fallbacks[1].__class__ is MistralAgentProvider
+    assert router.fallbacks[2].__class__ is NvidiaAgentProvider
 
 
 def test_router_primary_override_excludes_duplicate(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "test")
     monkeypatch.setenv("GROQ_API_KEY", "test")
     monkeypatch.setenv("MISTRAL_API_KEY", "test")
+    monkeypatch.setenv("NVIDIA_API_KEY", "test")
     gemini = GeminiAgentProvider(client=FakeClient(make_raw("gemini", content="ok")))
     router = ProviderRouter(primary=gemini, max_retries_per_provider=0, max_backoff_seconds=0.1)
     # The explicitly-provided primary must NOT be duplicated in the auto fallbacks.
     assert all(p.__class__ is not GeminiAgentProvider for p in router.fallbacks)
-    assert len(router.fallbacks) == 2
+    assert len(router.fallbacks) == 3
 
 
 def test_router_gemini_fails_groq_attempted():
