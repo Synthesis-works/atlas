@@ -2,7 +2,7 @@
 Atlas Agent Provider Router
 
 Production fallback chain (verified 2026-08-15):
-    Primary:    Gemini (gemini-1.5-flash)   — Google AI, native functionDeclarations
+    Primary:    Gemini (gemini-3.5-flash-lite)   — Google AI, native functionDeclarations
     Fallback 1: Groq   (openai/gpt-oss-20b) — Groq.com, OpenAI-compat tool calling
     Fallback 2: Mistral (mistral-small-latest)    — Mistral AI, OpenAI-compat tool calling
 
@@ -22,6 +22,7 @@ from apps.backend.agent.providers.gemini import GeminiAgentProvider
 from apps.backend.agent.providers.groq import GroqAgentProvider
 from apps.backend.agent.providers.mistral import MistralAgentProvider
 from apps.backend.agent.providers.mock import MockAgentProvider
+from apps.backend.agent.providers.nvidia import NvidiaAgentProvider
 from apps.backend.agent.state import AgentDecision, AgentDecisionType, AgentTask
 
 logger = logging.getLogger(__name__)
@@ -62,14 +63,6 @@ class ProviderConfig:
 
 PROVIDER_REGISTRY: list[ProviderConfig] = [
     ProviderConfig(
-        value="gemini",
-        label="Gemini (Google)",
-        description="Google Gemini via Generative Language API. Supports native function calling.",
-        model="gemini-1.5-flash",
-        is_test_only=False,
-        api_key_env="GEMINI_API_KEY",
-    ),
-    ProviderConfig(
         value="groq",
         label="Groq (GPT-OSS 20B)",
         description="GPT-OSS 20B via Groq.com inference API. Ultra-low latency tool calling.",
@@ -78,12 +71,28 @@ PROVIDER_REGISTRY: list[ProviderConfig] = [
         api_key_env="GROQ_API_KEY",
     ),
     ProviderConfig(
+        value="gemini",
+        label="Gemini (Google)",
+        description="Google Gemini via Generative Language API. Supports native function calling.",
+        model="gemini-3.5-flash-lite",
+        is_test_only=False,
+        api_key_env="GEMINI_API_KEY",
+    ),
+    ProviderConfig(
         value="mistral",
         label="Mistral AI",
         description="Mistral Small via Mistral AI API. Strong reasoning with function calling.",
         model="mistral-small-latest",
         is_test_only=False,
         api_key_env="MISTRAL_API_KEY",
+    ),
+    ProviderConfig(
+        value="nvidia",
+        label="Nvidia (LLaMA)",
+        description="Nvidia NIM API. OpenAI-compatible chat completions.",
+        model="meta/llama-3.1-405b-instruct",
+        is_test_only=False,
+        api_key_env="NVIDIA_API_KEY",
     ),
     # xAI Grok: disabled — no account credits, models deprecated.
     # Re-enable once account is funded and valid model IDs are confirmed.
@@ -137,6 +146,8 @@ def build_provider_instance(
         return GroqAgentProvider(model=model)
     if provider_value == "mistral":
         return MistralAgentProvider(model=model)
+    if provider_value == "nvidia":
+        return NvidiaAgentProvider(model=model)
     if provider_value == "mock":
         return MockAgentProvider()
 
@@ -173,7 +184,7 @@ class ProviderRouter(BaseLLMProvider):
     Production-grade LLM Provider Router with automatic fallback chain.
 
     Default chain (when all keys are configured):
-        Primary:    GeminiAgentProvider (gemini-1.5-flash)
+        Primary:    GeminiAgentProvider (gemini-3.5-flash-lite)
         Fallback 1: GroqAgentProvider   (openai/gpt-oss-20b)
         Fallback 2: MistralAgentProvider (mistral-small-latest)
 

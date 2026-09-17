@@ -24,7 +24,7 @@ class GeminiClient(BaseLLMClient):
         return bool(self.api_key)
 
     def list_models(self) -> list:
-        return ["gemini-1.5-flash", "gemini-3.1-flash-lite"]
+        return ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
 
     def generate(self, model: str, prompt: Prompt, **kwargs) -> LLMResponse:
         if not self.api_key:

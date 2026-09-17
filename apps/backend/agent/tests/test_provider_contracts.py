@@ -21,9 +21,12 @@ from packages.llm.models.response import LLMResponse
 from apps.backend.agent.providers.gemini import GeminiAgentProvider
 from apps.backend.agent.providers.groq import GroqAgentProvider
 from apps.backend.agent.providers.mistral import MistralAgentProvider
+from apps.backend.agent.providers.mock import MockAgentProvider
+from apps.backend.agent.providers.nvidia import NvidiaAgentProvider
 from apps.backend.agent.providers.router import (
     PROVIDER_REGISTRY,
     ProviderRouter,
+    _build_default_chain,
     build_provider_instance,
     get_configured_providers,
 )
@@ -332,11 +335,11 @@ def test_build_provider_instance_unknown_returns_none():
 
 def test_build_provider_instance_omitted_model_resolves_provider_default():
     """Regression (0.2.3): the provider factory must NEVER substitute the
-    generic 'gemini-1.5-flash' default when a non-gemini provider is
+    generic 'gemini-3.5-flash-lite' default when a non-gemini provider is
     selected with an omitted model. Each provider falls back to its OWN
     registered default model."""
     expected_by_provider = {
-        "gemini": "gemini-1.5-flash",
+        "gemini": "gemini-3.5-flash-lite",
         "groq": "openai/gpt-oss-20b",
         "mistral": "mistral-small-latest",
     }
@@ -350,7 +353,7 @@ def test_build_provider_instance_omitted_model_resolves_provider_default():
     groq_default = build_provider_instance("groq", None)
     assert groq_default is not None
     assert groq_default.model == "openai/gpt-oss-20b"
-    assert groq_default.model != "gemini-1.5-flash"
+    assert groq_default.model != "gemini-3.5-flash-lite"
 
 
 def test_build_provider_instance_explicit_override_wins():
@@ -359,28 +362,33 @@ def test_build_provider_instance_explicit_override_wins():
     built = build_provider_instance("groq", "llama-3.3-70b-versatile")
     assert built is not None
     assert built.model == "llama-3.3-70b-versatile"
-    assert build_provider_instance("gemini", "gemini-1.5-flash").model == "gemini-1.5-flash"
+    assert (
+        build_provider_instance("gemini", "gemini-3.5-flash-lite").model == "gemini-3.5-flash-lite"
+    )
 
 
-def test_router_default_ordering_gemini_groq_mistral(monkeypatch):
+def test_router_default_ordering_groq_gemini_mistral_nvidia(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "test")
     monkeypatch.setenv("GROQ_API_KEY", "test")
     monkeypatch.setenv("MISTRAL_API_KEY", "test")
+    monkeypatch.setenv("NVIDIA_API_KEY", "test")
     router = ProviderRouter(max_retries_per_provider=0, max_backoff_seconds=0.1)
-    assert router.primary.__class__ is GeminiAgentProvider
-    assert router.fallbacks[0].__class__ is GroqAgentProvider
+    assert router.primary.__class__ is GroqAgentProvider
+    assert router.fallbacks[0].__class__ is GeminiAgentProvider
     assert router.fallbacks[1].__class__ is MistralAgentProvider
+    assert router.fallbacks[2].__class__ is NvidiaAgentProvider
 
 
 def test_router_primary_override_excludes_duplicate(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "test")
     monkeypatch.setenv("GROQ_API_KEY", "test")
     monkeypatch.setenv("MISTRAL_API_KEY", "test")
+    monkeypatch.setenv("NVIDIA_API_KEY", "test")
     gemini = GeminiAgentProvider(client=FakeClient(make_raw("gemini", content="ok")))
     router = ProviderRouter(primary=gemini, max_retries_per_provider=0, max_backoff_seconds=0.1)
     # The explicitly-provided primary must NOT be duplicated in the auto fallbacks.
     assert all(p.__class__ is not GeminiAgentProvider for p in router.fallbacks)
-    assert len(router.fallbacks) == 2
+    assert len(router.fallbacks) == 3
 
 
 def test_router_gemini_fails_groq_attempted():
