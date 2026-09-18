@@ -35,7 +35,7 @@ class NvidiaClient(BaseLLMClient):
                 quantization="none",
             )
             for m in [
-                "meta/llama-3.1-405b-instruct",
+                "meta/llama-3.2-11b-vision-instruct",
                 "meta/llama-3.1-70b-instruct",
                 "nvidia/neva-22b",
             ]

@@ -90,7 +90,7 @@ PROVIDER_REGISTRY: list[ProviderConfig] = [
         value="nvidia",
         label="Nvidia (LLaMA)",
         description="Nvidia NIM API. OpenAI-compatible chat completions.",
-        model="meta/llama-3.1-405b-instruct",
+        model="meta/llama-3.2-11b-vision-instruct",
         is_test_only=False,
         api_key_env="NVIDIA_API_KEY",
     ),

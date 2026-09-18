@@ -21,7 +21,7 @@ class NvidiaAgentProvider(BaseLLMProvider):
 
     Nvidia serves OSS models (GPT-OSS 20B, LLaMA 3.x, Mixtral) via an
     OpenAI-compatible API at ultra-low latency. It has strong native
-    function/tool calling support on meta/llama-3.1-405b-instruct.
+    function/tool calling support on meta/llama-3.2-11b-vision-instruct.
 
     Note: This is Nvidia.com (https://nvidia.com), not xAI Grok. The xAI Grok
     provider is in grok.py and currently disabled in the production fallback
@@ -34,8 +34,8 @@ class NvidiaAgentProvider(BaseLLMProvider):
         api_key_env: str = "NVIDIA_API_KEY",
         client: Optional[NvidiaClient] = None,
     ):
-        # meta/llama-3.1-405b-instruct: standard-tier, tool-calling capable (2026-09-09 switch)
-        configured_model = os.getenv("NVIDIA_MODEL") or "meta/llama-3.1-405b-instruct"
+        # meta/llama-3.2-11b-vision-instruct: standard-tier, tool-calling capable (2026-09-09 switch)
+        configured_model = os.getenv("NVIDIA_MODEL") or "meta/llama-3.2-11b-vision-instruct"
         self.model: str = model or configured_model
         self.client = client or NvidiaClient(api_key_env=api_key_env)
 
