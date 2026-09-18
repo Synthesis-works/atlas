@@ -43,7 +43,9 @@ class MistralAgentProvider(BaseLLMProvider):
             "CRITICAL: When the execution plan contains pending unexecuted steps, tool calls are MANDATORY.\n"
             "Do NOT return conversational explanations like 'I will create...' or 'I need to create...'. Actually execute the tool call.\n"
             "If the user goal is ambiguous or lacks required information to create or run a benchmark (e.g. 'make a custom benchmark'), you MUST execute the request_clarification tool instead of guessing or failing.\n"
-            "FINAL_RESPONSE text is permitted ONLY when all required plan steps have ALREADY been executed and completed."
+            "FINAL_RESPONSE text is permitted ONLY when all required plan steps have ALREADY been executed and completed.\n"
+            "If you need to use a tool, you MUST output a raw JSON object containing exactly two keys: 'tool_name' and 'arguments'. "
+            "Do NOT wrap it in markdown. Do NOT output any other text."
         )
 
         prompt = Prompt(user=prompt_context, system=system_instruction)
