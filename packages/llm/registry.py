@@ -100,7 +100,7 @@ class ModelRegistry:
         models.append(
             {
                 "provider": "nvidia",
-                "model": "meta/llama-3.1-405b-instruct",
+                "model": "meta/llama-3.2-11b-vision-instruct",
                 "display_name": "Llama 3.1 405b (Nvidia)",
                 "source": "cloud",
                 "available": bool(nvidia_key),
