@@ -73,7 +73,9 @@ class GeminiAgentProvider(BaseLLMProvider):
             elif "text" in part:
                 text_content = part["text"].strip()
                 if text_content:
-                    pending_steps = [s for s in getattr(task, "plan", []) if s.status != "COMPLETED"]
+                    pending_steps = [
+                        s for s in getattr(task, "plan", []) if s.status != "COMPLETED"
+                    ]
                     if pending_steps:
                         return AgentDecision(
                             type=AgentDecisionType.FAIL,
