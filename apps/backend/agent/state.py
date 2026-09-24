@@ -161,6 +161,7 @@ class AgentTask(BaseModel):
     # the concrete model is resolved at dispatch time by the provider factory
     # (model_override or config.model). An explicit model string is honored as-is.
     model: Optional[str] = None
+    provider_cooldowns: dict[str, float] = Field(default_factory=dict)
 
     def record_trace(self, step: int, action: str, result: dict[str, Any]) -> None:
         self.add_trace(event_type=action, details={"step": step, **result})

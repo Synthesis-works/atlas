@@ -2,7 +2,7 @@
 Atlas Agent Provider Router
 
 Production fallback chain (verified 2026-08-15):
-    Primary:    Gemini (gemini-3.6-flash)   — Google AI, native functionDeclarations
+    Primary:    Gemini (gemini-3.1-flash-lite)   — Google AI, native functionDeclarations
     Fallback 1: Groq   (openai/gpt-oss-20b) — Groq.com, OpenAI-compat tool calling
     Fallback 2: Mistral (mistral-small-latest)    — Mistral AI, OpenAI-compat tool calling
 
@@ -74,7 +74,7 @@ PROVIDER_REGISTRY: list[ProviderConfig] = [
         value="gemini",
         label="Gemini (Google)",
         description="Google Gemini via Generative Language API. Supports native function calling.",
-        model="gemini-3.6-flash",
+        model="gemini-3.1-flash-lite",
         is_test_only=False,
         api_key_env="GEMINI_API_KEY",
     ),
@@ -184,7 +184,7 @@ class ProviderRouter(BaseLLMProvider):
     Production-grade LLM Provider Router with automatic fallback chain.
 
     Default chain (when all keys are configured):
-        Primary:    GeminiAgentProvider (gemini-3.6-flash)
+        Primary:    GeminiAgentProvider (gemini-3.1-flash-lite)
         Fallback 1: GroqAgentProvider   (openai/gpt-oss-20b)
         Fallback 2: MistralAgentProvider (mistral-small-latest)
 
@@ -325,7 +325,7 @@ class ProviderRouter(BaseLLMProvider):
             model_name = getattr(provider, "model", "default")
 
             # Skip provider if cooling down due to recent error
-            cooldown_until = self._provider_cooldowns.get(provider_name, 0)
+            cooldown_until = task.provider_cooldowns.get(provider_name, 0)
             if now < cooldown_until:
                 remaining_cd = int(cooldown_until - now)
                 msg = f"Provider '{provider_name}' skipped (cooldown {remaining_cd}s remaining)."
@@ -389,7 +389,7 @@ class ProviderRouter(BaseLLMProvider):
                             logger.warning(
                                 f"Provider '{provider_name}' {category} error ({err_msg}). Falling back..."
                             )
-                            self._provider_cooldowns[provider_name] = time.time() + 120.0
+                            task.provider_cooldowns[provider_name] = time.time() + 120.0
                             failures_summary.append(f"{provider_name}: {err_msg}")
                             self._record_fallback(task, chain, provider_idx, provider_name, err_msg)
                             break
@@ -402,7 +402,7 @@ class ProviderRouter(BaseLLMProvider):
                             if m:
                                 requested_sleep = float(m.group(1)) + 0.5
                                 if requested_sleep > 20.0:
-                                    self._provider_cooldowns[provider_name] = (
+                                    task.provider_cooldowns[provider_name] = (
                                         time.time() + requested_sleep
                                     )
                                     msg = f"Rate limit requested {requested_sleep}s wait, skipping."
@@ -421,7 +421,7 @@ class ProviderRouter(BaseLLMProvider):
                             time.sleep(sleep_time)
                             continue
                         else:
-                            self._provider_cooldowns[provider_name] = time.time() + 60.0
+                            task.provider_cooldowns[provider_name] = time.time() + 60.0
                             failures_summary.append(f"{provider_name}: {err_msg}")
                             self._record_fallback(
                                 task,
@@ -474,7 +474,7 @@ class ProviderRouter(BaseLLMProvider):
                         if m:
                             requested_sleep = float(m.group(1)) + 0.5
                             if requested_sleep > 20.0:
-                                self._provider_cooldowns[provider_name] = (
+                                task.provider_cooldowns[provider_name] = (
                                     time.time() + requested_sleep
                                 )
                                 msg = f"Rate limit requested {requested_sleep}s wait, skipping."
