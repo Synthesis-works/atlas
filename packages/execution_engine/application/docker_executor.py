@@ -283,12 +283,10 @@ class DockerExecutor(Executor):
             provenance.finished_at = datetime.now(UTC)
 
             # Collect logs
-            stdout, stderr = client.api.logs(
-                container_id, stdout=True, stderr=True, stream=False, demux=True
-            )
-            logs = stdout or b""
-            if stderr:
-                logs += b"\n" + stderr
+            logs_bytes = client.api.logs(container_id, stdout=True, stderr=True, stream=False)
+            if isinstance(logs_bytes, str):
+                logs_bytes = logs_bytes.encode("utf-8")
+            logs = logs_bytes or b""
             logs_str = logs.decode("utf-8", errors="replace")
             await self._collect_stats(client, container_id, provenance)
 
