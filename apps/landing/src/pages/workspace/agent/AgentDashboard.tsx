@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { submitAgentTask, fetchAgentProviders } from '@/features/agent/services/agentService';
 import type { AgentProviderOption } from '@/features/agent/types';
-import { Brain, Play, Settings2, AlertTriangle } from 'lucide-react';
+import { Brain, Play, Settings2, AlertTriangle, ChevronDown } from 'lucide-react';
 import { useWorkspaceStore } from '@/store/workspaceStore';
 
 export default function AgentDashboard() {
@@ -13,6 +13,7 @@ export default function AgentDashboard() {
   const [provider, setProvider] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingProviders, setIsLoadingProviders] = useState(true);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,17 +101,42 @@ export default function AgentDashboard() {
               </div>
             ) : (
               <>
-                <select
-                  value={provider}
-                  onChange={(e) => setProvider(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-accent/50 cursor-pointer"
-                >
-                  {providers.map((p) => (
-                    <option key={p.value} value={p.value} className="bg-ink-2 text-white py-2">
-                      {p.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative w-full">
+                  <div
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white flex justify-between items-center cursor-pointer hover:border-white/20 transition-colors"
+                  >
+                    <span>{selectedProvider?.label || 'Select a provider'}</span>
+                    <ChevronDown className="w-4 h-4 text-white/50" />
+                  </div>
+                  
+                  {isDropdownOpen && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-10"
+                        onClick={() => setIsDropdownOpen(false)}
+                      />
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1b1e] border border-white/10 rounded-xl overflow-hidden z-20 shadow-xl shadow-black/50">
+                        {providers.map((p) => (
+                          <div
+                            key={p.value}
+                            onClick={() => {
+                              setProvider(p.value);
+                              setIsDropdownOpen(false);
+                            }}
+                            className={`p-3 cursor-pointer transition-colors ${
+                              provider === p.value 
+                                ? 'bg-accent/20 text-accent' 
+                                : 'text-white hover:bg-white/5'
+                            }`}
+                          >
+                            {p.label}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
                 {selectedProvider && (
                   <p className="text-xs text-white/40">{selectedProvider.description}</p>
                 )}
