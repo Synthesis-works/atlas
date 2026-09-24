@@ -20,7 +20,7 @@
 | 1 | Authoritative execution state | `run get` says RUNNING while reports/dashboard/export say COMPLETED for one run | **Two execution tables**: `ee_executions` (read by `run get`) vs `executions` (read by everything else); only `ExecutionWorker` syncs both | **Backend** — make `executions` the single outward authority; stop exposing the engine's internal aggregate as the run's API state |
 | 2 | Benchmark/version discovery | `benchmark list` shows published, but `get`/`versions` 403 while `run submit` works | List = global published catalog (by design); `get`/`versions` re-impose an old org-membership check with **no published exemption**; `run submit` keyed by version-id with a **no-op authz stub** | **Backend** — publish-read contract: published benchmarks readable (get + versions) by any authenticated user |
 | 3 | Bounded watch | `run watch` polls forever; no `--timeout` | CLI loop is `while True`; per-poll timeout (5 s) and a 3-consecutive-network-failure cap exist, but no total bound | **CLI/SDK** — add `--timeout` (wall-clock) with a defined terminal `TIMEOUT` outcome + deterministic exit |
-| 4 | Safe submit defaults | CLI default target `gemini-3.6-flash` (paid provider) | CLI sets its own default that overrides the backend's cheaper default; no preflight | **CLI** (contract change) — no silent paid default; explicit target or clearly-safe default; add `--preview` |
+| 4 | Safe submit defaults | CLI default target `gemini-3.1-flash-lite` (paid provider) | CLI sets its own default that overrides the backend's cheaper default; no preflight | **CLI** (contract change) — no silent paid default; explicit target or clearly-safe default; add `--preview` |
 | 5 | Retry semantics | SDK already retries GET/HEAD (3×, 429/5xx/transport); POST never retried; CLI exposes no knobs | Retry exists but is not surfaced/controllable | **CLI** — global `--retries` (maps to SDK `max_retries`); never retry non-idempotent calls |
 | 6 | Machine-readable output | JSON on stdout + error envelope on stderr is solid; heavy dashboard payload; heterogeneous activity shapes; field-name drift | Per-endpoint serializers diverge | **CLI (+SDK)** — uniform `--fields`, `--json-schema` self-description, field naming cleanup |
 
@@ -108,7 +108,7 @@ atlas run watch <execution-id> [--timeout SECONDS] [--interval FLOAT] [--exit-on
 ## 4. Safe submission defaults
 
 ### Evidence (source)
-- CLI: `--target-model` default `"gemini-3.6-flash"` (`cli/cli/commands/run.py:56-57`), **help text even advertises it**. Passed straight to `POST /api/v1/benchmarks/{id}/executions` which resolves adapters at execution time (`apps/backend/adapters/real.py:28`; `Factory` maps `mock|mocked` → `MockModelAdapter`, everything else → `RealModelAdapter`, `apps/backend/adapters/factory.py:6-21`).
+- CLI: `--target-model` default `"gemini-3.1-flash-lite"` (`cli/cli/commands/run.py:56-57`), **help text even advertises it**. Passed straight to `POST /api/v1/benchmarks/{id}/executions` which resolves adapters at execution time (`apps/backend/adapters/real.py:28`; `Factory` maps `mock|mocked` → `MockModelAdapter`, everything else → `RealModelAdapter`, `apps/backend/adapters/factory.py:6-21`).
 - The **backend's own default is `groq/llama-3.1-8b-instant`** (`routers/executions.py:107`) — also an external provider. So both defaults are real-provider.
 - Submit is a **state-creating POST with no preflight/dry-run** and no cost estimate surfaced.
 

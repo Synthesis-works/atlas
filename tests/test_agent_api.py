@@ -108,7 +108,7 @@ def test_real_gemini_provider_smoke():
     if not api_key:
         pytest.skip("GEMINI_API_KEY environment variable not set.")
 
-    provider = GeminiAgentProvider(model="gemini-3.6-flash")
+    provider = GeminiAgentProvider(model="gemini-3.1-flash-lite")
     task = AgentTask(
         goal="Create Python Security Vulnerability Benchmark",
         granted_permissions=[

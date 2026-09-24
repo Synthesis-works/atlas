@@ -183,7 +183,7 @@ class TestSubmitExecution:
                 "id": exec_id,
                 "benchmark_version_id": bv_id,
                 "status": "QUEUED",
-                "target_model": "gemini-3.6-flash",
+                "target_model": "gemini-3.1-flash-lite",
                 "completed_items": 0,
                 "total_items": 1,
                 "started_at": None,
@@ -204,7 +204,7 @@ class TestSubmitExecution:
         assert result.status == "QUEUED"
         assert str(result.id) == exec_id
         assert str(result.benchmark_version_id) == bv_id
-        assert result.target_model == "gemini-3.6-flash"
+        assert result.target_model == "gemini-3.1-flash-lite"
         assert result.max_retries == 3
         assert result.attempts == []
         client.close()
@@ -282,7 +282,7 @@ class TestSubmitExecution:
                 "id": "11111111-1111-1111-1111-111111111111",
                 "benchmark_version_id": bv_id,
                 "status": "QUEUED",
-                "target_model": "gemini-3.6-flash",
+                "target_model": "gemini-3.1-flash-lite",
                 "completed_items": 0,
                 "total_items": 1,
                 "created_at": "2026-08-26T12:00:00Z",
@@ -403,7 +403,7 @@ class TestGetExecution:
                 "id": exec_id,
                 "benchmark_version_id": bv_id,
                 "status": "RUNNING",
-                "target_model": "gemini-3.6-flash",
+                "target_model": "gemini-3.1-flash-lite",
                 "completed_items": 3,
                 "total_items": 10,
                 "started_at": "2026-08-26T12:00:00Z",
@@ -486,7 +486,7 @@ class TestGetExecution:
                 "id": exec_id,
                 "benchmark_version_id": bv_id,
                 "status": "TIMED_OUT",
-                "target_model": "gemini-3.6-flash",
+                "target_model": "gemini-3.1-flash-lite",
                 "completed_items": 7,
                 "total_items": 10,
                 "started_at": "2026-08-26T12:00:00Z",
@@ -526,7 +526,7 @@ class TestListExecutions:
                         "id": "11111111-1111-1111-1111-111111111111",
                         "benchmark_version_id": bv_id,
                         "status": "COMPLETED",
-                        "target_model": "gemini-3.6-flash",
+                        "target_model": "gemini-3.1-flash-lite",
                         "completed_items": 10,
                         "total_items": 10,
                         "created_at": "2026-08-26T12:00:00Z",
@@ -642,7 +642,7 @@ class TestCancelExecution:
                 "id": exec_id,
                 "benchmark_version_id": bv_id,
                 "status": "RUNNING",
-                "target_model": "gemini-3.6-flash",
+                "target_model": "gemini-3.1-flash-lite",
                 "completed_items": 3,
                 "total_items": 10,
                 "started_at": "2026-08-26T12:00:00Z",

@@ -157,7 +157,7 @@ Production testing    ❌   (not intentionally deployed; production never touche
 - `GET /health` 200; `/openapi.json` 72 routes; login (demo creds) 200.
 - Benchmarks: 8 real records served to the catalog.
 - Real execution: `groq/openai/gpt-oss-20b` on MBPP → **COMPLETED** in ~6s with 2 real persisted model outputs (2.7s / ~2,150 tokens each — actual LLM content, not mock).
-- Agent run via the local UI: `gemini-3.6-flash` execution **COMPLETED** with real outputs; `grok-2-latest` failed honestly (provider 404 — stale registry name, see §10).
+- Agent run via the local UI: `gemini-3.1-flash-lite` execution **COMPLETED** with real outputs; `grok-2-latest` failed honestly (provider 404 — stale registry name, see §10).
 - A UI-submitted benchmark execution (`AI Coding Testing and Safety Benchmark`, gpt-oss-20b) **COMPLETED** — proving the browser → backend → provider chain.
 
 ---

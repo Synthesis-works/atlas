@@ -19,7 +19,7 @@ from cli.agent.state import AgentDecisionType
 def _llm_response(raw: dict) -> LLMResponse:
     return LLMResponse(
         provider="gemini",
-        model="gemini-3.6-flash",
+        model="gemini-3.1-flash-lite",
         latency_ms=1,
         response="",
         raw=raw,

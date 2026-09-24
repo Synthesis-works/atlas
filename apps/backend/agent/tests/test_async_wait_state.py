@@ -96,7 +96,7 @@ class ProductionTraceProvider(BaseLLMProvider):
             arguments={
                 "benchmark_version_id": "11111111-1111-1111-1111-111111111111",
                 "dataset_version_id": "22222222-2222-2222-2222-222222222222",
-                "target_models": ["gemini-3.6-flash"],
+                "target_models": ["gemini-3.1-flash-lite"],
             },
             reasoning="Dispatch remote run.",
         )

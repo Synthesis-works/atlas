@@ -151,7 +151,7 @@ def test_c4_adversarial_dataset_isolation():
             benchmark_version_id=fake_bv_id,
             dataset_version_id=fake_dv_id,
             submitted_by_id=uuid.UUID("00000000-0000-0000-0000-000000000002"),
-            target_model="gemini-3.6-flash",
+            target_model="gemini-3.1-flash-lite",
             status="QUEUED",
         )
         db.add(db_exec)

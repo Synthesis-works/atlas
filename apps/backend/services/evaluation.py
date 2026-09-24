@@ -254,7 +254,7 @@ class EvaluationService:
                     )
 
                     response = client.generate(
-                        "gemini-3.6-flash",
+                        "gemini-3.1-flash-lite",
                         Prompt(user=user_prompt, system=system_instruction),
                         temperature=0.0,
                     )

@@ -460,7 +460,7 @@ Any single probe failing makes `overall` `degraded` **and exit code 1** (all out
 #### `atlas run submit BENCHMARK_VERSION_ID`
 
 - **API:** `POST /api/v1/benchmarks/{id}/executions`
-- **Options:** `--target-model TEXT` (**required** — no default; v2 removed the silent `gemini-3.6-flash` default), `--dataset-version-id TEXT` (default: resolved from benchmark version), `--preview` (read-only dry-run; **no POST**)
+- **Options:** `--target-model TEXT` (**required** — no default; v2 removed the silent `gemini-3.1-flash-lite` default), `--dataset-version-id TEXT` (default: resolved from benchmark version), `--preview` (read-only dry-run; **no POST**)
 - **Warning:** without `--preview`, creates a real execution (QUEUED then dispatched by the eager worker).
 - **`--preview` plan:** resolved from `GET /api/v1/executions/dispatch-targets` (the exact dispatchable set — published benchmarks + any benchmark draft in organizations you actively belong to), prints `benchmark_version_id`, `benchmark_name`, `version_string`, `dataset_version_id`, `target_model`, `adapter_kind` (`mock|mocked` → `mock`, else `real`), `preview: true`, and a "no execution created" note. Exit 0. A version that is NOT a dispatchable target → exit 5, message "not a dispatchable target (unknown, unpublished, or not in your organizations)" — covers both nonexistent IDs and real drafts you lack membership for (dispatch-targets omits them rather than returning 403).
 
@@ -594,7 +594,7 @@ Report Runs
 
   Run ID    Model             Version  Status  Score  Completed
   --------  ----------------  -------  ------  -----  ----------------
-  ff0a7a03  gemini-3.6-flash  1.0.0    FAILED  -      2026-08-26 06:24
+  ff0a7a03  gemini-3.1-flash-lite  1.0.0    FAILED  -      2026-08-26 06:24
 ```
 
 JSON keys (verified): `items`, `total`, `page`, `size` (note: differs from `run list` which uses `limit`/`offset`).
@@ -1143,7 +1143,7 @@ atlas ... --output json
 - PAT / machine-token authentication — not implemented (use `atlas login`, `ATLAS_TOKEN`, or `--base-url`).
 - Multi-profile switching UX — config.toml supports multiple `[profile]` sections, but only the one named by `--profile`/`ATLAS_PROFILE` is read/written.
 - TypeScript SDK — not consulted; this guide covers the Python SDK only.
-- `run submit` with a real LLM target that yields actual API costs — the default `--target-model gemini-3.6-flash` hit a real provider adapter on this box; treat submit as potentially expensive.
+- `run submit` with a real LLM target that yields actual API costs — the default `--target-model gemini-3.1-flash-lite` hit a real provider adapter on this box; treat submit as potentially expensive.
 
 ### 10.2 Known unrelated backend test failures
 - `test_execution_backend_routing.py`: 2 failures (pre-existing, execution backend routing).
