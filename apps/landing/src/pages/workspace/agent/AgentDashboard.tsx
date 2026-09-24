@@ -103,10 +103,10 @@ export default function AgentDashboard() {
                 <select
                   value={provider}
                   onChange={(e) => setProvider(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-accent/50"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-accent/50 cursor-pointer"
                 >
                   {providers.map((p) => (
-                    <option key={p.value} value={p.value}>
+                    <option key={p.value} value={p.value} className="bg-ink-2 text-white py-2">
                       {p.label}
                     </option>
                   ))}
