@@ -362,7 +362,9 @@ def test_build_provider_instance_explicit_override_wins():
     built = build_provider_instance("groq", "llama-3.3-70b-versatile")
     assert built is not None
     assert built.model == "llama-3.3-70b-versatile"
-    assert build_provider_instance("gemini", "gemini-3.1-flash-lite").model == "gemini-3.1-flash-lite"
+    assert (
+        build_provider_instance("gemini", "gemini-3.1-flash-lite").model == "gemini-3.1-flash-lite"
+    )
 
 
 def test_router_default_ordering_groq_gemini_mistral_nvidia(monkeypatch):

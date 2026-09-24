@@ -95,7 +95,8 @@ def map_to_response(execution: Execution) -> ExecutionResponse:
         id=execution.id,
         benchmark_version_id=execution.benchmark_version_id,
         status=execution.status,
-        target_model=getattr(execution, "target_model", "gemini-3.1-flash-lite") or "gemini-3.1-flash-lite",
+        target_model=getattr(execution, "target_model", "gemini-3.1-flash-lite")
+        or "gemini-3.1-flash-lite",
         completed_items=getattr(execution, "completed_items", 0) or 0,
         total_items=getattr(execution, "total_items", 1) or 1,
         started_at=getattr(execution, "started_at", None),
