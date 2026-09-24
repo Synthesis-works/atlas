@@ -95,7 +95,7 @@ remains stale and untouched.
 - **Agent suite 6 fails** — reproduced byte-for-byte at `main` (`8a644f7`):
   `test_evaluation_cases.py` (2: `EVALUATION_ERROR` judge/exact_match paths),
   `test_provider_failover.py` (2: tools fed fake IDs like `bm-1` → "badly formed
-  hexadecimal UUID string"), `test_wake_on_enqueue.py` (2: `gemini-3.6-flash`
+  hexadecimal UUID string"), `test_wake_on_enqueue.py` (2: `gemini-3.1-flash-lite`
   not configured — no `GEMINI_API_KEY` — and Celery Redis result-store unreachable,
   which also makes the suite take >5 min). Require real provider credentials,
   a Redis backend, and migrated test schema to pass.

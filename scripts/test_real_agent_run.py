@@ -83,7 +83,7 @@ def main():
 
     # 3. Test Permission Checkpoint Flow & Provider Router
     print("\n--- Testing Permission Checkpoint Flow & Provider Router ---")
-    provider_router = ProviderRouter(primary=GeminiAgentProvider(model="gemini-3.6-flash"))
+    provider_router = ProviderRouter(primary=GeminiAgentProvider(model="gemini-3.1-flash-lite"))
     registry = ToolRegistry()
     agent = AtlasAgent(provider=provider_router, registry=registry)
 

@@ -31,6 +31,7 @@ apps/backend/agent/providers/grok.py
 apps/backend/agent/providers/groq.py
 apps/backend/agent/providers/mistral.py
 apps/backend/agent/providers/mock.py
+apps/backend/agent/providers/nvidia.py
 apps/backend/agent/providers/router.py
 apps/backend/agent/providers/schema_utils.py
 apps/backend/agent/tests/__init__.py

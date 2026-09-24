@@ -85,7 +85,7 @@ def test_run_benchmark_tool_calls_notify_worker_wake_after_commit(mock_wake, db_
         db=db_session,
         benchmark_version_id=str(bv.id),
         dataset_version_id=str(dv.id),
-        target_models=["gemini-3.6-flash"],
+        target_models=["gemini-3.1-flash-lite"],
         task_id=str(uuid.uuid4()),
     )
 
@@ -117,7 +117,7 @@ def test_stale_attempt_reaper_calls_notify_worker_wake_after_commit(mock_wake, d
         benchmark_version_id=uuid.uuid4(),
         dataset_version_id=uuid.uuid4(),
         submitted_by_id=uuid.uuid4(),
-        target_model="gemini-3.6-flash",
+        target_model="gemini-3.1-flash-lite",
         status=ExecutionStatus.RUNNING,
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
@@ -214,7 +214,7 @@ def test_executions_router_create_execution_calls_notify_worker_wake(mock_wake, 
         benchmark_version_id=uuid.UUID(str(bv.id)),
         dataset_version_id=uuid.UUID(str(dv.id)),
         submitted_by=uuid.uuid4(),
-        target_model="gemini-3.6-flash",
+        target_model="gemini-3.1-flash-lite",
     )
 
     # The service internally commits (see execution_app_service.py)
@@ -241,7 +241,7 @@ def test_execution_retry_in_worker_does_not_call_wake(mock_wake, db_session):
         dataset_version_id=uuid.uuid4(),
         created_by=uuid.uuid4(),
         status=ExecutionState.RETRYING,
-        target_model="gemini-3.6-flash",
+        target_model="gemini-3.1-flash-lite",
         max_retries=3,
     )
     # Manually set up an attempt that can be retried

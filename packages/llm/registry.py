@@ -19,7 +19,7 @@ class ModelRegistry:
         models.append(
             {
                 "provider": "gemini",
-                "model": "gemini-3.6-flash",
+                "model": "gemini-3.1-flash-lite",
                 "display_name": "Gemini 3.5 Flash Lite",
                 "source": "cloud",
                 "available": bool(gemini_key),

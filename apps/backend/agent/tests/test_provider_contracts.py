@@ -335,11 +335,11 @@ def test_build_provider_instance_unknown_returns_none():
 
 def test_build_provider_instance_omitted_model_resolves_provider_default():
     """Regression (0.2.3): the provider factory must NEVER substitute the
-    generic 'gemini-3.6-flash' default when a non-gemini provider is
+    generic 'gemini-3.1-flash-lite' default when a non-gemini provider is
     selected with an omitted model. Each provider falls back to its OWN
     registered default model."""
     expected_by_provider = {
-        "gemini": "gemini-3.6-flash",
+        "gemini": "gemini-3.1-flash-lite",
         "groq": "openai/gpt-oss-20b",
         "mistral": "mistral-small-latest",
     }
@@ -353,7 +353,7 @@ def test_build_provider_instance_omitted_model_resolves_provider_default():
     groq_default = build_provider_instance("groq", None)
     assert groq_default is not None
     assert groq_default.model == "openai/gpt-oss-20b"
-    assert groq_default.model != "gemini-3.6-flash"
+    assert groq_default.model != "gemini-3.1-flash-lite"
 
 
 def test_build_provider_instance_explicit_override_wins():
@@ -362,7 +362,9 @@ def test_build_provider_instance_explicit_override_wins():
     built = build_provider_instance("groq", "llama-3.3-70b-versatile")
     assert built is not None
     assert built.model == "llama-3.3-70b-versatile"
-    assert build_provider_instance("gemini", "gemini-3.6-flash").model == "gemini-3.6-flash"
+    assert (
+        build_provider_instance("gemini", "gemini-3.1-flash-lite").model == "gemini-3.1-flash-lite"
+    )
 
 
 def test_router_default_ordering_groq_gemini_mistral_nvidia(monkeypatch):

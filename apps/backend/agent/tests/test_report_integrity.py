@@ -94,7 +94,7 @@ def _seed_resolvable_chain(db):
         id=uuid.uuid4(),
         project_id=benchmark.project_id,
         benchmark_version_id=benchmark_version.id,
-        target_model="gemini-3.6-flash",
+        target_model="gemini-3.1-flash-lite",
         status=ExecutionStatus.COMPLETED,
     )
     db.add(execution)
@@ -247,7 +247,7 @@ def test_report_benchmark_id_null_when_execution_dangling(db_session):
         id=uuid.uuid4(),
         project_id=uuid.uuid4(),
         benchmark_version_id=uuid.uuid4(),
-        target_model="gemini-3.6-flash",
+        target_model="gemini-3.1-flash-lite",
         status=ExecutionStatus.FAILED,
     )
     db_session.add(dangling_execution)

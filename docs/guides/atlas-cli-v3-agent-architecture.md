@@ -354,11 +354,11 @@ should reflect that (show progress via tool calls, not token-by-token output).
 
 ### 5.3 Gemini model-name inconsistency — defer, document only ✅ (user-approved)
 Four divergent values exist:
-- `config/providers.json` → `gemini-3.6-flash`
-- `packages/llm/clients/gemini.py:list_models()` → `gemini-3.6-flash`, `gemini-3.1-flash-lite`
-- `apps/backend/config.py:110` default → `gemini-3.6-flash`
-- backend agent `state.py:155` default → `gemini-3.6-flash`
-- CLI/SDK `run submit` default target model → `gemini-3.6-flash`
+- `config/providers.json` → `gemini-3.1-flash-lite`
+- `packages/llm/clients/gemini.py:list_models()` → `gemini-3.1-flash-lite`, `gemini-3.1-flash-lite`
+- `apps/backend/config.py:110` default → `gemini-3.1-flash-lite`
+- backend agent `state.py:155` default → `gemini-3.1-flash-lite`
+- CLI/SDK `run submit` default target model → `gemini-3.1-flash-lite`
 
 This is a genuine **doc/code conflict** flagged per AGENTS.md §9. For the agent
 work we **do not** standardize the repo defaults (out of scope, risky); we make

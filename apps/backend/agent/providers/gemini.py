@@ -18,7 +18,7 @@ class GeminiAgentProvider(BaseLLMProvider):
 
     def __init__(
         self,
-        model: str = "gemini-3.6-flash",
+        model: str = "gemini-3.1-flash-lite",
         api_key_env: str = "GEMINI_API_KEY",
         client: Optional[GeminiClient] = None,
     ):
@@ -73,6 +73,14 @@ class GeminiAgentProvider(BaseLLMProvider):
             elif "text" in part:
                 text_content = part["text"].strip()
                 if text_content:
+                    pending_steps = [
+                        s for s in getattr(task, "plan", []) if s.status != "COMPLETED"
+                    ]
+                    if pending_steps:
+                        return AgentDecision(
+                            type=AgentDecisionType.FAIL,
+                            error_message="Gemini returned conversational text instead of a required tool call.",
+                        )
                     return AgentDecision(
                         type=AgentDecisionType.FINAL_RESPONSE,
                         response=text_content,

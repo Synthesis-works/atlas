@@ -40,7 +40,7 @@ def _executions() -> list[ExecutionHistoryRead]:
         ExecutionHistoryRead(
             id="ff0a7a03-ca03-4b67-bc47-eae9335ad6e8",
             benchmark_name="HellaSwag",
-            target_model="gemini-3.6-flash",
+            target_model="gemini-3.1-flash-lite",
             status=ExecutionState.FAILED,
             started_at=datetime(2026, 8, 26, 6, 24, 31, 588819, tzinfo=UTC),
             completed_at=datetime(2026, 8, 26, 6, 24, 39, 671965, tzinfo=UTC),
@@ -63,7 +63,7 @@ def _executions() -> list[ExecutionHistoryRead]:
 def _models() -> list[ModelActivityRead]:
     return [
         ModelActivityRead(
-            name="gemini-3.6-flash",
+            name="gemini-3.1-flash-lite",
             last_executed_at=datetime(2026, 8, 26, 6, 24, 30, 396401, tzinfo=UTC),
             execution_count=1,
         ),
@@ -126,7 +126,7 @@ def test_activity_human_all_sections(runner: CliRunner) -> None:
     assert "Recent Activity" in result.output
     assert "SWE-Bench Lite" in result.output
     assert "TruthfulQA" in result.output
-    assert "gemini-3.6-flash" in result.output
+    assert "gemini-3.1-flash-lite" in result.output
     assert "gemini-1.5-pro" in result.output
     assert "HellaSwag" in result.output
     assert "FAILED" in result.output
@@ -138,7 +138,7 @@ def test_activity_human_filtered_type(runner: CliRunner) -> None:
         result = runner.invoke(main, ["activity", "--type", "executions"])
     assert result.exit_code == 0
     assert "Executions" in result.output
-    assert "gemini-3.6-flash" in result.output
+    assert "gemini-3.1-flash-lite" in result.output
     assert "SWE-Bench Lite" not in result.output
     assert "Models" not in result.output
 
@@ -166,11 +166,11 @@ def test_activity_json_all_sections(runner: CliRunner) -> None:
     assert data["benchmarks"][0]["name"] == "SWE-Bench Lite"
     assert data["benchmarks"][0]["state"] == "published"
     assert len(data["executions"]) == 2
-    assert data["executions"][0]["target_model"] == "gemini-3.6-flash"
+    assert data["executions"][0]["target_model"] == "gemini-3.1-flash-lite"
     assert data["executions"][0]["status"] == "FAILED"
     assert data["executions"][0]["duration"] == 8083
     assert len(data["models"]) == 2
-    assert data["models"][0]["name"] == "gemini-3.6-flash"
+    assert data["models"][0]["name"] == "gemini-3.1-flash-lite"
     assert data["models"][0]["execution_count"] == 1
 
 
