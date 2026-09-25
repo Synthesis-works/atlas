@@ -8,7 +8,7 @@ packages = [{include = "atlas_db"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-sqlalchemy = "^2.0.0"
+sqlalchemy = { version = "^2.0.0", extras = ["asyncio"] }
 alembic = "^1.13.0"
 pydantic = "^2.0.0"
 pydantic-settings = "^2.0.0"
