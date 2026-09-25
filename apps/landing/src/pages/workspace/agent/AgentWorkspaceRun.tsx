@@ -157,22 +157,37 @@ export default function AgentWorkspaceRun() {
     if (found) setTask((prev) => preferRicher(prev, found));
   }, [taskId, agentTasks]);
 
-  // Always fetch the full task detail when the run changes. This guarantees the run page
-  // has complete telemetry (plan, tool_calls, observations, execution_trace) even when the
-  // store entry was hydrated from a reduced list shape.
+  // Always fetch the full task detail, and poll it if it's active.
+  // This guarantees the run page has complete telemetry (plan, tool_calls, observations, execution_trace) 
+  // and fixes the issue where summary list polling ignores new states.
   useEffect(() => {
     if (!taskId) return;
     let cancelled = false;
-    fetchAgentTask(taskId).then(({ data }) => {
-      if (cancelled || !data) return;
-      setTask((prev) => preferRicher(prev, data));
-      setAgentTasks((prev) => {
-        const others = prev.filter((t) => t.task_id !== data.task_id);
-        return [preferRicher(prev.find((t) => t.task_id === data.task_id) ?? null, data), ...others]
-          .filter((t): t is AgentTask => t !== null);
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const pollFullTask = () => {
+      fetchAgentTask(taskId).then(({ data }) => {
+        if (cancelled || !data) return;
+        setTask((prev) => preferRicher(prev, data));
+        setAgentTasks((prev) => {
+          const others = prev.filter((t) => t.task_id !== data.task_id);
+          return [preferRicher(prev.find((t) => t.task_id === data.task_id) ?? null, data), ...others]
+            .filter((t): t is AgentTask => t !== null);
+        });
+
+        // Continue polling if the task is still running/executing
+        if (!cancelled && ['PENDING', 'QUEUED', 'RUNNING', 'EXECUTING'].includes(data.status)) {
+          timeoutId = setTimeout(pollFullTask, 2000);
+        }
       });
-    });
-    return () => { cancelled = true; };
+    };
+
+    pollFullTask();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
   }, [taskId, setAgentTasks]);
 
   // Fetch the real report artifact once a completed task has one.

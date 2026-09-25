@@ -177,7 +177,7 @@ export function WorkspaceLayout() {
       {/* Main content area */}
       <div className="relative flex-1 z-10 flex flex-col min-h-0 overflow-hidden">
         {/* Page content — crossfade on route change */}
-        <main ref={mainRef} className="flex-1 overflow-y-auto pb-28 min-h-0">
+        <main ref={mainRef} className={`flex-1 min-h-0 ${location.pathname.startsWith('/dashboard/agent') ? 'overflow-hidden' : 'overflow-y-auto pb-28'}`}>
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 4 }}
