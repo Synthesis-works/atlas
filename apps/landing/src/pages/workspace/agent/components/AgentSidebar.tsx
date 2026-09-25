@@ -3,7 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useWorkspaceStore } from '@/store/workspaceStore';
 import { Plus } from 'lucide-react';
 import type { AgentTask, AgentTaskStatus } from '@/features/agent/types';
-import { taskStatusIcon, taskStatusLabel, taskTone, STATUS_TONES } from '@/features/agent/status';
+import { taskStatusIcon, taskTone, STATUS_TONES } from '@/features/agent/status';
 import { fetchAgentTasks } from '@/features/agent/services/agentService';
 
 /**
@@ -120,19 +120,6 @@ export function AgentSidebar() {
       </span>
     );
   };
-
-  const getStatusLabel = (status: AgentTaskStatus) => {
-    const tone = STATUS_TONES[taskTone(status)];
-    const isWorking =
-      status === 'PLANNING' || status === 'EXECUTING' || status === 'REPAIRING';
-    return (
-      <span className={`text-[10px] uppercase tracking-wider ${tone.text} font-semibold flex items-center gap-1`}>
-        {isWorking && <span className={`w-1.5 h-1.5 rounded-full ${tone.dot} animate-pulse`} />}
-        {taskStatusLabel(status)}
-      </span>
-    );
-  };
-
   const groups = GROUP_ORDER.map((group) => ({
     group,
     tasks: agentTasks.filter((t) => groupFor(t.status) === group).sort(sortByStart),
@@ -141,71 +128,57 @@ export function AgentSidebar() {
   const totalRuns = agentTasks.length;
 
   return (
-    <div className="w-64 shrink-0 h-full border-r border-white/10 bg-ink-2/50 backdrop-blur-md flex-col hidden lg:flex">
-      <div className="p-4 border-b border-white/10">
+    <div className="w-64 shrink-0 h-full border-r border-white/5 bg-ink-1 flex-col hidden lg:flex text-sm">
+      <div className="p-3">
         <button
           onClick={handleNewRun}
-          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-accent/10 hover:bg-accent/20 border border-accent/20 text-accent transition-colors text-sm font-medium"
+          className="w-full flex items-center gap-2 py-1.5 px-2 rounded hover:bg-white/5 text-white/80 transition-colors text-sm font-medium"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4 h-4 text-white/50" />
           <span>New Run</span>
         </button>
       </div>
-      <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-        <span className="text-[10px] uppercase tracking-wider text-white/30 font-semibold">Run History</span>
+      <div className="px-5 pt-4 pb-2 flex items-center justify-between">
+        <span className="text-xs text-white/40 font-medium">Run History</span>
         {totalRuns > 0 && (
-          <span className="text-[10px] text-white/25 font-mono">{totalRuns}</span>
+          <span className="text-xs text-white/30">{totalRuns}</span>
         )}
       </div>
-      <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3">
+      <div className="flex-1 overflow-y-auto px-2 pb-3 flex flex-col gap-4">
         {isLoading ? (
           <div className="text-center p-4 text-xs text-white/40 animate-pulse">Loading runs...</div>
         ) : (
           <>
             {groups.map(({ group, tasks }) => (
-              <div key={group} className="flex flex-col gap-1">
-                <div className="flex items-center gap-2 px-1 pb-1">
+              <div key={group} className="flex flex-col gap-0.5">
+                <div className="flex items-center gap-2 px-3 pb-1">
                   <span className={`w-1.5 h-1.5 rounded-full ${GROUP_DOT[group]}`} />
                   <span className="text-[10px] uppercase tracking-wider text-white/30 font-semibold">
                     {GROUP_LABEL[group]}
                   </span>
-                  <span className="text-[10px] text-white/20 font-mono">{tasks.length}</span>
                 </div>
                 {tasks.map((task: AgentTask) => (
                   <NavLink
                     key={task.task_id}
                     to={`/dashboard/agent/run/${task.task_id}`}
                     className={({ isActive }) =>
-                      `flex flex-col gap-1 p-3 rounded-lg transition-colors border ${
+                      `flex flex-col gap-1 px-3 py-2 rounded transition-colors ${
                         isActive
-                          ? 'bg-white/5 border-white/10'
-                          : 'bg-transparent border-transparent hover:bg-white/[0.02] hover:border-white/5'
+                          ? 'bg-white/10 text-white'
+                          : 'text-white/60 hover:bg-white/5 hover:text-white/80'
                       }`
                     }
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono text-white/40">
-                        #{task.task_id.slice(0, 6)}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        {formatTime(task.started_at ?? task.created_at) && (
-                          <span className="text-[10px] text-white/25">{formatTime(task.started_at ?? task.created_at)}</span>
-                        )}
-                        {getStatusIcon(task.status)}
-                      </div>
+                    <div className="text-sm truncate pr-2">{task.goal}</div>
+                    <div className="flex items-center justify-between mt-0.5">
+                       <div className="flex items-center gap-1.5">
+                         {getStatusIcon(task.status)}
+                         <span className="text-[10px] text-white/40 font-mono">#{task.task_id.slice(0, 4)}</span>
+                       </div>
+                       {formatTime(task.started_at ?? task.created_at) && (
+                         <span className="text-[10px] text-white/30">{formatTime(task.started_at ?? task.created_at)}</span>
+                       )}
                     </div>
-                    <div className="text-sm text-white/80 line-clamp-2 mt-1">{task.goal}</div>
-                    <div className="flex items-center justify-between">
-                      <div>{getStatusLabel(task.status)}</div>
-                      {task.primary_provider && (
-                        <span className="text-[10px] text-white/25 font-mono">{task.primary_provider}</span>
-                      )}
-                    </div>
-                    {task.run_mode === 'RERUN' && task.source_task_id && (
-                      <div className="text-[10px] text-accent/60 font-mono">
-                        rerun of #{task.source_task_id.slice(0, 6)}
-                      </div>
-                    )}
                   </NavLink>
                 ))}
               </div>

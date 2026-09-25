@@ -105,7 +105,7 @@ class OutboxDispatcher:
             .with_for_update(skip_locked=True)
         )
 
-        messages = self.session.execute(stmt).scalars().all()
+        messages: list[OutboxMessage] = list(self.session.execute(stmt).scalars().all())
         if not messages:
             return 0
 

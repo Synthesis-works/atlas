@@ -218,7 +218,7 @@ class ReportingRepository:
 
     def get_history(self, limit: int = 50, offset: int = 0) -> tuple[list[AtlasRun], int]:
         stmt = select(AtlasRun).order_by(desc(AtlasRun.created_at)).limit(limit).offset(offset)
-        items = list(self.db.scalars(stmt))
+        items: list[AtlasRun] = list(self.db.scalars(stmt))
 
         count_stmt = select(func.count()).select_from(AtlasRun)
         total = self.db.scalar(count_stmt) or 0
