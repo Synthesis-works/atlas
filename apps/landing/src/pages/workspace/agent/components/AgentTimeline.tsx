@@ -164,7 +164,7 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
   const hasTelemetry = toolCalls.length > 0 || observations.length > 0 || executionTrace.length > 0;
 
   return (
-    <div className="flex flex-col gap-4 w-full h-full p-5">
+    <div className="flex flex-col gap-4 w-full p-5">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold text-white/90">
@@ -196,7 +196,7 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex flex-col">
         {!inspectMode && (
           <div className="flex flex-col gap-2">
             <AnimatePresence initial={false}>
@@ -338,9 +338,20 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
                     const summary = argsText.length > 140 ? `${argsText.slice(0, 140)}…` : argsText;
                     return (
                       <div key={call.call_id || i} className="p-2.5 rounded-lg border border-white/5 bg-black/20">
-                        <div className="flex items-center justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs font-semibold text-accent/80 truncate">{call.tool_name}</span>
-                          <span className="text-[10px] text-white/30 shrink-0">{formatTime(call.timestamp)}</span>
+                          {(() => {
+                            const relatedObs = observations.find(o => o.call_id === call.call_id);
+                            if (!relatedObs) return null;
+                            return (
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                                relatedObs.success ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                              }`}>
+                                {relatedObs.success ? 'SUCCESS' : 'ERROR'}
+                              </span>
+                            );
+                          })()}
+                          <span className="text-[10px] text-white/30 ml-auto shrink-0">{formatTime(call.timestamp)}</span>
                         </div>
                         <p className="text-[11px] text-white/55 font-mono truncate mb-1">{summary}</p>
                         <details className="group">
