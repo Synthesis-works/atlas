@@ -3,7 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useWorkspaceStore } from '@/store/workspaceStore';
 import { Plus } from 'lucide-react';
 import type { AgentTask, AgentTaskStatus } from '@/features/agent/types';
-import { taskStatusIcon, taskStatusLabel, taskTone, STATUS_TONES } from '@/features/agent/status';
+import { taskStatusIcon, taskTone, STATUS_TONES } from '@/features/agent/status';
 import { fetchAgentTasks } from '@/features/agent/services/agentService';
 
 /**
