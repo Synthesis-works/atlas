@@ -48,7 +48,7 @@ class TaskController:
             query = query.where(AtlasTask.id == cmd.target_task_id)
 
         stmt = query.limit(cmd.max_tasks).with_for_update(skip_locked=True)
-        tasks = self.db.execute(stmt).scalars().all()
+        tasks: list[AtlasTask] = list(self.db.execute(stmt).scalars().all())
 
         claimed_task_ids = []
         now = datetime.now(UTC)
