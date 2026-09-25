@@ -333,7 +333,7 @@ export default function AgentWorkspaceRun() {
   const reportTitle = report?.title || 'Benchmark Report';
 
   return (
-    <div className="flex h-full w-full relative">
+    <div className="flex h-full w-full relative overflow-hidden">
       {/* Middle column: Chat/Timeline (mimicking the middle panel of Antigravity) */}
       <div className="flex-1 min-w-0 h-full flex flex-col relative bg-ink-1">
         {/* Header mimicking the top of the chat area */}
