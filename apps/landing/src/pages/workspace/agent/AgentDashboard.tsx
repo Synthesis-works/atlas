@@ -28,140 +28,114 @@ export default function AgentDashboard() {
       }
       setIsLoadingProviders(false);
     });
-    return () => { cancelled = true; };
-  }, []);
+    return (
+    <div className="flex h-full w-full flex-col bg-ink-1">
+      {/* Top Header */}
+      <div className="flex-none px-6 py-4 border-b border-white/5 flex items-center bg-ink-2/80 backdrop-blur-md">
+        <h1 className="text-sm font-semibold text-white/90 flex items-center gap-2">
+          <Brain className="w-4 h-4 text-accent" />
+          Atlas Agent
+        </h1>
+      </div>
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!goal.trim() || isSubmitting || !provider) return;
+      {/* Main empty area */}
+      <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center p-8">
+         <div className="text-center max-w-lg">
+            <div className="w-16 h-16 bg-accent/10 text-accent rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)] border border-accent/20">
+               <Brain className="w-8 h-8" />
+            </div>
+            <h2 className="text-2xl font-semibold text-white mb-2">How can I help you benchmark today?</h2>
+            <p className="text-white/40 text-sm">
+              Describe your goal, and the autonomous agent will plan, execute, and generate a comprehensive evaluation report.
+            </p>
+         </div>
+      </div>
 
-    setIsSubmitting(true);
-    const selectedProvider = providers.find((p) => p.value === provider);
-    const { data, error } = await submitAgentTask(goal, provider, selectedProvider?.model);
-    setIsSubmitting(false);
-
-    if (error || !data) {
-      addNotification('Error', 'Failed to start agent task. Check the backend is running.', 'error');
-      return;
-    }
-
-    // Backend returns task_id — add to store and navigate
-    const taskId = data.task_id;
-    setAgentTasks((prev) => {
-      const existing = prev.find((t) => t.task_id === taskId);
-      const taskEntry =
-        existing && (existing.plan?.length ?? 0) >= (data.plan?.length ?? 0) ? existing : data;
-      return [taskEntry, ...prev.filter((t) => t.task_id !== taskId)];
-    });
-    addNotification('Task Started', `Agent task #${taskId.substring(0, 8)} started`, 'success');
-    navigate(`/dashboard/agent/run/${taskId}`);
-  };
-
-  const selectedProvider = providers.find((p) => p.value === provider);
-
-  return (
-    <div className="flex h-full w-full flex-col items-center justify-center p-8 overflow-y-auto">
-      <div className="w-full max-w-2xl bg-ink-2/80 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
-        <div className="flex items-center gap-4 mb-8">
-          <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center text-accent border border-accent/30">
-            <Brain className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Atlas Agent</h1>
-            <p className="text-white/50 text-sm mt-1">Autonomous evaluation &amp; benchmarking engine</p>
-          </div>
-        </div>
-
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-white/80">Agent Goal</label>
-            <textarea
-              value={goal}
-              onChange={(e) => setGoal(e.target.value)}
-              placeholder="e.g., Create a benchmark to test math reasoning with 50 tasks..."
-              className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-white focus:outline-none focus:border-accent/50 focus:ring-1 focus:ring-accent/50 transition-all resize-none"
-              required
-            />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium text-white/80 flex items-center gap-2">
-              <Settings2 className="w-4 h-4" />
-              Agent Reasoning Provider
-            </label>
-            
-            {isLoadingProviders ? (
-              <div className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white/50 text-sm animate-pulse">
-                Loading reasoning providers...
-              </div>
-            ) : providers.length === 0 ? (
-              <div className="w-full bg-red-900/20 border border-red-500/20 rounded-xl p-3 text-red-400 text-sm flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" />
-                No reasoning providers available. Please configure the backend.
-              </div>
-            ) : (
-              <>
-                <div className="relative w-full">
-                  <div
-                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white flex justify-between items-center cursor-pointer hover:border-white/20 transition-colors"
-                  >
-                    <span>{selectedProvider?.label || 'Select a provider'}</span>
-                    <ChevronDown className="w-4 h-4 text-white/50" />
-                  </div>
-                  
-                  {isDropdownOpen && (
-                    <>
-                      <div 
-                        className="fixed inset-0 z-10"
-                        onClick={() => setIsDropdownOpen(false)}
-                      />
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-[#1a1b1e] border border-white/10 rounded-xl overflow-hidden z-20 shadow-xl shadow-black/50">
-                        {providers.map((p) => (
-                          <div
-                            key={p.value}
-                            onClick={() => {
-                              setProvider(p.value);
-                              setIsDropdownOpen(false);
-                            }}
-                            className={`p-3 cursor-pointer transition-colors ${
-                              provider === p.value 
-                                ? 'bg-accent/20 text-accent' 
-                                : 'text-white hover:bg-white/5'
-                            }`}
-                          >
-                            {p.label}
-                          </div>
-                        ))}
-                      </div>
-                    </>
+      {/* Bottom Input Area mimicking Antigravity chat input */}
+      <div className="flex-none p-6">
+        <div className="max-w-4xl mx-auto">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            {/* The Chat-like Input Box */}
+            <div className="relative flex items-end bg-black/40 border border-white/10 rounded-2xl p-2 focus-within:border-accent/50 focus-within:ring-1 focus-within:ring-accent/50 transition-all shadow-lg">
+              <textarea
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
+                placeholder="Ask anything, e.g. Create a benchmark for math reasoning..."
+                className="w-full bg-transparent border-none text-white text-sm p-3 focus:outline-none resize-none max-h-48 min-h-[52px]"
+                rows={Math.min(5, Math.max(1, goal.split('\n').length))}
+                required
+              />
+              <div className="shrink-0 flex items-center gap-2 px-2 pb-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !goal.trim() || providers.length === 0}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-accent hover:bg-accent-hover disabled:bg-white/10 disabled:text-white/30 text-white transition-colors"
+                >
+                  {isSubmitting ? (
+                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Play className="w-4 h-4 translate-x-[1px]" />
                   )}
-                </div>
-                {selectedProvider && (
-                  <p className="text-xs text-white/40">{selectedProvider.description}</p>
-                )}
-              </>
-            )}
-          </div>
+                </button>
+              </div>
+            </div>
 
-          <button
-            type="submit"
-            disabled={isSubmitting || !goal.trim() || providers.length === 0}
-            className="w-full h-[52px] flex items-center justify-center gap-2 bg-accent/20 hover:bg-accent/30 disabled:bg-white/5 disabled:text-white/30 text-accent font-medium rounded-xl border border-accent/40 disabled:border-white/10 transition-colors"
-          >
-            {isSubmitting ? (
-              <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <>
-                <Play className="w-5 h-5" />
-                Start Agent Run
-              </>
-            )}
-          </button>
-        </form>
+            {/* Bottom Controls */}
+            <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-2">
+                {isLoadingProviders ? (
+                  <div className="text-[10px] text-white/30 animate-pulse">Loading providers...</div>
+                ) : providers.length === 0 ? (
+                  <div className="text-[10px] text-red-400 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> No providers configured
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 cursor-pointer transition-colors text-[11px] text-white/60 hover:text-white/80"
+                    >
+                      <Settings2 className="w-3 h-3" />
+                      {selectedProvider?.label || 'Select provider'}
+                      <ChevronDown className="w-3 h-3 opacity-50" />
+                    </div>
+                    {isDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
+                        <div className="absolute bottom-full left-0 mb-2 w-48 bg-ink-2 border border-white/10 rounded-xl overflow-hidden z-20 shadow-xl shadow-black/50">
+                          {providers.map((p) => (
+                            <div
+                              key={p.value}
+                              onClick={() => {
+                                setProvider(p.value);
+                                setIsDropdownOpen(false);
+                              }}
+                              className={`p-2.5 text-[11px] cursor-pointer transition-colors ${
+                                provider === p.value ? 'bg-accent/20 text-accent' : 'text-white/80 hover:bg-white/5'
+                              }`}
+                            >
+                              {p.label}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="text-[10px] text-white/30">
+                Shift + Enter for new line
+              </div>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
 }
-
-
