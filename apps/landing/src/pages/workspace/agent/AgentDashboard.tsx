@@ -28,7 +28,38 @@ export default function AgentDashboard() {
       }
       setIsLoadingProviders(false);
     });
-    return (
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!goal.trim() || isSubmitting || !provider) return;
+
+    setIsSubmitting(true);
+    const selectedProvider = providers.find((p) => p.value === provider);
+    const { data, error } = await submitAgentTask(goal, provider, selectedProvider?.model);
+    setIsSubmitting(false);
+
+    if (error || !data) {
+      addNotification('Error', 'Failed to start agent task. Check the backend is running.', 'error');
+      return;
+    }
+
+    // Backend returns task_id — add to store and navigate
+    const taskId = data.task_id;
+    setAgentTasks((prev) => {
+      const existing = prev.find((t) => t.task_id === taskId);
+      const taskEntry =
+        existing && (existing.plan?.length ?? 0) >= (data.plan?.length ?? 0) ? existing : data;
+      return [taskEntry, ...prev.filter((t) => t.task_id !== taskId)];
+    });
+    addNotification('Task Started', `Agent task #${taskId.substring(0, 8)} started`, 'success');
+    navigate(`/dashboard/agent/run/${taskId}`);
+  };
+
+  const selectedProvider = providers.find((p) => p.value === provider);
+
+  return (
     <div className="flex h-full w-full flex-col bg-ink-1">
       {/* Top Header */}
       <div className="flex-none px-6 py-4 border-b border-white/5 flex items-center bg-ink-2/80 backdrop-blur-md">

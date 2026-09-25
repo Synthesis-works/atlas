@@ -153,7 +153,193 @@ export default function AgentWorkspaceRun() {
           }))
       );
     });
+    return () => { cancelled = true; };
+  }, [taskId, task?.execution_ids]);
+
+  // Sync task from store whenever agentTasks updates (live polling), preferring richer snapshots.
+  useEffect(() => {
+    if (!taskId) return;
+    const found = agentTasks.find((t) => t.task_id === taskId);
+    if (found) setTask((prev) => preferRicher(prev, found));
+  }, [taskId, agentTasks]);
+
+  // Always fetch the full task detail when the run changes. This guarantees the run page
+  // has complete telemetry (plan, tool_calls, observations, execution_trace) even when the
+  // store entry was hydrated from a reduced list shape.
+  useEffect(() => {
+    if (!taskId) return;
+    let cancelled = false;
+    fetchAgentTask(taskId).then(({ data }) => {
+      if (cancelled || !data) return;
+      setTask((prev) => preferRicher(prev, data));
+      setAgentTasks((prev) => {
+        const others = prev.filter((t) => t.task_id !== data.task_id);
+        return [preferRicher(prev.find((t) => t.task_id === data.task_id) ?? null, data), ...others]
+          .filter((t): t is AgentTask => t !== null);
+      });
+    });
+    return () => { cancelled = true; };
+  }, [taskId, setAgentTasks]);
+
+  // Fetch the real report artifact once a completed task has one.
+  const taskStatus = task?.status ?? null;
+  const taskReportId = task?.report_id ?? null;
+  useEffect(() => {
+    if (!taskStatus || taskStatus !== 'COMPLETED' || !taskReportId) {
+      setReport(null);
+      setReportState('idle');
+      return;
+    }
+    let cancelled = false;
+    setReportState('loading');
+    fetchAgentReport(taskReportId).then(({ data }) => {
+      if (cancelled) return;
+      if (data) {
+        setReport(data);
+        setReportState('loaded');
+      } else {
+        setReport(null);
+        setReportState('missing');
+      }
+    });
+    return () => { cancelled = true; };
+  }, [taskStatus, taskReportId]);
+
+  // Reset inspect mode whenever the active run changes.
+  useEffect(() => {
+    setInspectMode(false);
+  }, [taskId]);
+
+  const handleClarifySubmit = async (response: string) => {
+    if (!taskId || !task) return;
+    await sendAgentClarification(taskId, response, task.clarification_id ?? undefined);
+    const { data } = await fetchAgentTask(taskId);
+    if (data) {
+      setTask((prev) => preferRicher(prev, data));
+      setAgentTasks((prev) => prev.map((t) => (t.task_id === taskId ? data : t)));
+    }
+  };
+
+  const handleApprove = async (approve: boolean) => {
+    if (!taskId || !task) return;
+    if (approve && task.approval_token) {
+      await approveAgentAction(taskId, task.approval_token);
+    }
+    const { data } = await fetchAgentTask(taskId);
+    if (data) {
+      setTask((prev) => preferRicher(prev, data));
+      setAgentTasks((prev) => prev.map((t) => (t.task_id === taskId ? data : t)));
+    }
+  };
+
+  const handleRunAgain = async () => {
+    if (!taskId) return;
+    const { data } = await runAgentTaskAgain(taskId);
+    if (data?.task_id) {
+      const { data: newTask } = await fetchAgentTask(data.task_id);
+      if (newTask) {
+        setAgentTasks((prev) => [newTask, ...prev.filter((t) => t.task_id !== newTask.task_id)]);
+      }
+      navigate(`/dashboard/agent/run/${data.task_id}`);
+    }
+  };
+
+  const handleDownloadReport = async () => {
+    const execId = task?.execution_ids?.slice(-1)[0] || report?.execution_id || '';
+    if (!execId) {
+      addNotification('Download unavailable', 'No execution run is linked to this report yet.', 'warning');
+      return;
+    }
+    setDownloading(true);
+    try {
+      const { data, error } = await downloadExecutionReport(execId, 'json');
+      if (!data || error) {
+        addNotification('Download failed', error?.message || 'Report export failed. Please try again.', 'error');
+        return;
+      }
+      const filename = buildExportFilename('json', report?.title, report?.version_string);
+      const url = URL.createObjectURL(data);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      addNotification('Report Downloaded', `${filename} saved.`, 'success');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleDownloadExecution = async (execId: string) => {
+    setDownloading(true);
+    try {
+      const { data, error } = await downloadExecutionReport(execId, 'json');
+      if (!data || error) {
+        addNotification('Download failed', error?.message || 'Report export failed. Please try again.', 'error');
+        return;
+      }
+      const filename = buildExportFilename('json', report?.title, report?.version_string);
+      const url = URL.createObjectURL(data);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      addNotification('Report Downloaded', `${filename} saved.`, 'success');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  if (!task) {
     return (
+      <div className="flex h-full w-full items-center justify-center text-white/50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <div className="text-sm">Loading task state...</div>
+        </div>
+      </div>
+    );
+  }
+
+  const isCompleted = task.status === 'COMPLETED';
+  const isFailed = task.status === 'FAILED';
+  const isStopped = task.status === 'CANCELLED';
+  const isClarifying = task.status === 'WAITING_FOR_CLARIFICATION';
+  const isPendingApproval = task.status === 'WAITING_FOR_APPROVAL';
+  const isActive = !isCompleted && !isFailed && !isStopped && !isClarifying && !isPendingApproval;
+
+  // "Failed at" — only real telemetry: a FAILED plan step, or the provider the run was on.
+  const failedStep = task.plan?.find((s) => s.status === 'FAILED');
+  const failedAt = isFailed
+    ? failedStep
+      ? `step ${failedStep.step_number} — ${failedStep.description}`
+      : task.current_provider
+        ? `provider ${task.current_provider}`
+        : null
+    : null;
+
+  const clarificationQuestion = task.clarification_request || task.clarification_prompt || '';
+  const finalSummary = getFinalSummary(task.final_result);
+  const duration = formatDuration(task.started_at ?? task.created_at, task.completed_at);
+  const providers = providerChain(task);
+  const benchmarkId = task.benchmark_id ?? report?.benchmark_id ?? null;
+
+  const metric = (name: string) => (report?.metrics ?? []).find((m) => m.metric_name === name)?.metric_value;
+  const reportMetric = (rep: AgentReport | null, name: string) =>
+    (rep?.metrics ?? []).find((m) => m.metric_name === name)?.metric_value;
+  const accuracy = metric('accuracy');
+  const evaluated = metric('total_evaluated');
+  const passed = metric('total_passed');
+  const failed = metric('total_failed');
+  const hasEvaluation = (report?.metrics.length ?? 0) > 0;
+  const reportTitle = report?.title || 'Benchmark Report';
+
+  return (
     <div className="flex h-full w-full relative">
       {/* Middle column: Chat/Timeline (mimicking the middle panel of Antigravity) */}
       <div className="flex-1 min-w-0 h-full flex flex-col relative bg-ink-1">
@@ -276,7 +462,7 @@ export default function AgentWorkspaceRun() {
         <div className="flex-none px-4 py-3 border-b border-white/5 flex items-center gap-4 text-xs font-medium bg-ink-2/50 backdrop-blur">
           <div className="text-white pb-3 -mb-3 border-b-2 border-accent">Run Report</div>
           {hasEvaluation && <div className="text-white/40 hover:text-white/60 cursor-pointer">Metrics</div>}
-          {task.execution_ids && task.execution_ids.length > 0 && <div className="text-white/40 hover:text-white/60 cursor-pointer">Executions</div>}
+          {(task.execution_ids?.length ?? 0) > 0 && <div className="text-white/40 hover:text-white/60 cursor-pointer">Executions</div>}
         </div>
 
         {/* Right Body */}
@@ -374,7 +560,14 @@ export default function AgentWorkspaceRun() {
             <div className="space-y-2">
               <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Executions ({executions.length || (task.execution_ids?.length ?? 0)})</p>
               <div className="space-y-2">
-                {(executions.length > 0 ? executions : (task.execution_ids ?? []).map(id => ({ id, status: 'QUEUED', target_model: '—', total_items: 0, completed_items: 0, benchmark_name: null, overall_score: null }))).map(ex => (
+                {(executions.length > 0 ? executions : (task.execution_ids ?? []).map(id => ({ id, status: 'QUEUED', target_model: '—', total_items: 0, completed_items: 0, benchmark_name: null, overall_score: null }))).map(ex => {
+                   const exHasReport = report !== null && report.execution_id === ex.id && (report.metrics.length ?? 0) > 0;
+                   const exAccuracy = exHasReport ? reportMetric(report, 'accuracy') : undefined;
+                   const exEvaluated = exHasReport ? reportMetric(report, 'total_evaluated') : undefined;
+                   const exPassed = exHasReport ? reportMetric(report, 'total_passed') : undefined;
+                   const exFailed = exHasReport ? reportMetric(report, 'total_failed') : undefined;
+
+                   return (
                    <div key={ex.id} className="p-3 rounded-xl border border-white/5 bg-white/[0.02]">
                       <div className="flex items-center justify-between gap-2 mb-2">
                          <span className="text-[10px] font-mono text-white/60 truncate">{ex.id.slice(0, 12)}...</span>
@@ -384,11 +577,29 @@ export default function AgentWorkspaceRun() {
                         <span>{ex.target_model}</span>
                         {ex.total_items > 0 && <span>· {ex.completed_items}/{ex.total_items} items</span>}
                       </div>
+
+                      {exHasReport && (
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                          {exAccuracy !== undefined && (
+                            <div className="p-2 rounded bg-emerald-500/10 border border-emerald-500/20">
+                              <p className="text-[9px] text-white/40 uppercase tracking-wider mb-0.5">Accuracy</p>
+                              <p className="text-sm font-bold text-emerald-300">{exAccuracy}%</p>
+                            </div>
+                          )}
+                          {exPassed !== undefined && (
+                            <div className="p-2 rounded bg-sky-500/10 border border-sky-500/20">
+                              <p className="text-[9px] text-white/40 uppercase tracking-wider mb-0.5">Passed</p>
+                              <p className="text-sm font-bold text-sky-300">{exPassed}</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <button onClick={() => handleDownloadExecution(ex.id)} disabled={downloading} className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-colors disabled:opacity-50">
                         <Download className="w-3 h-3" /> Export Results
                       </button>
                    </div>
-                ))}
+                 )})}
               </div>
             </div>
           )}

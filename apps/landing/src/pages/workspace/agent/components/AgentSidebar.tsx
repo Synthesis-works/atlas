@@ -102,7 +102,45 @@ export function AgentSidebar() {
       }
       setIsLoading(false);
     });
+    return () => { cancelled = true; };
+  }, [isDashboard, setAgentTasks]);
+
+  const handleNewRun = () => navigate('/dashboard/agent');
+
+  const getStatusIcon = (status: AgentTaskStatus) => {
+    const tone = STATUS_TONES[taskTone(status)];
+    const icon = taskStatusIcon(status, 'w-4 h-4');
+    if (icon === null) return null;
     return (
+      <span className={`relative inline-flex ${tone.text}`}>
+        {icon}
+        {status === 'PENDING' && (
+          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
+        )}
+      </span>
+    );
+  };
+
+  const getStatusLabel = (status: AgentTaskStatus) => {
+    const tone = STATUS_TONES[taskTone(status)];
+    const isWorking =
+      status === 'PLANNING' || status === 'EXECUTING' || status === 'REPAIRING';
+    return (
+      <span className={`text-[10px] uppercase tracking-wider ${tone.text} font-semibold flex items-center gap-1`}>
+        {isWorking && <span className={`w-1.5 h-1.5 rounded-full ${tone.dot} animate-pulse`} />}
+        {taskStatusLabel(status)}
+      </span>
+    );
+  };
+
+  const groups = GROUP_ORDER.map((group) => ({
+    group,
+    tasks: agentTasks.filter((t) => groupFor(t.status) === group).sort(sortByStart),
+  })).filter((g) => g.tasks.length > 0);
+
+  const totalRuns = agentTasks.length;
+
+  return (
     <div className="w-64 shrink-0 h-full border-r border-white/5 bg-ink-1 flex-col hidden lg:flex text-sm">
       <div className="p-3">
         <button
