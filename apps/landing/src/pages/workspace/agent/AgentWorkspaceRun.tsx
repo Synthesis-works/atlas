@@ -335,7 +335,7 @@ export default function AgentWorkspaceRun() {
   return (
     <div className="flex h-full w-full relative overflow-hidden">
       {/* Middle column: Chat/Timeline (mimicking the middle panel of Antigravity) */}
-      <div className="flex-1 min-w-0 h-full flex flex-col relative bg-ink-1">
+      <div className="flex-1 min-w-0 min-h-0 h-full flex flex-col relative bg-ink-1">
         {/* Header mimicking the top of the chat area */}
         <div className="flex-none px-6 py-3 border-b border-white/5 flex items-center justify-between bg-ink-2/80 backdrop-blur-md z-10">
           <div className="min-w-0 flex-1 pr-4">
@@ -366,7 +366,7 @@ export default function AgentWorkspaceRun() {
         </div>
 
         {/* Chat/Timeline area */}
-        <div className="flex-1 overflow-y-auto px-4 py-6">
+        <div className="flex-1 overflow-y-auto px-4 py-6 min-h-0">
           <div className="max-w-4xl mx-auto w-full flex flex-col gap-6">
             <AgentTimeline
               key={task.task_id}
@@ -450,7 +450,7 @@ export default function AgentWorkspaceRun() {
       </div>
 
       {/* Right panel: Artifacts / Results (mimicking Antigravity right panel) */}
-      <div className="w-[450px] shrink-0 h-full border-l border-white/10 bg-ink-2/30 backdrop-blur-sm flex flex-col">
+      <div className="w-[450px] shrink-0 h-full min-h-0 border-l border-white/10 bg-ink-2/30 backdrop-blur-sm flex flex-col">
         {/* Right Header (Tabs) */}
         <div className="flex-none px-4 py-3 border-b border-white/5 flex items-center gap-4 text-xs font-medium bg-ink-2/50 backdrop-blur">
           <div className="text-white pb-3 -mb-3 border-b-2 border-accent">Run Report</div>
@@ -459,7 +459,7 @@ export default function AgentWorkspaceRun() {
         </div>
 
         {/* Right Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+        <div className="flex-1 overflow-y-auto p-5 space-y-6 min-h-0">
           {/* Summary */}
           {(finalSummary || (report?.summary ?? '')) && (
             <div className="space-y-2">

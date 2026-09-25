@@ -56,16 +56,29 @@ export function AgentClarificationCard({ question, options, onSubmit }: Clarific
 
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <input
-              type="text"
+            <textarea
               value={customInput}
               onChange={(e) => setCustomInput(e.target.value)}
               placeholder="Type your answer…"
-              className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all"
+              className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/50 transition-all resize-none min-h-[44px] max-h-[200px]"
+              rows={1}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && customInput.trim()) {
-                  onSubmit(customInput.trim());
+                if (e.key === 'Enter') {
+                  if (e.shiftKey) {
+                    // Shift+Enter: allow normal newline behavior
+                    return;
+                  }
+                  // Enter without Shift: submit
+                  e.preventDefault();
+                  if (customInput.trim()) {
+                    onSubmit(customInput.trim());
+                  }
                 }
+              }}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = 'auto';
+                target.style.height = `${target.scrollHeight}px`;
               }}
             />
             <button
@@ -73,7 +86,7 @@ export function AgentClarificationCard({ question, options, onSubmit }: Clarific
                 if (customInput.trim()) onSubmit(customInput.trim());
               }}
               disabled={!customInput.trim()}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-white/40 hover:text-amber-300 hover:bg-amber-500/10 disabled:opacity-50 transition-colors"
+              className="absolute right-2 bottom-2 p-2 rounded-lg text-white/40 hover:text-amber-300 hover:bg-amber-500/10 disabled:opacity-50 transition-colors"
             >
               <Send className="w-4 h-4" />
             </button>
