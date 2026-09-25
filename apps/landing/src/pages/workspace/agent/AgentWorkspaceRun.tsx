@@ -25,13 +25,7 @@ import {
   FileText,
   Download,
   ChevronDown,
-  ChevronUp,
   Timer,
-  Network,
-  ArrowRight,
-  Gauge,
-  ListChecks,
-  PackageCheck,
   Square,
 } from 'lucide-react';
 
@@ -327,7 +321,6 @@ export default function AgentWorkspaceRun() {
   const finalSummary = getFinalSummary(task.final_result);
   const duration = formatDuration(task.started_at ?? task.created_at, task.completed_at);
   const providers = providerChain(task);
-  const benchmarkId = task.benchmark_id ?? report?.benchmark_id ?? null;
 
   const metric = (name: string) => (report?.metrics ?? []).find((m) => m.metric_name === name)?.metric_value;
   const reportMetric = (rep: AgentReport | null, name: string) =>
@@ -563,9 +556,7 @@ export default function AgentWorkspaceRun() {
                 {(executions.length > 0 ? executions : (task.execution_ids ?? []).map(id => ({ id, status: 'QUEUED', target_model: '—', total_items: 0, completed_items: 0, benchmark_name: null, overall_score: null }))).map(ex => {
                    const exHasReport = report !== null && report.execution_id === ex.id && (report.metrics.length ?? 0) > 0;
                    const exAccuracy = exHasReport ? reportMetric(report, 'accuracy') : undefined;
-                   const exEvaluated = exHasReport ? reportMetric(report, 'total_evaluated') : undefined;
                    const exPassed = exHasReport ? reportMetric(report, 'total_passed') : undefined;
-                   const exFailed = exHasReport ? reportMetric(report, 'total_failed') : undefined;
 
                    return (
                    <div key={ex.id} className="p-3 rounded-xl border border-white/5 bg-white/[0.02]">

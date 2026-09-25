@@ -120,19 +120,6 @@ export function AgentSidebar() {
       </span>
     );
   };
-
-  const getStatusLabel = (status: AgentTaskStatus) => {
-    const tone = STATUS_TONES[taskTone(status)];
-    const isWorking =
-      status === 'PLANNING' || status === 'EXECUTING' || status === 'REPAIRING';
-    return (
-      <span className={`text-[10px] uppercase tracking-wider ${tone.text} font-semibold flex items-center gap-1`}>
-        {isWorking && <span className={`w-1.5 h-1.5 rounded-full ${tone.dot} animate-pulse`} />}
-        {taskStatusLabel(status)}
-      </span>
-    );
-  };
-
   const groups = GROUP_ORDER.map((group) => ({
     group,
     tasks: agentTasks.filter((t) => groupFor(t.status) === group).sort(sortByStart),
