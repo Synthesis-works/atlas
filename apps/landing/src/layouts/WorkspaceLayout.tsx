@@ -112,7 +112,7 @@ export function WorkspaceLayout() {
   return (
     <WorkspaceStoreProvider>
       <MotionProvider>
-      <div className="relative min-h-screen bg-ink-2 text-white flex flex-col overflow-hidden">
+      <div className="relative h-screen bg-ink-2 text-white flex flex-col overflow-hidden">
       {/* Topbar */}
       <header
         className="h-14 shrink-0 border-b border-border/80 flex items-center px-6 gap-3 z-20 bg-ink-1/80 backdrop-blur-sm"
@@ -177,17 +177,33 @@ export function WorkspaceLayout() {
       {/* Main content area */}
       <div className="relative flex-1 z-10 flex flex-col min-h-0 overflow-hidden">
         {/* Page content — crossfade on route change */}
-        <main ref={mainRef} className={`flex-1 min-h-0 ${location.pathname.startsWith('/dashboard/agent') ? 'overflow-hidden' : 'overflow-y-auto pb-28'}`}>
+        <main
+          ref={mainRef}
+          className={`flex-1 min-h-0 flex flex-col ${
+            location.pathname.startsWith('/dashboard/agent')
+              ? 'overflow-hidden'
+              : 'overflow-y-auto pb-28'
+          }`}
+        >
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            className="h-full"
+            className={`flex-1 min-h-0 ${
+              location.pathname.startsWith('/dashboard/agent')
+                ? 'flex flex-col h-full'
+                : ''
+            }`}
           >
-            <div className="w-full max-w-[1600px] mx-auto px-4 md:px-6 xl:px-8 h-full">
+            {location.pathname.startsWith('/dashboard/agent') ? (
+              /* Agent routes: no padding, no max-width — fills full viewport */
               <Outlet />
-            </div>
+            ) : (
+              <div className="w-full max-w-[1600px] mx-auto px-4 md:px-6 xl:px-8">
+                <Outlet />
+              </div>
+            )}
           </motion.div>
         </main>
       </div>
