@@ -128,7 +128,7 @@ export function AgentSidebar() {
   const totalRuns = agentTasks.length;
 
   return (
-    <div className="w-64 shrink-0 h-full border-r border-white/5 bg-ink-1 flex-col hidden lg:flex text-sm">
+    <div className="w-64 shrink-0 h-full min-h-0 border-r border-white/5 bg-ink-1 flex-col hidden lg:flex text-sm">
       <div className="p-3">
         <button
           onClick={handleNewRun}

@@ -105,6 +105,7 @@ export default function AgentWorkspaceRun() {
   const [report, setReport] = useState<AgentReport | null>(null);
   const [reportState, setReportState] = useState<'idle' | 'loading' | 'loaded' | 'missing'>('idle');
   const [downloading, setDownloading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'report' | 'metrics' | 'executions'>('report');
   const [executions, setExecutions] = useState<Array<{
     id: string;
     status: string;
@@ -348,7 +349,7 @@ export default function AgentWorkspaceRun() {
   const reportTitle = report?.title || 'Benchmark Report';
 
   return (
-    <div className="flex h-full w-full relative overflow-hidden">
+    <div className="flex-1 min-h-0 flex h-full w-full relative overflow-hidden">
       {/* Middle column: Chat/Timeline (mimicking the middle panel of Antigravity) */}
       <div className="flex-1 min-w-0 min-h-0 h-full flex flex-col relative bg-ink-1">
         {/* Header mimicking the top of the chat area */}
@@ -468,15 +469,34 @@ export default function AgentWorkspaceRun() {
       <div className="w-[450px] shrink-0 h-full min-h-0 border-l border-white/10 bg-ink-2/30 backdrop-blur-sm flex flex-col">
         {/* Right Header (Tabs) */}
         <div className="flex-none px-4 py-3 border-b border-white/5 flex items-center gap-4 text-xs font-medium bg-ink-2/50 backdrop-blur">
-          <div className="text-white pb-3 -mb-3 border-b-2 border-accent">Run Report</div>
-          {hasEvaluation && <div className="text-white/40 hover:text-white/60 cursor-pointer">Metrics</div>}
-          {(task.execution_ids?.length ?? 0) > 0 && <div className="text-white/40 hover:text-white/60 cursor-pointer">Executions</div>}
+          <div 
+            onClick={() => setActiveTab('report')}
+            className={`pb-3 -mb-3 cursor-pointer ${activeTab === 'report' ? 'text-white border-b-2 border-accent' : 'text-white/40 hover:text-white/60'}`}
+          >
+            Run Report
+          </div>
+          {hasEvaluation && (
+            <div 
+              onClick={() => setActiveTab('metrics')}
+              className={`pb-3 -mb-3 cursor-pointer ${activeTab === 'metrics' ? 'text-white border-b-2 border-accent' : 'text-white/40 hover:text-white/60'}`}
+            >
+              Metrics
+            </div>
+          )}
+          {(task.execution_ids?.length ?? 0) > 0 && (
+            <div 
+              onClick={() => setActiveTab('executions')}
+              className={`pb-3 -mb-3 cursor-pointer ${activeTab === 'executions' ? 'text-white border-b-2 border-accent' : 'text-white/40 hover:text-white/60'}`}
+            >
+              Executions
+            </div>
+          )}
         </div>
 
         {/* Right Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-6 min-h-0">
           {/* Summary */}
-          {(finalSummary || (report?.summary ?? '')) && (
+          {activeTab === 'report' && (finalSummary || (report?.summary ?? '')) && (
             <div className="space-y-2">
               <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Summary</p>
               <div className="text-sm text-emerald-300/90 leading-relaxed whitespace-pre-wrap bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20">
@@ -486,32 +506,34 @@ export default function AgentWorkspaceRun() {
           )}
 
           {/* Execution Counters */}
-          <div className="space-y-2">
-            <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Execution Stats</p>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Steps</p>
-                <p className="text-lg font-bold text-white">{task.step_count}</p>
-              </div>
-              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Tool Calls</p>
-                <p className="text-lg font-bold text-white">{task.total_tool_calls}</p>
-              </div>
-              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Duration</p>
-                <p className="text-lg font-bold text-white">{duration || '—'}</p>
-              </div>
-              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
-                <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Providers</p>
-                <p className="text-xs font-semibold text-white/80 leading-tight line-clamp-2">
-                  {providers.length > 0 ? providers.join(' → ') : task.primary_provider || '—'}
-                </p>
+          {activeTab === 'report' && (
+            <div className="space-y-2">
+              <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Execution Stats</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                  <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Steps</p>
+                  <p className="text-lg font-bold text-white">{task.step_count}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                  <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Tool Calls</p>
+                  <p className="text-lg font-bold text-white">{task.total_tool_calls}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                  <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Duration</p>
+                  <p className="text-lg font-bold text-white">{duration || '—'}</p>
+                </div>
+                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                  <p className="text-[10px] text-white/40 uppercase tracking-wider mb-0.5">Providers</p>
+                  <p className="text-xs font-semibold text-white/80 leading-tight line-clamp-2">
+                    {providers.length > 0 ? providers.join(' → ') : task.primary_provider || '—'}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Result Metrics */}
-          {reportState === 'loaded' && report && hasEvaluation && (
+          {activeTab === 'metrics' && reportState === 'loaded' && report && hasEvaluation && (
             <div className="space-y-2">
               <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Evaluation Results</p>
               <div className="grid grid-cols-2 gap-2">
@@ -544,7 +566,7 @@ export default function AgentWorkspaceRun() {
           )}
 
           {/* Artifact Report Info */}
-          {reportState === 'loaded' && report && (
+          {activeTab === 'report' && reportState === 'loaded' && report && (
             <div className="space-y-2">
                <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Artifact</p>
                <div className="bg-white/[0.03] rounded-xl border border-white/5 p-4">
@@ -564,7 +586,7 @@ export default function AgentWorkspaceRun() {
           )}
 
           {/* Execution List */}
-          {(task.execution_ids?.length ?? 0) > 0 && (
+          {activeTab === 'executions' && (task.execution_ids?.length ?? 0) > 0 && (
             <div className="space-y-2">
               <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Executions ({executions.length || (task.execution_ids?.length ?? 0)})</p>
               <div className="space-y-2">
