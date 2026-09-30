@@ -45,7 +45,6 @@ export default function AgentDashboard() {
       return;
     }
 
-    // Backend returns task_id — add to store and navigate
     const taskId = data.task_id;
     setAgentTasks((prev) => {
       const existing = prev.find((t) => t.task_id === taskId);
@@ -60,41 +59,42 @@ export default function AgentDashboard() {
   const selectedProvider = providers.find((p) => p.value === provider);
 
   return (
-    <div className="flex h-full w-full flex-col bg-ink-1">
+    <div className="flex h-full w-full flex-col bg-[#0A0A0A] relative overflow-hidden">
+      {/* Background decoration - massive centered glow */}
+      <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[1000px] h-[800px] opacity-20 pointer-events-none">
+        <div className="absolute inset-0 bg-accent rounded-full blur-[120px]" />
+      </div>
+
       {/* Top Header */}
-      <div className="flex-none px-6 py-4 border-b border-white/5 flex items-center bg-ink-2/80 backdrop-blur-md">
+      <div className="flex-none px-6 py-4 border-b border-white/5 flex items-center bg-transparent relative z-10">
         <h1 className="text-sm font-semibold text-white/90 flex items-center gap-2">
           <Brain className="w-4 h-4 text-accent" />
           Atlas Agent
         </h1>
       </div>
 
-      {/* Main empty area */}
-      <div className="flex-1 relative overflow-y-auto flex flex-col items-center justify-center p-8">
-         {/* Background decoration */}
-         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-accent/10 via-ink-1 to-ink-1 opacity-50" />
-         <div className="absolute inset-0 pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay" />
-
-         <div className="text-center max-w-lg relative z-10">
-            <div className="relative w-16 h-16 mx-auto mb-6">
-              <div className="absolute inset-0 bg-accent/20 rounded-2xl blur-xl animate-pulse" />
-              <div className="relative w-16 h-16 bg-ink-2 text-accent rounded-2xl flex items-center justify-center shadow-xl border border-accent/20">
+      {/* Main content - Centered Prompt Interface */}
+      <div className="flex-1 flex flex-col items-center justify-center p-8 relative z-10 pb-32">
+         
+         <div className="text-center w-full max-w-3xl mb-8">
+            <div className="w-16 h-16 mx-auto mb-8 relative">
+              <div className="absolute inset-0 bg-accent/30 rounded-2xl blur-xl animate-pulse" />
+              <div className="relative w-full h-full bg-black/50 backdrop-blur text-accent rounded-2xl flex items-center justify-center border border-accent/20 shadow-2xl">
                  <Brain className="w-8 h-8" />
               </div>
             </div>
-            <h2 className="text-2xl font-semibold text-white mb-2">How can I help you benchmark today?</h2>
-            <p className="text-white/40 text-sm">
-              Describe your goal, and the autonomous agent will plan, execute, and generate a comprehensive evaluation report.
+            <h2 className="text-4xl sm:text-5xl font-semibold mb-4 bg-gradient-to-br from-white via-white to-white/30 bg-clip-text text-transparent tracking-tight">
+              What should we benchmark?
+            </h2>
+            <p className="text-white/40 text-base">
+              Describe your goal. The autonomous agent will plan, execute, and generate a comprehensive evaluation report.
             </p>
          </div>
-      </div>
 
-      {/* Bottom Input Area mimicking Antigravity chat input */}
-      <div className="flex-none p-6">
-        <div className="max-w-4xl mx-auto">
+         {/* The Chat-like Input Box */}
+         <div className="w-full max-w-3xl">
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            {/* The Chat-like Input Box */}
-            <div className="relative flex items-end bg-black/40 border border-white/10 rounded-2xl p-2 focus-within:border-accent/50 focus-within:ring-1 focus-within:ring-accent/50 transition-all shadow-lg">
+            <div className="relative flex flex-col bg-ink-2/60 backdrop-blur-xl border border-white/10 rounded-2xl p-2 focus-within:border-accent/50 focus-within:ring-2 focus-within:ring-accent/20 transition-all shadow-2xl">
               <textarea
                 value={goal}
                 onChange={(e) => setGoal(e.target.value)}
@@ -104,75 +104,77 @@ export default function AgentDashboard() {
                     handleSubmit(e);
                   }
                 }}
-                placeholder="Ask anything, e.g. Create a benchmark for math reasoning..."
-                className="w-full bg-transparent border-none text-white text-sm p-3 focus:outline-none resize-none max-h-48 min-h-[52px]"
-                rows={Math.min(5, Math.max(1, goal.split('\n').length))}
+                placeholder="e.g. Create a benchmark for math reasoning with 5 questions..."
+                className="w-full bg-transparent border-none text-white text-[15px] p-4 focus:outline-none resize-none max-h-64 min-h-[80px] placeholder:text-white/20"
+                rows={Math.min(6, Math.max(2, goal.split('\n').length))}
                 required
               />
-              <div className="shrink-0 flex items-center gap-2 px-2 pb-2">
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !goal.trim() || providers.length === 0}
-                  className="w-8 h-8 flex items-center justify-center rounded-full bg-accent hover:bg-accent-hover disabled:bg-white/10 disabled:text-white/30 text-white transition-colors"
-                >
-                  {isSubmitting ? (
-                    <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <Play className="w-4 h-4 translate-x-[1px]" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Bottom Controls */}
-            <div className="flex items-center justify-between px-2">
-              <div className="flex items-center gap-2">
-                {isLoadingProviders ? (
-                  <div className="text-[10px] text-white/30 animate-pulse">Loading providers...</div>
-                ) : providers.length === 0 ? (
-                  <div className="text-[10px] text-red-400 flex items-center gap-1">
-                    <AlertTriangle className="w-3 h-3" /> No providers configured
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <div
-                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 border border-white/5 cursor-pointer transition-colors text-[11px] text-white/60 hover:text-white/80"
-                    >
-                      <Settings2 className="w-3 h-3" />
-                      {selectedProvider?.label || 'Select provider'}
-                      <ChevronDown className="w-3 h-3 opacity-50" />
+              
+              <div className="flex items-center justify-between px-3 pb-2 pt-1">
+                {/* Left controls */}
+                <div className="flex items-center gap-2">
+                  {isLoadingProviders ? (
+                    <div className="text-xs text-white/30 animate-pulse">Loading providers...</div>
+                  ) : providers.length === 0 ? (
+                    <div className="text-xs text-red-400 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" /> No providers configured
                     </div>
-                    {isDropdownOpen && (
-                      <>
-                        <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
-                        <div className="absolute bottom-full left-0 mb-2 w-48 bg-ink-2 border border-white/10 rounded-xl overflow-hidden z-20 shadow-xl shadow-black/50">
-                          {providers.map((p) => (
-                            <div
-                              key={p.value}
-                              onClick={() => {
-                                setProvider(p.value);
-                                setIsDropdownOpen(false);
-                              }}
-                              className={`p-2.5 text-[11px] cursor-pointer transition-colors ${
-                                provider === p.value ? 'bg-accent/20 text-accent' : 'text-white/80 hover:bg-white/5'
-                              }`}
-                            >
-                              {p.label}
-                            </div>
-                          ))}
-                        </div>
-                      </>
+                  ) : (
+                    <div className="relative">
+                      <div
+                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/40 hover:bg-black/60 border border-white/5 cursor-pointer transition-colors text-xs text-white/60 hover:text-white/90"
+                      >
+                        <Settings2 className="w-3.5 h-3.5 text-accent/70" />
+                        {selectedProvider?.label || 'Select provider'}
+                        <ChevronDown className="w-3 h-3 opacity-50 ml-1" />
+                      </div>
+                      {isDropdownOpen && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setIsDropdownOpen(false)} />
+                          <div className="absolute bottom-full left-0 mb-2 w-56 bg-ink-1 border border-white/10 rounded-xl overflow-hidden z-20 shadow-2xl">
+                            {providers.map((p) => (
+                              <div
+                                key={p.value}
+                                onClick={() => {
+                                  setProvider(p.value);
+                                  setIsDropdownOpen(false);
+                                }}
+                                className={`p-3 text-xs cursor-pointer transition-colors flex items-center justify-between ${
+                                  provider === p.value ? 'bg-accent/10 text-accent font-medium' : 'text-white/70 hover:bg-white/5'
+                                }`}
+                              >
+                                {p.label}
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right controls */}
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-white/20 font-medium tracking-wide hidden sm:block uppercase">
+                    Shift + Return for new line
+                  </span>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !goal.trim() || providers.length === 0}
+                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-accent hover:bg-accent-hover disabled:bg-white/5 disabled:text-white/20 text-white transition-all disabled:shadow-none shadow-[0_0_20px_rgba(99,102,241,0.4)]"
+                  >
+                    {isSubmitting ? (
+                      <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <Play className="w-4 h-4 translate-x-[1px]" fill="currentColor" />
                     )}
-                  </div>
-                )}
-              </div>
-              <div className="text-[10px] text-white/30">
-                Shift + Enter for new line
+                  </button>
+                </div>
               </div>
             </div>
           </form>
-        </div>
+         </div>
       </div>
     </div>
   );
