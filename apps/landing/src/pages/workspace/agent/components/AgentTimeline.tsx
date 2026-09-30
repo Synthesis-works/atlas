@@ -239,17 +239,17 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    className={`flex gap-3 p-3 rounded-xl border transition-colors ${
+                    className={`flex gap-3 p-3.5 rounded-xl border transition-all ${
                       isActiveStep
-                        ? `${STATUS_TONES.working.bg} ${STATUS_TONES.working.border} shadow-[0_0_15px_rgba(56,189,248,0.06)]`
+                        ? `${STATUS_TONES.working.bg} ${STATUS_TONES.working.border} shadow-[0_0_20px_rgba(56,189,248,0.1)] scale-[1.01]`
                         : step.status === 'FAILED'
                           ? `${STATUS_TONES.danger.bg} ${STATUS_TONES.danger.border}`
-                          : 'bg-white/[0.02] border-white/5'
+                          : 'bg-black/20 hover:bg-black/40 border-white/5'
                     }`}
                   >
                     <div className="mt-0.5 shrink-0">{getStepIcon(step.status)}</div>
-                    <div className="flex flex-col gap-1 w-full min-w-0">
-                      <div className="font-medium text-sm text-white/80 flex items-center justify-between gap-2">
+                    <div className="flex flex-col gap-1.5 w-full min-w-0">
+                      <div className="font-medium text-sm text-white/90 flex items-center justify-between gap-2">
                         <span className="truncate">{step.description}</span>
                         <span className="flex items-center gap-1.5 shrink-0">
                           {isActiveStep && (
