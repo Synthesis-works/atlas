@@ -1,47 +1,24 @@
 import { useEffect, useState } from 'react';
-import { WorkspaceStatusBoard } from '@/components/workspace/WorkspaceStatusBoard';
-import {
-  getDashboardSummary,
-  type DashboardSummaryData,
-} from '@/features/dashboard/services/dashboardService';
+import { TextFlippingBoard } from '@/components/ui/text-flipping-board';
 
 export default function Home() {
-  const [dashboard, setDashboard] = useState<DashboardSummaryData | null>(null);
-  const [username, setUsername] = useState('User');
+  const [username, setUsername] = useState('USER');
 
   useEffect(() => {
     const storedUser = localStorage.getItem('atlas_username');
     if (storedUser) {
-      setUsername(storedUser);
+      setUsername(storedUser.toUpperCase());
     }
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-    getDashboardSummary().then((res) => {
-      if (isMounted && res) {
-        setDashboard(res);
-      }
-    });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const activeCount = dashboard?.summary.active_runs_count ?? 0;
+  const welcomeMessage = `WELCOME ${username}\nTO ATLAS`;
 
   return (
-    <div className="w-full min-h-[calc(100vh-4rem)] flex flex-col pt-12 items-center text-white gap-12">
-      <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-center">
-        Welcome <span className="text-accent">{username}</span> to Atlas
-      </h1>
-      
-      <div className="w-full flex justify-center items-center flex-1 pb-16">
-        <WorkspaceStatusBoard 
-          activeBenchmarkCount={activeCount} 
-          modelsCount={dashboard?.hierarchy.models}
+    <div className="w-full h-[calc(100vh-4rem)] flex justify-center items-center overflow-hidden">
+      <div className="flex justify-center items-center w-full max-w-5xl mx-auto scale-110 md:scale-125 lg:scale-150">
+        <TextFlippingBoard 
+          text={welcomeMessage}
           duration={1.2}
-          className="my-0 scale-110 md:scale-125 lg:scale-150 origin-center max-w-5xl"
         />
       </div>
     </div>
