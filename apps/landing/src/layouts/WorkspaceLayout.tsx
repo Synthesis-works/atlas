@@ -64,6 +64,11 @@ export function WorkspaceLayout() {
       href: '/dashboard/home',
     },
     {
+      title: 'Agent',
+      icon: <span className="w-full h-full text-accent font-bold" style={{display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem'}}>✦</span>,
+      href: '/dashboard/agent',
+    },
+    {
       title: 'Datasets',
       icon: <FolderKanban className="w-full h-full" />,
       href: '/dashboard/datasets',
@@ -102,11 +107,6 @@ export function WorkspaceLayout() {
       title: 'Billing',
       icon: <CreditCard className="w-full h-full" />,
       href: '/dashboard/billing',
-    },
-    {
-      title: 'Agent',
-      icon: <span className="w-full h-full text-accent font-bold" style={{display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem'}}>✦</span>,
-      href: '/dashboard/agent',
     },
     {
       title: 'Settings',
