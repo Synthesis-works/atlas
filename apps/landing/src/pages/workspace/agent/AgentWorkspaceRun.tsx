@@ -468,29 +468,48 @@ export default function AgentWorkspaceRun() {
       {/* Right panel: Artifacts / Results */}
       <div className="w-[450px] shrink-0 min-h-0 border-l border-white/10 bg-ink-2/30 backdrop-blur-sm flex flex-col overflow-hidden">
         {/* Right Header (Tabs) */}
-        <div className="flex-none px-4 py-3 border-b border-white/5 flex items-center gap-4 text-xs font-medium bg-ink-2/50 backdrop-blur">
-          <div 
-            onClick={() => setActiveTab('report')}
-            className={`pb-3 -mb-3 cursor-pointer ${activeTab === 'report' ? 'text-white border-b-2 border-accent' : 'text-white/40 hover:text-white/60'}`}
-          >
-            Run Report
+        <div className="flex-none p-3 border-b border-white/5 bg-ink-2/50 backdrop-blur">
+          <div className="flex bg-black/40 p-1 rounded-lg border border-white/5 text-[11px] font-medium relative">
+            <button
+              onClick={() => setActiveTab('report')}
+              className={`flex-1 py-1.5 px-3 rounded-md transition-colors relative z-10 ${
+                activeTab === 'report' ? 'text-white' : 'text-white/40 hover:text-white/80'
+              }`}
+            >
+              Run Report
+              {activeTab === 'report' && (
+                <motion.div layoutId="activeTab" className="absolute inset-0 bg-white/10 rounded-md -z-10 shadow-sm" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />
+              )}
+            </button>
+            
+            {hasEvaluation && (
+              <button
+                onClick={() => setActiveTab('metrics')}
+                className={`flex-1 py-1.5 px-3 rounded-md transition-colors relative z-10 ${
+                  activeTab === 'metrics' ? 'text-white' : 'text-white/40 hover:text-white/80'
+                }`}
+              >
+                Metrics
+                {activeTab === 'metrics' && (
+                  <motion.div layoutId="activeTab" className="absolute inset-0 bg-white/10 rounded-md -z-10 shadow-sm" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />
+                )}
+              </button>
+            )}
+            
+            {(task.execution_ids?.length ?? 0) > 0 && (
+              <button
+                onClick={() => setActiveTab('executions')}
+                className={`flex-1 py-1.5 px-3 rounded-md transition-colors relative z-10 ${
+                  activeTab === 'executions' ? 'text-white' : 'text-white/40 hover:text-white/80'
+                }`}
+              >
+                Executions
+                {activeTab === 'executions' && (
+                  <motion.div layoutId="activeTab" className="absolute inset-0 bg-white/10 rounded-md -z-10 shadow-sm" transition={{ type: "spring", bounce: 0.2, duration: 0.6 }} />
+                )}
+              </button>
+            )}
           </div>
-          {hasEvaluation && (
-            <div 
-              onClick={() => setActiveTab('metrics')}
-              className={`pb-3 -mb-3 cursor-pointer ${activeTab === 'metrics' ? 'text-white border-b-2 border-accent' : 'text-white/40 hover:text-white/60'}`}
-            >
-              Metrics
-            </div>
-          )}
-          {(task.execution_ids?.length ?? 0) > 0 && (
-            <div 
-              onClick={() => setActiveTab('executions')}
-              className={`pb-3 -mb-3 cursor-pointer ${activeTab === 'executions' ? 'text-white border-b-2 border-accent' : 'text-white/40 hover:text-white/60'}`}
-            >
-              Executions
-            </div>
-          )}
         </div>
 
         {/* Right Body */}

@@ -70,10 +70,17 @@ export default function AgentDashboard() {
       </div>
 
       {/* Main empty area */}
-      <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center p-8">
-         <div className="text-center max-w-lg">
-            <div className="w-16 h-16 bg-accent/10 text-accent rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)] border border-accent/20">
-               <Brain className="w-8 h-8" />
+      <div className="flex-1 relative overflow-y-auto flex flex-col items-center justify-center p-8">
+         {/* Background decoration */}
+         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-accent/10 via-ink-1 to-ink-1 opacity-50" />
+         <div className="absolute inset-0 pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay" />
+
+         <div className="text-center max-w-lg relative z-10">
+            <div className="relative w-16 h-16 mx-auto mb-6">
+              <div className="absolute inset-0 bg-accent/20 rounded-2xl blur-xl animate-pulse" />
+              <div className="relative w-16 h-16 bg-ink-2 text-accent rounded-2xl flex items-center justify-center shadow-xl border border-accent/20">
+                 <Brain className="w-8 h-8" />
+              </div>
             </div>
             <h2 className="text-2xl font-semibold text-white mb-2">How can I help you benchmark today?</h2>
             <p className="text-white/40 text-sm">
