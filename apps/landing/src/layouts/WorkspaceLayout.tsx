@@ -11,6 +11,7 @@ import { useEffect, useRef } from 'react';
 import { WorkspaceStoreProvider } from '@/store/workspaceStore';
 import {
   LayoutDashboard,
+  Home,
   Database,
   FolderKanban,
   FileText,
@@ -56,6 +57,11 @@ export function WorkspaceLayout() {
       title: 'Overview',
       icon: <LayoutDashboard className="w-full h-full" />,
       href: '/dashboard',
+    },
+    {
+      title: 'Home',
+      icon: <Home className="w-full h-full" />,
+      href: '/dashboard/home',
     },
     {
       title: 'Datasets',

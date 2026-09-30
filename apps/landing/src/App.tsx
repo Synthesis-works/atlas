@@ -24,6 +24,7 @@ const Sandbox = lazy(() => import('@/components/ui/draggable-card-demo-2'));
 
 /* Workspace */
 const Workspace = lazy(() => import('@/pages/workspace/Workspace'));
+const WorkspaceHome = lazy(() => import('@/pages/workspace/Home'));
 const WorkspaceBenchmarks = lazy(() => import('@/pages/workspace/Benchmarks'));
 const WorkspaceExperiments = lazy(() => import('@/pages/workspace/Experiments'));
 const WorkspaceProviders = lazy(() => import('@/pages/workspace/Providers'));
@@ -100,6 +101,7 @@ function AppRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route path="dashboard" element={<WorkspaceLayout />}>
           <Route index element={<Suspense fallback={<PageLoader />}><Workspace /></Suspense>} />
+          <Route path="home" element={<Suspense fallback={<PageLoader />}><WorkspaceHome /></Suspense>} />
           <Route path="benchmarks" element={<Suspense fallback={<PageLoader />}><WorkspaceBenchmarks /></Suspense>} />
           <Route path="datasets" element={<Suspense fallback={<PageLoader />}><DatasetsPage /></Suspense>} />
           
