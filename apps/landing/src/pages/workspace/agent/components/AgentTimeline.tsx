@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   PlayCircle,
@@ -14,6 +14,8 @@ import {
   ListChecks,
   GitBranch,
   FileJson,
+  Copy,
+  Check,
 } from 'lucide-react';
 import type { AgentTask, AgentPlanStep } from '@/features/agent/types';
 import { STATUS_TONES } from '@/features/agent/status';
@@ -70,6 +72,30 @@ function formatTime(iso?: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleTimeString();
+}
+
+/** Small inline copy-to-clipboard button. Shows a checkmark for 1.5 s after copy. */
+function CopyButton({ text, className = '' }: { text: string; className?: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      navigator.clipboard.writeText(text).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      });
+    },
+    [text]
+  );
+  return (
+    <button
+      onClick={copy}
+      title="Copy to clipboard"
+      className={`inline-flex items-center justify-center w-5 h-5 rounded text-white/25 hover:text-white/60 hover:bg-white/10 transition-colors shrink-0 ${className}`}
+    >
+      {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+    </button>
+  );
 }
 
 function getStepStatusTone(status: AgentPlanStep['status']) {
@@ -334,7 +360,7 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
                     const argsText =
                       typeof call.arguments === 'string'
                         ? call.arguments
-                        : JSON.stringify(call.arguments ?? {});
+                        : JSON.stringify(call.arguments ?? {}, null, 2);
                     const summary = argsText.length > 140 ? `${argsText.slice(0, 140)}…` : argsText;
                     return (
                       <div key={call.call_id || i} className="p-2.5 rounded-lg border border-white/5 bg-black/20">
@@ -352,6 +378,7 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
                             );
                           })()}
                           <span className="text-[10px] text-white/30 ml-auto shrink-0">{formatTime(call.timestamp)}</span>
+                          <CopyButton text={`${call.tool_name}\n${argsText}`} />
                         </div>
                         <p className="text-[11px] text-white/55 font-mono truncate mb-1">{summary}</p>
                         <details className="group">
@@ -377,7 +404,7 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
                 <div className="flex flex-col gap-1.5">
                   {observations.slice(-6).map((obs, i) => {
                     const outputText =
-                      typeof obs.output === 'string' ? obs.output : JSON.stringify(obs.output ?? {});
+                      typeof obs.output === 'string' ? obs.output : JSON.stringify(obs.output ?? {}, null, 2);
                     const summary =
                       (obs.success
                         ? outputText.length > 120
@@ -396,6 +423,7 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
                             {obs.success ? 'SUCCESS' : 'ERROR'}
                           </span>
                           <span className="text-white/25 text-[10px] ml-auto shrink-0">{formatTime(obs.timestamp)}</span>
+                          <CopyButton text={outputText + (obs.error ? `\nError: ${obs.error}` : '')} />
                         </div>
                         <p className="text-[11px] text-white/45 font-mono truncate">{summary}</p>
                         <details className="group mt-1">
@@ -422,24 +450,34 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
                 <p className="text-xs text-white/30">No trace events recorded.</p>
               ) : (
                 <div className="flex flex-col gap-1.5">
-                  {executionTrace.map((ev, i) => (
-                    <div key={i} className="p-2.5 rounded-lg border border-white/5 bg-black/20">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-xs font-mono text-accent/80">{ev.event_type}</span>
-                        <span className="text-[10px] text-white/30 shrink-0">{formatTime(ev.timestamp)}</span>
+                  {executionTrace.map((ev, i) => {
+                    const detailText = typeof ev.details === 'string' ? ev.details : JSON.stringify(ev.details, null, 2);
+                    return (
+                      <div key={i} className="p-2.5 rounded-lg border border-white/5 bg-black/20">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-xs font-mono text-accent/80">{ev.event_type}</span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-[10px] text-white/30">{formatTime(ev.timestamp)}</span>
+                            <CopyButton text={`${ev.event_type}\n${detailText}`} />
+                          </div>
+                        </div>
+                        <pre className="text-[10px] text-white/45 whitespace-pre-wrap font-mono">
+                          {detailText}
+                        </pre>
                       </div>
-                      <pre className="text-[10px] text-white/45 whitespace-pre-wrap font-mono">
-                        {typeof ev.details === 'string' ? ev.details : JSON.stringify(ev.details, null, 2)}
-                      </pre>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </Section>
 
             <Section icon={<FileJson className="w-3.5 h-3.5" />} title="Raw Data">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-[11px] text-white/40">Full task payload</span>
+                <CopyButton text={JSON.stringify(task, null, 2)} />
+              </div>
               <details className="group">
-                <summary className="cursor-pointer text-[11px] text-white/40 list-none">
+                <summary className="cursor-pointer text-[10px] text-white/35 list-none">
                   <span className="group-open:hidden">Expand full task payload</span>
                   <span className="hidden group-open:inline">Collapse full task payload</span>
                 </summary>

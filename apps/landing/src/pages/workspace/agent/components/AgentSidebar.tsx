@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useWorkspaceStore } from '@/store/workspaceStore';
 import { Plus } from 'lucide-react';
-import type { AgentTask, AgentTaskStatus } from '@/features/agent/types';
-import { taskStatusIcon, taskTone, STATUS_TONES } from '@/features/agent/status';
+import type { AgentTask } from '@/features/agent/types';
 import { fetchAgentTasks } from '@/features/agent/services/agentService';
 
 /**
@@ -26,44 +25,6 @@ function mergeAgentTasks(existing: AgentTask[], incoming: AgentTask[]): AgentTas
     map.set(incomingTask.task_id, currentFresher ? current : incomingTask);
   });
   return Array.from(map.values());
-}
-
-type RunGroup = 'RUNNING' | 'NEEDS_INPUT' | 'COMPLETED' | 'FAILED';
-
-const GROUP_ORDER: RunGroup[] = ['RUNNING', 'NEEDS_INPUT', 'COMPLETED', 'FAILED'];
-
-const GROUP_LABEL: Record<RunGroup, string> = {
-  RUNNING: 'Running',
-  NEEDS_INPUT: 'Needs Input',
-  COMPLETED: 'Completed',
-  FAILED: 'Failed',
-};
-
-const GROUP_DOT: Record<RunGroup, string> = {
-  RUNNING: 'bg-sky-400',
-  NEEDS_INPUT: 'bg-amber-400',
-  COMPLETED: 'bg-emerald-400',
-  FAILED: 'bg-red-400',
-};
-
-function groupFor(status: AgentTaskStatus): RunGroup {
-  switch (status) {
-    case 'PENDING':
-    case 'PLANNING':
-    case 'EXECUTING':
-    case 'REPAIRING':
-      return 'RUNNING';
-    case 'WAITING_FOR_CLARIFICATION':
-    case 'WAITING_FOR_APPROVAL':
-      return 'NEEDS_INPUT';
-    case 'COMPLETED':
-      return 'COMPLETED';
-    case 'FAILED':
-    case 'CANCELLED':
-      return 'FAILED';
-    default:
-      return 'RUNNING';
-  }
 }
 
 function sortByStart(a: AgentTask, b: AgentTask): number {
@@ -91,7 +52,6 @@ export function AgentSidebar() {
   const isDashboard = location.pathname === '/dashboard/agent';
 
   // Hydrate sidebar from backend on mount and whenever returning to the dashboard index.
-  // This re-initializes run history from the backend instead of showing stale "No runs yet".
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
@@ -107,25 +67,9 @@ export function AgentSidebar() {
 
   const handleNewRun = () => navigate('/dashboard/agent');
 
-  const getStatusIcon = (status: AgentTaskStatus) => {
-    const tone = STATUS_TONES[taskTone(status)];
-    const icon = taskStatusIcon(status, 'w-4 h-4');
-    if (icon === null) return null;
-    return (
-      <span className={`relative inline-flex ${tone.text}`}>
-        {icon}
-        {status === 'PENDING' && (
-          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-sky-400 animate-pulse" />
-        )}
-      </span>
-    );
-  };
-  const groups = GROUP_ORDER.map((group) => ({
-    group,
-    tasks: agentTasks.filter((t) => groupFor(t.status) === group).sort(sortByStart),
-  })).filter((g) => g.tasks.length > 0);
-
-  const totalRuns = agentTasks.length;
+  // Only show completed (green) runs — transient states clutter history.
+  const completedTasks = agentTasks.filter((t) => t.status === 'COMPLETED').sort(sortByStart);
+  const totalRuns = completedTasks.length;
 
   return (
     <div className="w-64 shrink-0 min-h-0 border-r border-white/5 bg-ink-1 flex-col hidden lg:flex text-sm overflow-hidden">
@@ -139,52 +83,42 @@ export function AgentSidebar() {
         </button>
       </div>
       <div className="px-5 pt-4 pb-2 flex items-center justify-between">
-        <span className="text-xs text-white/40 font-medium">Run History</span>
+        <span className="text-xs text-white/40 font-medium">Completed Runs</span>
         {totalRuns > 0 && (
           <span className="text-xs text-white/30">{totalRuns}</span>
         )}
       </div>
-      <div className="flex-1 overflow-y-auto px-2 pb-3 flex flex-col gap-4">
+      <div className="flex-1 overflow-y-auto px-2 pb-3 flex flex-col gap-0.5">
         {isLoading ? (
           <div className="text-center p-4 text-xs text-white/40 animate-pulse">Loading runs...</div>
         ) : (
           <>
-            {groups.map(({ group, tasks }) => (
-              <div key={group} className="flex flex-col gap-0.5">
-                <div className="flex items-center gap-2 px-3 pb-1">
-                  <span className={`w-1.5 h-1.5 rounded-full ${GROUP_DOT[group]}`} />
-                  <span className="text-[10px] uppercase tracking-wider text-white/30 font-semibold">
-                    {GROUP_LABEL[group]}
-                  </span>
+            {completedTasks.map((task: AgentTask) => (
+              <NavLink
+                key={task.task_id}
+                to={`/dashboard/agent/run/${task.task_id}`}
+                className={({ isActive }) =>
+                  `flex flex-col gap-1 px-3 py-2 rounded transition-colors ${
+                    isActive
+                      ? 'bg-white/10 text-white'
+                      : 'text-white/60 hover:bg-white/5 hover:text-white/80'
+                  }`
+                }
+              >
+                <div className="text-sm truncate pr-2">{task.goal}</div>
+                <div className="flex items-center justify-between mt-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                    <span className="text-[10px] text-white/40 font-mono">#{task.task_id.slice(0, 4)}</span>
+                  </div>
+                  {formatTime(task.started_at ?? task.created_at) && (
+                    <span className="text-[10px] text-white/30">{formatTime(task.started_at ?? task.created_at)}</span>
+                  )}
                 </div>
-                {tasks.map((task: AgentTask) => (
-                  <NavLink
-                    key={task.task_id}
-                    to={`/dashboard/agent/run/${task.task_id}`}
-                    className={({ isActive }) =>
-                      `flex flex-col gap-1 px-3 py-2 rounded transition-colors ${
-                        isActive
-                          ? 'bg-white/10 text-white'
-                          : 'text-white/60 hover:bg-white/5 hover:text-white/80'
-                      }`
-                    }
-                  >
-                    <div className="text-sm truncate pr-2">{task.goal}</div>
-                    <div className="flex items-center justify-between mt-0.5">
-                       <div className="flex items-center gap-1.5">
-                         {getStatusIcon(task.status)}
-                         <span className="text-[10px] text-white/40 font-mono">#{task.task_id.slice(0, 4)}</span>
-                       </div>
-                       {formatTime(task.started_at ?? task.created_at) && (
-                         <span className="text-[10px] text-white/30">{formatTime(task.started_at ?? task.created_at)}</span>
-                       )}
-                    </div>
-                  </NavLink>
-                ))}
-              </div>
+              </NavLink>
             ))}
-            {groups.length === 0 && (
-              <div className="text-center p-4 text-xs text-white/40">No runs yet</div>
+            {completedTasks.length === 0 && (
+              <div className="text-center p-4 text-xs text-white/40">No completed runs yet</div>
             )}
           </>
         )}
