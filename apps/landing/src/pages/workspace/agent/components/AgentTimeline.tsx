@@ -133,24 +133,29 @@ function Section({
   icon,
   title,
   defaultOpen = false,
+  copyText,
   children,
 }: {
   icon: React.ReactNode;
   title: string;
   defaultOpen?: boolean;
+  copyText?: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="border-t border-white/5">
-      <button
-        onClick={() => setOpen((prev) => !prev)}
-        className="w-full flex items-center gap-2 py-2.5 text-left"
-      >
-        {open ? <ChevronDown className="w-3.5 h-3.5 text-white/30 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-white/30 shrink-0" />}
-        <span className="text-white/40 shrink-0">{icon}</span>
-        <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">{title}</span>
-      </button>
+      <div className="flex items-center">
+        <button
+          onClick={() => setOpen((prev) => !prev)}
+          className="flex-1 flex items-center gap-2 py-2.5 text-left"
+        >
+          {open ? <ChevronDown className="w-3.5 h-3.5 text-white/30 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-white/30 shrink-0" />}
+          <span className="text-white/40 shrink-0">{icon}</span>
+          <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">{title}</span>
+        </button>
+        {copyText && <CopyButton text={copyText} className="mr-0.5" />}
+      </div>
       <AnimatePresence initial={false}>
         {open && (
           <motion.div
@@ -278,7 +283,12 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
 
         {inspectMode && (
           <div className="flex flex-col">
-            <Section icon={<ListChecks className="w-3.5 h-3.5" />} title="Execution Plan" defaultOpen>
+            <Section
+              icon={<ListChecks className="w-3.5 h-3.5" />}
+              title="Execution Plan"
+              defaultOpen
+              copyText={steps.map((s) => `Step ${s.step_number} [${s.status}]: ${s.description}${s.result_summary ? `\n  → ${s.result_summary}` : ''}`).join('\n')}
+            >
               <div className="flex flex-col gap-2">
                 {steps.map((step) => (
                   <div key={step.step_number} className="p-2.5 rounded-lg border border-white/5 bg-black/20">
@@ -298,7 +308,19 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
               </div>
             </Section>
 
-            <Section icon={<Network className="w-3.5 h-3.5" />} title="Provider Routing" defaultOpen>
+            <Section
+              icon={<Network className="w-3.5 h-3.5" />}
+              title="Provider Routing"
+              defaultOpen
+              copyText={routing.length === 0
+                ? `No provider routing recorded.${task.current_provider ? ` Current: ${task.current_provider}.` : ''}`
+                : routing.map((ev) =>
+                    ev.kind === 'attempted'
+                      ? `[attempted] ${ev.provider ?? '?'} ${ev.model ? `(${ev.model})` : ''} ${ev.latency_ms != null ? `${ev.latency_ms}ms` : ''} — ${ev.decision_type ?? ''} @ ${ev.timestamp}`
+                      : `[fallback] ${ev.from ?? 'unknown'} → ${ev.to ?? 'NONE'}${ev.reason ? ` (${ev.reason})` : ''} @ ${ev.timestamp}`
+                  ).join('\n')
+              }
+            >
               {routing.length === 0 ? (
                 <p className="text-xs text-white/30">
                   No provider routing recorded. {task.current_provider ? `Current: ${task.current_provider}.` : ''}
@@ -351,7 +373,17 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
               )}
             </Section>
 
-            <Section icon={<Wrench className="w-3.5 h-3.5" />} title="Tool Calls">
+            <Section
+              icon={<Wrench className="w-3.5 h-3.5" />}
+              title="Tool Calls"
+              copyText={toolCalls.length === 0
+                ? 'No tool calls recorded.'
+                : toolCalls.map((call) => {
+                    const argsText = typeof call.arguments === 'string' ? call.arguments : JSON.stringify(call.arguments ?? {}, null, 2);
+                    return `[${call.tool_name}] @ ${call.timestamp ?? ''}\n${argsText}`;
+                  }).join('\n\n')
+              }
+            >
               {toolCalls.length === 0 ? (
                 <p className="text-xs text-white/30">No tool calls recorded.</p>
               ) : (
@@ -378,7 +410,6 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
                             );
                           })()}
                           <span className="text-[10px] text-white/30 ml-auto shrink-0">{formatTime(call.timestamp)}</span>
-                          <CopyButton text={`${call.tool_name}\n${argsText}`} />
                         </div>
                         <p className="text-[11px] text-white/55 font-mono truncate mb-1">{summary}</p>
                         <details className="group">
@@ -397,7 +428,17 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
               )}
             </Section>
 
-            <Section icon={<GitBranch className="w-3.5 h-3.5" />} title="Observations">
+            <Section
+              icon={<GitBranch className="w-3.5 h-3.5" />}
+              title="Observations"
+              copyText={observations.length === 0
+                ? 'No observations recorded.'
+                : observations.map((obs) => {
+                    const out = typeof obs.output === 'string' ? obs.output : JSON.stringify(obs.output ?? {}, null, 2);
+                    return `[${obs.tool_name}] ${obs.success ? 'SUCCESS' : 'ERROR'} @ ${obs.timestamp ?? ''}\n${out}${obs.error ? `\nError: ${obs.error}` : ''}`;
+                  }).join('\n\n')
+              }
+            >
               {observations.length === 0 ? (
                 <p className="text-xs text-white/30">No observations recorded.</p>
               ) : (
@@ -423,7 +464,6 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
                             {obs.success ? 'SUCCESS' : 'ERROR'}
                           </span>
                           <span className="text-white/25 text-[10px] ml-auto shrink-0">{formatTime(obs.timestamp)}</span>
-                          <CopyButton text={outputText + (obs.error ? `\nError: ${obs.error}` : '')} />
                         </div>
                         <p className="text-[11px] text-white/45 font-mono truncate">{summary}</p>
                         <details className="group mt-1">
@@ -445,7 +485,17 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
               )}
             </Section>
 
-            <Section icon={<Clock className="w-3.5 h-3.5" />} title="Execution Trace">
+            <Section
+              icon={<Clock className="w-3.5 h-3.5" />}
+              title="Execution Trace"
+              copyText={executionTrace.length === 0
+                ? 'No trace events recorded.'
+                : executionTrace.map((ev) => {
+                    const d = typeof ev.details === 'string' ? ev.details : JSON.stringify(ev.details, null, 2);
+                    return `[${ev.event_type}] @ ${ev.timestamp}\n${d}`;
+                  }).join('\n\n')
+              }
+            >
               {executionTrace.length === 0 ? (
                 <p className="text-xs text-white/30">No trace events recorded.</p>
               ) : (
@@ -456,10 +506,7 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
                       <div key={i} className="p-2.5 rounded-lg border border-white/5 bg-black/20">
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <span className="text-xs font-mono text-accent/80">{ev.event_type}</span>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <span className="text-[10px] text-white/30">{formatTime(ev.timestamp)}</span>
-                            <CopyButton text={`${ev.event_type}\n${detailText}`} />
-                          </div>
+                          <span className="text-[10px] text-white/30 shrink-0">{formatTime(ev.timestamp)}</span>
                         </div>
                         <pre className="text-[10px] text-white/45 whitespace-pre-wrap font-mono">
                           {detailText}
@@ -471,11 +518,11 @@ export function AgentTimeline({ task, inspectMode: controlledInspect, onToggleIn
               )}
             </Section>
 
-            <Section icon={<FileJson className="w-3.5 h-3.5" />} title="Raw Data">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[11px] text-white/40">Full task payload</span>
-                <CopyButton text={JSON.stringify(task, null, 2)} />
-              </div>
+            <Section
+              icon={<FileJson className="w-3.5 h-3.5" />}
+              title="Raw Data"
+              copyText={JSON.stringify(task, null, 2)}
+            >
               <details className="group">
                 <summary className="cursor-pointer text-[10px] text-white/35 list-none">
                   <span className="group-open:hidden">Expand full task payload</span>
