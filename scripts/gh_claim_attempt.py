@@ -88,12 +88,27 @@ def main() -> int:
             )
             return 1
 
+        claimed_at = datetime.now(UTC)
         attempt.worker_id = worker_id
-        attempt.started_at = datetime.now(UTC)
+        attempt.started_at = claimed_at
         # Transition out of PENDING so no other run can claim this attempt.
         attempt.status = AttemptStatus.CONTAINER_CREATED
+
+        # Timing only. `started_at` is overwritten again by the worker
+        # immediately before container launch, so the dispatch -> claim leg is
+        # otherwise unrecoverable; `created_at` is set by the dispatcher when
+        # the PENDING attempt was queued.
+        timing: dict[str, object] = {"claim_at": claimed_at.isoformat()}
+        created_at = attempt.created_at
+        if created_at is not None:
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=UTC)
+            timing["dispatch_at"] = created_at.isoformat()
+            timing["queue_wait_ms"] = max(0, int((claimed_at - created_at).total_seconds() * 1000))
         if args.runner:
-            attempt.metrics = {**(attempt.metrics or {}), "runner": args.runner}
+            timing["runner"] = args.runner
+
+        attempt.metrics = {**(attempt.metrics or {}), **timing}
         db.commit()
         print(f"CLAIMED attempt={attempt.id} number={attempt.attempt_number} worker_id={worker_id}")
         return 0

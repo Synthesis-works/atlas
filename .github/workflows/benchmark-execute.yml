@@ -53,6 +53,13 @@ jobs:
       ATLAS_BENCHMARK_NETWORK: bridge
 
     steps:
+      # Absolute clock anchor for this run. The attempt's dispatch timestamp is
+      # persisted by the claim step (`dispatch_at`); together they yield the
+      # dispatch -> runner-ready leg, which no other stage measures and which
+      # otherwise disappears entirely.
+      - name: Mark job start
+        run: echo "JOB_START_EPOCH_MS=$(date +%s%3N)" >> "$GITHUB_ENV"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -69,7 +76,10 @@ jobs:
           python-version: "3.12"
 
       - name: Sync dependencies
-        run: uv sync --frozen
+        run: |
+          start=$(date +%s%3N)
+          uv sync --frozen
+          echo "UV_SYNC_MS=$(( $(date +%s%3N) - start ))" >> "$GITHUB_ENV"
 
       - name: Build benchmark runner image
         run: |
