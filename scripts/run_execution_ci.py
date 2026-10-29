@@ -55,24 +55,28 @@ def main() -> int:
     init_executors()
 
     t_start = time.perf_counter()
-    with SessionLocal() as db:
-        summary = reap_stale_attempts(db)
-        logger.info("startup reaper", **summary)
+    try:
+        with SessionLocal() as db:
+            summary = reap_stale_attempts(db)
+            logger.info("startup reaper", **summary)
 
-        executor_type = get_executor_for_environment()
-        logger.info(
-            "CI execution starting",
-            execution_id=str(execution_id),
-            executor_type=executor_type,
-            correlation_id=correlation_id,
-            gh_run_id=os.environ.get("GH_RUN_ID", ""),
-            runner=os.environ.get("RUNNER_LABEL", ""),
-        )
-        worker = ExecutionWorker(db, executor_type=executor_type)
-        worker.process(execution_id, correlation_id=correlation_id)
-
-    total_ms = int((time.perf_counter() - t_start) * 1000)
-    _record_backend_metrics(execution_id, total_ms)
+            executor_type = get_executor_for_environment()
+            logger.info(
+                "CI execution starting",
+                execution_id=str(execution_id),
+                executor_type=executor_type,
+                correlation_id=correlation_id,
+                gh_run_id=os.environ.get("GH_RUN_ID", ""),
+                runner=os.environ.get("RUNNER_LABEL", ""),
+            )
+            worker = ExecutionWorker(db, executor_type=executor_type)
+            worker.process(execution_id, correlation_id=correlation_id)
+    finally:
+        # Persist timings even when execution raised: timeouts and crashes are
+        # exactly the runs whose stage breakdown matters most, and the failure
+        # path is where this data is otherwise always missing.
+        total_ms = int((time.perf_counter() - t_start) * 1000)
+        _record_backend_metrics(execution_id, total_ms)
 
     logger.info(
         "CI execution finished",
@@ -86,15 +90,19 @@ def _record_backend_metrics(execution_id: uuid.UUID, total_ms: int) -> None:
     """Persist backend observability metrics onto the latest attempt.
 
     Best-effort: metrics enrichment must never fail the execution.
-    Records: GH run id/url, runner label, image build/execute timings, and
-    total wall-clock time so an Atlas execution id traces to its GitHub
-    Actions run and Docker container.
+    Records: GH run id/url, runner label, stage timings (runner-ready, uv sync,
+    image build, driver total) and the dataset size, so an Atlas execution id
+    traces to its GitHub Actions run, its Docker container, and the cost of
+    every stage that surrounds them.
+
+    Stage timings deliberately live in the free-form ``metrics`` JSON rather
+    than new columns: this is measurement only, not a schema change.
     """
     import os
 
     from sqlalchemy import select
 
-    from atlas_db.models.execution import ExecutionAttempt
+    from atlas_db.models.execution import Execution, ExecutionAttempt
 
     gh_run_id = os.environ.get("GH_RUN_ID", "")
     repo = os.environ.get("GITHUB_REPOSITORY", "")
@@ -106,13 +114,20 @@ def _record_backend_metrics(execution_id: uuid.UUID, total_ms: int) -> None:
         "runner": os.environ.get("RUNNER_LABEL", ""),
         "driver_total_ms": total_ms,
     }
-    for key in ("IMAGE_BUILD_MS", "EXECUTE_MS"):
+    for key in ("JOB_START_EPOCH_MS", "UV_SYNC_MS", "IMAGE_BUILD_MS", "EXECUTE_MS"):
         val = os.environ.get(key)
         if val and val.isdigit():
             metrics[key.lower()] = int(val)
 
     try:
         with SessionLocal() as db:
+            # Dataset size. N decides whether the fixed setup cost or the
+            # serial test-case loop dominates an execution, so it is recorded
+            # with the timings instead of being reconstructed later.
+            execution = db.get(Execution, execution_id)
+            if execution is not None and execution.total_items:
+                metrics["test_case_count"] = execution.total_items
+
             attempt = (
                 db.execute(
                     select(ExecutionAttempt)

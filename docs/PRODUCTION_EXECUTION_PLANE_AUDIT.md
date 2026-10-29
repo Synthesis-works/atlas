@@ -255,3 +255,36 @@ Residual risks to accept consciously: kernel attack surface shared with runner h
 - Local `DockerExecutor` is real-container verified: container `52d478665121`, image `python:3.11-alpine`, exit 0, telemetry + cleanup proven by 10 passing integration tests [VERIFIED this branch].
 - All isolation flags are enforced in `_build_container_config` and covered by tests [VERIFIED].
 - The only structural code gaps between "works locally" and "works in prod" are items 2–4 in §12.
+
+---
+
+## 14. Execution Timing Instrumentation (Phase 0)
+
+Measurement only — no execution behaviour changes. Timings are written into the
+free-form `benchmark_execution_attempts.metrics` JSON, so no migration or schema
+change is involved.
+
+| Metric key | Written by | Meaning |
+|---|---|---|
+| `dispatch_at` | `scripts/gh_claim_attempt.py` | ISO timestamp of the PENDING attempt's `created_at` — when the dispatcher queued it |
+| `claim_at` | `scripts/gh_claim_attempt.py` | ISO timestamp when this run claimed the attempt |
+| `queue_wait_ms` | `scripts/gh_claim_attempt.py` | `claim_at - dispatch_at`: dispatch → runner ready, **including** checkout/sync/build |
+| `job_start_epoch_ms` | workflow (`Mark job start`) | Absolute epoch ms at the first step; with `dispatch_at` this isolates runner provisioning |
+| `uv_sync_ms` | workflow (`Sync dependencies`) | `uv sync --frozen` duration — the suspected largest fixed cost |
+| `image_build_ms` | workflow (`Build benchmark runner image`) | `docker build` duration |
+| `execute_ms` | workflow (`Execute via production code path`) | Driver wall-clock, container included |
+| `driver_total_ms` | `scripts/run_execution_ci.py` | Driver total, measured inside the process |
+| `test_case_count` | `scripts/run_execution_ci.py` | `execution.total_items` — the N that decides whether fixed setup or the per-case loop dominates |
+| `runner`, `gh_run_id`, `gh_run_url` | both | Provenance back to the Actions run |
+
+Notes:
+
+- Metrics are now persisted from a `finally` block, so **failed and timed-out
+  attempts keep their stage breakdown** instead of losing it.
+- Per-step durations for `checkout`, `setup-uv` and the claim step are not
+  duplicated into the database: the GitHub Actions API already exposes them
+  (`GET /repos/{owner}/{repo}/actions/runs/{run_id}/jobs`). Join via `gh_run_url`.
+- `started_at` is intentionally unchanged. It is overwritten by the worker
+  immediately before container launch, so it must not be repurposed as a
+  dispatch timestamp; `dispatch_at`/`claim_at` carry that information instead.
+
