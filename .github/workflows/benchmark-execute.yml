@@ -43,7 +43,14 @@ jobs:
       RUNNER_LABEL: ubuntu-24.04
       ENVIRONMENT: production
       ATLAS_BENCHMARK_IMAGE: atlas-benchmark-runner:${{ github.run_id }}
-      ATLAS_BENCHMARK_NETWORK: none
+      # The benchmark container makes outbound provider API calls
+      # (packages/execution_engine/container_entry.py), so it requires egress.
+      # With "none" every call fails; because container_entry catches failures
+      # per test case and still exits 0, the attempt is recorded as COMPLETED
+      # with "ERROR: ..." outputs - silent result corruption. "bridge" is the
+      # egress mode this repository already specifies; DockerExecutor rejects
+      # "host", "container:*" and "none:*" outright.
+      ATLAS_BENCHMARK_NETWORK: bridge
 
     steps:
       - name: Checkout
