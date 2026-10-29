@@ -74,10 +74,29 @@ def run_sweep_once() -> None:
         sweep_active.clear()
 
 
+def _resolved_executor() -> str:
+    """Executor that would handle executions on this host (diagnostics only).
+
+    Never raises: an unresolvable ENVIRONMENT must not stop the sweep loop from
+    draining evaluation/report work. It is reported instead, so a misconfigured
+    deployment is visible in the startup log rather than only in the database.
+    """
+    try:
+        from apps.backend.worker.executor_init import get_executor_for_environment
+
+        return get_executor_for_environment()
+    except Exception as exc:
+        return f"unresolved ({exc})"
+
+
 def main() -> None:
     interval = max(int(settings.outbox_poll_interval), 1)
     print(f"[outbox-sweep-loop] starting; poll interval = {interval}s")
     print(f"[outbox-sweep-loop] CELERY_TASK_ALWAYS_EAGER = {settings.celery_task_always_eager}")
+    print(
+        f"[outbox-sweep-loop] ENVIRONMENT = {settings.environment}; "
+        f"executor = {_resolved_executor()}"
+    )
     while True:
         run_sweep_once()
         time.sleep(interval)

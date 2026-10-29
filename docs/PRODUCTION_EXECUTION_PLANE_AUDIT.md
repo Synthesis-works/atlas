@@ -130,7 +130,7 @@ Wake integration: point `WORKER_WAKE_URL` at the runner's `/wake` endpoint inste
 | Benchmark container → LLM providers | outbound 443 | **Must be allowed** |
 | Inbound to runner | none required (poll model) | Only if keeping `/wake`: expose minimal HTTPS endpoint |
 
-⚠️ **Defect found during this audit [VERIFIED]:** `DockerExecutor` originally hard-coded `network_mode="none"` with no configuration hook. **RESOLVED:** executor now resolves network mode as explicit argument → `ATLAS_BENCHMARK_NETWORK` env → `"none"` (secure default unchanged; covered by `tests/backend/test_docker_executor_config.py`). Production launches set `ATLAS_BENCHMARK_NETWORK=bridge` (or a dedicated egress-only Docker network).
+⚠️ **Defect found during this audit [VERIFIED]:** `DockerExecutor` originally hard-coded `network_mode="none"` with no configuration hook. **RESOLVED:** executor now resolves network mode as explicit argument → `ATLAS_BENCHMARK_NETWORK` env → `"none"` (secure default unchanged; covered by `tests/backend/test_docker_executor_config.py`). Production launches set `ATLAS_BENCHMARK_NETWORK=bridge` (or a dedicated egress-only Docker network); `.github/workflows/benchmark-execute.yml` sets `bridge` explicitly. Leaving the `none` default in place means no provider egress, and because `container_entry` catches per-test-case failures and still exits 0, attempts would be recorded as COMPLETED with `ERROR: ...` outputs.
 
 ---
 
@@ -144,7 +144,7 @@ DATABASE_URL=<supabase-pooler-url>
 CELERY_TASK_ALWAYS_EAGER=true     # single-runner phase
 WORKER_AUTH_TOKEN=<shared secret> # only if /wake kept
 ATLAS_BENCHMARK_IMAGE=ghcr.io/<org>/atlas-benchmark-runner:<tag>
-ATLAS_BENCHMARK_NETWORK=bridge    # pending §5 change
+ATLAS_BENCHMARK_NETWORK=bridge    # required: no egress => no provider calls
 LOG_LEVEL=INFO
 ```
 
@@ -213,7 +213,7 @@ Already functional end-to-end for structured results:
 | Layer | Control | Status |
 |---|---|---|
 | Benchmark container | non-root UID, read-only rootfs, cap-drop ALL, no-new-privs, mem/cpu/pids limits, tmpfs-only writes, no socket, no DB creds | ✅ implemented + tested |
-| Egress | default `none`; `ATLAS_BENCHMARK_NETWORK` hook implemented, prod sets egress-only network | ✅ code done; prod config pending |
+| Egress | default `none`; `ATLAS_BENCHMARK_NETWORK` accepts only `none`/`bridge`/named networks (rejects `host` and `container:*`); the GHA workflow sets `bridge` | ✅ implemented |
 | Runner host | dedicated VM, only place holding docker.sock + provider keys | 📋 Option B decision |
 | Control plane | zero Docker privileges; talks only via DB + optional bearer `/wake` | ✅ by construction |
 | Secrets | provider keys injected at launch via allow-list only, never in image/DB | ✅ implemented + tested |
@@ -226,7 +226,7 @@ Residual risks to accept consciously: kernel attack surface shared with runner h
 ## 11. Migration Steps (ordered, each independently verifiable)
 
 1. Apply `benchmark_execution_attempts` migration to Supabase prod (additive only).
-2. Approve + implement §5 egress-network change and §6 key allow-list (both small, tested).
+2. ~~Approve + implement §5 egress-network change~~ ✅ (GHA workflow sets `ATLAS_BENCHMARK_NETWORK=bridge`), and §6 key allow-list (small, tested).
 3. Add `docker/benchmark/Dockerfile` + GitHub Actions build/publish (§7).
 4. Provision Option B VM; install Docker; deploy worker image with §6 env.
 5. Point `WORKER_WAKE_URL` (optional) at runner; otherwise rely on polling.

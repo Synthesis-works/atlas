@@ -30,11 +30,31 @@ local one-click environment uses.
 | `ARTIFACT_BASE_DIR` | no | artifact base dir (default `/var/lib/atlas/artifacts`) |
 | `LOG_LEVEL` | no | `INFO` / `DEBUG` |
 | `JWT_SECRET` | no | unused by the worker, set anyway for safety |
-| `ENVIRONMENT` | no | leave unset or `development` |
+| `ENVIRONMENT` | yes on Docker hosts | `production` — the only value that selects `DockerExecutor`. See "Executor selection" below |
 
 Do NOT commit this file. Secrets live only in the environment system.
 
-## Setup (Ubuntu / Oracle Cloud Always Free, or any Linux host)
+## Executor selection (`ENVIRONMENT`)
+
+`ENVIRONMENT` decides which executor this worker uses, and it is not optional
+for production execution. The distinction that matters is **whether the host
+has a reachable Docker daemon**, not whether it is "a Linux host":
+
+| Host type | `ENVIRONMENT` | Executor | Result |
+|---|---|---|---|
+| **Docker-capable execution host** (Docker Engine reachable) | `production` | `DockerExecutor` | Benchmarks run in an isolated container. **This is the only supported production configuration.** |
+| Host **without** a Docker daemon (e.g. a plain Python/PaaS service) | `production` | `DockerExecutor` | **Fails closed:** each execution raises `ExecutorUnavailable`. Nothing runs unisolated. |
+| Any host | unset / `development` | `LocalExecutor` | Runs benchmarks **in the worker process with no isolation**, holding `DATABASE_URL`, `JWT_SECRET` and every provider key. Development only — not a production execution configuration. |
+
+Unknown values (e.g. `prod`, `Production`) are rejected rather than silently
+downgrading to `LocalExecutor`.
+
+A generic Linux host that has no Docker daemon cannot execute through Docker.
+Do not "fix" that by leaving `ENVIRONMENT` unset — that replaces an explicit
+failure with silent, unisolated execution. Either give the host a Docker daemon
+and run it in production mode, or do not use it as an execution host.
+
+## Setup (Docker-capable Linux host)
 
 ```bash
 # 1. Create the atlas user and directories
