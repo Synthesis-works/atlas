@@ -2,15 +2,14 @@
  * Core — Generic HTTP API Client
  *
  * Transport layer handling base URL configuration, JWT Bearer header injection,
- * automatic APIResponse<T> unwrapping, structured HTTP error handling, and
- * single-flight 401 recovery.
+ * automatic APIResponse<T> unwrapping, and structured HTTP error handling.
  *
  * AUTHENTICATION ARCHITECTURE:
- *   - This module NEVER independently calls /auth/login.
- *   - Token lifecycle is managed exclusively by authService.ts.
- *   - On 401: one re-auth attempt via the canonical re-auth function, then one request retry.
- *   - Concurrent 401 requests share ONE in-flight re-auth promise (single-flight).
- *   - If the retry also returns 401, the token is cleared and a real error is thrown.
+ *   - This module NEVER calls /auth/login and never holds credentials.
+ *   - `atlas_token` is the only authentication authority in the browser.
+ *   - On a 401 from a protected endpoint, the invalid session is cleared and a
+ *     single event is emitted. AuthProvider reacts by moving the app to the
+ *     unauthenticated state. There is no retry and no silent re-authentication.
  *   - /auth/login itself NEVER receives an Authorization header.
  */
 
@@ -41,9 +40,30 @@ const getBaseUrl = (): string => {
 
 export const getApiBaseUrl = getBaseUrl;
 
+export const AUTH_TOKEN_KEY = 'atlas_token';
+export const AUTH_SESSION_CLEARED_EVENT = 'atlas:auth-session-cleared';
+
+/** Keys written by retired local/demo authentication code. Never authoritative. */
+const LEGACY_AUTH_KEYS = [
+  'atlas_logged_in',
+  'atlas_current_user',
+  'atlas_registered_users',
+] as const;
+
+export const clearLegacyAuthKeys = (): void => {
+  try {
+    for (const key of LEGACY_AUTH_KEYS) {
+      localStorage.removeItem(key);
+    }
+  } catch (_) {
+    // Storage can be unavailable in private/restricted contexts. Auth state
+    // simply stays unauthenticated in that case.
+  }
+};
+
 export const getAuthToken = (): string | null => {
   try {
-    return localStorage.getItem('atlas_token');
+    return localStorage.getItem(AUTH_TOKEN_KEY);
   } catch (_) {
     return null;
   }
@@ -52,11 +72,27 @@ export const getAuthToken = (): string | null => {
 export const setAuthToken = (token: string | null): void => {
   try {
     if (token) {
-      localStorage.setItem('atlas_token', token);
+      localStorage.setItem(AUTH_TOKEN_KEY, token);
+      // A successful login supersedes and cleans up retired auth markers.
+      clearLegacyAuthKeys();
     } else {
-      localStorage.removeItem('atlas_token');
+      localStorage.removeItem(AUTH_TOKEN_KEY);
     }
-  } catch (_) {}
+  } catch (_) {
+    // Storage failures must not fabricate an authenticated session.
+  }
+};
+
+/**
+ * Clears the authenticated browser session and notifies listeners.
+ * Idempotent: safe to call from concurrent 401 handlers.
+ */
+export const clearAuthSession = (): void => {
+  setAuthToken(null);
+  clearLegacyAuthKeys();
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(AUTH_SESSION_CLEARED_EVENT));
+  }
 };
 
 export interface RequestOptions extends Omit<RequestInit, 'body'> {
@@ -64,93 +100,7 @@ export interface RequestOptions extends Omit<RequestInit, 'body'> {
   params?: Record<string, string | number | boolean | undefined>;
 }
 
-/**
- * Single-flight re-authentication lock.
- * When a 401 triggers re-auth, all concurrent 401 handlers share this promise
- * rather than independently spawning multiple login requests.
- */
-let _reAuthInFlight: Promise<string | null> | null = null;
-
-/**
- * Validates that a string is a structurally valid JWT (3-part dot-separated).
- * Used to prevent non-JWT tokens (e.g. local_token_*) from being stored.
- */
-function isStructurallyValidJwt(token: string): boolean {
-  if (!token || token.startsWith('local_token_')) return false;
-  const parts = token.split('.');
-  if (parts.length !== 3) return false;
-  try {
-    JSON.parse(atob(parts[1]));
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Performs one canonical re-authentication attempt using raw fetch.
- * This bypasses apiClient to avoid circular dependency, and uses raw fetch
- * so that the login endpoint is guaranteed to NOT receive an Authorization header.
- *
- * Single-flight: multiple concurrent 401 handlers share one promise.
- */
-async function performReAuth(): Promise<string | null> {
-  if (_reAuthInFlight) {
-    return _reAuthInFlight;
-  }
-
-  _reAuthInFlight = (async (): Promise<string | null> => {
-    try {
-      // Production builds never auto-authenticate with built-in credentials.
-      // The re-auth flow below exists for local development (dev builds) only,
-      // where the seeded demo account is available.
-      if (import.meta.env.PROD) {
-        console.warn('[ApiClient] Re-auth is disabled in production builds. The user must sign in manually.');
-        return null;
-      }
-
-      setAuthToken(null); // Clear stale token before re-authenticating.
-
-      const baseUrl = getBaseUrl();
-      // CRITICAL: raw fetch, no Authorization header, no apiClient — avoids circular dependency.
-      const loginRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: 'demo@atlas.val',
-          email: 'demo@atlas.val',
-          identifier: 'demo@atlas.val',
-          password: 'password123',
-        }),
-      });
-
-      if (!loginRes.ok) {
-        console.warn(`[ApiClient] Re-auth login returned HTTP ${loginRes.status}. Authentication cannot be recovered.`);
-        return null;
-      }
-
-      const json = await loginRes.json();
-      const token = json?.data?.access_token || json?.access_token;
-
-      if (!token || !isStructurallyValidJwt(token)) {
-        console.warn('[ApiClient] Re-auth returned an invalid or non-JWT token. Refusing to store.');
-        return null;
-      }
-
-      setAuthToken(token);
-      return token;
-    } catch (err: any) {
-      console.warn('[ApiClient] Re-auth attempt failed:', err?.message);
-      return null;
-    } finally {
-      _reAuthInFlight = null;
-    }
-  })();
-
-  return _reAuthInFlight;
-}
-
-async function request<T>(endpoint: string, options: RequestOptions = {}, isRetry = false): Promise<T> {
+async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const baseUrl = getBaseUrl();
   let url = `${baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
@@ -211,23 +161,11 @@ async function request<T>(endpoint: string, options: RequestOptions = {}, isRetr
     const rawData = await response.json().catch(() => null);
 
     if (!response.ok) {
-      if (response.status === 401 && !isRetry && !isAuthLoginEndpoint) {
-        // Single-flight re-authentication: all concurrent 401 handlers share one login attempt.
-        const newToken = await performReAuth();
-
-        if (newToken) {
-          // Retry original request exactly ONCE with the new token.
-          const retryHeaders = { ...headers, Authorization: `Bearer ${newToken}` };
-          return request<T>(endpoint, { ...options, headers: retryHeaders }, true);
-        }
-
-        // Re-auth failed — clear token and surface the real error.
-        setAuthToken(null);
-      }
-
-      if (response.status === 401 && isRetry) {
-        // Retry also returned 401 — clear token so next navigation redirects to login.
-        setAuthToken(null);
+      if (response.status === 401 && !isAuthLoginEndpoint) {
+        // The session is no longer authoritative. Clear it once and let the
+        // AuthProvider transition the application to the login state. We never
+        // retry and never substitute different credentials.
+        clearAuthSession();
       }
 
       // statusText is frequently empty (HTTP/2, proxied responses), so the

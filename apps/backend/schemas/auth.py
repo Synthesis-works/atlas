@@ -1,6 +1,6 @@
 import uuid
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class UserRegister(BaseModel):
@@ -10,16 +10,26 @@ class UserRegister(BaseModel):
         ..., min_length=8, description="User's password, must be at least 8 characters"
     )
 
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: object) -> object:
+        """Trim and lowercase so lookups are case-insensitive."""
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
+
 
 class UserLogin(BaseModel):
-    email: str | None = Field(default=None, description="User's email address")
-    username: str | None = Field(default=None, description="User's username")
-    identifier: str | None = Field(default=None, description="User's username or email")
-    password: str = Field(..., description="User's password")
+    email: EmailStr = Field(..., description="User's email address")
+    password: str = Field(..., min_length=1, description="User's password")
 
-    @property
-    def login_identifier(self) -> str:
-        return (self.email or self.username or self.identifier or "").strip()
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value: object) -> object:
+        """Trim and lowercase so lookups are case-insensitive."""
+        if isinstance(value, str):
+            return value.strip().lower()
+        return value
 
 
 class TokenResponse(BaseModel):

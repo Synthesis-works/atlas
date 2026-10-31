@@ -44,9 +44,9 @@ def main():
         session.add(admin_user)
         session.commit()
 
-        # Create the demo user the frontend auto-login relies on
-        # (demo@atlas.val / password123). Without this user every browser
-        # session fails re-auth and all authenticated API calls return 401.
+        # Development demo account used by local/E2E scripts and manual testing
+        # (demo@atlas.val / password123). The web app never logs in as this user
+        # automatically; credentials must be entered on the Login page.
         demo_user = User(
             email="demo@atlas.val",
             full_name="Demo User",
