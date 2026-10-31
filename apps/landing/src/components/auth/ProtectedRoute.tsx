@@ -1,18 +1,27 @@
 /**
  * Component — ProtectedRoute
- * Route guard component protecting Workspace Dashboard views from unauthorized access.
+ * Route guard protecting Workspace views from unauthenticated access.
+ *
+ * Authentication is decided exclusively by AuthProvider, which verifies the
+ * backend-issued JWT via GET /auth/me. Local flags are never consulted.
  */
 
 import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
-import { getAuthToken } from '@/core/api/client';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+
+import { PageLoader } from '@/components/layout/PageLoader';
+import { useAuth } from '@/features/auth/AuthProvider';
 
 export const ProtectedRoute: React.FC = () => {
-  const token = getAuthToken();
-  const isLoggedIn = Boolean(token) || localStorage.getItem('atlas_logged_in') === 'true';
+  const { status } = useAuth();
+  const location = useLocation();
 
-  if (!isLoggedIn) {
-    return <Navigate to="/login" replace />;
+  if (status === 'loading') {
+    return <PageLoader />;
+  }
+
+  if (status !== 'authenticated') {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
   return <Outlet />;
