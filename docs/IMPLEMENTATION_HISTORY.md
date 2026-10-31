@@ -2,6 +2,15 @@
 
 This document tracks all major implementation milestones for Atlas.
 
+## Milestone: Web Authentication Hardening
+- **Date**: October 2026
+- **Branch**: `feature/auth-hardening` (not merged)
+- **Purpose**: Make the backend-issued JWT the only browser session authority. Remove the automatic demo login, the development-only 401 re-authentication loop, `atlas_logged_in` and other local auth markers, and every fake-token fallback. Keep the existing FastAPI/JWT/AuthService architecture.
+- **Files changed**: `apps/backend/schemas/auth.py`, `apps/backend/services/auth.py`, `packages/database/atlas_db/repositories/core.py`, `apps/landing/src/core/api/client.ts`, `apps/landing/src/features/auth/AuthProvider.tsx` (new), `apps/landing/src/features/auth/services/authService.ts`, `apps/landing/src/pages/Login.tsx`, `apps/landing/src/components/auth/ProtectedRoute.tsx`, `apps/landing/src/layouts/WorkspaceLayout.tsx`, auth-adjacent services and E2E scripts, plus new backend/frontend tests and operational docs.
+- **Reason**: The web app could fabricate an authenticated session (demo credentials, `atlas_logged_in`, `local_token_*`) and silently re-authenticate on 401, so an expired or invalid token could still appear logged in. Login also accepted username/identifier fallbacks and leaked different errors for unknown vs. wrong-password accounts.
+- **Impact**: `atlas_token` is the sole credential; `AuthProvider` verifies it via `GET /auth/me`. A protected 401 clears the session and routes to `/login` with no retry. Login accepts `{email, password}` only and returns one generic error for every credential failure; unknown emails still run a dummy Argon2 verification. Registration normalizes email/name, and legacy mixed-case emails are found case-insensitively. Demo accounts remain only as explicit development/CLI/E2E seeds.
+- **Current status**: Implemented on `feature/auth-hardening`. Backend auth tests 13/13 pass; backend suite 204/204 pass (excluding the Postgres-dependent reporting tests); frontend 52/52 pass; ruff and mypy clean on touched backend files. No password-reset flow, remember-me, or token revocation on account disable (documented limitations).
+
 ## Milestone: Hosted Conversational Session API (P1) + CLI Agent-First UX (P2)
 - **Date**: September 2026
 - **Branches**: P1 `feature/hosted-session-api` (merged to `main` as `7e09beb`, PR #75); P2 `feature/p2-cli-agent-first` (implemented, **not yet merged**).
