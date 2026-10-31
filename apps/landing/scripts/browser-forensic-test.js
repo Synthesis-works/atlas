@@ -6,6 +6,30 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const BACKEND_URL = process.env.ATLAS_E2E_BACKEND_URL || 'http://127.0.0.1:8000';
+const E2E_EMAIL = process.env.ATLAS_E2E_EMAIL;
+const E2E_PASSWORD = process.env.ATLAS_E2E_PASSWORD;
+
+/**
+ * Obtains a real backend-issued JWT for the audit. There is no demo account
+ * fallback: protected pages are only auditable with real credentials.
+ */
+async function fetchSessionToken() {
+  if (!E2E_EMAIL || !E2E_PASSWORD) return null;
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: E2E_EMAIL, password: E2E_PASSWORD }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.data?.access_token || data?.access_token || null;
+  } catch {
+    return null;
+  }
+}
+
 async function auditUrl(browser, targetUrl, screenshotFilename) {
   console.log(`\n--------------------------------------------------`);
   console.log(`🌐 AUDITING ENDPOINT: ${targetUrl}`);
@@ -47,10 +71,17 @@ async function auditUrl(browser, targetUrl, screenshotFilename) {
 
   try {
     await page.goto(`${originHost}/login`, { waitUntil: 'networkidle', timeout: 15000 });
-    await page.evaluate(() => {
-      localStorage.setItem('atlas_logged_in', 'true');
-      localStorage.setItem('atlas_token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDIiLCJtZW1iZXJzaGlwX2lkIjpudWxsLCJvcmdhbml6YXRpb25faWQiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJleHAiOjE3ODY3NzAxMDksImlhdCI6MTc4NjYxNDE0OSwianRpIjoiNTZkNzU1ZDUtNzhjZS00YzE1LWE5MDItMGI1ZjVjODcxMTRiIn0.pho6L20Aubonc8tn-gGj-s3vOfwlKuSHpY8HjPpVvlU');
-    });
+    const sessionToken = await fetchSessionToken();
+    if (sessionToken) {
+      await page.evaluate((token) => {
+        localStorage.setItem('atlas_token', token);
+      }, sessionToken);
+    } else {
+      console.warn(
+        '[Notice] ATLAS_E2E_EMAIL / ATLAS_E2E_PASSWORD not set or login failed; ' +
+          'protected pages will redirect to /login.'
+      );
+    }
     await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 15000 });
   } catch (gotoErr) {
     console.warn(`[Warning] Navigation issue for ${targetUrl}: ${gotoErr.message}`);
