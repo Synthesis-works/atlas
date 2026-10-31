@@ -13,6 +13,24 @@ from apps.backend.schemas.auth import TokenResponse, UserLogin, UserRegister
 # Initialize Argon2 password hasher
 password_hash = PasswordHash.recommended()
 
+# Verified against when no user exists so failed logins take a similar amount of
+# time whether or not the email is registered. The password is irrelevant.
+_DUMMY_PASSWORD_HASH = (
+    "$argon2id$v=19$m=65536,t=3,p=4$ORUH2NfJM3zgarHDCpuChg"
+    "$QkFH9uFe4eJlzMtq/3v2jxkNxSmFuMlG54Y3/3PuI3g"
+)
+
+_INVALID_CREDENTIALS = "Invalid email or password"
+
+
+def _invalid_credentials() -> HTTPException:
+    """A single generic failure for every credential problem."""
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=_INVALID_CREDENTIALS,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
 
 class AuthService:
     def __init__(self, user_repo: UserRepository):
@@ -38,15 +56,16 @@ class AuthService:
         return encoded_jwt
 
     def register_user(self, data: UserRegister) -> User:
-        existing_user = self.user_repo.get_by_email(data.email)
+        email = str(data.email).strip().lower()
+        existing_user = self.user_repo.get_by_email(email)
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT, detail="User with this email already exists"
             )
 
         user_data = {
-            "email": data.email,
-            "full_name": data.full_name,
+            "email": email,
+            "full_name": data.full_name.strip(),
             "password_hash": self.hash_password(data.password),
             "is_active": True,
             "is_verified": False,
@@ -55,28 +74,16 @@ class AuthService:
         return user
 
     def authenticate_user(self, data: UserLogin) -> TokenResponse:
-        identifier = data.login_identifier
-        user = self.user_repo.get_by_email(identifier)
-        if not user:
-            user = (
-                self.user_repo.db.query(User)
-                .filter((User.email == identifier) | (User.full_name == identifier))
-                .first()
-            )
+        email = str(data.email).strip().lower()
+        user = self.user_repo.get_by_email(email)
 
-        if not user or not user.password_hash:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid username/email or password",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+        if user is None or not user.password_hash:
+            # Burn comparable time for unknown accounts, then fail identically.
+            self.verify_password(data.password, _DUMMY_PASSWORD_HASH)
+            raise _invalid_credentials()
 
         if not self.verify_password(data.password, user.password_hash):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid email or password",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            raise _invalid_credentials()
 
         if not user.is_active:
             raise HTTPException(
