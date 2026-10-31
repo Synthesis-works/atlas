@@ -142,11 +142,11 @@ Audited via `apps/landing` (the live frontend).
 **There is no pricing/billing/checkout UI anywhere.** All checkout surface must be built new, matching existing conventions.
 
 - Framework: Vite 8 + React 19 + TypeScript, Tailwind v4 (CSS-first `@theme` tokens), shadcn-style components (cva + Radix `Slot` + `cn()`). Routes in `apps/landing/src/App.tsx` (React Router 7). Nav/sidebar: `src/layouts/WorkspaceLayout.tsx` (`dockItems`) and `src/layouts/PublicLayout.tsx` (Navbar).
-- API client: `src/core/api/client.ts` — `apiClient.{get,post,...}` wrapper; base URL from `VITE_API_BASE_URL` (default `http://localhost:8000`); auto-injects `Authorization: Bearer <atlas_token>` from `localStorage`; unwraps `{success, data, message}` envelope; 401 single-flight re-auth (dev only).
+- API client: `src/core/api/client.ts` — `apiClient.{get,post,...}` wrapper; base URL from `VITE_API_BASE_URL` (default `http://localhost:8000`); auto-injects `Authorization: Bearer <atlas_token>` from `localStorage`; unwraps `{success, data, message}` envelope; a protected 401 clears the session and routes to `/login` (no re-auth).
 
 **The frontend does not currently send an org id** — org resolution must come from the backend JWT (`TokenClaims.organization_id`).
 
-- Auth: `src/features/auth/services/authService.ts` + `ProtectedRoute.tsx`. localStorage keys `atlas_token`, `atlas_logged_in`, `atlas_current_user`.
+- Auth: `src/features/auth/AuthProvider.tsx` + `src/features/auth/services/authService.ts` + `ProtectedRoute.tsx`. The only persisted credential is `atlas_token`; `atlas_logged_in` and `atlas_current_user` are retired and purged.
 - UI patterns to mirror: `src/components/ui/button.tsx` (cva Button), Drawer panels (e.g., `src/features/benchmarks/components/Drawer/index.tsx`, `src/features/models/components/ModelDrawer.tsx`), `Login.tsx` form/loading/error conventions, `MultiStepLoader` + skeletons, framer-motion.
 - Env: only `VITE_API_BASE_URL` used. No `NEXT_PUBLIC_*`. `apps/landing/vercel.json` SPA rewrite means PayPal return URLs like `/dashboard/billing?status=...` are reachable with route addition in `App.tsx`.
 - **No frontend test framework** (no vitest/jest/testing-library). Convention is ad-hoc Node/Playwright scripts + a route-regex audit (`npm run test:routes`). A checkout component will need vitest added or script-audit conventions followed.
