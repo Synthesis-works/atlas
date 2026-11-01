@@ -34,7 +34,7 @@ class SemanticMemoryStore:
 
     _cached_initialized = False
     _cached_is_available = False
-    _cached_provider = None
+    _cached_provider: Optional[BaseEmbeddingProvider] = None
 
     def __init__(self, base_url: str = "http://localhost:11434"):
         self.base_url = base_url
