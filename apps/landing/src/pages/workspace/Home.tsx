@@ -1,46 +1,20 @@
-import { useEffect, useState } from 'react';
-import { WelcomeStrip } from './components/WelcomeStrip';
-import { WorkspaceStatusBoard } from '@/components/workspace/WorkspaceStatusBoard';
-import {
-  getDashboardSummary,
-  type DashboardSummaryData,
-} from '@/features/dashboard/services/dashboardService';
-import { WorkspacePage, WorkspaceHero } from '@/components/layout/WorkspacePage';
+import { TextFlippingBoard } from '@/components/ui/text-flipping-board';
+import { useAuth } from '@/features/auth/AuthProvider';
 
 export default function Home() {
-  const [dashboard, setDashboard] = useState<DashboardSummaryData | null>(null);
+  const { user } = useAuth();
 
-  useEffect(() => {
-    let isMounted = true;
-    getDashboardSummary().then((res) => {
-      if (isMounted && res) {
-        setDashboard(res);
-      }
-    });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  // AuthProvider already confirmed the session via /auth/me, so no local cache
+  // or second profile fetch is needed here.
+  const displayName = user?.full_name?.trim() || user?.email?.split('@')[0] || 'USER';
 
-  const activeCount = dashboard?.summary.active_runs_count ?? 0;
+  const welcomeMessage = `WELCOME ${displayName.toUpperCase()}\nTO ATLAS`;
 
   return (
-    <div className="w-full text-white">
-      <WorkspacePage>
-        <WorkspaceHero>
-          <div className="flex flex-col xl:flex-row gap-6 items-start w-full">
-            <div className="flex-1 flex flex-col min-w-0 w-full gap-4">
-              <WelcomeStrip activeCount={activeCount} />
-              <WorkspaceStatusBoard 
-                activeBenchmarkCount={activeCount} 
-                modelsCount={dashboard?.hierarchy.models}
-                duration={1.2}
-                className="my-0 w-full justify-start max-w-full"
-              />
-            </div>
-          </div>
-        </WorkspaceHero>
-      </WorkspacePage>
+    <div className="w-full h-[calc(100vh-4rem)] flex justify-center items-center overflow-hidden">
+      <div className="flex justify-center items-center w-full max-w-5xl mx-auto scale-110 md:scale-125 lg:scale-150">
+        <TextFlippingBoard text={welcomeMessage} duration={1.2} />
+      </div>
     </div>
   );
 }
