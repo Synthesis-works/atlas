@@ -27,7 +27,7 @@ class StripeGateway(PaymentGateway):
         # Otherwise, we create a one-time price dynamically or use line_items.
 
         session = stripe.checkout.Session.create(
-            payment_method_types=["card"],
+            payment_method_types=["card"],  # type: ignore[call-arg]
             line_items=[
                 {
                     "price": price_id,
