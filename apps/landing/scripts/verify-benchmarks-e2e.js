@@ -7,11 +7,11 @@
  * 4. Polling synchronization proof (creating benchmark and verifying it appears on next cycle)
  * 5. Headless browser DOM check (if Playwright browser available)
  *
- * Environment overrides (all optional):
+ * Environment overrides:
  *   ATLAS_E2E_BASE_URL        frontend origin                      (default http://localhost:5173)
  *   ATLAS_E2E_BACKEND_URL     backend API origin                   (default http://127.0.0.1:8000)
- *   ATLAS_E2E_IDENTIFIER      login identifier                     (default demo@atlas.val)
- *   ATLAS_E2E_PASSWORD        login password                       (default password123)
+ *   ATLAS_E2E_EMAIL           login email (REQUIRED)
+ *   ATLAS_E2E_PASSWORD        login password (REQUIRED)
  *   ATLAS_E2E_SMOKE_BENCHMARK benchmark name to assert telemetry on (default Atlas Live Benchmark Smoke Test)
  *   ATLAS_E2E_EXPECTED_SCORE  expected average_score (0-1 or 0-100); when unset only presence is asserted
  *   ATLAS_E2E_SCORE_TOLERANCE acceptable absolute deviation        (default 0.005)
@@ -21,8 +21,8 @@ import { chromium } from 'playwright';
 
 const BASE_URL = process.env.ATLAS_E2E_BASE_URL || 'http://localhost:5173';
 const BACKEND_URL = process.env.ATLAS_E2E_BACKEND_URL || 'http://127.0.0.1:8000';
-const E2E_IDENTIFIER = process.env.ATLAS_E2E_IDENTIFIER || 'demo@atlas.val';
-const E2E_PASSWORD = process.env.ATLAS_E2E_PASSWORD || 'password123';
+const E2E_EMAIL = process.env.ATLAS_E2E_EMAIL;
+const E2E_PASSWORD = process.env.ATLAS_E2E_PASSWORD;
 const SMOKE_BENCHMARK = process.env.ATLAS_E2E_SMOKE_BENCHMARK || 'Atlas Live Benchmark Smoke Test';
 const EXPECTED_SCORE = process.env.ATLAS_E2E_EXPECTED_SCORE != null ? parseFloat(process.env.ATLAS_E2E_EXPECTED_SCORE) : null;
 const SCORE_TOLERANCE = process.env.ATLAS_E2E_SCORE_TOLERANCE != null ? parseFloat(process.env.ATLAS_E2E_SCORE_TOLERANCE) : 0.005;
@@ -39,6 +39,11 @@ function toCanonical(score) {
 }
 
 async function runAudit() {
+  if (!E2E_EMAIL || !E2E_PASSWORD) {
+    throw new Error(
+      'Set ATLAS_E2E_EMAIL and ATLAS_E2E_PASSWORD to a real Atlas account before running this audit.'
+    );
+  }
   console.log('======================================================================');
   console.log('FORENSIC PR-READINESS AUDIT — /dashboard/benchmarks');
   console.log('======================================================================\n');
@@ -48,10 +53,10 @@ async function runAudit() {
   const loginRes = await fetch(`${BACKEND_URL}/api/v1/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ identifier: E2E_IDENTIFIER, password: E2E_PASSWORD }),
+    body: JSON.stringify({ email: E2E_EMAIL, password: E2E_PASSWORD }),
   });
   if (!loginRes.ok) {
-    throw new Error(`Login failed for ${E2E_IDENTIFIER}: ${loginRes.status} ${await loginRes.text()}`);
+    throw new Error(`Login failed for ${E2E_EMAIL}: ${loginRes.status} ${await loginRes.text()}`);
   }
   const loginData = await loginRes.json();
   const token = loginData.data?.access_token;
@@ -156,7 +161,6 @@ async function runAudit() {
     // Set auth token in localStorage prior to navigation
     await page.addInitScript((jwtToken) => {
       localStorage.setItem('atlas_token', jwtToken);
-      localStorage.setItem('atlas_logged_in', 'true');
     }, token);
 
     console.log('   -> Navigating to http://localhost:5173/dashboard/benchmarks...');

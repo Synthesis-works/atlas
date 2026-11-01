@@ -40,9 +40,12 @@ This document defines the canonical environment setup, port configuration, secur
 
 ## 4. Authentication Invariants
 
-- **`POST /api/v1/auth/login`**: MUST NEVER receive an `Authorization: Bearer ...` header. Injected headers cause FastAPI authentication middleware to reject login requests with `401 Unauthorized`.
-- **JWT Storage Key**: `atlas_token` in `localStorage`.
-- **Single Redirection Source**: `ProtectedRoute.tsx` is the sole authorization guard for dashboard routes.
+- **`POST /api/v1/auth/login`**: accepts `{ "email", "password" }` and MUST NEVER receive an `Authorization: Bearer ...` header.
+- **JWT Storage Key**: `atlas_token` in `localStorage` is the only browser auth authority. `atlas_logged_in`, `atlas_current_user`, `atlas_registered_users`, and `local_token_*` are retired and are purged on load.
+- **No automatic login**: the frontend never synthesizes a session or re-authenticates on `401`. An expired/invalid token is cleared and the user is routed to `/login`.
+- **Session confirmation**: `AuthProvider` calls `GET /api/v1/auth/me` before treating a stored token as authenticated.
+- **Single Redirection Source**: `ProtectedRoute.tsx` is the sole authorization guard for dashboard routes; it reads auth state from `AuthProvider`, not storage.
+- **No demo credentials in the web app**: seeded accounts (e.g. `demo@atlas.val`) exist for local development, CLI, and E2E only and must be supplied explicitly.
 
 ---
 

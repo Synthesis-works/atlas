@@ -1,5 +1,7 @@
 # Post-Auth Regression Audit
 
+> **Superseded (2026-10-31):** The automatic 401 re-authentication and legacy `atlas_logged_in` flow described below were removed in `feature/auth-hardening`. Current behavior is `atlas_token` + `AuthProvider` / `GET /auth/me`, with no automatic re-auth. See [ATLAS_AUTH_DISPATCH_RUNBOOK.md](ATLAS_AUTH_DISPATCH_RUNBOOK.md).
+
 > **Date**: 2026-08-16
 > **Branch**: `wire_real_llm_adapter`
 > **Working directory**: `C:\Users\Sujal\.gemini\antigravity\worktrees\atlas\wire_real_llm_adapter`

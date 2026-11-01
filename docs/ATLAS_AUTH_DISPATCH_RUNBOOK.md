@@ -1,7 +1,7 @@
 # Atlas Auth & Dispatch Runbook
 
 > **Self-contained for any agent or developer with zero prior context.**
-> Last updated: 2026-08-16 | Branch: `wire_real_llm_adapter`
+> Last updated: 2026-10-31 | Branch: `feature/auth-hardening`
 
 ---
 
@@ -12,8 +12,8 @@ Browser
   │
   ├─ http://localhost:5173   ← Vite frontend (React + TypeScript)
   │     │
-  │     ├─ authService.ts   ← SOLE auth authority — only real JWTs
-  │     └─ client.ts        ← API transport with single-flight 401 recovery
+  │     ├─ AuthProvider.tsx  ← SOLE client auth authority (via /auth/me)
+  │     └─ client.ts         ← API transport; clears session on 401
   │
   └─ http://localhost:8000   ← FastAPI backend (Python / SQLAlchemy)
         │
@@ -32,8 +32,8 @@ Browser
 | Component | Value |
 |---|---|
 | **Git repository** | `Synthesis-works/atlas` |
-| **Canonical branch** | `wire_real_llm_adapter` |
-| **Canonical worktree** | `C:\Users\Sujal\.gemini\antigravity\worktrees\atlas\wire_real_llm_adapter` |
+| **Canonical branch** | `main` (work on a feature branch; never commit auth changes directly to `main`) |
+| **Canonical worktree** | `D:\atlas` |
 | **Canonical database** | `<worktree>\atlas_dev.db` |
 | **Frontend URL** | `http://localhost:5173` |
 | **Backend URL** | `http://localhost:8000` |
@@ -41,7 +41,7 @@ Browser
 | **Frontend port** | `5173` (bound `0.0.0.0:5173` — both IPv4 and IPv6) |
 | **Backend port** | `8000` (bound `0.0.0.0:8000` — both IPv4 and IPv6) |
 | **Database config** | `.env`: `DATABASE_URL=sqlite:///./atlas_dev.db` |
-| **Demo credentials** | `demo@atlas.val` / `password123` |
+| **Development account** | Optional seed: `demo@atlas.val` / `password123` (local dev/CLI/E2E only — the web app never logs in automatically) |
 
 ---
 
@@ -49,7 +49,7 @@ Browser
 
 ### Canonical startup (recommended):
 ```bat
-cd C:\Users\Sujal\.gemini\antigravity\worktrees\atlas\wire_real_llm_adapter
+cd D:\atlas
 .\start_atlas_dev.bat
 ```
 
@@ -66,7 +66,7 @@ cd C:\Users\Sujal\.gemini\antigravity\worktrees\atlas\wire_real_llm_adapter
 
 ### Manual startup (if bat file fails):
 ```powershell
-cd C:\Users\Sujal\.gemini\antigravity\worktrees\atlas\wire_real_llm_adapter
+cd D:\atlas
 
 # Backend
 $env:PYTHONPATH="packages/database;packages;services;."
@@ -102,11 +102,13 @@ uv run python -m apps.backend.worker.execution_runner
 ## 5. JWT Lifecycle
 
 ```
-authService.loginUser()
-  → POST /api/v1/auth/login (NO Authorization header)
-  → Backend issues JWT (HS256, exp = now + 60 min)
-  → setValidatedAuthToken(token)   ← rejects non-JWT strings
-  → localStorage.setItem('atlas_token', token)
+AuthProvider.signIn(email, password)
+  → authService.signIn()
+  → POST /api/v1/auth/login { email, password } (NO Authorization header)
+  → Backend issues JWT (HS256, exp = now + settings.jwt_access_expire_minutes)
+  → token stored in localStorage['atlas_token']
+  → GET /api/v1/auth/me confirms the token belongs to a usable account
+  → AuthProvider state = 'authenticated'
 
 Protected request:
   → client.ts reads localStorage.getItem('atlas_token')
@@ -114,15 +116,14 @@ Protected request:
   → Backend validates via jwt.decode(token, settings.jwt_secret)
 
 On 401 (expired/invalid token):
-  → client.ts performReAuth() — raw fetch /auth/login — NO Auth header
-  → Single-flight: concurrent 401s share ONE login attempt
-  → New token stored via setAuthToken()
-  → Original request retried ONCE
-  → If retry also 401: token cleared, real error thrown — NO infinite loop
+  → client.ts clears atlas_token and legacy keys
+  → Emits `atlas:auth-session-cleared`
+  → AuthProvider state = 'unauthenticated'; ProtectedRoute redirects to /login
+  → NO automatic re-auth, NO retry, NO fake session
 
 On logout:
-  → localStorage.removeItem('atlas_token')
-  → Legacy keys also cleared: atlas_registered_users, atlas_current_user
+  → clearAuthSession() removes atlas_token and legacy keys
+  → Emits `atlas:auth-session-cleared`
 ```
 
 ---
@@ -132,13 +133,17 @@ On logout:
 ```
 localStorage.atlas_token must ALWAYS be:
   ✅ A real backend-issued JWT (3 dot-separated base64 segments)
-  ✅ Signed with settings.jwt_secret ("dev-secret-key-do-not-use-in-production")
 
 localStorage.atlas_token must NEVER be:
-  ❌ local_token_*   (fake token from old local auth fallback — now removed)
+  ❌ local_token_*   (fake token from the retired local fallback)
   ❌ undefined
   ❌ null (if user is supposed to be authenticated)
   ❌ A 2-segment or 1-segment string
+
+Retired keys (must be absent; they are purged on load):
+  ❌ atlas_logged_in
+  ❌ atlas_current_user
+  ❌ atlas_registered_users
 ```
 
 `setValidatedAuthToken()` in `authService.ts` **throws** if a non-JWT is passed — this is the enforcement point.
@@ -148,19 +153,27 @@ localStorage.atlas_token must NEVER be:
 ## 7. Authentication Implementation
 
 ### Backend (`apps/backend/services/auth.py`)
-- `authenticate_user()`: looks up user by email, verifies Argon2 password hash, issues JWT via `create_access_token()`
-- JWT payload: `{ sub: user_id, exp: now+60min, iat: now, jti: uuid4() }`
-- JWT secret: `settings.jwt_secret` (from `.env` or default `"dev-secret-key-do-not-use-in-production"`)
+- `authenticate_user()`: looks up the user by lowercase, trimmed email, verifies the Argon2 hash, then issues a JWT via `create_access_token()`.
+- Unknown emails still run a dummy Argon2 verification so failed logins take comparable time.
+- Every credential failure returns the same `401` with `Invalid email or password`; disabled accounts only return `403` after the password is proven correct.
+- Login payload is `{ email, password }` only. `username`/`identifier` fallbacks are rejected by `UserLogin`.
+- JWT payload: `{ sub: user_id, exp, iat, jti }` plus optional membership/org claims.
+- JWT secret: `settings.jwt_secret` (from `.env` or the development default).
 
-### Frontend Auth Authority (`apps/landing/src/features/auth/services/authService.ts`)
-- `loginUser()`: backend-only, real error on failure — NO fake token fallback
-- `setValidatedAuthToken()`: runtime invariant enforcement — throws on non-JWT
-- `ensureAuthenticatedSession()`: used by auth context on load, attempts one login if token missing/expired
+### Frontend Auth Authority (`apps/landing/src/features/auth/`)
+- `AuthProvider.tsx`: single source of client auth state (`loading | authenticated | unauthenticated`). Bootstraps with `/auth/me`, reacts to `atlas:auth-session-cleared` and cross-tab storage events.
+- `services/authService.ts`: `signIn()` / `signUp()` call the backend and never fake a session. `ensureAuthenticatedSession()` only validates/purges a stored token; it never logs in.
+- `Login.tsx`: email + password only, generic error message, no demo/SSO buttons, no Remember Me, no Forgot Password (no reset backend exists yet).
 
 ### Frontend Transport (`apps/landing/src/core/api/client.ts`)
-- `performReAuth()`: single-flight re-auth using raw fetch (not apiClient — avoids circular dependency)
-- All 401s on protected endpoints trigger at most ONE re-auth attempt, then ONE retry
-- `isStructurallyValidJwt()`: validates tokens before storing
+- `atlas_token` is the only credential it reads.
+- A protected-endpoint `401` clears the session once and emits `atlas:auth-session-cleared`; it never retries or logs in.
+- `/auth/login` and `/auth/register` are exempt from the `Authorization` header.
+
+### Current limitations
+- **No password reset / email delivery.** The login page intentionally exposes no "Forgot password" flow because the backend has no reset-token or mail capability. This is a documented TODO, not a working feature.
+- **No "Remember Me".** Sessions use `localStorage` for the single JWT; there is no second persistence mode.
+- **Disabled users keep an existing JWT until it expires.** `require_authenticated` validates token claims only; disabling an account does not revoke already-issued tokens.
 
 ---
 
@@ -181,10 +194,10 @@ Obsolete `D:\atlas\start_frontend.cmd` launcher has been neutralized.
 
 ### Verify backend authentication:
 ```powershell
-# Login and get JWT
+# Login and get JWT (email + password only)
 $r = Invoke-RestMethod -Uri "http://localhost:8000/api/v1/auth/login" -Method POST `
   -ContentType "application/json" `
-  -Body '{"username":"demo@atlas.val","email":"demo@atlas.val","password":"password123"}'
+  -Body '{"email":"demo@atlas.val","password":"password123"}'
 $token = $r.data.access_token
 Write-Host "Token: $($token.Substring(0,50))..."
 
@@ -227,22 +240,36 @@ Get-NetTCPConnection -LocalPort 8000,5173 -State Listen | ForEach-Object {
 
 ### Run command:
 ```powershell
-cd C:\Users\Sujal\.gemini\antigravity\worktrees\atlas\wire_real_llm_adapter
+$env:ATLAS_E2E_EMAIL="demo@atlas.val"
+$env:ATLAS_E2E_PASSWORD="password123"
 node apps/landing/scripts/auth-e2e-dispatch.js
 ```
 
+The suite requires a real seeded account and refuses to run without
+`ATLAS_E2E_EMAIL` / `ATLAS_E2E_PASSWORD`.
+
 ### Expected successful output:
 ```
-✅ Backend healthy.
-BEFORE FIX: local_token_* → GET /api/v1/executions → HTTP 401
-✅ Confirmed: local_token_* is REJECTED by backend with 401
+============================================================
+🛡️  ATLAS AUTH SESSION REGRESSION SUITE
+============================================================
 
-Scenario 1 (Clean Browser):           ✅ PASSED — JWT valid, 201, COMPLETED, 0 unexpected 401s
-Scenario 2 (Returning Valid Session):  ✅ PASSED — JWT valid, 201, COMPLETED, 0 login calls
-Scenario 3 (Invalid JWT Recovery):     ✅ PASSED — invalid JWT → 1 login call → 201 → COMPLETED
-Scenario 4 (Sequential Dispatches):    ✅ PASSED — 3× 201, 0 unexpected 401s
+🧪 Scenario 1: clean browser login
+  ✅ PASSED — stores a structurally valid JWT
+  ✅ PASSED — does not write atlas_logged_in
+  ✅ PASSED — calls /auth/login exactly once
 
-✨ ALL HARDENED AUTHENTICATION & DISPATCH SCENARIOS PASSED!
+🧪 Scenario 2: valid pre-seeded JWT
+  ✅ PASSED — valid session reaches workspace
+
+🧪 Scenario 3: invalid JWT is rejected without automatic re-auth
+  ✅ PASSED — invalid token redirects to /login
+  ✅ PASSED — invalid token is cleared
+  ✅ PASSED — no automatic re-auth attempt
+
+🧪 Scenario 4: sign out clears the session
+  ✅ PASSED — sign out clears atlas_token
+  ✅ PASSED — sign out leaves the workspace
 ```
 
 ---
@@ -254,8 +281,9 @@ Scenario 4 (Sequential Dispatches):    ✅ PASSED — 3× 201, 0 unexpected 401s
 | 1 | `localhost` → wrong Vite server | `D:\atlas\start_frontend.cmd` serving stale server on IPv6 `[::1]` | Vite bound to `0.0.0.0`; old launcher neutralized |
 | 2 | GET /benchmarks, GET /executions → 401 | Stale backend from `implement_atlas_agent_loop` worktree occupying port 8000 with different auth DB | Backend port guard added; Uvicorn bound to `0.0.0.0` |
 | 3 | POST /auth/login → 401 | `client.ts` was sending `Authorization: Bearer <stale_token>` header on the login request itself | Removed: `/auth/login` endpoint never receives `Authorization` header |
-| 4 | **Recurring 401 after successful login** | `authService.ts` had a 4-step local fallback chain that issued fake `local_token_*` strings when backend login threw any error. These `local_token_*` strings always fail `jwt.decode()` in the backend | **Removed entire local fallback chain.** `loginUser()` returns real JWT or real error. `setValidatedAuthToken()` throws on non-JWT |
-| 5 | Dual auto-login pathways | `client.ts` had its own independent `/auth/login` call in `getOrFetchToken()`, creating race conditions with `authService.ts` that could overwrite good tokens | Removed `getOrFetchToken()` auto-login; `client.ts` uses single-flight `performReAuth()` via raw fetch |
+| 4 | **Recurring 401 after successful login** | `authService.ts` had a 4-step local fallback chain that issued fake `local_token_*` strings when backend login threw any error. These `local_token_*` strings always fail `jwt.decode()` in the backend | **Removed entire local fallback chain.** Sign-in returns a real JWT or a real error. `setValidatedAuthToken()` throws on non-JWT |
+| 5 | Dual auto-login pathways | `client.ts` had its own independent `/auth/login` call, creating race conditions with `authService.ts` that could overwrite good tokens | Removed every auto-login path; `client.ts` clears the session on 401 and never re-authenticates |
+| 6 | **Automatic demo login** | The login page prefilled `demo@atlas.val` and `client.ts` re-authenticated with demo credentials on any 401 | Removed demo defaults, the dev-only 401 re-auth, and `atlas_logged_in` as an auth authority. AuthProvider + `/auth/me` are the only session source |
 
 ---
 
@@ -264,9 +292,9 @@ Scenario 4 (Sequential Dispatches):    ✅ PASSED — 3× 201, 0 unexpected 401s
 ### Symptom: HTTP 401 on GET /executions or GET /benchmarks after login
 
 1. Check `localStorage.atlas_token` in browser DevTools:
-   - If it starts with `local_token_` → **old code bug, should be fixed**. Clear localStorage and re-login.
+   - If it starts with `local_token_` → **retired fake token**. Clear localStorage and sign in again.
    - If it looks like a JWT → proceed to step 2.
-2. Verify backend process: `Get-NetTCPConnection -LocalPort 8000 -State Listen` → confirm PID is from `wire_real_llm_adapter` worktree.
+2. Verify backend process: `Get-NetTCPConnection -LocalPort 8000 -State Listen` → confirm the PID belongs to this repository.
 3. Verify backend DB: `settings.database_url` must point to canonical `atlas_dev.db`.
 4. Re-run regression test: `node apps/landing/scripts/auth-e2e-dispatch.js`.
 
@@ -274,7 +302,7 @@ Scenario 4 (Sequential Dispatches):    ✅ PASSED — 3× 201, 0 unexpected 401s
 
 1. Check browser URL — must be `http://localhost:5173` not `http://localhost:3000`.
 2. Check which Vite server is running: `Get-NetTCPConnection -LocalPort 5173 -State Listen`.
-3. Confirm PID CommandLine contains `wire_real_llm_adapter`.
+3. Confirm PID CommandLine contains `D:\atlas`.
 4. Kill any foreign Vite process, run `node apps/landing/scripts/check-port.js`, restart Vite.
 
 ### Symptom: Execution stays QUEUED forever

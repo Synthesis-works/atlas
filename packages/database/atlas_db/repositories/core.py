@@ -1,3 +1,5 @@
+from sqlalchemy import func
+
 from atlas_db.models.core import (
     Configuration,
     ConfigurationVersion,
@@ -46,4 +48,8 @@ class UserRepository(BaseRepository[User]):
     model = User
 
     def get_by_email(self, email: str) -> User | None:
-        return self.db.query(self.model).filter(self.model.email == email).first()
+        # Emails are normalized to lowercase on write, but older rows may still
+        # contain mixed-case values. Compare case-insensitively so those legacy
+        # accounts can still authenticate.
+        normalized = email.strip().lower()
+        return self.db.query(self.model).filter(func.lower(self.model.email) == normalized).first()

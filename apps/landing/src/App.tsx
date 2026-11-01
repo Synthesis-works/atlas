@@ -1,5 +1,6 @@
 import { Routes, Route, BrowserRouter } from 'react-router-dom';
 import { ExperienceProvider } from '@/core/ExperienceController';
+import { AuthProvider } from '@/features/auth/AuthProvider';
 import { PublicLayout } from '@/layouts/PublicLayout';
 import { WorkspaceLayout } from '@/layouts/WorkspaceLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -175,9 +176,11 @@ function AppContainer() {
 function App() {
   return (
     <BrowserRouter>
-      <ExperienceProvider>
-        <AppContainer />
-      </ExperienceProvider>
+      <AuthProvider>
+        <ExperienceProvider>
+          <AppContainer />
+        </ExperienceProvider>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

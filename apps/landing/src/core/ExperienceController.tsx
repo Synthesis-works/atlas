@@ -112,7 +112,7 @@ export function ExperienceProvider({ children }: { children: ReactNode }) {
   }, [transitionPhase, experienceMode, prefersReducedMotion, navigate]);
 
   const exitAtlas = useCallback(() => {
-    localStorage.removeItem('atlas_logged_in');
+    // Navigation only. Authentication is owned by AuthProvider.
     setExperienceMode('marketing');
     navigate('/');
   }, [navigate]);

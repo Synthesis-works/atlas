@@ -46,8 +46,8 @@ Important architectural fact: **Agent task state is in-memory only** (per backen
 
 ## F. Authentication Flow (dev)
 
-- `POST /api/v1/auth/login` with `{username: "admin@example.com", password: "password123"}` → `{success, data: {access_token}}`.
-- All protected routes use `Authorization: Bearer <token>`. Frontend auto-logs-in in dev via `ensureAuthenticatedSession` (real JWT flow).
+- `POST /api/v1/auth/login` with `{"email": "admin@example.com", "password": "password123"}` → `{success, data: {access_token}}`.
+- All protected routes use `Authorization: Bearer <token>`. The browser stores only `atlas_token`; `AuthProvider` confirms it via `GET /api/v1/auth/me`. There is no automatic login or 401 re-authentication.
 - `require_permission("report:read")` on the export endpoint must **never** be removed or made public.
 
 ## G. Providers & Fallback
@@ -174,7 +174,7 @@ Docs:
 Get-NetTCPConnection -LocalPort 8000 -State Listen
 
 # login + export a real report
-python -c "import urllib.request,json;base='http://127.0.0.1:8000/api/v1';req=urllib.request.Request(base+'/auth/login',data=json.dumps({'username':'admin@example.com','password':'password123'}).encode(),headers={'Content-Type':'application/json'},method='POST');tok=json.load(urllib.request.urlopen(req))['data']['access_token'];req2=urllib.request.Request(base+'/reports/runs/2793f045-7550-41ae-8c81-edbd6eb4e246/export?format=json',headers={'Authorization':'Bearer '+tok});print(urllib.request.urlopen(req2).read().decode()[:300])"
+python -c "import urllib.request,json;base='http://127.0.0.1:8000/api/v1';req=urllib.request.Request(base+'/auth/login',data=json.dumps({'email':'admin@example.com','password':'password123'}).encode(),headers={'Content-Type':'application/json'},method='POST');tok=json.load(urllib.request.urlopen(req))['data']['access_token'];req2=urllib.request.Request(base+'/reports/runs/2793f045-7550-41ae-8c81-edbd6eb4e246/export?format=json',headers={'Authorization':'Bearer '+tok});print(urllib.request.urlopen(req2).read().decode()[:300])"
 ```
 
 Expected: a JSON document with `report.title == "Basic Subtraction Benchmark Report"`, `report.version == "1.0.0"`, `execution.id`, `benchmark == null`, `metrics == []`.

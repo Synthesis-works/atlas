@@ -78,23 +78,10 @@ export async function dispatchExecution(
       payload.dataset_version_id = datasetVersionId;
     }
 
-    let res: BackendExecutionResponse;
-    try {
-      res = await apiClient.post<BackendExecutionResponse>(
-        `/api/v1/benchmarks/${benchmarkVersionId}/executions`,
-        payload
-      );
-    } catch (err: any) {
-      if (err?.status === 401) {
-        await ensureAuthenticatedSession(true);
-        res = await apiClient.post<BackendExecutionResponse>(
-          `/api/v1/benchmarks/${benchmarkVersionId}/executions`,
-          payload
-        );
-      } else {
-        throw err;
-      }
-    }
+    const res = await apiClient.post<BackendExecutionResponse>(
+      `/api/v1/benchmarks/${benchmarkVersionId}/executions`,
+      payload
+    );
 
     if (res && res.id) {
       return { data: res, error: null };
@@ -110,17 +97,7 @@ export async function getExecutionStatus(
 ): Promise<ServiceResult<BackendExecutionResponse | null>> {
   try {
     await ensureAuthenticatedSession();
-    let res: BackendExecutionResponse;
-    try {
-      res = await apiClient.get<BackendExecutionResponse>(`/api/v1/executions/${id}`);
-    } catch (err: any) {
-      if (err?.status === 401) {
-        await ensureAuthenticatedSession(true);
-        res = await apiClient.get<BackendExecutionResponse>(`/api/v1/executions/${id}`);
-      } else {
-        throw err;
-      }
-    }
+    const res = await apiClient.get<BackendExecutionResponse>(`/api/v1/executions/${id}`);
     if (res && res.id) {
       return { data: res, error: null };
     }

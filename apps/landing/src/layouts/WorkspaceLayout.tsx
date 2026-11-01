@@ -24,6 +24,7 @@ import {
   CreditCard,
 } from 'lucide-react';
 import { useExperience } from '@/core/ExperienceController';
+import { useAuth } from '@/features/auth/AuthProvider';
 import { MotionProvider, ScrambleHeading } from '@/components/motion';
 import { FloatingDock } from '@/components/ui/floating-dock';
 import { WorkspaceWidgets } from '@/features/workspace/widgets/WorkspaceWidgets';
@@ -41,7 +42,15 @@ function getPageTitle(pathname: string): string {
 export function WorkspaceLayout() {
   const location = useLocation();
   const { setPageTransitionKey, exitAtlas } = useExperience();
+  const { signOut } = useAuth();
   const mainRef = useRef<HTMLElement>(null);
+
+  const handleSignOut = () => {
+    // Clearing the session is what actually ends authentication; navigation
+    // back to the marketing site is just the visual follow-through.
+    signOut();
+    exitAtlas();
+  };
 
 
 
@@ -171,12 +180,12 @@ export function WorkspaceLayout() {
 
         {/* Exit Workspace */}
         <button
-          onClick={exitAtlas}
+          onClick={handleSignOut}
           className="ml-auto lg:ml-3 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-white/40 hover:text-white/80 border border-white/5 hover:border-white/10 bg-white/[0.02] transition-colors cursor-pointer"
-          aria-label="Leave Workspace and return to marketing site"
+          aria-label="Sign out and return to the marketing site"
         >
           <LogOut className="w-3.5 h-3.5" />
-          <span>Exit Workspace</span>
+          <span>Sign out</span>
         </button>
       </header>
 
