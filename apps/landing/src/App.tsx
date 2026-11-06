@@ -1,4 +1,4 @@
-import { Routes, Route, BrowserRouter } from 'react-router-dom';
+import { Routes, Route, BrowserRouter, Navigate } from 'react-router-dom';
 import { ExperienceProvider } from '@/core/ExperienceController';
 import { AuthProvider } from '@/features/auth/AuthProvider';
 import { PublicLayout } from '@/layouts/PublicLayout';
@@ -12,7 +12,7 @@ import { MultiStepLoader } from '@/components/ui/multi-step-loader';
 import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react';
 import { PageLoader } from '@/components/layout/PageLoader';
 
-const Landing = lazy(() => import('@/pages/Landing'));
+const AgentLanding = lazy(() => import('@/pages/AgentLanding'));
 const Platform = lazy(() => import('@/pages/Platform'));
 const Benchmarks = lazy(() => import('@/pages/Benchmarks'));
 const Research = lazy(() => import('@/pages/Research'));
@@ -24,8 +24,6 @@ const Login = lazy(() => import('@/pages/Login'));
 const Sandbox = lazy(() => import('@/components/ui/draggable-card-demo-2'));
 
 /* Workspace */
-const Workspace = lazy(() => import('@/pages/workspace/Workspace'));
-const WorkspaceHome = lazy(() => import('@/pages/workspace/Home'));
 const WorkspaceBenchmarks = lazy(() => import('@/pages/workspace/Benchmarks'));
 const WorkspaceExperiments = lazy(() => import('@/pages/workspace/Experiments'));
 const WorkspaceProviders = lazy(() => import('@/pages/workspace/Providers'));
@@ -78,13 +76,20 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, { hasError: bo
   }
 }
 
+/** Blank white fallback so the public front page doesn't flash the dark app loader. */
+const LandingFallback = () => <div style={{ minHeight: '100vh', background: '#ffffff' }} />;
+
 function AppRoutes() {
   console.log('[ATLAS ROUTER] App.tsx routes initialized');
   return (
     <Routes>
+      {/* Public front page: has its own header and footer, so it sits outside PublicLayout */}
+      <Route path="/" element={<Suspense fallback={<LandingFallback />}><AgentLanding /></Suspense>} />
+      {/* The old in-app Home now lives on the front page (public, so no login needed) */}
+      <Route path="dashboard/home" element={<Navigate to="/" replace />} />
+
       {/* Marketing site — PublicLayout with cinematic Fabric */}
       <Route element={<PublicLayout />}>
-        <Route index element={<Suspense fallback={<PageLoader />}><Landing /></Suspense>} />
         <Route path="platform" element={<Suspense fallback={<PageLoader />}><Platform /></Suspense>} />
         <Route path="benchmarks" element={<Suspense fallback={<PageLoader />}><Benchmarks /></Suspense>} />
         <Route path="research" element={<Suspense fallback={<PageLoader />}><Research /></Suspense>} />
@@ -101,8 +106,8 @@ function AppRoutes() {
       {/* Workspace — WorkspaceLayout with ambient Fabric */}
       <Route element={<ProtectedRoute />}>
         <Route path="dashboard" element={<WorkspaceLayout />}>
-          <Route index element={<Suspense fallback={<PageLoader />}><Workspace /></Suspense>} />
-          <Route path="home" element={<Suspense fallback={<PageLoader />}><WorkspaceHome /></Suspense>} />
+          {/* The agent is the product, so the dashboard opens on it */}
+          <Route index element={<Navigate to="agent" replace />} />
           <Route path="benchmarks" element={<Suspense fallback={<PageLoader />}><WorkspaceBenchmarks /></Suspense>} />
           <Route path="datasets" element={<Suspense fallback={<PageLoader />}><DatasetsPage /></Suspense>} />
           
@@ -149,7 +154,7 @@ function AppRoutes() {
       )}
 
       {/* Catch-all fallback */}
-      <Route path="*" element={<Suspense fallback={<PageLoader />}><Landing /></Suspense>} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
