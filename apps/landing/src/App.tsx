@@ -85,8 +85,9 @@ function AppRoutes() {
     <Routes>
       {/* Public front page: has its own header and footer, so it sits outside PublicLayout */}
       <Route path="/" element={<Suspense fallback={<LandingFallback />}><AgentLanding /></Suspense>} />
-      {/* The old in-app Home now lives on the front page (public, so no login needed) */}
-      <Route path="dashboard/home" element={<Navigate to="/" replace />} />
+      {/* The old in-app Home now lives on the front page, also served at this URL so the
+          existing /dashboard/home link keeps working (public, so no login needed) */}
+      <Route path="dashboard/home" element={<Suspense fallback={<LandingFallback />}><AgentLanding /></Suspense>} />
 
       {/* Marketing site — PublicLayout with cinematic Fabric */}
       <Route element={<PublicLayout />}>
