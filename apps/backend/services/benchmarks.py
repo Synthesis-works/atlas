@@ -24,6 +24,7 @@ from apps.backend.schemas.benchmarks import (
     BenchmarkVersionCreate,
     BenchmarkVersionRead,
     BenchmarkVersionUpdate,
+    PublicBenchmarkRead,
 )
 from apps.backend.schemas.query import PageRequest, PageResponse, SortRequest
 
@@ -310,6 +311,35 @@ class BenchmarkApplicationService:
             capability_ids=filter_req.capability_ids,
         )
         items = [_map_benchmark_to_read(b, self.benchmark_repo.db) for b in benchmarks]
+        return PageResponse(
+            items=items,
+            total=total,
+            limit=page_req.limit,
+            offset=page_req.offset,
+        )
+
+    def get_published_benchmarks_paginated(
+        self,
+        page_req: PageRequest,
+        sort_req: SortRequest[BenchmarkSortField],
+    ) -> PageResponse[PublicBenchmarkRead]:
+        """Anonymous catalogue of published benchmarks, across every project.
+
+        Only ``status="published"`` rows are returned: drafts stay private no
+        matter which project owns them, and the owning ``project_id`` is dropped
+        from the payload by :class:`PublicBenchmarkRead`.
+        """
+        benchmarks, total = self.benchmark_repo.get_benchmarks_paginated(
+            limit=page_req.limit,
+            offset=page_req.offset or 0,
+            sort_field=sort_req.sort.value if sort_req.sort else None,
+            sort_order=sort_req.order,
+            status="published",
+        )
+        items = [
+            PublicBenchmarkRead.from_read(_map_benchmark_to_read(b, self.benchmark_repo.db))
+            for b in benchmarks
+        ]
         return PageResponse(
             items=items,
             total=total,

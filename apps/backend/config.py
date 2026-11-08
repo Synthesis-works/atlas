@@ -17,12 +17,18 @@ class Settings(BaseSettings):
 
     # API configuration
     api_v1_prefix: str = Field(default="/api/v1")
+    # Browser origins allowed to call this API. The organisation site
+    # (Synthesis Works) is a separate deployment on its own origin; it reads the
+    # public benchmark catalogue from /api/v1/public/benchmarks.
     cors_origins: list[str] = Field(
         default_factory=lambda: [
             "http://localhost:3000",
             "http://127.0.0.1:3000",
             "http://localhost:5173",
             "http://127.0.0.1:5173",
+            "https://synthesis-works.xyz",
+            "https://www.synthesis-works.xyz",
+            "https://synthesis-works-web.vercel.app",
         ]
     )
 
