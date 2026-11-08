@@ -1,27 +1,19 @@
 import { Routes, Route, BrowserRouter, Navigate } from 'react-router-dom';
 import { ExperienceProvider } from '@/core/ExperienceController';
 import { AuthProvider } from '@/features/auth/AuthProvider';
-import { PublicLayout } from '@/layouts/PublicLayout';
+import { MarketingRedirect } from '@/components/MarketingRedirect';
 import { WorkspaceLayout } from '@/layouts/WorkspaceLayout';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 import { useExperience } from '@/core/ExperienceController';
 import { MultiStepLoader } from '@/components/ui/multi-step-loader';
 
-/* Marketing pages (lazy-loaded for perf) */
+/* Product pages (lazy-loaded for perf) */
 import { Component, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react';
 import { PageLoader } from '@/components/layout/PageLoader';
 
 const AgentLanding = lazy(() => import('@/pages/AgentLanding'));
-const Platform = lazy(() => import('@/pages/Platform'));
-const Benchmarks = lazy(() => import('@/pages/Benchmarks'));
-const Research = lazy(() => import('@/pages/Research'));
-const Documentation = lazy(() => import('@/pages/Documentation'));
-const OpenSource = lazy(() => import('@/pages/OpenSource'));
-const Cli = lazy(() => import('@/pages/Cli'));
-const CliInstall = lazy(() => import('@/pages/CliInstall'));
 const Login = lazy(() => import('@/pages/Login'));
-const Sandbox = lazy(() => import('@/components/ui/draggable-card-demo-2'));
 
 /* Workspace */
 const WorkspaceBenchmarks = lazy(() => import('@/pages/workspace/Benchmarks'));
@@ -89,17 +81,12 @@ function AppRoutes() {
           existing /dashboard/home link keeps working (public, so no login needed) */}
       <Route path="dashboard/home" element={<Suspense fallback={<LandingFallback />}><AgentLanding /></Suspense>} />
 
-      {/* Marketing site — PublicLayout with cinematic Fabric */}
-      <Route element={<PublicLayout />}>
-        <Route path="platform" element={<Suspense fallback={<PageLoader />}><Platform /></Suspense>} />
-        <Route path="benchmarks" element={<Suspense fallback={<PageLoader />}><Benchmarks /></Suspense>} />
-        <Route path="research" element={<Suspense fallback={<PageLoader />}><Research /></Suspense>} />
-        <Route path="documentation" element={<Suspense fallback={<PageLoader />}><Documentation /></Suspense>} />
-        <Route path="cli" element={<Suspense fallback={<PageLoader />}><Cli /></Suspense>} />
-        <Route path="cli/install" element={<Suspense fallback={<PageLoader />}><CliInstall /></Suspense>} />
-        <Route path="open-source" element={<Suspense fallback={<PageLoader />}><OpenSource /></Suspense>} />
-        <Route path="sandbox" element={<Suspense fallback={<PageLoader />}><Sandbox /></Suspense>} />
-      </Route>
+      {/* The marketing pages now live on the Synthesis Works organisation site.
+          Keep their old paths working by forwarding them, with the same path,
+          to the other origin. */}
+      {['platform', 'benchmarks', 'research', 'documentation', 'cli', 'cli/install', 'open-source', 'sandbox'].map(
+        (path) => <Route key={path} path={path} element={<MarketingRedirect />} />,
+      )}
 
       {/* Auth page */}
       <Route path="login" element={<Suspense fallback={<PageLoader />}><Login /></Suspense>} />
