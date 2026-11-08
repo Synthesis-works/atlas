@@ -115,6 +115,17 @@ describe('AgentLanding', () => {
     expect(screen.getAllByRole('link', { name: 'Try the agent' }).length).toBeGreaterThan(0);
   });
 
+  it('links the CLI guide and the parent site to Synthesis Works', () => {
+    renderLanding();
+
+    // Absolute, not a route on this app: the marketing site is a separate origin.
+    const install = new URL(screen.getByRole('link', { name: 'Install the CLI' }).getAttribute('href') ?? '');
+    expect(install.pathname).toBe('/cli/install');
+
+    const parent = screen.getByRole('link', { name: 'Synthesis Works' });
+    expect(parent.getAttribute('href')).toBe(install.origin);
+  });
+
   it('keeps unbuilt ideas out of the feature list', () => {
     renderLanding();
     const features = document.getElementById('does');
