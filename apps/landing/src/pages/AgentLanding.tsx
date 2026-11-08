@@ -28,6 +28,15 @@ const LIMITS = { steps: 25, toolCalls: 50, repairAttempts: 3, minutes: 10 } as c
 const GITHUB_URL = 'https://github.com/Synthesis-works/atlas';
 const PYPI_URL = 'https://pypi.org/project/synthesis-atlas-cli/';
 
+/**
+ * Synthesis Works — the organisation site this product belongs to. It is a separate
+ * deployment on its own origin, so links to it are plain full-page navigations and
+ * Atlas keeps working on its own if someone comes straight here.
+ */
+const SYNTHESIS_WORKS_URL = (
+  (import.meta.env.VITE_SYNTHESIS_WORKS_URL as string | undefined) || 'https://synthesis-works.xyz'
+).replace(/\/+$/, '');
+
 /* ------------------------------------------------------------------ */
 /* Content                                                             */
 /* ------------------------------------------------------------------ */
@@ -565,7 +574,10 @@ export default function AgentLanding() {
                 </li>
               )}
               <li>
-                <Link to="/cli/install">Install the CLI</Link>
+                <a href={`${SYNTHESIS_WORKS_URL}/cli/install`}>Install the CLI</a>
+              </li>
+              <li>
+                <a href={SYNTHESIS_WORKS_URL}>Synthesis Works</a>
               </li>
               <li>
                 <a href={GITHUB_URL} target="_blank" rel="noreferrer">
