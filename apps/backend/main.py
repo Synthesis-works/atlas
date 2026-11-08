@@ -77,6 +77,7 @@ def create_app() -> FastAPI:
         models,
         organizations,
         projects,
+        public,
         reporting,
         search,
         system,
@@ -97,6 +98,7 @@ def create_app() -> FastAPI:
     app.include_router(benchmarks.project_benchmarks_router, prefix="/api/v1")
     app.include_router(benchmarks.benchmarks_router, prefix="/api/v1")
     app.include_router(benchmarks.benchmark_versions_router, prefix="/api/v1")
+    app.include_router(public.router, prefix="/api/v1")
     app.include_router(executions.benchmark_executions_router, prefix="/api/v1")
     app.include_router(executions.executions_router, prefix="/api/v1")
     app.include_router(history.router, prefix="/api/v1")

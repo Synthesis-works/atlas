@@ -75,6 +75,51 @@ class BenchmarkRead(BaseModel):
         from_attributes = True
 
 
+class PublicBenchmarkVersionRead(BaseModel):
+    """Version fields safe to publish anonymously."""
+
+    id: UUID
+    version_string: str
+    state: str
+
+
+class PublicBenchmarkRead(BaseModel):
+    """A published benchmark as served to anonymous readers.
+
+    Same shape as :class:`BenchmarkRead` minus ``project_id``: the catalogue is
+    public, the owning project (and thus the organisation) is not.
+    """
+
+    id: UUID
+    state: str
+    name: str
+    objective: str | None = None
+    domain: str | None = None
+    difficulty: str | None = None
+    type: str | None = None
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    versions: list[PublicBenchmarkVersionRead] = []
+
+    # Published telemetry (null when no execution/evaluation history exists)
+    primary_dataset_id: UUID | None = None
+    primary_dataset_version_id: UUID | None = None
+    evaluation_case_count: int | None = None
+    execution_count: int | None = None
+    completed_execution_count: int | None = None
+    failed_execution_count: int | None = None
+    evaluation_count: int | None = None
+    passed_evaluation_count: int | None = None
+    average_score: float | None = None
+    latest_score: float | None = None
+    latest_execution_at: datetime | None = None
+    average_latency_ms: float | None = None
+
+    @classmethod
+    def from_read(cls, read: BenchmarkRead) -> PublicBenchmarkRead:
+        return cls(**read.model_dump(exclude={"project_id"}))
+
+
 class BenchmarkVersionCreate(BaseModel):
     version_string: str
     dataset_version_ids: list[UUID] | None = []
